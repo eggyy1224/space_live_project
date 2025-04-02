@@ -1,0 +1,43 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+venv/
+.env
+__pycache__/
+*.pyc
+
+# Google Cloud Service Account Key
+backend/gen-lang-client-0128429179-bdd188ccad93.json
+
+backend/debug_audio
+
+# Credentials and sensitive information
+backend/credentials/
+prototype/backend/credentials/
+
+# Git backup and report files
+backup.git/
+backup.git.bfg-report/
+
