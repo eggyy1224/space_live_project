@@ -93,7 +93,7 @@ graph TD
     DialogueGraph --> MemorySystem
     DialogueGraph --> LLM_Service
     MemorySystem --> ChromaDB
-    MemorySystem --> LLM_Service # 用於摘要
+    MemorySystem --> LLM_Service 
     WS_Server --> AIService
     API_Server --> AIService
 
