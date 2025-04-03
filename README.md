@@ -56,74 +56,73 @@
 
 ```mermaid
 graph TD
-    subgraph Frontend_用戶端_React_Three_js
-        direction TB
-        A[App 主元件] --> B[ControlPanel 控制面板]
-        A --> C[ModelViewer 3D場景]
-        A --> D[ChatInterface 聊天介面]
-        A --> E[AudioControls 音訊控制]
-        B --> F[MorphTargetControls 表情控制]
+    %% 前端 UI 元件
+    A[App 主元件] --> B[ControlPanel 控制面板]
+    A --> C[ModelViewer 3D場景]
+    A --> D[ChatInterface 聊天介面]
+    A --> E[AudioControls 音訊控制]
+    B --> F[MorphTargetControls 表情控制]
+    
+    %% 前端服務層
+    WS_Client[WebSocketService] --- Frontend_Services[前端服務層]
+    CS[ChatService] --- Frontend_Services
+    AS[AudioService] --- Frontend_Services
+    MS[ModelService] --- Frontend_Services
+    API_Client["REST API Client"] --- Frontend_Services
+    
+    %% 後端服務與AI核心
+    API_Server[REST API 伺服器] --- Backend[後端服務層]
+    WS_Server[WebSocket 伺服器] --- Backend
+    
+    AIService[AI 服務接口] --- AI_Core[AI 核心]
+    DialogueGraph[對話流程圖引擎] --- AI_Core
+    MemorySystem[記憶系統] --- AI_Core
+    LLM_Service["LLM Gemini"] --- AI_Core
+    ChromaDB[(向量數據庫)] --- AI_Core
 
-        subgraph Frontend_Services_單例
-            direction LR
-            WS_Client[WebSocketService]
-            CS[ChatService]
-            AS[AudioService]
-            MS[ModelService]
-            API_Client[REST API Client (api.ts)]
-        end
-    end
+    %% 核心關係
+    AIService --> DialogueGraph
+    DialogueGraph --> MemorySystem
+    DialogueGraph --> LLM_Service
+    MemorySystem --> ChromaDB
+    WS_Server --> AIService
+    API_Server --> AIService
 
-    subgraph Backend_後端_FastAPI
-       direction LR
-        API_Server[REST API 伺服器]
-        WS_Server[WebSocket 即時伺服器]
-
-        subgraph AI_Core_services_ai
-            AIService[AI 服務接口] --> DialogueGraph[對話流程圖引擎]
-            DialogueGraph --> MemorySystem[記憶系統]
-            DialogueGraph --> LLM_Service["LLM (Google Gemini)"]
-            MemorySystem --> ChromaDB[(向量數據庫)]
-        end
-         WS_Server --> AIService  # WebSocket connects to AI logic
-         API_Server --> AIService # REST API connects to AI logic
-
-    end
-
-    %% Frontend Interactions
+    %% 前端元件與服務交互
     D -- 傳送文字/語音識別結果 --> CS
     E -- 錄音控制/播放控制 --> AS
     F -- 調整表情參數 --> MS
-    B -- 模型/動畫/場景控制 --> MS
+    B -- 模型/場景控制 --> MS
     C -- 顯示3D模型與動畫 --> MS
 
-    %% Frontend Service Interactions
-    CS -- 處理聊天邏輯 --> WS_Client & API_Client
-    AS -- 處理音訊 --> API_Client # Upload/Download
+    %% 前端服務與後端交互
+    CS -- 處理聊天邏輯 --> WS_Client
+    CS -. 同時處理 .-> API_Client
+    AS -- 處理音訊 --> API_Client
     AS -- 播放TTS --> E
     MS -- 控制模型/動畫 --> C
     MS -- 監聽即時更新 --> WS_Client
     API_Client -- 發起HTTP請求 --> API_Server
-    WS_Client -- 建立/管理WebSocket連接 --> WS_Server
+    WS_Client -- WebSocket連接 --> WS_Server
 
-    %% Backend -> Frontend
-    WS_Server -- 推送即時訊息(對話/嘴型/表情) --> WS_Client
+    %% 後端推送前端
+    WS_Server -- 推送即時訊息 --> WS_Client
 
-    %% Backend Interactions
-    AIService -- 處理請求 --> DialogueGraph
-
-    %% Styling
+    %% 樣式定義
     classDef ui fill:#cef,stroke:#5a9,stroke-width:2px
     classDef service fill:#fcc,stroke:#f66,stroke-width:2px
     classDef backend fill:#efe,stroke:#393,stroke-width:2px
     classDef ai fill:#dff,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5
     classDef db fill:#ffc,stroke:#f60,stroke-width:1px
+    classDef group fill:#f5f5f5,stroke:#ddd,stroke-width:1px
 
+    %% 套用樣式
     class A,B,C,D,E,F ui
     class WS_Client,CS,AS,MS,API_Client service
     class API_Server,WS_Server backend
     class AIService,DialogueGraph,MemorySystem,LLM_Service ai
     class ChromaDB db
+    class Frontend_Services,Backend,AI_Core group
 ```
 
 *   **前端 (React + Three.js)**: 負責用戶界面展示、3D 模型渲染、接收用戶輸入（文字/語音）、播放音頻和動畫。前端通過 **服務單例** (`WebSocketService`, `ChatService`, etc.) 來管理狀態和與後端通信。
