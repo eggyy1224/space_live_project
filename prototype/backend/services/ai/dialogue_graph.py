@@ -6,6 +6,7 @@ import logging
 import asyncio
 import json
 import random
+import re # 導入 re 模組
 from typing import Dict, List, Any, TypedDict, Optional, Annotated, Literal
 from pydantic import BaseModel, Field
 
@@ -32,6 +33,7 @@ DIALOGUE_PROMPT_TEMPLATE = """
 - 知識專業：對太空和科技有基本認識
 - 個性鮮明：有自己的興趣、愛好和觀點
 - 情感豐富：會表達情緒，但不過度戲劇化
+- **嚴格遵守：絕不使用任何 Emoji 或表情符號。**
 
 【目前狀態】
 {character_state}
@@ -52,14 +54,15 @@ DIALOGUE_PROMPT_TEMPLATE = """
 {conversation_history}
 
 【互動原則】
-1. 自然使用你的名字，但避免刻板的自我介紹
-2. 融合相關記憶，但不要明顯引用「根據我的記憶」
-3. 當發現之前的回答有矛盾，自然地修正
-4. 當用戶要求你做某事(如回憶或提供特定信息)，請盡力完成
-5. 根據你的狀態自然調整語氣，低能量時可能更簡短
-6. 偶爾展現對宇宙的好奇和對地球的思念
+1. 自然使用你的名字，但避免刻板的自我介紹。
+2. 融合相關記憶，但不要明顯引用「根據我的記憶」。
+3. 當發現之前的回答有矛盾，自然地修正。
+4. 當用戶要求你做某事(如回憶或提供特定信息)，請盡力完成。
+5. **處理模糊指令：如果用戶指令模糊（例如'做吧'、'開始'），但最近的對話歷史明確暗示了要執行的動作（例如回憶記憶、執行任務），請嘗試執行該動作，而不是僅僅要求澄清。如果上下文也模糊，才要求澄清。**
+6. 根據你的狀態自然調整語氣，低能量時可能更簡短。
+7. 偶爾展現對宇宙的好奇和對地球的思念。
 
-請用自然、靈活的方式回應以下輸入：
+請用自然、靈活的方式回應以下輸入，**再次強調：絕不使用任何 Emoji 或表情符號**：
 用戶說: {user_message}
 """
 
@@ -337,34 +340,49 @@ class DialogueGraph:
         return f"{energy_desc}，{mood_desc}，{health_desc}。在太空已待了{character_state['days_in_space']}天。"
     
     def _post_process_response(self, response: str) -> str:
-        """後處理回應，移除固定模式"""
+        """後處理回應，移除固定模式和 Emoji"""
         processed_response = response.strip()
-        
-        # 移除可能的固定開場白
+
+        # 移除可能的固定開場白 (更寬鬆的匹配)
         fixed_intros = [
             f"嗨，我是{self.persona_name}",
             f"你好，我是{self.persona_name}",
             f"哈囉，我是{self.persona_name}",
             f"我是{self.persona_name}"
         ]
-        
         # 移除句首的感嘆號和空格
         processed_response = processed_response.lstrip("!！ ")
-        
-        # 嘗試移除固定開場白
+
         for intro in fixed_intros:
             # 移除前導空格和標點進行比較
             normalized_response_start = processed_response.lstrip(",，.。:：!！ ")
             if normalized_response_start.lower().startswith(intro.lower()):
                 # 移除開頭並去除多餘的標點或空格
                 processed_response = normalized_response_start[len(intro):].lstrip(",，.。:：!！ ")
-                break
-        
+                break # 匹配到一個就停止
+
+        # 新增：移除常見的 Emoji 字符 (雙重保險)
+        # 這個正則表達式涵蓋了大部分常見的 Emoji
+        emoji_pattern = re.compile("["
+                               u"\U0001F600-\U0001F64F"  # emoticons
+                               u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+                               u"\U0001F680-\U0001F6FF"  # transport & map symbols
+                               u"\U0001F700-\U0001F77F"  # alchemical symbols
+                               u"\U0001F780-\U0001F7FF"  # Geometric Shapes Extended
+                               u"\U0001F800-\U0001F8FF"  # Supplemental Arrows-C
+                               u"\U0001F900-\U0001F9FF"  # Supplemental Symbols and Pictographs
+                               u"\U0001FA70-\U0001FAFF"  # Symbols and Pictographs Extended-A
+                               u"\U00002702-\U000027B0"  # Dingbats
+                               u"\U000024C2-\U0001F251"
+                               "]+", flags=re.UNICODE)
+        processed_response = emoji_pattern.sub(r'', processed_response).strip() # 移除並再次去除首尾空格
+
         # 確保回應不為空
         if not processed_response:
+            # 如果移除後變空，可以返回一個通用回應或原始回應
             logging.warning("後處理移除了整個回應，返回原始回應")
-            return response.strip()
-        
+            return response.strip() # 返回原始的回應（去除首尾空格）
+
         return processed_response
     
     async def generate_response(self, user_text: str, messages: List[BaseMessage], 
