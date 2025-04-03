@@ -106,6 +106,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         "audio": audio_base64,
                         "hasSpeech": audio_base64 is not None,
                         "speechDuration": audio_duration,
+                        "characterState": ai_service.character_state  # 添加角色狀態
                     })
                     
                     # 持續發送表情更新，實現平滑過渡
@@ -117,6 +118,51 @@ async def websocket_endpoint(websocket: WebSocket):
                     asyncio.create_task(
                         send_lipsync_frames(websocket, lipsync_frames, current_emotion)
                     )
+                
+                elif message["type"] == "get_character_state":
+                    # 返回角色當前狀態
+                    await websocket.send_json({
+                        "type": "character_state_update",
+                        "characterState": ai_service.character_state
+                    })
+                
+                elif message["type"] == "update_character_state":
+                    # 更新角色狀態
+                    if "updates" in message and isinstance(message["updates"], dict):
+                        ai_service.update_character_state(message["updates"])
+                        await websocket.send_json({
+                            "type": "character_state_update",
+                            "characterState": ai_service.character_state
+                        })
+                
+                elif message["type"] == "set_task":
+                    # 設置當前任務
+                    if "task" in message and isinstance(message["task"], str):
+                        ai_service.set_current_task(message["task"])
+                        await websocket.send_json({
+                            "type": "task_update",
+                            "task": ai_service.current_task
+                        })
+                
+                elif message["type"] == "complete_task":
+                    # 完成當前任務
+                    success = message.get("success", True)
+                    ai_service.complete_current_task(success)
+                    await websocket.send_json({
+                        "type": "task_complete",
+                        "success": success,
+                        "characterState": ai_service.character_state
+                    })
+                
+                elif message["type"] == "advance_day":
+                    # 推進一天
+                    ai_service.advance_day()
+                    await websocket.send_json({
+                        "type": "day_advanced",
+                        "day": ai_service.character_state["days_in_space"],
+                        "characterState": ai_service.character_state
+                    })
+                
             except Exception as e:
                 print(f"處理WebSocket消息錯誤: {e}")
                 await websocket.send_json({

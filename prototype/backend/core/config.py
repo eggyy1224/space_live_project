@@ -28,6 +28,9 @@ class Settings:
     GENERATION_TOP_K = 40
     GENERATION_MAX_TOKENS = 1024
     
+    # LangChain配置
+    MEMORY_MAX_HISTORY = 10  # 對話歷史的最大存儲條數
+    
     # 動畫配置
     TRANSITION_STEPS = 8
     TRANSITION_DELAY = 0.08
