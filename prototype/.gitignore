@@ -28,6 +28,9 @@ venv/
 __pycache__/
 *.pyc
 
+# Chroma database files
+prototype/backend/data/chroma_db/
+
 # Google Cloud Service Account Key
 backend/gen-lang-client-0128429179-bdd188ccad93.json
 
