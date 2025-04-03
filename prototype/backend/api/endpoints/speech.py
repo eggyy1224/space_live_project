@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from services.speech_to_text import SpeechToTextService
 from services.text_to_speech import TextToSpeechService
 from services.ai import AIService
+from services.emotion import EmotionAnalyzer
 from core.models import SpeechToTextRequest
 import logging
 import base64
@@ -19,6 +20,7 @@ router = APIRouter()
 speech_service = SpeechToTextService()
 tts_service = TextToSpeechService()
 ai_service = AIService()
+emotion_analyzer = EmotionAnalyzer()
 
 # 創建調試目錄
 DEBUG_DIR = "debug_audio"
@@ -27,7 +29,7 @@ os.makedirs(DEBUG_DIR, exist_ok=True)
 @router.post("/speech-to-text")
 async def process_speech(request: SpeechToTextRequest):
     """
-    處理語音轉文字請求，並生成AI回應
+    處理語音轉文字請求，分析情緒，並生成AI回應
     """
     try:
         # 獲取請求中的音頻數據
@@ -67,10 +69,19 @@ async def process_speech(request: SpeechToTextRequest):
         
         # 如果語音識別成功且有文字，則生成回應
         if result["success"] and result["text"]:
-            logger.info(f"識別到的文字: '{result['text']}'，開始生成回應...")
+            transcribed_text = result["text"]
+            logger.info(f"識別到的文字: '{transcribed_text}'，開始分析情緒和生成回應...")
+            
+            # 分析情緒
+            detected_emotion, confidence = emotion_analyzer.analyze(transcribed_text)
+            logger.info(f"分析情緒結果: {detected_emotion}, 置信度: {confidence}")
+            
             # 使用AI服務生成回應
             try:
-                response = await ai_service.generate_response(result["text"])
+                response = await ai_service.generate_response(
+                    user_text=transcribed_text, 
+                    current_emotion=detected_emotion
+                )
                 logger.info(f"AI回應: '{response}'")
                 
                 # 生成語音回應
@@ -81,18 +92,20 @@ async def process_speech(request: SpeechToTextRequest):
                     logger.info(f"成功生成語音回應，音頻長度：{len(tts_result['audio'])}，持續時間：{tts_result['duration']}秒")
                     # 返回完整結果
                     return {
-                        "text": result["text"],
+                        "text": transcribed_text,
                         "response": response,
                         "audio": tts_result["audio"],
                         "duration": tts_result["duration"],
                         "confidence": result.get("confidence", 0),
+                        "detected_emotion": detected_emotion,
+                        "emotion_confidence": confidence,
                         "success": True
                     }
                 else:
                     logger.warning("無法生成語音回應")
                     # 只返回文字結果
                     return {
-                        "text": result["text"],
+                        "text": transcribed_text,
                         "response": response,
                         "success": True,
                         "error": "無法生成語音回應"
@@ -101,7 +114,7 @@ async def process_speech(request: SpeechToTextRequest):
                 logger.error(f"生成AI回應失敗: {str(e)}")
                 # 至少返回語音識別結果
                 return {
-                    "text": result["text"],
+                    "text": transcribed_text,
                     "success": True,
                     "error": f"生成回應失敗: {str(e)}"
                 }
