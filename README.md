@@ -56,7 +56,7 @@
 
 ```mermaid
 graph TD
-    subgraph Frontend (用戶端 React+Three.js)
+    subgraph Frontend_用戶端_React_Three_js
         direction TB
         A[App 主元件] --> B[ControlPanel 控制面板]
         A --> C[ModelViewer 3D場景]
@@ -64,7 +64,7 @@ graph TD
         A --> E[AudioControls 音訊控制]
         B --> F[MorphTargetControls 表情控制]
 
-        subgraph Frontend Services (單例)
+        subgraph Frontend_Services_單例
             direction LR
             WS_Client[WebSocketService]
             CS[ChatService]
@@ -74,12 +74,12 @@ graph TD
         end
     end
 
-    subgraph Backend (後端 FastAPI)
+    subgraph Backend_後端_FastAPI
        direction LR
         API_Server[REST API 伺服器]
         WS_Server[WebSocket 即時伺服器]
 
-        subgraph AI Core (services/ai)
+        subgraph AI_Core_services_ai
             AIService[AI 服務接口] --> DialogueGraph[對話流程圖引擎]
             DialogueGraph --> MemorySystem[記憶系統]
             DialogueGraph --> LLM_Service["LLM (Google Gemini)"]
