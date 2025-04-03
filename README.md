@@ -49,7 +49,7 @@
 
 ```mermaid
 graph LR
-    subgraph Backend (FastAPI 服務)
+    subgraph Backend_FastAPI_服務
         API(WebSocket / HTTP API) -- Text --> AIService[AI 服務接口]
         AIService -- 用戶輸入 / 當前狀態 --> DialogueGraph[對話流程圖引擎]
         DialogueGraph -- 記憶查詢 --> MemorySystem[記憶系統]
@@ -61,19 +61,19 @@ graph LR
         AIService -- 文本回應 --> API
     end
 
-    subgraph AI Core (services/ai)
+    subgraph AI_Core_services_ai
         AIService -- 協調 --> DialogueGraph
         DialogueGraph -- 使用 --> MemorySystem
         MemorySystem -- 讀寫 --> ChromaDB[(向量數據庫)]
     end
 
-    subgraph External Services (外部依賴)
+    subgraph External_Services_外部依賴
         LLM_Service
     end
 
-    style Backend fill:#eef,stroke:#333,stroke-width:1px
-    style AI Core fill:#dff,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5
-    style External Services fill:#fff,stroke:#999,stroke-width:1px
+    style Backend_FastAPI_服務 fill:#eef,stroke:#333,stroke-width:1px
+    style AI_Core_services_ai fill:#dff,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5
+    style External_Services_外部依賴 fill:#fff,stroke:#999,stroke-width:1px
 ```
 
 *   **後端 (FastAPI)**: 處理 API 請求，協調各服務 (部分實現在本倉庫)。
