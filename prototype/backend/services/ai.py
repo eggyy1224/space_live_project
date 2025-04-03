@@ -2,11 +2,12 @@ import google.generativeai as genai
 from typing import Dict, Optional, List, Any
 from core.config import settings
 from core.exceptions import AIServiceException
-from langchain.chains import LLMChain
-from langchain.memory import ConversationBufferMemory, VectorStoreRetrieverMemory
 from langchain.prompts import PromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain_chroma import Chroma
+from langchain_core.runnables import RunnableSequence
+from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.output_parsers import StrOutputParser
 import json
 import os
 
@@ -41,8 +42,8 @@ class AIService:
         )
         self.retriever = self.vectorstore.as_retriever(search_kwargs={"k": settings.VECTOR_MEMORY_K})
         
-        # 創建向量記憶體
-        self.vector_memory = VectorStoreRetrieverMemory(retriever=self.retriever)
+        # 使用消息列表替代ChatMessageHistory
+        self.messages = []
         
         # 角色狀態管理
         self.character_state = {
@@ -57,7 +58,7 @@ class AIService:
         self.current_task = None  # 當前任務
         self.tasks_history = []   # 任務歷史
         
-        # 創建提示模板 - 加入向量記憶
+        # 創建提示模板
         self.prompt_template = PromptTemplate(
             input_variables=["history", "relevant_context", "current_emotion", "user_message", "character_state", "current_task"],
             template="""
@@ -86,21 +87,8 @@ class AIService:
             """
         )
         
-        # 創建對話記憶 - 組合短期記憶和向量記憶
-        self.buffer_memory = ConversationBufferMemory(
-            memory_key="history", 
-            input_key="user_message",
-            max_token_limit=settings.MEMORY_MAX_HISTORY,
-            return_messages=True # 確保返回的是消息列表
-        )
-        
-        # 創建LangChain
-        self.chain = LLMChain(
-            llm=self.llm,
-            prompt=self.prompt_template,
-            memory=self.buffer_memory, # 主要使用短期記憶
-            verbose=False
-        )
+        # 創建RunnableSequence替代LLMChain
+        self.chain = self.prompt_template | self.llm | StrOutputParser()
         
     async def generate_response(self, user_text: str, current_emotion: str) -> str:
         """
@@ -114,28 +102,41 @@ class AIService:
             AI生成的回應
         """
         try:
-            # 1. 檢索相關記憶
-            relevant_docs = self.vector_memory.retriever.get_relevant_documents(user_text)
+            # 1. 檢索相關記憶 (使用 invoke 替代棄用的 get_relevant_documents)
+            relevant_docs = await self.retriever.ainvoke(user_text)
             relevant_context = "\n".join([doc.page_content for doc in relevant_docs])
             
-            # 2. 構建輸入參數
+            # 2. 將使用者訊息添加到歷史
+            self.messages.append(HumanMessage(content=user_text))
+            
+            # 3. 從歷史中格式化對話 (取最後 X 條消息，避免超出上下文長度)
+            messages = self.messages[-settings.MEMORY_MAX_HISTORY:]
+            history_text = "\n".join([f"{'用戶' if isinstance(msg, HumanMessage) else '助手'}: {msg.content}" 
+                                    for i, msg in enumerate(messages)])
+            
+            # 4. 構建輸入參數
             inputs = {
                 "user_message": user_text,
                 "current_emotion": current_emotion,
                 "character_state": json.dumps(self.character_state, ensure_ascii=False),
                 "current_task": self.current_task if self.current_task else "無當前任務",
-                "relevant_context": relevant_context if relevant_context else "無相關記憶"
+                "relevant_context": relevant_context if relevant_context else "無相關記憶",
+                "history": history_text
             }
             
-            # 3. 使用LangChain生成回應 (讀取短期歷史+相關向量記憶)
-            response = self.chain.invoke(inputs)
-            ai_response_text = response["text"].strip()
+            # 5. 使用RunnableSequence生成回應
+            ai_response_text = await self.chain.ainvoke(inputs)
             
-            # 4. 將當前回應存入向量記憶
-            self.vector_memory.save_context({"input": user_text}, {"output": ai_response_text})
+            # 6. 將AI回應添加到歷史
+            self.messages.append(AIMessage(content=ai_response_text))
             
-            # 5. 保存ChromaDB數據（重要！）
-            self.vectorstore.persist()
+            # 7. 將當前對話保存到向量儲存
+            self.vectorstore.add_texts(
+                texts=[f"用戶: {user_text}\n助手: {ai_response_text}"],
+                metadatas=[{"type": "conversation"}]
+            )
+            
+            # 8. 不再需要顯式調用 persist，新版 Chroma 會自動保存
             
             return ai_response_text
             

@@ -259,6 +259,9 @@ class AudioService {
         return;
       }
       
+      // === 開始處理前，設置 isProcessing = true ===
+      this.setProcessing(true);
+      
       // 將Blob轉為Base64
       const reader = new FileReader();
       reader.readAsDataURL(audioBlob);
@@ -270,7 +273,8 @@ class AudioService {
           const audioData = base64data.split(',')[1];
           logger.info(`音頻Base64編碼完成，長度: ${audioData.length}`, LogCategory.AUDIO);
           
-          this.setProcessing(true);
+          // === 不再在這裡設置 processing ===
+          // this.setProcessing(true); 
           
           // 打印音頻MIME類型和支持的格式
           logger.info(`MediaRecorder支持的MIME類型: ${
@@ -302,17 +306,14 @@ class AudioService {
           // 清理音頻塊
           this.audioChunks = [];
           
+          // === 獲取 ChatService 實例 ===
+          const ChatService = (await import('./ChatService')).default;
+          const chatService = ChatService.getInstance();
+          
           // 處理識別結果
           if (data.success) {
             // 如果有識別到文字，更新UI顯示
             if (data.text) {
-              // 預先導入所需服務
-              const WebSocketService = (await import('./WebSocketService')).default;
-              const ChatService = (await import('./ChatService')).default;
-              
-              const wsService = WebSocketService.getInstance();
-              const chatService = ChatService.getInstance();
-              
               logger.info(`語音識別結果: ${data.text}`, LogCategory.AUDIO);
               
               // 將識別的文字添加為用戶消息
@@ -321,25 +322,20 @@ class AudioService {
                 content: data.text
               });
               
-              // 設置處理中狀態
-              chatService.setProcessing(true);
-              
-              // 【關鍵】通過WebSocket發送消息以觸發模型回應
-              logger.info(`通過WebSocket發送語音識別文字: ${data.text}`, LogCategory.AUDIO);
-              const sent = wsService.sendTextMessage(data.text);
-              
-              if (!sent) {
-                logger.error('WebSocket發送失敗', LogCategory.AUDIO);
-                chatService.addMessage({
-                  role: 'bot',
-                  content: '語音訊息發送失敗，請檢查連接狀態。'
-                });
-                chatService.setProcessing(false);
+              // 添加 AI 的文字回應到聊天
+              if (data.response) {
+                  chatService.addMessage({
+                    role: 'bot',
+                    content: data.response
+                  });
+              } else {
+                  logger.warn('後端回應中缺少 AI 文字回應 (data.response)', LogCategory.AUDIO);
               }
+              
+              // HTTP API (/api/speech-to-text) 已經處理了語音識別和回應生成
+              logger.info(`使用HTTP API處理語音識別`, LogCategory.AUDIO);
             } else {
               logger.warn('未能識別有效的語音內容', LogCategory.AUDIO);
-              const ChatService = (await import('./ChatService')).default;
-              const chatService = ChatService.getInstance();
               chatService.addMessage({
                 role: 'bot',
                 content: '抱歉，我沒有聽清您說的內容，請再試一次。'
@@ -355,27 +351,26 @@ class AudioService {
             // 處理失敗情況
             const errorMsg = data.error || '未知錯誤';
             logger.warn(`語音識別失敗: ${errorMsg}`, LogCategory.AUDIO);
-            
-            // 如果是因為沒有聽到聲音，提供用戶反饋
-            const ChatService = (await import('./ChatService')).default;
-            const chatService = ChatService.getInstance();
             chatService.addMessage({
               role: 'bot',
               content: '抱歉，我沒有聽清您說的話，請再說一遍或嘗試靠近麥克風。'
             });
           }
           
+          // === 所有處理完成後，設置 isProcessing = false ===
           this.setProcessing(false);
           
-          return data;
+          // return data; // 這個 return 似乎不需要
         } catch (error) {
           logger.error('處理語音錄製錯誤', LogCategory.AUDIO, error);
+          // === 出錯時也要設置 isProcessing = false ===
           this.setProcessing(false);
-          return null;
+          // return null; // 這個 return 似乎不需要
         }
       };
     } catch (error) {
       logger.error('處理錄音數據時發生錯誤', LogCategory.AUDIO, error);
+      // === 出錯時也要設置 isProcessing = false ===
       this.setProcessing(false);
     }
   }
