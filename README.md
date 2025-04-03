@@ -219,96 +219,61 @@ cd space_live_project
 ```
 /space_live_project/
 ├── docs/                             # 技術文檔與設計方案
-│   ├── 前端相關/                     # 前端技術規格與架構圖
-│   │   └── 0402前端架構.md           # 前端架構詳解，含元件與服務設計
-│   └── 後端相關/                     # 後端技術規格與設計圖
-│       └── 0402記憶系統方案.md       # AI 記憶系統與對話管理設計方案
+├── glbs/                             # 3D 模型 GLB 文件
+├── prototype/                        # 主要後端程式碼目錄 (待重構/整合?)
+│   └── backend/                      # 後端 FastAPI 應用
+│       ├── api/                      # API 端點定義
+│       ├── core/                     # 核心配置與基礎設施
+│       ├── credentials/              # 憑證管理 (示例或實際)
+│       ├── data/                     # 數據文件 (如 CSV, JSON)
+│       ├── debug_audio/              # 用於調試的音頻文件
+│       ├── dtos/                     # Data Transfer Objects
+│       ├── logs/                     # 日誌文件目錄
+│       ├── models/                   # 其他模型文件 (非 AI 核心)
+│       ├── services/                 # 業務邏輯服務
+│       │   ├── ai/                   # AI 核心服務
+│       │   │   ├── __init__.py
+│       │   │   ├── dialogue_graph.py # LangGraph 健壯對話流程引擎
+│       │   │   └── memory_system.py  # 多層記憶管理系統 (含摘要)
+│       │   ├── __init__.py
+│       │   ├── animation.py          # 動畫相關服務
+│       │   ├── emotion.py            # 情緒處理服務
+│       │   ├── speech_to_text.py     # 語音轉文字服務
+│       │   └── text_to_speech.py     # 文字轉語音服務
+│       └── main.py                   # FastAPI 應用主入口 (可能還有 .bak)
 │
-├── prototype/                        # 主要程式碼目錄
-│   ├── backend/                      # 後端 FastAPI 應用
-│   │   ├── api/                      # API 端點定義
-│   │   │   └── ...                   # (省略 api 內部結構)
-│   │   ├── core/                     # 核心配置與基礎設施
-│   │   │   └── ...
-│   │   ├── services/                 # 業務邏輯服務
-│   │   │   └── ...
-│   │   └── main.py                   # FastAPI 應用主入口
-│   │
-│   └── frontend/                     # 前端 React+Three.js 應用 <--- 移除這一層級
-│       ├── public/                   # 靜態資源
-│       │   ├── assets/               # 模型、紋理和其他素材
-│       │   │   ├── models/           # 3D 模型文件 (.glb, .gltf)
-│       │   │   └── textures/         # 紋理圖片
-│       │   └── ...                   # 其他公共資源 (favicon.ico, etc.)
-│       │
-│       └── src/                      # 前端原始碼
-│           ├── App.tsx               # 應用主入口組件
-│           ├── main.tsx              # React 渲染入口
-│           ├── index.css             # 全局樣式
-│           │
-│           ├── components/           # 可重用 UI 組件
-│           │   ├── ControlPanel.tsx  # 控制面板
-│           │   ├── ModelViewer.tsx   # 3D 視覺
-│           │   ├── ChatInterface.tsx # 聊天介面
-│           │   ├── AudioControls.tsx # 音訊控制
-│           │   └── ...               # 其他組件
-│           │
-│           ├── services/             # 應用服務 (狀態管理與後端通信)
-│           │   ├── WebSocketService.ts
-│           │   ├── ChatService.ts
-│           │   ├── AudioService.ts
-│           │   ├── ModelService.ts
-│           │   └── APIService.ts     # (可選) 封裝 REST API 調用
-│           │
-│           ├── hooks/                # 自定義 React Hooks
-│           │   └── useSpeechRecognition.ts # (示例) 語音識別 Hook
-│           │
-│           ├── contexts/             # React Context (共享狀態)
-│           │   └── AppContext.tsx    # (示例) 全局應用狀態 Context
-│           │
-│           └── utils/                # 工具函數
-│               └── audioUtils.ts     # 音訊處理相關工具
+├── public/                           # 前端靜態資源
+│   └── ...                           # (省略 public 內部結構)
 │
-├── public/                           # 靜態資源 (移至根目錄)
-│   ├── assets/                       # 模型、紋理和其他素材
-│   │   ├── models/                   # 3D 模型文件 (.glb, .gltf)
-│   │   └── textures/                 # 紋理圖片
-│   └── ...                           # 其他公共資源 (favicon.ico, etc.)
+├── src/                              # 前端 React 原始碼
+│   ├── components/
+│   ├── services/
+│   ├── hooks/
+│   ├── contexts/
+│   ├── utils/
+│   ├── App.tsx
+│   ├── main.tsx
+│   └── ...                           # (省略 src 其他文件)
 │
-├── src/                              # 前端原始碼 (移至根目錄)
-│   ├── App.tsx                       # 應用主入口組件
-│   ├── main.tsx                      # React 渲染入口
-│   ├── index.css                     # 全局樣式
-│   │
-│   ├── components/                   # 可重用 UI 組件
-│   │   ├── ControlPanel.tsx          # 控制面板
-│   │   ├── ModelViewer.tsx           # 3D 視覺
-│   │   ├── ChatInterface.tsx         # 聊天介面
-│   │   ├── AudioControls.tsx         # 音訊控制
-│   │   └── ...                       # 其他組件
-│   │
-│   ├── services/                     # 應用服務 (狀態管理與後端通信)
-│   │   ├── WebSocketService.ts
-│   │   ├── ChatService.ts
-│   │   ├── AudioService.ts
-│   │   ├── ModelService.ts
-│   │   └── APIService.ts             # (可選) 封裝 REST API 調用
-│   │
-│   ├── hooks/                        # 自定義 React Hooks
-│   │   └── useSpeechRecognition.ts     # (示例) 語音識別 Hook
-│   │
-│   ├── contexts/                     # React Context (共享狀態)
-│   │   └── AppContext.tsx            # (示例) 全局應用狀態 Context
-│   │
-│   └── utils/                        # 工具函數
-│       └── audioUtils.ts             # 音訊處理相關工具
-│
-├── venv/                             # Python 虛擬環境 (建議在 .gitignore 中忽略)
-├── chroma_db/                        # ChromaDB 持久化數據目錄 (建議在 .gitignore 中忽略)
+├── utils/                            # 通用工具函數 (專案級)
+├── venv/                             # Python 虛擬環境
+├── chroma_db/                        # ChromaDB 持久化數據目錄
+├── .env                              # 實際環境變數 (後端)
 ├── .env.example                      # 環境變數示例文件
 ├── .gitignore                        # Git 忽略配置文件
+├── eslint.config.js                  # ESLint 配置文件
+├── index.html                        # 前端入口 HTML
+├── main.py                           # (根目錄下的 main.py?)
+├── main.py.bak                     # main.py 備份
+├── package-lock.json                 # NPM 鎖定文件
+├── package.json                      # 前端依賴與腳本
+├── README.md                         # 本文件
 ├── requirements.txt                  # 後端 Python 依賴列表
-└── README.md                         # 本文件
+├── run.sh                            # 執行腳本
+├── tsconfig.app.json                 # TypeScript 配置 (App)
+├── tsconfig.json                     # TypeScript 配置 (Base)
+├── tsconfig.node.json                # TypeScript 配置 (Node)
+└── vite.config.ts                    # Vite 配置文件
 ```
 
 ---
