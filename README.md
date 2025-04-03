@@ -227,33 +227,14 @@ cd space_live_project
 ├── prototype/                        # 主要程式碼目錄
 │   ├── backend/                      # 後端 FastAPI 應用
 │   │   ├── api/                      # API 端點定義
-│   │   │   ├── __init__.py           # API 包初始化
-│   │   │   ├── routes/               # 路由模組目錄
-│   │   │   │   ├── __init__.py       # 路由包初始化
-│   │   │   │   ├── chat.py           # 聊天相關端點 (POST /api/chat/message)
-│   │   │   │   └── ws.py             # WebSocket 處理 (ws://api/ws)
-│   │   │   └── deps.py               # API 依賴項 (認證、日誌等)
-│   │   │
+│   │   │   └── ...                   # (省略 api 內部結構)
 │   │   ├── core/                     # 核心配置與基礎設施
-│   │   │   ├── __init__.py
-│   │   │   ├── config.py             # 應用配置（從環境變數載入設置）
-│   │   │   └── exceptions.py         # 自定義異常類別
-│   │   │
+│   │   │   └── ...
 │   │   ├── services/                 # 業務邏輯服務
-│   │   │   ├── __init__.py
-│   │   │   ├── ai/                   # AI 核心服務
-│   │   │   │   ├── __init__.py       # AIService 適配器
-│   │   │   │   ├── dialogue_graph.py # LangGraph 健壯對話流程引擎
-│   │   │   │   └── memory_system.py  # 多層記憶管理系統 (含摘要)
-│   │   │   │
-│   │   │   └── audio/                # 語音處理服務 (可選)
-│   │   │       ├── __init__.py
-│   │   │       ├── tts.py            # 文字轉語音服務
-│   │   │       └── stt.py            # 語音轉文字服務
-│   │   │
+│   │   │   └── ...
 │   │   └── main.py                   # FastAPI 應用主入口
 │   │
-│   └── frontend/                     # 前端 React+Three.js 應用
+│   └── frontend/                     # 前端 React+Three.js 應用 <--- 移除這一層級
 │       ├── public/                   # 靜態資源
 │       │   ├── assets/               # 模型、紋理和其他素材
 │       │   │   ├── models/           # 3D 模型文件 (.glb, .gltf)
@@ -287,6 +268,40 @@ cd space_live_project
 │           │
 │           └── utils/                # 工具函數
 │               └── audioUtils.ts     # 音訊處理相關工具
+│
+├── public/                           # 靜態資源 (移至根目錄)
+│   ├── assets/                       # 模型、紋理和其他素材
+│   │   ├── models/                   # 3D 模型文件 (.glb, .gltf)
+│   │   └── textures/                 # 紋理圖片
+│   └── ...                           # 其他公共資源 (favicon.ico, etc.)
+│
+├── src/                              # 前端原始碼 (移至根目錄)
+│   ├── App.tsx                       # 應用主入口組件
+│   ├── main.tsx                      # React 渲染入口
+│   ├── index.css                     # 全局樣式
+│   │
+│   ├── components/                   # 可重用 UI 組件
+│   │   ├── ControlPanel.tsx          # 控制面板
+│   │   ├── ModelViewer.tsx           # 3D 視覺
+│   │   ├── ChatInterface.tsx         # 聊天介面
+│   │   ├── AudioControls.tsx         # 音訊控制
+│   │   └── ...                       # 其他組件
+│   │
+│   ├── services/                     # 應用服務 (狀態管理與後端通信)
+│   │   ├── WebSocketService.ts
+│   │   ├── ChatService.ts
+│   │   ├── AudioService.ts
+│   │   ├── ModelService.ts
+│   │   └── APIService.ts             # (可選) 封裝 REST API 調用
+│   │
+│   ├── hooks/                        # 自定義 React Hooks
+│   │   └── useSpeechRecognition.ts     # (示例) 語音識別 Hook
+│   │
+│   ├── contexts/                     # React Context (共享狀態)
+│   │   └── AppContext.tsx            # (示例) 全局應用狀態 Context
+│   │
+│   └── utils/                        # 工具函數
+│       └── audioUtils.ts             # 音訊處理相關工具
 │
 ├── venv/                             # Python 虛擬環境 (建議在 .gitignore 中忽略)
 ├── chroma_db/                        # ChromaDB 持久化數據目錄 (建議在 .gitignore 中忽略)
