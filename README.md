@@ -220,60 +220,68 @@ cd space_live_project
 /space_live_project/
 ├── docs/                             # 技術文檔與設計方案
 ├── glbs/                             # 3D 模型 GLB 文件
-├── prototype/                        # 主要後端程式碼目錄 (待重構/整合?)
-│   └── backend/                      # 後端 FastAPI 應用
-│       ├── api/                      # API 端點定義
-│       ├── core/                     # 核心配置與基礎設施
-│       ├── credentials/              # 憑證管理 (示例或實際)
-│       ├── data/                     # 數據文件 (如 CSV, JSON)
-│       ├── debug_audio/              # 用於調試的音頻文件
-│       ├── dtos/                     # Data Transfer Objects
-│       ├── logs/                     # 日誌文件目錄
-│       ├── models/                   # 其他模型文件 (非 AI 核心)
-│       ├── services/                 # 業務邏輯服務
-│       │   ├── ai/                   # AI 核心服務
-│       │   │   ├── __init__.py
-│       │   │   ├── dialogue_graph.py # LangGraph 健壯對話流程引擎
-│       │   │   └── memory_system.py  # 多層記憶管理系統 (含摘要)
-│       │   ├── __init__.py
-│       │   ├── animation.py          # 動畫相關服務
-│       │   ├── emotion.py            # 情緒處理服務
-│       │   ├── speech_to_text.py     # 語音轉文字服務
-│       │   └── text_to_speech.py     # 文字轉語音服務
-│       └── main.py                   # FastAPI 應用主入口 (可能還有 .bak)
+├── prototype/                        # 主要項目目錄
+│   ├── backend/                      # 後端 FastAPI 應用
+│   │   ├── api/                      # API 端點定義
+│   │   ├── core/                     # 核心配置與基礎設施
+│   │   ├── credentials/              # 憑證管理
+│   │   ├── data/                     # 數據文件 (如 CSV, JSON)
+│   │   ├── debug_audio/              # 用於調試的音頻文件
+│   │   ├── dtos/                     # Data Transfer Objects
+│   │   ├── logs/                     # 日誌文件目錄
+│   │   ├── models/                   # 其他模型文件 (非 AI 核心)
+│   │   ├── services/                 # 業務邏輯服務
+│   │   │   ├── ai/                   # AI 核心服務
+│   │   │   │   ├── __init__.py       # AI 服務接口
+│   │   │   │   ├── dialogue_graph.py # LangGraph 健壯對話流程引擎
+│   │   │   │   └── memory_system.py  # 多層記憶管理系統 (含摘要)
+│   │   │   ├── __init__.py
+│   │   │   ├── animation.py          # 動畫相關服務
+│   │   │   ├── emotion.py            # 情緒處理服務
+│   │   │   ├── speech_to_text.py     # 語音轉文字服務
+│   │   │   └── text_to_speech.py     # 文字轉語音服務
+│   │   ├── utils/                    # 工具函數
+│   │   ├── venv/                     # Python 虛擬環境
+│   │   ├── .env                      # 環境變數
+│   │   ├── .env.example              # 環境變數示例文件
+│   │   ├── main.py                   # FastAPI 應用主入口
+│   │   ├── main.py.bak               # main.py 備份
+│   │   ├── requirements.txt          # 後端 Python 依賴列表
+│   │   └── run.sh                    # 執行腳本
+│   │
+│   ├── public/                       # 前端靜態資源
+│   │
+│   ├── src/                          # 前端 React 原始碼
+│   │   ├── assets/                   # 靜態資源
+│   │   ├── components/               # React 元件
+│   │   ├── context/                  # React 上下文
+│   │   ├── hooks/                    # 自定義 hooks
+│   │   ├── models/                   # 模型定義
+│   │   ├── services/                 # 前端服務
+│   │   ├── styles/                   # 樣式文件
+│   │   ├── types/                    # TypeScript 類型定義
+│   │   ├── utils/                    # 前端工具函數
+│   │   ├── App.css                   # 主應用樣式
+│   │   ├── App.tsx                   # 主應用元件
+│   │   ├── index.css                 # 全局樣式
+│   │   ├── main.tsx                  # 入口文件
+│   │   └── vite-env.d.ts             # Vite 環境定義
+│   │
+│   ├── node_modules/                 # Node.js 依賴
+│   ├── venv/                         # Python 虛擬環境
+│   ├── .gitignore                    # Git 忽略配置
+│   ├── eslint.config.js              # ESLint 配置
+│   ├── index.html                    # 前端入口 HTML
+│   ├── package-lock.json             # NPM 鎖定文件
+│   ├── package.json                  # 前端依賴與腳本
+│   ├── README.md                     # prototype 目錄的說明文件
+│   ├── tsconfig.app.json             # TypeScript 配置 (App)
+│   ├── tsconfig.json                 # TypeScript 配置 (Base)
+│   ├── tsconfig.node.json            # TypeScript 配置 (Node)
+│   └── vite.config.ts                # Vite 配置文件
 │
-├── public/                           # 前端靜態資源
-│   └── ...                           # (省略 public 內部結構)
-│
-├── src/                              # 前端 React 原始碼
-│   ├── components/
-│   ├── services/
-│   ├── hooks/
-│   ├── contexts/
-│   ├── utils/
-│   ├── App.tsx
-│   ├── main.tsx
-│   └── ...                           # (省略 src 其他文件)
-│
-├── utils/                            # 通用工具函數 (專案級)
-├── venv/                             # Python 虛擬環境
-├── chroma_db/                        # ChromaDB 持久化數據目錄
-├── .env                              # 實際環境變數 (後端)
-├── .env.example                      # 環境變數示例文件
 ├── .gitignore                        # Git 忽略配置文件
-├── eslint.config.js                  # ESLint 配置文件
-├── index.html                        # 前端入口 HTML
-├── main.py                           # (根目錄下的 main.py?)
-├── main.py.bak                     # main.py 備份
-├── package-lock.json                 # NPM 鎖定文件
-├── package.json                      # 前端依賴與腳本
-├── README.md                         # 本文件
-├── requirements.txt                  # 後端 Python 依賴列表
-├── run.sh                            # 執行腳本
-├── tsconfig.app.json                 # TypeScript 配置 (App)
-├── tsconfig.json                     # TypeScript 配置 (Base)
-├── tsconfig.node.json                # TypeScript 配置 (Node)
-└── vite.config.ts                    # Vite 配置文件
+└── README.md                         # 本文件
 ```
 
 ---
