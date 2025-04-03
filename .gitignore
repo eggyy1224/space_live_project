@@ -83,3 +83,6 @@ npm-debug.log*
 .coverage
 htmlcov/
 .tox/
+
+# Chroma database files
+prototype/backend/data/chroma_db/

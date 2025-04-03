@@ -30,6 +30,10 @@ class Settings:
     
     # LangChain配置
     MEMORY_MAX_HISTORY = 10  # 對話歷史的最大存儲條數
+    VECTOR_MEMORY_K = 3  # 向量記憶檢索數量
+    
+    # ChromaDB配置
+    VECTOR_DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "chroma_db")
     
     # 動畫配置
     TRANSITION_STEPS = 8
