@@ -37,15 +37,23 @@
 
 ### 後端 AI 核心 (Backend)
 *   **🎙️ 即時語音互動支持**: 後端設計可接收文本輸入（來自 STT），生成文本回應（傳給 TTS），並能生成實時動畫指令。
-*   **🧠 多層次記憶系統 (`MemorySystem`)**:
-    *   **長期對話記憶**: 使用 ChromaDB 持久化儲存對話歷史。
-    *   **角色核心記憶**: 獨立儲存 AI 的身份、背景和學習到的事實。
-    *   **智能檢索**: 結合上下文進行向量搜索 (MMR 提高多樣性)，提取相關記憶輔助對話。
-*   **🧩 LangGraph 驅動的對話引擎 (`DialogueGraph`)**:
-    *   **流程圖化**: 將複雜的對話邏輯拆解為清晰的狀態圖 (StateGraph)。
-    *   **狀態管理**: 在圖中顯式管理和傳遞對話狀態 (`DialogueState`)。
+*   **🧠 增強版多層次記憶系統 (`MemorySystem`)**:
+    *   **短期記憶緩存**: 儲存最近的會話輪次，用於即時上下文。
+    *   **長期對話記憶 (ChromaDB)**: 持久化儲存**經過篩選**的對話歷史。
+    *   **角色核心記憶 (ChromaDB)**: 獨立儲存 AI 的身份、背景和學習到的事實。
+    *   **摘要記憶 (ChromaDB)**: 儲存由 LLM 生成的對話摘要，用於長期關鍵信息回憶。
+    *   **智能檢索**: 結合上下文、摘要和角色信息進行向量搜索 (MMR 提高多樣性)，提取相關記憶輔助對話。
+    *   **記憶過濾與防污染**: 識別並過濾無意義或重複的輸入，防止污染長期記憶。
+    *   **異步記憶整合**: 定期使用 LLM 總結對話，生成摘要並存入摘要庫，不阻塞主流程。
+*   **🧩 健壯的 LangGraph 對話引擎 (`DialogueGraph`)**:
+    *   **流程圖化與狀態管理**: 使用 StateGraph 清晰定義和管理對話流程及狀態 (`DialogueState`)。
+    *   **輸入預處理與分類**: 新增節點分析用戶輸入（重複度、情感、類型），為後續處理提供依據。
+    *   **動態提示模板**: 根據對話情境（正常、澄清、錯誤）選擇不同的提示模板。
+    *   **自適應風格**: 根據角色狀態和輸入分類動態調整回應風格。
+    *   **後處理與健壯性**: 改進後處理邏輯，移除不必要的模式和 Emoji，同時避免過度削減回應，並在必要時返回原始 LLM 輸出。
+    *   **錯誤處理與重試**: 包含 LLM 調用重試和條件路由機制。
     *   **高擴展性**: 便於未來添加工具使用、反思修正循環等複雜 Agent 行為。
-*   **🎭 動態角色狀態**: 影響 AI 的回應風格。
+*   **🎭 動態角色狀態**: 影響 AI 的回應風格、記憶檢索策略等。
 *   **🤝 向後兼容接口 (`AIService`)**: 提供穩定的適配器層。
 
 ---
@@ -75,8 +83,8 @@ graph TD
     WS_Server[WebSocket 伺服器] --- Backend
     
     AIService[AI 服務接口] --- AI_Core[AI 核心]
-    DialogueGraph[對話流程圖引擎] --- AI_Core
-    MemorySystem[記憶系統] --- AI_Core
+    DialogueGraph[健壯對話流程圖引擎] --- AI_Core
+    MemorySystem[多層記憶系統] --- AI_Core
     LLM_Service["LLM Gemini"] --- AI_Core
     ChromaDB[(向量數據庫)] --- AI_Core
 
@@ -85,6 +93,7 @@ graph TD
     DialogueGraph --> MemorySystem
     DialogueGraph --> LLM_Service
     MemorySystem --> ChromaDB
+    MemorySystem --> LLM_Service # 用於摘要
     WS_Server --> AIService
     API_Server --> AIService
 
@@ -170,7 +179,7 @@ cd space_live_project
     *   填入 `GOOGLE_API_KEY`:
         ```dotenv
         GOOGLE_API_KEY="YOUR_GOOGLE_API_KEY_HERE"
-        # 可能需要添加 VECTOR_DB_PATH="./chroma_db"
+        # 可能需要添加 VECTOR_DB_PATH="./chroma_db" (記憶系統將使用此路徑)
         ```
 *   **啟動後端服務:**
     ```bash
@@ -234,8 +243,8 @@ cd space_live_project
 │   │   │   ├── __init__.py
 │   │   │   ├── ai/                   # AI 核心服務
 │   │   │   │   ├── __init__.py       # AIService 適配器
-│   │   │   │   ├── dialogue_graph.py # LangGraph 對話流程引擎
-│   │   │   │   └── memory_system.py  # ChromaDB 記憶管理系統
+│   │   │   │   ├── dialogue_graph.py # LangGraph 健壯對話流程引擎
+│   │   │   │   └── memory_system.py  # 多層記憶管理系統 (含摘要)
 │   │   │   │
 │   │   │   └── audio/                # 語音處理服務 (可選)
 │   │   │       ├── __init__.py
@@ -248,81 +257,72 @@ cd space_live_project
 │       ├── public/                   # 靜態資源
 │       │   ├── assets/               # 模型、紋理和其他素材
 │       │   │   ├── models/           # 3D 模型文件 (.glb, .gltf)
-│       │   │   └── textures/         # 紋理和材質
-│       │   │
-│       │   ├── favicon.ico           # 網站圖標
-│       │   └── index.html            # HTML 模板
+│       │   │   └── textures/         # 紋理圖片
+│       │   └── ...                   # 其他公共資源 (favicon.ico, etc.)
 │       │
-│       ├── src/                      # 前端源代碼
-│       │   ├── components/           # React 元件
-│       │   │   ├── AudioControls.tsx # 語音輸入/輸出控制元件
-│       │   │   ├── ChatInterface.tsx # 對話介面元件
-│       │   │   ├── ControlPanel.tsx  # 控制面板元件
-│       │   │   ├── ModelViewer.tsx   # 3D 模型查看器元件
-│       │   │   └── MorphTargetControls.tsx # 表情控制元件
-│       │   │
-│       │   ├── services/             # 前端服務單例
-│       │   │   ├── WebSocketService.ts  # WebSocket 連接管理
-│       │   │   ├── ChatService.ts       # 對話管理
-│       │   │   ├── AudioService.ts      # 音訊處理
-│       │   │   ├── ModelService.ts      # 3D 模型管理
-│       │   │   └── api.ts               # REST API 調用封裝
-│       │   │
-│       │   ├── utils/                # 工具函數
-│       │   │   ├── LogManager.ts     # 日誌管理
-│       │   │   └── ModelAnalyzer.ts  # 3D 模型分析工具
-│       │   │
-│       │   ├── App.tsx               # 應用主元件
-│       │   └── main.tsx              # 應用入口點
-│       │
-│       ├── package.json              # 前端依賴與腳本定義
-│       ├── tsconfig.json             # TypeScript 配置
-│       ├── vite.config.ts            # Vite 構建配置
-│       └── .env.development          # 前端環境變數 (開發環境)
+│       └── src/                      # 前端原始碼
+│           ├── App.tsx               # 應用主入口組件
+│           ├── main.tsx              # React 渲染入口
+│           ├── index.css             # 全局樣式
+│           │
+│           ├── components/           # 可重用 UI 組件
+│           │   ├── ControlPanel.tsx  # 控制面板
+│           │   ├── ModelViewer.tsx   # 3D 視覺
+│           │   ├── ChatInterface.tsx # 聊天介面
+│           │   ├── AudioControls.tsx # 音訊控制
+│           │   └── ...               # 其他組件
+│           │
+│           ├── services/             # 應用服務 (狀態管理與後端通信)
+│           │   ├── WebSocketService.ts
+│           │   ├── ChatService.ts
+│           │   ├── AudioService.ts
+│           │   ├── ModelService.ts
+│           │   └── APIService.ts     # (可選) 封裝 REST API 調用
+│           │
+│           ├── hooks/                # 自定義 React Hooks
+│           │   └── useSpeechRecognition.ts # (示例) 語音識別 Hook
+│           │
+│           ├── contexts/             # React Context (共享狀態)
+│           │   └── AppContext.tsx    # (示例) 全局應用狀態 Context
+│           │
+│           └── utils/                # 工具函數
+│               └── audioUtils.ts     # 音訊處理相關工具
 │
-├── .env                              # 環境變數 (後端，包含 API 密鑰)
-├── .gitignore                        # Git 忽略規則
-├── README.md                         # 專案說明文檔
-└── requirements.txt                  # Python 依賴列表
+├── venv/                             # Python 虛擬環境 (建議在 .gitignore 中忽略)
+├── chroma_db/                        # ChromaDB 持久化數據目錄 (建議在 .gitignore 中忽略)
+├── .env.example                      # 環境變數示例文件
+├── .gitignore                        # Git 忽略配置文件
+├── requirements.txt                  # 後端 Python 依賴列表
+└── README.md                         # 本文件
 ```
 
-**說明**:
-- **docs/**: 包含專案的技術文檔和設計方案，分為前端和後端兩大類。
-- **prototype/backend/**: 實現 FastAPI 後端服務，包括 AI 對話、記憶管理和 WebSocket 通信。
-- **prototype/frontend/**: 實現 React 前端應用，負責 3D 模型渲染、用戶界面和與後端通信。
-- **services/ai/**: 核心 AI 實現，包括對話處理和記憶管理，是專案的核心技術模塊。
-- **services/**: 前端採用單例服務模式管理狀態和業務邏輯，實現關注點分離。
+---
 
-> **注意**：根據開發階段和實際需求，目錄結構可能會有所調整。
+## 🔮 未來展望與可擴展點
+
+*   **更精細的情緒模擬**: 引入更複雜的情感計算模型。
+*   **主動對話能力**: 讓 AI 能基於記憶和狀態，主動發起話題或提問。
+*   **工具使用 (Tool Use)**: 集成外部 API 或工具 (如查詢天氣、知識庫) 擴展能力。
+*   **長期目標與任務**: 賦予 AI 更長期的目標，並能在對話中推進。
+*   **多模態互動**: 結合圖像理解等能力。
+*   **用戶畫像**: 根據與特定用戶的互動歷史，建立用戶模型，實現個性化交流。
+*   **模型優化與評估**: 持續進行模型微調和效果評估。
 
 ---
 
-## 🚀 未來展望與擴展
+## 🤝 貢獻
 
-結合前後端能力，未來可以探索：
+歡迎對此專案感興趣的開發者一同參與貢獻！您可以透過以下方式：
 
-*   **更豐富的互動**: 增加手勢識別、物體交互等。
-*   **場景與任務**: 引入更多太空站場景和互動式任務。
-*   **AI 能力增強**: 讓 AI 理解圖像、使用外部工具、進行更複雜推理。
-*   **性能優化**: WebAssembly (WASM) 用於密集計算、前端渲染優化。
-
-詳細的後端 AI 擴展方向請參考 [設計方案文檔](docs/後端相關/0402記憶系統方案.md)。
+*   提出 Issue 反饋問題或建議。
+*   提交 Pull Request 貢獻程式碼。
+*   參與討論區的技術探討。
 
 ---
 
-## 🙏 貢獻
+## 📄 授權
 
-(如果你希望開源或接受貢獻，可以在此處添加貢獻指南，例如：)
-
-我們歡迎各種形式的貢獻！無論是發現 Bug、提出功能建議還是直接提交程式碼，請通過 Issue 與我們聯繫或提交 Pull Request。
-
----
-
-## 📄 授權協議
-
-(請根據你的選擇填寫授權協議，例如：)
-
-本專案採用 [MIT License](LICENSE) 授權。
+本專案採用 [MIT License](LICENSE)。
 
 ---
 
