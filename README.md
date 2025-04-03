@@ -205,37 +205,95 @@ cd space_live_project
 
 ---
 
-## 📂 專案結構導覽 (示例)
+## 📂 專案結構導覽
 
 ```
 /space_live_project/
-├── docs/                    # 文檔
-│   ├── 前端相關/
-│   └── 後端相關/
-├── prototype/               # 主要程式碼目錄 (或者前端在根目錄 src)
-│   ├── backend/             # 後端 FastAPI 服務
-│   │   ├── api/
-│   │   ├── core/
-│   │   ├── services/
-│   │   │   └── ai/
-│   │   └── main.py
-│   └── frontend/            # 前端 React 應用 (或者在根目錄的 src)
-│       ├── public/
-│       ├── src/
-│       │   ├── components/
-│       │   ├── services/
-│       │   ├── utils/
-│       │   ├── App.tsx
-│       │   └── main.tsx
-│       ├── package.json
-│       └── ...
-├── venv/                    # (Git忽略) Python 虛擬環境
-├── .env                     # (Git忽略) 後端環境變數
-├── .gitignore
-├── README.md                # 本文件
-└── requirements.txt         # (推薦) Python 依賴列表
+├── docs/                             # 技術文檔與設計方案
+│   ├── 前端相關/                     # 前端技術規格與架構圖
+│   │   └── 0402前端架構.md           # 前端架構詳解，含元件與服務設計
+│   └── 後端相關/                     # 後端技術規格與設計圖
+│       └── 0402記憶系統方案.md       # AI 記憶系統與對話管理設計方案
+│
+├── prototype/                        # 主要程式碼目錄
+│   ├── backend/                      # 後端 FastAPI 應用
+│   │   ├── api/                      # API 端點定義
+│   │   │   ├── __init__.py           # API 包初始化
+│   │   │   ├── routes/               # 路由模組目錄
+│   │   │   │   ├── __init__.py       # 路由包初始化
+│   │   │   │   ├── chat.py           # 聊天相關端點 (POST /api/chat/message)
+│   │   │   │   └── ws.py             # WebSocket 處理 (ws://api/ws)
+│   │   │   └── deps.py               # API 依賴項 (認證、日誌等)
+│   │   │
+│   │   ├── core/                     # 核心配置與基礎設施
+│   │   │   ├── __init__.py
+│   │   │   ├── config.py             # 應用配置（從環境變數載入設置）
+│   │   │   └── exceptions.py         # 自定義異常類別
+│   │   │
+│   │   ├── services/                 # 業務邏輯服務
+│   │   │   ├── __init__.py
+│   │   │   ├── ai/                   # AI 核心服務
+│   │   │   │   ├── __init__.py       # AIService 適配器
+│   │   │   │   ├── dialogue_graph.py # LangGraph 對話流程引擎
+│   │   │   │   └── memory_system.py  # ChromaDB 記憶管理系統
+│   │   │   │
+│   │   │   └── audio/                # 語音處理服務 (可選)
+│   │   │       ├── __init__.py
+│   │   │       ├── tts.py            # 文字轉語音服務
+│   │   │       └── stt.py            # 語音轉文字服務
+│   │   │
+│   │   └── main.py                   # FastAPI 應用主入口
+│   │
+│   └── frontend/                     # 前端 React+Three.js 應用
+│       ├── public/                   # 靜態資源
+│       │   ├── assets/               # 模型、紋理和其他素材
+│       │   │   ├── models/           # 3D 模型文件 (.glb, .gltf)
+│       │   │   └── textures/         # 紋理和材質
+│       │   │
+│       │   ├── favicon.ico           # 網站圖標
+│       │   └── index.html            # HTML 模板
+│       │
+│       ├── src/                      # 前端源代碼
+│       │   ├── components/           # React 元件
+│       │   │   ├── AudioControls.tsx # 語音輸入/輸出控制元件
+│       │   │   ├── ChatInterface.tsx # 對話介面元件
+│       │   │   ├── ControlPanel.tsx  # 控制面板元件
+│       │   │   ├── ModelViewer.tsx   # 3D 模型查看器元件
+│       │   │   └── MorphTargetControls.tsx # 表情控制元件
+│       │   │
+│       │   ├── services/             # 前端服務單例
+│       │   │   ├── WebSocketService.ts  # WebSocket 連接管理
+│       │   │   ├── ChatService.ts       # 對話管理
+│       │   │   ├── AudioService.ts      # 音訊處理
+│       │   │   ├── ModelService.ts      # 3D 模型管理
+│       │   │   └── api.ts               # REST API 調用封裝
+│       │   │
+│       │   ├── utils/                # 工具函數
+│       │   │   ├── LogManager.ts     # 日誌管理
+│       │   │   └── ModelAnalyzer.ts  # 3D 模型分析工具
+│       │   │
+│       │   ├── App.tsx               # 應用主元件
+│       │   └── main.tsx              # 應用入口點
+│       │
+│       ├── package.json              # 前端依賴與腳本定義
+│       ├── tsconfig.json             # TypeScript 配置
+│       ├── vite.config.ts            # Vite 構建配置
+│       └── .env.development          # 前端環境變數 (開發環境)
+│
+├── .env                              # 環境變數 (後端，包含 API 密鑰)
+├── .gitignore                        # Git 忽略規則
+├── README.md                         # 專案說明文檔
+└── requirements.txt                  # Python 依賴列表
 ```
-*注意：實際目錄結構可能有所不同，請以上述為參考。*
+
+**說明**:
+- **docs/**: 包含專案的技術文檔和設計方案，分為前端和後端兩大類。
+- **prototype/backend/**: 實現 FastAPI 後端服務，包括 AI 對話、記憶管理和 WebSocket 通信。
+- **prototype/frontend/**: 實現 React 前端應用，負責 3D 模型渲染、用戶界面和與後端通信。
+- **services/ai/**: 核心 AI 實現，包括對話處理和記憶管理，是專案的核心技術模塊。
+- **services/**: 前端採用單例服務模式管理狀態和業務邏輯，實現關注點分離。
+
+> **注意**：根據開發階段和實際需求，目錄結構可能會有所調整。
 
 ---
 
