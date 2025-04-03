@@ -54,7 +54,7 @@ graph LR
         AIService -- 用戶輸入 / 當前狀態 --> DialogueGraph[對話流程圖引擎]
         DialogueGraph -- 記憶查詢 --> MemorySystem[記憶系統]
         MemorySystem -- 記憶上下文 --> DialogueGraph
-        DialogueGraph -- 提示 --> LLM_Service[LLM (Google Gemini)]
+        DialogueGraph -- 提示 --> LLM_Service["LLM (Google Gemini)"]
         LLM_Service -- 原始回應 --> DialogueGraph
         DialogueGraph -- 儲存對話 --> MemorySystem
         DialogueGraph -- 最終回應 / 更新狀態 --> AIService
