@@ -52,7 +52,7 @@ async def retrieve_memory_node(state: TypedDict) -> Dict[str, Any]:
         
         # 將記憶轉換為列表形式以便後續處理
         try:
-            retrieved_docs = memory_system.conversation_memory.get()
+            retrieved_docs = memory_system.conversation_store.get_all()
             retrieved_memories = retrieved_docs["documents"][:5]  # 獲取前5條記憶
         except Exception as e:
             logging.error(f"獲取原始記憶失敗: {e}", exc_info=True)
