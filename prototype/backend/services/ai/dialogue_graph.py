@@ -21,6 +21,7 @@ from .graph_nodes.memory_handling import retrieve_memory_node, filter_memory_nod
 from .graph_nodes.prompting import select_prompt_and_style_node, build_prompt_node, format_character_state
 from .graph_nodes.llm_interaction import call_llm_node, handle_llm_error, post_process_node
 from .graph_nodes.tool_processing import detect_tool_intent, parse_tool_parameters, execute_tool, format_tool_result_for_llm, integrate_tool_result
+from .tools.web_tools import search_wikipedia
 
 # 配置基本日誌
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -105,13 +106,24 @@ class DialogueGraph:
             ) for key, template in PROMPT_TEMPLATES.items()
         }
         
+        # 註冊可用的工具
+        self.available_tools = {
+            "search_wikipedia": {
+                "function": search_wikipedia,
+                "description": "當用戶詢問關於特定人物、地點、事件或概念的定義或一般知識時，使用此工具從維基百科查找信息。",
+                "parameters": [
+                    {"name": "query", "type": "string", "description": "要查詢的主題或關鍵字"}
+                ]
+            },
+        }
+        
         # 構建對話圖
         self.graph = self._build_graph()
         
         # 編譯圖
         self.app = self.graph.compile()
         
-        logging.info("增強版 DialogueGraph 初始化完成")
+        logging.info("增強版 DialogueGraph 初始化完成，已註冊工具")
         
     def _build_graph(self) -> StateGraph:
         """構建對話圖"""
@@ -125,8 +137,8 @@ class DialogueGraph:
         workflow.add_node("filter_memory", filter_memory_node)
         
         # 添加節點 - 工具處理
-        workflow.add_node("detect_tool_intent", detect_tool_intent)
-        workflow.add_node("parse_tool_parameters", parse_tool_parameters)
+        workflow.add_node("detect_tool_intent", self._detect_tool_intent_wrapper)
+        workflow.add_node("parse_tool_parameters", self._parse_tool_parameters_wrapper)
         workflow.add_node("execute_tool", self._execute_tool_wrapper)
         workflow.add_node("format_tool_result", format_tool_result_for_llm)
         workflow.add_node("integrate_tool_result", integrate_tool_result)
@@ -147,7 +159,7 @@ class DialogueGraph:
         # 分支流程 - 工具處理
         workflow.add_conditional_edges(
             "detect_tool_intent",
-            lambda state: "tool_path" if state.get("has_tool_intent", False) else "normal_path",
+            lambda state: "tool_path" if state.get("has_tool_intent") else "normal_path",
             {
                 "tool_path": "parse_tool_parameters",
                 "normal_path": "select_prompt_and_style"
@@ -194,11 +206,27 @@ class DialogueGraph:
         state["_context"]["memory_system"] = self.memory_system
         return await retrieve_memory_node(state)
     
-    async def _execute_tool_wrapper(self, state: DialogueState) -> Dict[str, Any]:
-        """包裝工具執行節點，注入依賴"""
+    async def _detect_tool_intent_wrapper(self, state: DialogueState) -> Dict[str, Any]:
+        """包裝工具意圖檢測節點，注入可用工具列表"""
         if "_context" not in state:
             state["_context"] = {}
-        # 這裡可以注入工具相關依賴，如有需要
+        state["_context"]["available_tools"] = self.available_tools
+        state["_context"]["llm"] = self.llm
+        return await detect_tool_intent(state)
+    
+    async def _parse_tool_parameters_wrapper(self, state: DialogueState) -> Dict[str, Any]:
+        """包裝工具參數解析節點，注入可用工具列表"""
+        if "_context" not in state:
+            state["_context"] = {}
+        state["_context"]["available_tools"] = self.available_tools
+        state["_context"]["llm"] = self.llm
+        return await parse_tool_parameters(state)
+    
+    async def _execute_tool_wrapper(self, state: DialogueState) -> Dict[str, Any]:
+        """包裝工具執行節點，注入可用工具列表"""
+        if "_context" not in state:
+            state["_context"] = {}
+        state["_context"]["available_tools"] = self.available_tools
         return await execute_tool(state)
     
     def _build_prompt_node_wrapper(self, state: DialogueState) -> Dict[str, Any]:
@@ -278,7 +306,8 @@ class DialogueGraph:
                 "memory_system": self.memory_system,
                 "llm": self.llm,
                 "prompt_templates": self.prompt_templates,
-                "persona_name": self.persona_name
+                "persona_name": self.persona_name,
+                "available_tools": self.available_tools
             }
         }
         
@@ -303,6 +332,13 @@ class DialogueGraph:
                 # 將系統消息添加到內部跟踪，但不返回給用戶
                 system_message = SystemMessage(content=tool_summary)
                 updated_messages.append(system_message)
+            
+            # 確保將最終的 AIMessage 加入 updated_messages
+            if updated_messages and isinstance(updated_messages[-1], HumanMessage):
+                updated_messages.append(AIMessage(content=final_response))
+            elif not updated_messages:
+                # 處理初始消息列表為空的情況
+                updated_messages = [HumanMessage(content=user_text), AIMessage(content=final_response)]
             
             return final_response, updated_messages
             

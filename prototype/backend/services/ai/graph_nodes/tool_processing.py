@@ -8,16 +8,29 @@
 import logging
 import json
 import re
+import asyncio
 from typing import Dict, Any, List, Tuple, Optional
 
-from .tool_registry import get_available_tools, get_tool_by_name
+# 從 langchain_core 導入所需的消息類
+from langchain_core.messages import AIMessage, SystemMessage 
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import StrOutputParser
 
 # 配置基本日誌
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def detect_tool_intent(state: Dict[str, Any]) -> Dict[str, Any]:
+# --- 輔助函數：格式化工具描述給 LLM ---
+def _format_tool_descriptions(available_tools: Dict[str, Dict]) -> str:
+    descriptions = []
+    for name, info in available_tools.items():
+        params = info.get("parameters", [])
+        param_str = ", ".join([f'{p["name"]}({p["type"]})' for p in params])
+        descriptions.append(f'- {name}({param_str}): {info.get("description", "")}')
+    return "\n".join(descriptions)
+
+async def detect_tool_intent(state: Dict[str, Any]) -> Dict[str, Any]:
     """
-    檢測用戶輸入是否有執行工具的意圖
+    檢測用戶輸入是否有執行工具的意圖 - 使用 LLM 判斷。
     
     檢測邏輯:
     1. 分析用戶輸入中是否包含明確的工具請求模式
@@ -28,61 +41,78 @@ def detect_tool_intent(state: Dict[str, Any]) -> Dict[str, Any]:
     更新後的狀態，包含 has_tool_intent 和 potential_tool 字段
     """
     processed_input = state["processed_user_input"]
-    input_classification = state["input_classification"]
-    
-    # 初始化工具意圖標記
+    messages = state.get("messages", [])
+    # 從 context 獲取依賴
+    available_tools = state.get("_context", {}).get("available_tools", {})
+    llm = state.get("_context", {}).get("llm")
+
+    # 初始化默認值
     has_tool_intent = False
     potential_tool = None
     tool_confidence = 0.0
-    
-    # 獲取可用的工具列表
-    available_tools = get_available_tools()
-    
-    # 檢查是否包含明確的工具請求模式
-    tool_patterns = [
-        r"(?:可以|能不能|請|幫我|給我|要).*(?:查看|查詢|搜索|尋找|顯示).*(?:在太空中的|太空|宇宙|星球|衛星)",  # 查詢太空物體
-        r"(?:可以|能不能|請|幫我|給我|要).*(?:分析|評估|檢測|辨識|識別).*(?:這個|目前|當前).*(?:場景|環境|情況)",  # 場景分析
-        r"(?:可以|能不能|請|幫我|給我|要).*(?:產生|生成|創造|做|製作).*(?:3D|三維|立體).*(?:模型|物件|物體)",  # 3D生成
-    ]
-    
-    for pattern in tool_patterns:
-        if re.search(pattern, processed_input):
+
+    if not llm or not available_tools:
+        logging.warning("detect_tool_intent: LLM 或可用工具列表未提供，跳過工具檢測")
+        return {
+            "has_tool_intent": False,
+            "potential_tool": None,
+            "tool_confidence": 0.0
+        }
+
+    # 獲取格式化的工具描述
+    tool_descriptions = _format_tool_descriptions(available_tools)
+
+    # 構建提示讓 LLM 判斷
+    prompt_template = PromptTemplate.from_template(
+        "可用工具列表:\n{tool_descriptions}\n\n"\
+        "最近對話歷史 (僅供參考):\n{conversation_history}\n\n"\
+        "最新用戶輸入: \"{user_input}\"\n\n"\
+        "根據最新的用戶輸入，判斷是否應使用以及最適合使用上述哪個工具來回應？\n"\
+        "如果用戶的意圖是進行常規對話、閒聊或表達情感，則不需要工具。\n"\
+        "如果用戶的意圖是查詢具體信息、執行特定操作，且與某個工具描述匹配，則選擇該工具。\n"\
+        "如果不需要工具，請只回答 'none'。\n"\
+        "如果需要工具，請只回答該工具的名稱 (例如 'search_wikipedia')。"
+    )
+
+    # 準備對話歷史摘要 (可選，取最近幾輪)
+    history_str = "\n".join([f"{msg.type}: {msg.content}" for msg in messages[-4:]]) # 取最近4條
+
+    chain = prompt_template | llm | StrOutputParser()
+
+    try:
+        logging.info("調用 LLM 進行工具意圖檢測...")
+        llm_decision = await chain.ainvoke({
+            "tool_descriptions": tool_descriptions,
+            "conversation_history": history_str,
+            "user_input": processed_input
+        })
+        llm_decision = llm_decision.strip().lower()
+        logging.info(f"LLM 工具意圖判斷結果: {llm_decision}")
+
+        if llm_decision != 'none' and llm_decision in available_tools:
             has_tool_intent = True
-            logging.info(f"檢測到工具意圖模式: {pattern}")
-            break
-    
-    # 如果用戶輸入明確包含工具名稱
-    for tool in available_tools:
-        tool_name = tool.get("name", "")
-        tool_keywords = tool.get("keywords", [])
-        
-        # 檢查工具名稱或關鍵詞是否出現在用戶輸入中
-        if tool_name in processed_input or any(keyword in processed_input for keyword in tool_keywords):
-            potential_tool = tool_name
-            tool_confidence = 0.8
-            has_tool_intent = True
-            logging.info(f"用戶明確提及工具: {tool_name}")
-            break
-    
-    # 如果沒有明確提及工具，但輸入分類暗示可能需要工具
-    if not has_tool_intent and input_classification.get("type") == "question":
-        # 對於問題類型，嘗試進一步分析是否適合使用工具
-        space_related_keywords = ["太空", "宇宙", "星球", "衛星", "軌道", "月球", "地球"]
-        if any(keyword in processed_input for keyword in space_related_keywords):
-            has_tool_intent = True
-            potential_tool = "space_object_query"  # 默認使用太空物體查詢工具
-            tool_confidence = 0.6
-            logging.info("基於問題分類和太空關鍵詞推斷可能需要使用查詢工具")
-    
+            potential_tool = llm_decision
+            tool_confidence = 0.9 # 假設 LLM 判斷的可信度較高
+            logging.info(f"LLM 建議使用工具: {potential_tool}")
+        else:
+            logging.info("LLM 判斷無需使用工具或選擇了無效工具。")
+
+    except Exception as e:
+        logging.error(f"LLM 工具意圖檢測失敗: {e}", exc_info=True)
+        # 出錯時，保守起見不使用工具
+        has_tool_intent = False
+        potential_tool = None
+        tool_confidence = 0.0
+
     return {
         "has_tool_intent": has_tool_intent,
         "potential_tool": potential_tool,
         "tool_confidence": tool_confidence
     }
 
-def parse_tool_parameters(state: Dict[str, Any]) -> Dict[str, Any]:
+async def parse_tool_parameters(state: Dict[str, Any]) -> Dict[str, Any]:
     """
-    從用戶輸入中解析可能的工具參數
+    從用戶輸入中解析工具參數 - 使用 LLM 提取。
     
     根據識別的工具類型，嘗試從用戶輸入中提取所需參數。
     例如，如果是太空物體查詢工具，會嘗試提取物體名稱或類型。
@@ -90,49 +120,77 @@ def parse_tool_parameters(state: Dict[str, Any]) -> Dict[str, Any]:
     返回:
     更新後的狀態，包含工具參數字典
     """
-    if not state.get("has_tool_intent", False):
+    if not state.get("has_tool_intent", False) or not state.get("potential_tool"):
         return {"tool_parameters": {}}
-    
+
     processed_input = state["processed_user_input"]
-    potential_tool = state.get("potential_tool")
-    
+    potential_tool = state["potential_tool"]
+    messages = state.get("messages", [])
+    # 從 context 獲取依賴
+    available_tools = state.get("_context", {}).get("available_tools", {})
+    llm = state.get("_context", {}).get("llm")
+
     tool_parameters = {}
+
+    if not llm or potential_tool not in available_tools:
+        logging.warning("parse_tool_parameters: LLM 或工具信息缺失，無法解析參數")
+        # 返回空參數，讓 execute_tool 處理缺少參數的情況
+        return {"tool_parameters": {}}
+
+    tool_info = available_tools[potential_tool]
+    required_params = tool_info.get("parameters", [])
+
+    if not required_params:
+        logging.info(f"工具 '{potential_tool}' 無需參數。")
+        return {"tool_parameters": {}} # 無需參數，直接返回
+
+    # 構建提示讓 LLM 提取參數
+    # 對於 search_wikipedia，我們需要提取 query
+    if potential_tool == 'search_wikipedia':
+        param_name = 'query'
+        param_description = next((p["description"] for p in required_params if p["name"] == param_name), "查詢的主題")
+
+        prompt_template = PromptTemplate.from_template(
+            "你需要為工具 '{tool_name}' 提取參數 '{param_name}'。\n"\
+            "參數描述: {param_description}\n"\
+            "最近對話歷史 (僅供參考):\n{conversation_history}\n\n"\
+            "最新用戶輸入: \"{user_input}\"\n\n"\
+            "請分析用戶輸入和對話歷史，找出最符合參數描述的值。\n"\
+            "請只返回提取到的參數值，不要包含任何其他解釋性文字、引號或標籤。\n"\
+            "如果無法從用戶輸入中明確找到參數值，請回答 '無法確定'。"
+        )
+
+        history_str = "\n".join([f"{msg.type}: {msg.content}" for msg in messages[-4:]])
+        chain = prompt_template | llm | StrOutputParser()
+
+        try:
+            logging.info(f"調用 LLM 提取工具 '{potential_tool}' 的參數 '{param_name}'...")
+            extracted_value = await chain.ainvoke({
+                "tool_name": potential_tool,
+                "param_name": param_name,
+                "param_description": param_description,
+                "conversation_history": history_str,
+                "user_input": processed_input
+            })
+            extracted_value = extracted_value.strip()
+            logging.info(f"LLM 提取到的參數值: {extracted_value}")
+
+            if extracted_value and extracted_value.lower() != '無法確定':
+                tool_parameters[param_name] = extracted_value
+            else:
+                logging.warning(f"LLM 未能提取工具 '{potential_tool}' 的參數 '{param_name}'")
+                # 可以在這裡觸發澄清流程，或者讓 execute_tool 處理缺少參數
+
+        except Exception as e:
+            logging.error(f"LLM 參數提取失敗: {e}", exc_info=True)
+            # 提取失敗，返回空參數
+            tool_parameters = {}
     
-    # 根據工具類型解析參數
-    if potential_tool == "space_object_query":
-        # 嘗試提取太空物體名稱
-        object_patterns = [
-            r"(?:關於|有關|查詢|了解|尋找).*?([\w\s]+?)(?:的位置|的信息|的資料|的狀態|的軌道|在哪|嗎|$)",
-            r"(?:[\w\s]+?)(?:在哪裡|的位置|的信息|的資料)"
-        ]
-        
-        for pattern in object_patterns:
-            match = re.search(pattern, processed_input)
-            if match:
-                object_name = match.group(1).strip()
-                if len(object_name) > 2 and not any(stop_word in object_name for stop_word in ["可以", "能不能", "請", "幫我"]):
-                    tool_parameters["object_name"] = object_name
-                    logging.info(f"解析到太空物體名稱: {object_name}")
-                    break
-    
-    elif potential_tool == "scene_analysis":
-        # 場景分析工具通常不需要額外參數，但可以檢測用戶是否有特定分析請求
-        analysis_type = None
-        if "安全" in processed_input or "危險" in processed_input:
-            analysis_type = "safety"
-        elif "物體" in processed_input or "識別" in processed_input:
-            analysis_type = "object_detection"
-        
-        if analysis_type:
-            tool_parameters["analysis_type"] = analysis_type
-            logging.info(f"解析到場景分析類型: {analysis_type}")
-    
-    # 記錄解析出的參數
-    logging.info(f"從用戶輸入中解析出的工具參數: {tool_parameters}")
-    
-    return {
-        "tool_parameters": tool_parameters
-    }
+    # else: # 在這裡添加其他工具的參數提取邏輯
+    #    pass 
+
+    logging.info(f"解析出的工具參數: {tool_parameters}")
+    return {"tool_parameters": tool_parameters}
 
 async def execute_tool(state: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -149,52 +207,66 @@ async def execute_tool(state: Dict[str, Any]) -> Dict[str, Any]:
             "tool_execution_result": "",
             "tool_execution_status": "skipped"
         }
-    
+
     tool_name = state["potential_tool"]
     tool_parameters = state.get("tool_parameters", {})
-    
-    # 獲取工具函數
-    tool_func = get_tool_by_name(tool_name)
-    
-    if not tool_func:
-        logging.warning(f"找不到工具: {tool_name}")
+    # 從 context 獲取可用工具
+    available_tools = state.get("_context", {}).get("available_tools", {})
+
+    # 從可用工具字典中獲取工具信息和函數
+    if tool_name not in available_tools:
+        logging.warning(f"找不到已註冊的工具: {tool_name}")
         return {
-            "tool_execution_result": f"無法找到工具: {tool_name}",
-            "tool_execution_status": "error"
+            "tool_execution_result": f"抱歉，我內部找不到名為 '{tool_name}' 的工具。",
+            "tool_execution_status": "failed_unknown_tool",
+            "tool_used": tool_name
         }
     
+    tool_info = available_tools[tool_name]
+    tool_func = tool_info.get("function")
+    required_params = [p["name"] for p in tool_info.get("parameters", [])]
+
+    if not tool_func:
+        logging.error(f"工具 '{tool_name}' 已註冊但未找到有效的執行函數。")
+        return {
+            "tool_execution_result": f"抱歉，工具 '{tool_name}' 內部配置似乎有誤。",
+            "tool_execution_status": "failed_internal_error",
+            "tool_used": tool_name
+        }
+
+    # 檢查必要參數是否缺失
+    missing_params = [p for p in required_params if p not in tool_parameters]
+    if missing_params:
+        error_msg = f"我需要知道 '{', '.join(missing_params)}' 才能執行這個操作。你能提供嗎？"
+        logging.warning(f"執行工具 {tool_name} 失敗: 缺少參數 {missing_params}")
+        return {
+            "tool_execution_result": error_msg,
+            "tool_execution_status": "failed_missing_params",
+            "tool_used": tool_name
+        }
+
     # 執行工具
     try:
-        logging.info(f"開始執行工具: {tool_name}，參數: {tool_parameters}")
-        result = await tool_func(**tool_parameters)
-        
-        # 檢查結果格式並處理
-        if isinstance(result, dict):
-            # 若結果是字典，提取主要內容字段或轉為字符串
-            if "content" in result:
-                tool_result = result["content"]
-            elif "data" in result:
-                tool_result = result["data"]
-            else:
-                tool_result = json.dumps(result, ensure_ascii=False, indent=2)
-        else:
-            tool_result = str(result)
-        
+        logging.info(f"開始異步執行工具: {tool_name}，參數: {tool_parameters}")
+        # 異步執行工具函數
+        result = await tool_func(**tool_parameters) 
+
+        # 確保結果是字符串
+        tool_result = str(result)
+
         logging.info(f"工具執行成功: {tool_name}")
-        
         return {
             "tool_execution_result": tool_result,
             "tool_execution_status": "success",
             "tool_used": tool_name
         }
-    
+
     except Exception as e:
-        error_message = f"執行工具 {tool_name} 時出錯: {str(e)}"
+        error_message = f"執行工具 {tool_name} 時發生錯誤: {str(e)}"
         logging.error(error_message, exc_info=True)
-        
         return {
-            "tool_execution_result": error_message,
-            "tool_execution_status": "error",
+            "tool_execution_result": f"抱歉，我在嘗試執行 '{tool_name}' 操作時遇到了技術問題。",
+            "tool_execution_status": "failed_exception",
             "tool_used": tool_name
         }
 
@@ -207,33 +279,42 @@ def format_tool_result_for_llm(state: Dict[str, Any]) -> Dict[str, Any]:
     返回:
     更新後的狀態，包含格式化的工具結果
     """
-    if state.get("tool_execution_status") != "success":
-        return {}
-    
+    tool_execution_status = state.get("tool_execution_status", "skipped")
     tool_result = state.get("tool_execution_result", "")
     tool_name = state.get("tool_used", "unknown")
-    
-    # 為不同工具類型定制格式化邏輯
-    formatted_result = tool_result
-    
-    # 添加工具結果到對話上下文
-    tool_context = f"""
-【工具執行結果】
-工具: {tool_name}
-結果: 
+
+    # 如果工具執行失敗，也將錯誤信息格式化給 LLM
+    if tool_execution_status != "success":
+        formatted_result = f"工具 '{tool_name}' 執行失敗。原因: {tool_result}"
+        tool_context = f"""
+【工具執行失敗提示】
 {formatted_result}
 
-請根據以上工具執行結果，以自然、友好的方式回應用戶，解釋結果含義。保持回應簡潔，不要重複引用原始數據，而是將信息融入自然對話中。
+請告知用戶你無法完成請求，並簡要說明原因 (如果錯誤信息適合展示)。
 """
-    
-    # 如果工具結果太長，可能需要摘要
-    max_result_length = 800  # 工具結果最大長度
-    if len(formatted_result) > max_result_length:
-        summary_length = max_result_length // 2
-        formatted_result = formatted_result[:summary_length] + "...\n[結果太長，已截斷]..." + formatted_result[-summary_length:]
-    
+    else:
+        # 格式化成功結果
+        formatted_result = tool_result
+        # 如果工具結果太長，進行截斷處理
+        max_result_length = 800
+        if len(formatted_result) > max_result_length:
+            summary_length = max_result_length // 2
+            result_summary = formatted_result[:summary_length] + "... [結果過長已截斷] ..." + formatted_result[-summary_length:]
+        else:
+            result_summary = formatted_result
+        
+        tool_context = f"""
+【工具執行結果】
+工具: {tool_name}
+結果摘要: 
+{result_summary}
+
+請根據以上工具執行結果，自然地融入你的回應中，告知用戶查詢結果。不要只是複述結果。
+"""
+
     return {
         "formatted_tool_result": tool_context,
+        # 保留一個簡短摘要，可能用於內部記錄或調試
         "tool_result_summary": formatted_result[:150] + "..." if len(formatted_result) > 150 else formatted_result
     }
 
@@ -248,43 +329,37 @@ def integrate_tool_result(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     tool_execution_status = state.get("tool_execution_status", "skipped")
     formatted_tool_result = state.get("formatted_tool_result", "")
-    
-    if tool_execution_status == "skipped":
-        # 如果未執行工具，保持對話流程不變
-        return {}
-    
-    updates = {}
-    
-    if tool_execution_status == "success":
-        # 工具成功執行，將結果整合到提示中
-        current_prompt_inputs = state.get("prompt_inputs", {})
-        current_prompt_inputs["tool_result"] = formatted_tool_result
+    messages = state.get("messages", [])
+
+    # 將格式化的工具結果作為一個特殊的 "tool" 訊息添加到歷史記錄中
+    # 以便後續的提示構建節點可以包含它
+    if formatted_tool_result:
+        # LangChain 目前沒有標準的 ToolMessage 類型，我們可以用 SystemMessage 或 AIMessage 模擬
+        # 使用 AIMessage 可能更適合，因為它是工具代表 AI 執行的結果
+        # 或者定義一個自定義 Message 類型
+        # 這裡暫時用 AIMessage，並在 content 中標註是工具結果
+        # 需要確認 AIMessage 是否支持 role 參數，如果不支持，則使用 SystemMessage
+        # 假設 AIMessage 支持 role:
+        tool_message = AIMessage(content=formatted_tool_result, role="tool") 
+        # 如果 AIMessage 不支持 role，則使用 SystemMessage:
+        # tool_message = SystemMessage(content=f"[工具執行結果]\n{formatted_tool_result}")
         
-        # 調整提示模板以包含工具結果
-        updates["prompt_template_key"] = "tool_result"
-        updates["prompt_inputs"] = current_prompt_inputs
-        
-        # 增加角色心情（因成功使用工具）
-        character_state = state.get("character_state", {})
-        if "mood" in character_state:
-            character_state["mood"] = min(100, character_state.get("mood", 50) + 5)
-            updates["character_state"] = character_state
-            
-        logging.info("工具結果已整合到對話流程，使用工具結果專用提示模板")
-        
-    elif tool_execution_status == "error":
-        # 工具執行失敗，添加友好的錯誤信息到提示
-        error_message = state.get("tool_execution_result", "工具執行失敗")
-        current_prompt_inputs = state.get("prompt_inputs", {})
-        current_prompt_inputs["tool_error"] = f"[系統通知: 工具執行時出現問題，請提供一個友好的解釋，不要直接提及技術錯誤: {error_message}]"
-        
-        # 使用錯誤處理模板
-        updates["prompt_template_key"] = "tool_error"
-        updates["prompt_inputs"] = current_prompt_inputs
-        
-        # 添加系統警告
-        updates["system_alert"] = "tool_execution_error"
-        
-        logging.warning(f"工具執行失敗，使用錯誤處理提示模板: {error_message}")
-    
-    return updates 
+        # 添加到消息列表
+        updated_messages = messages + [tool_message]
+    else:
+        updated_messages = messages
+
+    # 根據工具執行狀態選擇提示模板
+    prompt_template_key = state.get("prompt_template_key", "standard")
+    if tool_execution_status != "skipped":
+        # 如果工具被調用（無論成功或失敗），可能需要使用特定的提示模板來處理工具結果
+        # 例如 'tool_response' 或 'tool_error_response' (需要在 prompts.py 中定義)
+        if tool_execution_status == 'success':
+            prompt_template_key = 'tool_response' 
+        else: # failed_*
+             prompt_template_key = 'tool_error_response'
+
+    return {
+        "messages": updated_messages,
+        "prompt_template_key": prompt_template_key # 更新提示模板鍵
+    } 
