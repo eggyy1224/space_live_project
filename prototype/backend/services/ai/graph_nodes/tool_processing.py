@@ -271,95 +271,51 @@ async def execute_tool(state: Dict[str, Any]) -> Dict[str, Any]:
         }
 
 def format_tool_result_for_llm(state: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    格式化工具結果以便於 LLM 處理
-    
-    將工具執行結果轉換為適合 LLM 使用的格式，包括添加適當的上下文和指導說明。
-    
-    返回:
-    更新後的狀態，包含格式化的工具結果
-    """
-    tool_execution_status = state.get("tool_execution_status", "skipped")
-    tool_result = state.get("tool_execution_result", "")
-    tool_name = state.get("tool_used", "unknown")
+    """格式化工具執行結果以便 LLM 理解"""
+    tool_name = state.get("tool_used")
+    result = state.get("tool_execution_result")
+    status = state.get("tool_execution_status")
 
-    # 如果工具執行失敗，也將錯誤信息格式化給 LLM
-    if tool_execution_status != "success":
-        formatted_result = f"工具 '{tool_name}' 執行失敗。原因: {tool_result}"
-        tool_context = f"""
-【工具執行失敗提示】
-{formatted_result}
-
-請告知用戶你無法完成請求，並簡要說明原因 (如果錯誤信息適合展示)。
-"""
-    else:
-        # 格式化成功結果
-        formatted_result = tool_result
-        # 如果工具結果太長，進行截斷處理
-        max_result_length = 800
-        if len(formatted_result) > max_result_length:
-            summary_length = max_result_length // 2
-            result_summary = formatted_result[:summary_length] + "... [結果過長已截斷] ..." + formatted_result[-summary_length:]
-        else:
-            result_summary = formatted_result
+    if status == "success":
+        # 基礎格式
+        formatted = f"\n【你剛剛獲取的資訊】\n"
+        formatted += f"這是你透過內部工具找到的相關資訊：\n"
+        formatted += f"`\n{result}\n`"
         
-        tool_context = f"""
-【工具執行結果】
-工具: {tool_name}
-結果摘要: 
-{result_summary}
-
-請根據以上工具執行結果，自然地融入你的回應中，告知用戶查詢結果。不要只是複述結果。
-"""
-
-    return {
-        "formatted_tool_result": tool_context,
-        # 保留一個簡短摘要，可能用於內部記錄或調試
-        "tool_result_summary": formatted_result[:150] + "..." if len(formatted_result) > 150 else formatted_result
-    }
+        logging.info(f"工具 {tool_name} 結果已格式化，準備整合。長度: {len(formatted)}")
+        # 返回 formatted_tool_result 而不是 tool_result (與原始結構保持一致)
+        return {
+            "formatted_tool_result": formatted,
+            "tool_result_summary": result[:150] + "..." if len(result) > 150 else result
+        }
+    elif status and "failed" in status:
+        # 對於失敗，不需要格式化
+        return {"formatted_tool_result": None}
+    else:
+        # 其他狀態（如 skipped）
+        return {"formatted_tool_result": None}
 
 def integrate_tool_result(state: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    將工具結果整合到對話流程中
-    
-    根據工具執行狀態和結果，更新對話狀態，包括調整提示模板、添加系統消息等。
-    
-    返回:
-    更新後的狀態，包括整合工具結果後的對話狀態
-    """
-    tool_execution_status = state.get("tool_execution_status", "skipped")
-    formatted_tool_result = state.get("formatted_tool_result", "")
-    messages = state.get("messages", [])
+    """將工具執行結果整合到對話狀態中 - 讀取 formatted_tool_result 並設置 tool_result 給模板使用"""
+    status = state.get("tool_execution_status")
+    raw_result = state.get("tool_execution_result", "")  # 原始結果
+    formatted_result = state.get("formatted_tool_result") # 格式化後的結果
+    tool_used = state.get("tool_used")
 
-    # 將格式化的工具結果作為一個特殊的 "tool" 訊息添加到歷史記錄中
-    # 以便後續的提示構建節點可以包含它
-    if formatted_tool_result:
-        # LangChain 目前沒有標準的 ToolMessage 類型，我們可以用 SystemMessage 或 AIMessage 模擬
-        # 使用 AIMessage 可能更適合，因為它是工具代表 AI 執行的結果
-        # 或者定義一個自定義 Message 類型
-        # 這裡暫時用 AIMessage，並在 content 中標註是工具結果
-        # 需要確認 AIMessage 是否支持 role 參數，如果不支持，則使用 SystemMessage
-        # 假設 AIMessage 支持 role:
-        tool_message = AIMessage(content=formatted_tool_result, role="tool") 
-        # 如果 AIMessage 不支持 role，則使用 SystemMessage:
-        # tool_message = SystemMessage(content=f"[工具執行結果]\n{formatted_tool_result}")
-        
-        # 添加到消息列表
-        updated_messages = messages + [tool_message]
+    update_dict = {}
+
+    if status == "success":
+        logging.info(f"工具 {tool_used} 執行成功，設置 tool_response 模板和結果。")
+        # 從 formatted_tool_result 讀取並設置 tool_result 給模板使用
+        update_dict["tool_result"] = formatted_result
+        update_dict["prompt_template_key"] = "tool_response"
+        update_dict["tool_error"] = None # 清除可能存在的舊錯誤
+    elif status and "failed" in status:
+        logging.warning(f"工具 {tool_used} 執行失敗，設置 tool_error_response 模板和錯誤信息。")
+        update_dict["prompt_template_key"] = "tool_error_response"
+        update_dict["tool_error"] = raw_result # 將原始失敗結果作為錯誤信息
+        update_dict["tool_result"] = None # 清除成功結果
     else:
-        updated_messages = messages
+        logging.debug(f"工具狀態為 {status}，不改變提示模板或錯誤狀態。")
 
-    # 根據工具執行狀態選擇提示模板
-    prompt_template_key = state.get("prompt_template_key", "standard")
-    if tool_execution_status != "skipped":
-        # 如果工具被調用（無論成功或失敗），可能需要使用特定的提示模板來處理工具結果
-        # 例如 'tool_response' 或 'tool_error_response' (需要在 prompts.py 中定義)
-        if tool_execution_status == 'success':
-            prompt_template_key = 'tool_response' 
-        else: # failed_*
-             prompt_template_key = 'tool_error_response'
-
-    return {
-        "messages": updated_messages,
-        "prompt_template_key": prompt_template_key # 更新提示模板鍵
-    } 
+    return update_dict 

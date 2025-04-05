@@ -53,7 +53,9 @@ class DialogueState(TypedDict):
     tool_execution_result: Optional[str]    # 工具執行結果
     tool_execution_status: Optional[str]    # 工具執行狀態
     tool_used: Optional[str]                # 實際使用的工具
-    formatted_tool_result: Optional[str]    # 格式化後的工具結果
+    formatted_tool_result: Optional[str]    # 格式化後的工具結果 (中間步驟)
+    tool_result: Optional[str]              # 最終給模板使用的工具結果
+    tool_error: Optional[str]               # 最終給模板使用的工具錯誤
     
     # --- 生成控制 ---
     prompt_template_key: str      # 選用的提示模板名稱 (e.g., 'standard', 'clarification', 'error')
@@ -281,7 +283,7 @@ class DialogueGraph:
             "current_task": current_task,
             "tasks_history": tasks_history or [],
             
-            # 工具呼叫 (將在流程中填充)
+            # 工具呼叫 (將在流程中填充，並確保關鍵鍵存在)
             "has_tool_intent": False,
             "potential_tool": None,
             "tool_confidence": 0.0,
@@ -289,7 +291,9 @@ class DialogueGraph:
             "tool_execution_result": "",
             "tool_execution_status": "not_started",
             "tool_used": None,
-            "formatted_tool_result": "",
+            "formatted_tool_result": None, # 初始為 None
+            "tool_result": None,           # 初始為 None
+            "tool_error": None,            # 初始為 None
             
             # 生成控制 (將在流程中填充)
             "prompt_template_key": "standard",

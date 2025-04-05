@@ -18,21 +18,42 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 def select_prompt_and_style_node(state: TypedDict) -> Dict[str, Any]:
     """選擇提示模板和對話風格節點
     
-    如果工具已被執行，則跳過選擇，保留由 integrate_tool_result 設置的模板。
+    如果工具已被執行，則跳過選擇，保留由 integrate_tool_result 設置的模板，
+    並確保 tool_result/tool_error 被傳遞下去。
     """
-    # *** 新增：檢查工具是否已執行 ***
     tool_execution_status = state.get("tool_execution_status", "skipped")
+    
     if tool_execution_status != "skipped":
-        logging.info(f"工具已執行 (狀態: {tool_execution_status})，跳過提示/風格選擇，使用已設定的模板: {state.get('prompt_template_key')}")
-        # 直接返回當前狀態，保留 integrate_tool_result 設置的 key
-        # 但仍然需要計算風格，因為標準提示可能也需要風格
+        logging.info(f"工具已執行 (狀態: {tool_execution_status})，跳過主要提示/風格選擇，保留工具相關狀態。")
+
+        # --- 添加 Debugging --- 
+        logging.debug(f"Inside select_prompt_and_style_node (tool executed): Received state keys: {list(state.keys())}")
+        logging.debug(f"Inside select_prompt_and_style_node (tool executed): State contains tool_result? {'tool_result' in state}")
+        logging.debug(f"Inside select_prompt_and_style_node (tool executed): state.get('tool_result') = {state.get('tool_result')}")
+        logging.debug(f"Inside select_prompt_and_style_node (tool executed): State contains tool_error? {'tool_error' in state}")
+        logging.debug(f"Inside select_prompt_and_style_node (tool executed): state.get('tool_error') = {state.get('tool_error')}")
+        # --- End Debugging --- 
+        
+        # 仍然計算風格
         character_state = state["character_state"]
         input_classification = state["input_classification"]
         dialogue_style = select_dialogue_style(character_state, input_classification)
-        return { 
-            "prompt_template_key": state.get("prompt_template_key"), # 保留已設置的 key
-            "dialogue_style": dialogue_style # 仍然計算風格
+        
+        # *** 關鍵修改：除了返回模板鍵和風格，還要返回工具結果/錯誤 ***
+        return_dict = {
+            "prompt_template_key": state.get("prompt_template_key"), 
+            "dialogue_style": dialogue_style
         }
+        tool_result_val = state.get("tool_result") # Get value once
+        tool_error_val = state.get("tool_error")   # Get value once
+
+        if tool_result_val is not None:
+            return_dict["tool_result"] = tool_result_val
+        if tool_error_val is not None:
+            return_dict["tool_error"] = tool_error_val
+            
+        logging.debug(f"Inside select_prompt_and_style_node (tool executed): Returning dict: {return_dict}") # Log what is being returned
+        return return_dict
 
     # --- 只有在工具未執行時，才執行以下選擇邏輯 ---    
     input_classification = state["input_classification"]
@@ -59,6 +80,7 @@ def select_prompt_and_style_node(state: TypedDict) -> Dict[str, Any]:
     return {
         "prompt_template_key": prompt_template_key,
         "dialogue_style": dialogue_style
+        # 工具未執行時，不需要返回 tool_result/error
     }
 
 def select_dialogue_style(character_state: Dict[str, Any], input_classification: Dict[str, Any]) -> str:
@@ -107,6 +129,15 @@ def build_prompt_node(state: TypedDict) -> Dict[str, Any]:
     messages = state["messages"]
     persona_name = state.get("_context", {}).get("persona_name", "星際小可愛")
     
+    # --- 添加 Debug Logging ---
+    logging.debug(f"Inside build_prompt_node: Received state keys: {list(state.keys())}")
+    logging.debug(f"Inside build_prompt_node: prompt_template_key = '{prompt_template_key}'")
+    logging.debug(f"Inside build_prompt_node: state contains tool_result? {'tool_result' in state}")
+    logging.debug(f"Inside build_prompt_node: state.get('tool_result') = {state.get('tool_result')}")
+    logging.debug(f"Inside build_prompt_node: state contains tool_error? {'tool_error' in state}")
+    logging.debug(f"Inside build_prompt_node: state.get('tool_error') = {state.get('tool_error')}")
+    # --- End Debug Logging ---
+    
     # 格式化對話歷史
     history_limit = 10  # 取最近10條消息用於提示
     history = messages[-history_limit:] if len(messages) >= history_limit else messages
@@ -118,25 +149,34 @@ def build_prompt_node(state: TypedDict) -> Dict[str, Any]:
     # 格式化角色狀態描述
     character_state_prompt = format_character_state(state["character_state"])
     
-    # 構建提示輸入
+    # 構建提示輸入 - 基礎部分
     prompt_inputs = {
         "user_message": processed_user_input,
         "conversation_history": conversation_history,
         "filtered_memories": filtered_memories,
         "persona_info": persona_info,
         "character_state": character_state_prompt,
-        "current_task": state["current_task"] if state["current_task"] else "無特定任務",
+        "current_task": state.get("current_task") or "無特定任務", # 使用 .get 避免 Key Error
         "dialogue_style": dialogue_style,
         "persona_name": persona_name
     }
+
+    # *** 新增：如果模板需要，添加工具結果或錯誤信息 ***
+    is_tool_template = "tool" in prompt_template_key
+    logging.debug(f"Inside build_prompt_node: Condition '\"tool\" in prompt_template_key ({prompt_template_key})' is {is_tool_template}")
+    if is_tool_template:
+        tool_result_value = state.get("tool_result")
+        tool_error_value = state.get("tool_error")
+        logging.debug(f"Inside build_prompt_node: Adding tool results. tool_result_value={tool_result_value}, tool_error_value={tool_error_value}")
+        if tool_result_value is not None:
+            prompt_inputs["tool_result"] = tool_result_value
+        if tool_error_value is not None:
+            prompt_inputs["tool_error"] = tool_error_value
+
+    logging.debug(f"提示輸入最終構建完成: {json.dumps(prompt_inputs)}") 
     
-    logging.debug(f"提示輸入已構建: {len(json.dumps(prompt_inputs))} 字符")
-    
-    return {
-        "conversation_history": conversation_history,
-        "character_state_prompt": character_state_prompt,
-        "prompt_inputs": prompt_inputs
-    }
+    # *** 關鍵修改：僅返回 prompt_inputs ***
+    return {"prompt_inputs": prompt_inputs}
 
 def format_character_state(character_state: Dict[str, Any]) -> str:
     """將數值狀態轉換為描述性文本"""

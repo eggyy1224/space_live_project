@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
 
-def setup_logging(log_level=logging.INFO, log_to_console=True, log_to_file=True, log_file_path=None):
+def setup_logging(log_level=logging.DEBUG, log_to_console=True, log_to_file=True, log_file_path=None):
     """
     設置應用日誌
     
