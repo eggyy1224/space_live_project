@@ -71,7 +71,7 @@
 
 ```mermaid
 graph TD
-    subgraph Frontend [前端 (prototype/frontend)]
+    subgraph Frontend ["前端 (prototype/frontend)"]
         direction TB
         %% 前端 UI 元件
         A[App 主元件] --> B[ControlPanel 控制面板]
@@ -89,7 +89,7 @@ graph TD
         API_Client["REST API Client"] --- Frontend_Services
     end
 
-    subgraph Backend [後端 (prototype/backend)]
+    subgraph Backend ["後端 (prototype/backend)"]
         direction TB
         %% 後端服務與AI核心
         Backend_Services((服務層))
