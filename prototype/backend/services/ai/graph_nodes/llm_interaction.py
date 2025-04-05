@@ -112,7 +112,7 @@ def post_process_response(response: str, input_classification: Dict[str, Any], t
     processed_response = original_response_stripped
     was_heavily_modified = False
 
-    # 移除可能的固定開場白 (更寬鬆的匹配)
+    # 1. 移除可能的固定開場白
     fixed_intros = [
         f"嗨，我是{persona_name}",
         f"你好，我是{persona_name}",
@@ -130,7 +130,7 @@ def post_process_response(response: str, input_classification: Dict[str, Any], t
             processed_response = normalized_response_start[len(intro):].lstrip(",，.。:：!！ ")
             break # 匹配到一個就停止
 
-    # 移除常見的 Emoji 字符
+    # 2. 移除常見的 Emoji 字符
     emoji_pattern = re.compile("["
                            u"\U0001F600-\U0001F64F"  # emoticons
                            u"\U0001F300-\U0001F5FF"  # symbols & pictographs
@@ -145,14 +145,14 @@ def post_process_response(response: str, input_classification: Dict[str, Any], t
                            "]+", flags=re.UNICODE)
     processed_response = emoji_pattern.sub(r'', processed_response).strip()
 
-    # 檢查或移除回應中的奇怪詞彙 (可能是從用戶輸入中吸收的)
+    # 3. 檢查或移除回應中的奇怪詞彙 (可能是從用戶輸入中吸收的)
     weird_terms = ["DevOps", "j8 dl4", "AI", "dl4", "GPS"]
-    
+
     # 特別處理：如果回應是「純」AI，而對話模板不是 error 或 random_reply，考慮替換
     if processed_response.strip() == "AI" and template_key not in ["error", "random_reply"]:
         processed_response = "啊，我好像分心了一下，你剛才說什麼？"
         was_heavily_modified = True
-    
+
     # 如果是 clarification 或 random_reply 模板，確保不重複用戶的奇怪輸入
     if template_key in ["clarification", "random_reply"]:
         user_input_for_check = input_classification.get("raw_user_input", "") # 使用 raw_user_input 檢查
@@ -161,13 +161,23 @@ def post_process_response(response: str, input_classification: Dict[str, Any], t
                 processed_response = processed_response.replace(term, "[...]")
                 # was_heavily_modified = True # 移除奇怪詞彙不算重大修改
 
-    # 確保回應不為空或過短 (例如少於3個字符)
-    if not processed_response or len(processed_response.strip()) < 3:
-        logging.warning("後處理移除了大部分回應，返回原始回應 (去除首尾空格)")
-        processed_response = original_response_stripped # 返回原始的、僅去除首尾空格的回應
-        was_heavily_modified = True # 標記為大幅修改，避免存入記憶
+    # 4. 確保回應不為空或過短 (少於3個字符) - **修改後的邏輯**
+    final_processed_length = len(processed_response.strip()) # 計算最終處理後的長度
 
-    # 判斷是否大幅修改 (如果尚未標記)
+    if final_processed_length < 3:
+        # 如果處理後回應太短
+        if original_length >= 5: # 只有當原始回應不算太短 (例如 >= 5) 時
+            logging.warning(f"後處理將較長回應 (長度 {original_length}) 縮短至少於 3 個字符，恢復原始回應")
+            processed_response = original_response_stripped # 恢復原始回應
+            was_heavily_modified = True # 標記為大幅修改
+        else:
+            # 如果原始回應本身就很短 ( < 5)，無需恢復，接受處理後的短回應 (可能是空字串)
+            logging.info(f"後處理後回應過短 (長度 {final_processed_length})，但原始回應也很短 (長度 {original_length})，接受處理結果")
+            # 雖然接受了處理結果，但這麼短的回應可能意義不大，仍然標記以便不儲存
+            was_heavily_modified = True # 仍然標記，避免儲存價值不大的短回應/空回應
+    # else: # 如果處理後長度 >= 3，則正常繼續
+
+    # 5. 判斷是否大幅修改 (如果尚未標記)
     if not was_heavily_modified:
         # 如果長度減少超過 30%，也認為是大幅修改
         was_heavily_modified = (len(processed_response) < original_length * 0.7)
