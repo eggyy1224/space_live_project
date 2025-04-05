@@ -86,3 +86,13 @@ htmlcov/
 
 # Chroma database files
 prototype/backend/data/chroma_db/
+
+# Frontend (prototype/frontend) Specific
+prototype/frontend/dist
+prototype/frontend/dist-ssr
+prototype/frontend/*.local
+!prototype/frontend/.vscode/extensions.json
+prototype/frontend/*.suo
+prototype/frontend/*.ntvs*
+prototype/frontend/*.njsproj
+prototype/frontend/*.sln

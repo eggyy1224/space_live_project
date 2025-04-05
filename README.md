@@ -71,43 +71,55 @@
 
 ```mermaid
 graph TD
-    %% 前端 UI 元件
-    A[App 主元件] --> B[ControlPanel 控制面板]
-    A --> C[ModelViewer 3D場景]
-    A --> D[ChatInterface 聊天介面]
-    A --> E[AudioControls 音訊控制]
-    B --> F[MorphTargetControls 表情控制]
-    
-    %% 前端服務層
-    WS_Client[WebSocketService] --- Frontend_Services[前端服務層]
-    CS[ChatService] --- Frontend_Services
-    AS[AudioService] --- Frontend_Services
-    MS[ModelService] --- Frontend_Services
-    API_Client["REST API Client"] --- Frontend_Services
-    
-    %% 後端服務與AI核心
-    API_Server[REST API 伺服器] --- Backend[後端服務層]
-    WS_Server[WebSocket 伺服器] --- Backend
-    
-    AIService[AI 服務接口] --- AI_Core[AI 核心]
-    DialogueGraph[健壯對話流程圖引擎] --- AI_Core
-    MemorySystem[多層記憶系統協調者] --- AI_Core
-    LLM_Service["LLM Gemini"] --- AI_Core
-    ChromaDB[(向量數據庫)] --- AI_Core
+    subgraph Frontend [前端 (prototype/frontend)]
+        direction TB
+        %% 前端 UI 元件
+        A[App 主元件] --> B[ControlPanel 控制面板]
+        A --> C[ModelViewer 3D場景]
+        A --> D[ChatInterface 聊天介面]
+        A --> E[AudioControls 音訊控制]
+        B --> F[MorphTargetControls 表情控制]
 
-    %% 記憶系統內部組件
-    MemorySystem --> MemoryStores[記憶儲存]
-    MemorySystem --> MemoryRetrieval[記憶檢索]
-    MemorySystem --> MemoryProcessing[記憶處理]
-    MemoryStores --> ChromaDB
-    
-    %% 核心關係
-    AIService --> DialogueGraph
-    DialogueGraph --> MemorySystem
-    DialogueGraph --> LLM_Service
-    MemoryProcessing --> LLM_Service 
-    WS_Server --> AIService
-    API_Server --> AIService
+        %% 前端服務層
+        Frontend_Services((服務層))
+        WS_Client[WebSocketService] --- Frontend_Services
+        CS[ChatService] --- Frontend_Services
+        AS[AudioService] --- Frontend_Services
+        MS[ModelService] --- Frontend_Services
+        API_Client["REST API Client"] --- Frontend_Services
+    end
+
+    subgraph Backend [後端 (prototype/backend)]
+        direction TB
+        %% 後端服務與AI核心
+        Backend_Services((服務層))
+        API_Server[REST API 伺服器] --- Backend_Services
+        WS_Server[WebSocket 伺服器] --- Backend_Services
+
+        AI_Core((AI 核心))
+        AIService[AI 服務接口] --- AI_Core
+        DialogueGraph[健壯對話流程圖引擎] --- AI_Core
+        MemorySystem[多層記憶系統協調者] --- AI_Core
+        LLM_Service["LLM Gemini"] --- AI_Core
+        ChromaDB[(向量數據庫)]
+
+        %% 記憶系統內部組件
+        subgraph Memory System Components
+            MemorySystem --> MemoryStores[記憶儲存]
+            MemorySystem --> MemoryRetrieval[記憶檢索]
+            MemorySystem --> MemoryProcessing[記憶處理]
+            MemoryStores --> ChromaDB
+        end
+
+        %% 核心關係
+        Backend_Services --> AI_Core
+        AIService --> DialogueGraph
+        DialogueGraph --> MemorySystem
+        DialogueGraph --> LLM_Service
+        MemoryProcessing --> LLM_Service
+        WS_Server --> AIService
+        API_Server --> AIService
+    end
 
     %% 前端元件與服務交互
     D -- 傳送文字/語音識別結果 --> CS
@@ -132,7 +144,7 @@ graph TD
     %% 樣式定義
     classDef ui fill:#cef,stroke:#5a9,stroke-width:2px
     classDef service fill:#fcc,stroke:#f66,stroke-width:2px
-    classDef backend fill:#efe,stroke:#393,stroke-width:2px
+    classDef backend_svc fill:#efe,stroke:#393,stroke-width:2px
     classDef ai fill:#dff,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5
     classDef db fill:#ffc,stroke:#f60,stroke-width:1px
     classDef group fill:#f5f5f5,stroke:#ddd,stroke-width:1px
@@ -140,16 +152,16 @@ graph TD
 
     %% 套用樣式
     class A,B,C,D,E,F ui
-    class WS_Client,CS,AS,MS,API_Client service
-    class API_Server,WS_Server backend
-    class AIService,DialogueGraph,MemorySystem,LLM_Service ai
+    class WS_Client,CS,AS,MS,API_Client,Frontend_Services service
+    class API_Server,WS_Server,Backend_Services backend_svc
+    class AIService,DialogueGraph,MemorySystem,LLM_Service,AI_Core ai
     class ChromaDB db
-    class Frontend_Services,Backend,AI_Core group
+    class Frontend,Backend group
     class MemoryStores,MemoryRetrieval,MemoryProcessing memory
 ```
 
-*   **前端 (React + Three.js)**: 負責用戶界面展示、3D 模型渲染、接收用戶輸入（文字/語音）、播放音頻和動畫。前端通過 **服務單例** (`WebSocketService`, `ChatService`, etc.) 來管理狀態和與後端通信。
-*   **後端 (FastAPI)**: 提供 WebSocket 和 REST API 接口。接收前端請求，調用 **AI 核心** 處理對話邏輯、記憶管理和狀態更新，並將結果（文本、動畫指令）返回給前端。
+*   **前端 (prototype/frontend)**: 負責用戶界面展示、3D 模型渲染、接收用戶輸入（文字/語音）、播放音頻和動畫。前端通過 **服務單例** (`WebSocketService`, `ChatService`, etc.) 來管理狀態和與後端通信。
+*   **後端 (prototype/backend)**: 提供 WebSocket 和 REST API 接口。接收前端請求，調用 **AI 核心** 處理對話邏輯、記憶管理和狀態更新，並將結果（文本、動畫指令）返回給前端。
 *   **通信**: 主要使用 WebSocket 進行實時雙向通信（對話、動畫指令），REST API 用於輔助操作（如上傳音頻、獲取歷史數據）。
 
 ---
@@ -173,27 +185,26 @@ cd space_live_project
 
 **3. 後端設置與運行:**
 
-*   **進入後端目錄** (假設在 `prototype/backend`):
+*   **進入後端目錄**:
     ```bash
     cd prototype/backend
     ```
-*   **創建與激活 Python 虛擬環境:**
+*   **創建與激活 Python 虛擬環境:** (假設虛擬環境在項目根目錄的 venv)
     ```bash
-    python3 -m venv venv
-    source ../../venv/bin/activate  # Linux/macOS (路徑可能需調整)
-    # ..\..\venv\Scripts\activate   # Windows (路徑可能需調整)
+    python3 -m venv ../../venv # 如果 venv 不存在
+    source ../../venv/bin/activate  # Linux/macOS
+    # ..\\..\\venv\\Scripts\\activate   # Windows
     ```
 *   **安裝後端依賴:**
     ```bash
-    pip install -r requirements.txt # 確保 requirements.txt 在此目錄或上層
-    # 或手動安裝: pip install fastapi uvicorn langchain langgraph langchain-google-genai chromadb pydantic python-dotenv loguru ...
+    pip install -r requirements.txt
     ```
 *   **配置後端環境變數:**
-    *   在 `prototype/backend` 目錄下創建 `.env` 文件。
+    *   在 `prototype/backend` 目錄下創建 `.env` 文件 (如果不存在)。
     *   填入 `GOOGLE_API_KEY`:
         ```dotenv
         GOOGLE_API_KEY="YOUR_GOOGLE_API_KEY_HERE"
-        # 可能需要添加 VECTOR_DB_PATH="./chroma_db" (記憶系統將使用此路徑)
+        VECTOR_DB_PATH="./data/chroma_db" # 建議的 ChromaDB 路徑
         ```
 *   **啟動後端服務:**
     ```bash
@@ -203,12 +214,9 @@ cd space_live_project
 
 **4. 前端設置與運行:**
 
-*   **進入前端目錄** (假設在 `prototype/frontend` 或項目根目錄下的 `src`):
+*   **進入前端目錄**:
     ```bash
-    # 根據你的項目結構調整 cd 命令
     cd prototype/frontend
-    # 或者如果前端源碼在根目錄 src 下
-    # cd ../../ (回到項目根目錄)
     ```
 *   **安裝前端依賴:**
     ```bash
@@ -235,73 +243,44 @@ cd space_live_project
 ├── docs/                             # 技術文檔與設計方案
 ├── glbs/                             # 3D 模型 GLB 文件
 ├── prototype/                        # 主要項目目錄
-│   ├── backend/                      # 後端 FastAPI 應用
-│   │   ├── api/                      # API 端點定義
-│   │   ├── core/                     # 核心配置與基礎設施
-│   │   ├── credentials/              # 憑證管理
-│   │   ├── data/                     # 數據文件 (如 CSV, JSON)
-│   │   ├── debug_audio/              # 用於調試的音頻文件
-│   │   ├── dtos/                     # Data Transfer Objects
-│   │   ├── logs/                     # 日誌文件目錄
-│   │   ├── models/                   # 其他模型文件 (非 AI 核心)
-│   │   ├── services/                 # 業務邏輯服務
-│   │   │   ├── ai/                   # AI 核心服務
-│   │   │   │   ├── __init__.py       # AI 服務接口
-│   │   │   │   ├── dialogue_graph.py # LangGraph 健壯對話流程引擎
-│   │   │   │   ├── memory_system.py  # 記憶系統協調者
-│   │   │   │   ├── graph_nodes/      # 對話圖節點函數
-│   │   │   │   └── memory_components/ # 記憶系統模組
-│   │   │   │       ├── __init__.py   # 記憶組件導出
-│   │   │   │       ├── stores/       # 記憶儲存模組
-│   │   │   │       ├── retrieval/    # 記憶檢索模組
-│   │   │   │       └── processing/   # 記憶處理模組
-│   │   │   ├── __init__.py
-│   │   │   ├── animation.py          # 動畫相關服務
-│   │   │   ├── emotion.py            # 情緒處理服務
-│   │   │   ├── speech_to_text.py     # 語音轉文字服務
-│   │   │   └── text_to_speech.py     # 文字轉語音服務
-│   │   ├── utils/                    # 工具函數
-│   │   ├── venv/                     # Python 虛擬環境
-│   │   ├── .env                      # 環境變數
-│   │   ├── .env.example              # 環境變數示例文件
-│   │   ├── main.py                   # FastAPI 應用主入口
-│   │   ├── main.py.bak               # main.py 備份
-│   │   ├── requirements.txt          # 後端 Python 依賴列表
-│   │   └── run.sh                    # 執行腳本
+│   ├── backend/                      # 後端 FastAPI 應用 (詳見後端 README)
+│   │   ├── ... (後端相關文件)
+│   │   └── requirements.txt          # 後端 Python 依賴列表
 │   │
-│   ├── public/                       # 前端靜態資源
+│   ├── frontend/                     # 前端 React 應用
+│   │   ├── public/                   # 前端靜態資源
+│   │   ├── src/                      # 前端 React 原始碼
+│   │   │   ├── assets/
+│   │   │   ├── components/
+│   │   │   ├── context/
+│   │   │   ├── hooks/
+│   │   │   ├── models/
+│   │   │   ├── services/
+│   │   │   ├── styles/
+│   │   │   ├── types/
+│   │   │   ├── utils/
+│   │   │   ├── App.css
+│   │   │   ├── App.tsx
+│   │   │   ├── index.css
+│   │   │   ├── main.tsx
+│   │   │   └── vite-env.d.ts
+│   │   ├── node_modules/             # Node.js 依賴
+│   │   ├── .gitignore                # (已被合併刪除)
+│   │   ├── eslint.config.js
+│   │   ├── index.html
+│   │   ├── package-lock.json
+│   │   ├── package.json
+│   │   ├── README.md                 # 前端目錄的說明文件
+│   │   ├── tsconfig.app.json
+│   │   ├── tsconfig.json
+│   │   ├── tsconfig.node.json
+│   │   └── vite.config.ts
 │   │
-│   ├── src/                          # 前端 React 原始碼
-│   │   ├── assets/                   # 靜態資源
-│   │   ├── components/               # React 元件
-│   │   ├── context/                  # React 上下文
-│   │   ├── hooks/                    # 自定義 hooks
-│   │   ├── models/                   # 模型定義
-│   │   ├── services/                 # 前端服務
-│   │   ├── styles/                   # 樣式文件
-│   │   ├── types/                    # TypeScript 類型定義
-│   │   ├── utils/                    # 前端工具函數
-│   │   ├── App.css                   # 主應用樣式
-│   │   ├── App.tsx                   # 主應用元件
-│   │   ├── index.css                 # 全局樣式
-│   │   ├── main.tsx                  # 入口文件
-│   │   └── vite-env.d.ts             # Vite 環境定義
-│   │
-│   ├── node_modules/                 # Node.js 依賴
-│   ├── venv/                         # Python 虛擬環境
-│   ├── .gitignore                    # Git 忽略配置
-│   ├── eslint.config.js              # ESLint 配置
-│   ├── index.html                    # 前端入口 HTML
-│   ├── package-lock.json             # NPM 鎖定文件
-│   ├── package.json                  # 前端依賴與腳本
-│   ├── README.md                     # prototype 目錄的說明文件
-│   ├── tsconfig.app.json             # TypeScript 配置 (App)
-│   ├── tsconfig.json                 # TypeScript 配置 (Base)
-│   ├── tsconfig.node.json            # TypeScript 配置 (Node)
-│   └── vite.config.ts                # Vite 配置文件
+│   └── venv/                         # Python 虛擬環境 (現在移到根目錄) -> 應在根目錄
 │
-├── .gitignore                        # Git 忽略配置文件
-└── README.md                         # 本文件
+├── .gitignore                        # Git 忽略配置文件 (已合併前端規則)
+├── README.md                         # 本文件 (已更新)
+└── venv/                             # Python 虛擬環境 (建議位置)
 ```
 
 ---
