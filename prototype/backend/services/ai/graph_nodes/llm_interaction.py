@@ -104,13 +104,22 @@ def post_process_node(state: TypedDict) -> Dict[str, Any]:
 
 def post_process_response(response: str, input_classification: Dict[str, Any], template_key: str, persona_name: str = "星際小可愛") -> Tuple[str, bool]:
     """
-    後處理回應，移除固定模式和 Emoji (邏輯放寬版)。
+    後處理回應，移除固定模式和 Emoji (邏輯放寬版 - 特別處理錯誤模板)。
     返回: (處理後的回應, 是否大幅修改)
     """
     original_response_stripped = response.strip()
     original_length = len(original_response_stripped)
     processed_response = original_response_stripped
-    was_heavily_modified = False # 默認不認為是大幅修改
+    was_heavily_modified = False
+
+    # *** 新增：如果是錯誤模板，則幾乎不處理，直接返回 ***
+    if template_key == "tool_error_response" or template_key == "error":
+        logging.info(f"檢測到錯誤模板 ('{template_key}')，跳過大部分後處理。")
+        # 可以選擇只移除 emoji，或者完全不處理
+        # 這裡選擇只做 strip()
+        return processed_response.strip(), False # 認為錯誤信息本身不算大幅修改
+
+    # --- 僅對非錯誤模板執行以下處理 --- 
 
     # 1. 移除可能的固定開場白
     fixed_intros = [

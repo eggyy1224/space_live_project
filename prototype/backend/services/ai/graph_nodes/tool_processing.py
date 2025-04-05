@@ -138,17 +138,16 @@ async def parse_tool_parameters(state: Dict[str, Any]) -> Dict[str, Any]:
         return {"tool_parameters": {}}
 
     tool_info = available_tools[potential_tool]
-    required_params = tool_info.get("parameters", [])
+    parameter_definitions = tool_info.get("parameters", [])
 
-    if not required_params:
+    if not parameter_definitions:
         logging.info(f"工具 '{potential_tool}' 無需參數。")
         return {"tool_parameters": {}} # 無需參數，直接返回
 
     # 構建提示讓 LLM 提取參數
-    # 對於 search_wikipedia，我們需要提取 query
     if potential_tool == 'search_wikipedia':
         param_name = 'query'
-        param_description = next((p["description"] for p in required_params if p["name"] == param_name), "查詢的主題")
+        param_description = next((p["description"] for p in parameter_definitions if p["name"] == param_name), "查詢的主題")
 
         prompt_template = PromptTemplate.from_template(
             "你需要為工具 '{tool_name}' 提取參數 '{param_name}'。\n"\
@@ -186,6 +185,52 @@ async def parse_tool_parameters(state: Dict[str, Any]) -> Dict[str, Any]:
             # 提取失敗，返回空參數
             tool_parameters = {}
     
+    # --- 新增：處理 get_moon_phase 的 date_str 參數 ---
+    elif potential_tool == 'get_moon_phase':
+        param_name = 'date_str'
+        param_info = next((p for p in parameter_definitions if p["name"] == param_name), None)
+        if param_info:
+            param_description = param_info.get("description", "查詢的日期")
+            
+            prompt_template = PromptTemplate.from_template(
+                "用戶想要查詢月相。你需要為工具 '{tool_name}' 提取可選參數 '{param_name}'。\n"\
+                "參數描述: {param_description}\n"\
+                "最近對話歷史 (僅供參考):\n{conversation_history}\n\n"\
+                "最新用戶輸入: \"{user_input}\"\n\n"\
+                "請分析用戶輸入，判斷用戶是否指定了日期。支持的格式為 YYYY-MM-DD、'今天'、'明天'、'昨天'。\n"\
+                "如果用戶明確指定了日期（例如 '2024-05-10'、'明天'），請只返回該日期字符串。\n"\
+                "如果用戶沒有指定日期，或者你不確定用戶指的是哪個日期，請回答 '未指定'。\n"\
+                "不要返回任何其他解釋性文字。"
+            )
+            
+            history_str = "\n".join([f"{msg.type}: {msg.content}" for msg in messages[-4:]])
+            chain = prompt_template | llm | StrOutputParser()
+            
+            try:
+                logging.info(f"調用 LLM 提取工具 '{potential_tool}' 的可選參數 '{param_name}'...")
+                extracted_value = await chain.ainvoke({
+                    "tool_name": potential_tool,
+                    "param_name": param_name,
+                    "param_description": param_description,
+                    "conversation_history": history_str,
+                    "user_input": processed_input
+                })
+                extracted_value = extracted_value.strip()
+                logging.info(f"LLM 提取到的日期參數值: '{extracted_value}'")
+                
+                # 只有當 LLM 返回了非'未指定'的值時才設置參數
+                if extracted_value and extracted_value.lower() not in ['未指定', '']:
+                    tool_parameters[param_name] = extracted_value
+                else:
+                    logging.info(f"LLM 未提取到明確的日期參數或用戶未指定，將使用默認日期（今天）。")
+                    # 不設置參數，讓工具函數使用默認值
+            
+            except Exception as e:
+                logging.error(f"LLM 日期參數提取失敗: {e}", exc_info=True)
+                # 提取失敗，不設置參數，讓工具函數使用默認值
+                tool_parameters = {}
+    # --- 結束新增 ---
+    
     # else: # 在這裡添加其他工具的參數提取邏輯
     #    pass 
 
@@ -193,15 +238,7 @@ async def parse_tool_parameters(state: Dict[str, Any]) -> Dict[str, Any]:
     return {"tool_parameters": tool_parameters}
 
 async def execute_tool(state: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    執行指定的工具並獲取結果
-    
-    根據前面步驟識別的工具和解析的參數，調用相應工具函數。
-    處理工具可能的錯誤，並格式化工具執行結果。
-    
-    返回:
-    更新後的狀態，包含工具執行結果和狀態
-    """
+    """執行指定的工具並獲取結果（處理結構化輸出/錯誤）"""
     if not state.get("has_tool_intent", False) or not state.get("potential_tool"):
         return {
             "tool_execution_result": "",
@@ -224,7 +261,7 @@ async def execute_tool(state: Dict[str, Any]) -> Dict[str, Any]:
     
     tool_info = available_tools[tool_name]
     tool_func = tool_info.get("function")
-    required_params = [p["name"] for p in tool_info.get("parameters", [])]
+    parameter_definitions = tool_info.get("parameters", [])
 
     if not tool_func:
         logging.error(f"工具 '{tool_name}' 已註冊但未找到有效的執行函數。")
@@ -234,39 +271,61 @@ async def execute_tool(state: Dict[str, Any]) -> Dict[str, Any]:
             "tool_used": tool_name
         }
 
-    # 檢查必要參數是否缺失
-    missing_params = [p for p in required_params if p not in tool_parameters]
-    if missing_params:
-        error_msg = f"我需要知道 '{', '.join(missing_params)}' 才能執行這個操作。你能提供嗎？"
-        logging.warning(f"執行工具 {tool_name} 失敗: 缺少參數 {missing_params}")
+    # *** 關鍵修改：檢查必需參數是否缺失 ***
+    missing_required_params = []
+    for param_def in parameter_definitions:
+        param_name = param_def["name"]
+        # 檢查參數是否被定義為必需 (如果未定義 required，則默認為 True)
+        is_required = param_def.get("required", True) 
+        # 如果參數是必需的，並且在解析出的參數中不存在，則添加到缺失列表
+        if is_required and param_name not in tool_parameters:
+            missing_required_params.append(param_name)
+
+    if missing_required_params:
+        error_msg = f"我需要知道 \'{', '.join(missing_required_params)}\' 才能執行這個操作。你能提供嗎？"
+        logging.warning(f"執行工具 {tool_name} 失敗: 缺少必需參數 {missing_required_params}")
         return {
             "tool_execution_result": error_msg,
             "tool_execution_status": "failed_missing_params",
             "tool_used": tool_name
         }
 
-    # 執行工具
+    # 執行工具 (如果沒有缺失必需參數)
     try:
         logging.info(f"開始異步執行工具: {tool_name}，參數: {tool_parameters}")
         # 異步執行工具函數
-        result = await tool_func(**tool_parameters) 
+        result_obj = await tool_func(**tool_parameters) 
 
-        # 確保結果是字符串
-        tool_result = str(result)
-
-        logging.info(f"工具執行成功: {tool_name}")
-        return {
-            "tool_execution_result": tool_result,
-            "tool_execution_status": "success",
-            "tool_used": tool_name
-        }
+        # *** 關鍵修改：檢查返回的是否為包含 error 的字典 ***
+        if isinstance(result_obj, dict) and "error" in result_obj:
+            error_message = str(result_obj["error"])
+            logging.warning(f"工具 {tool_name} 執行完成，但返回內部錯誤: {error_message[:100]}...")
+            return {
+                "tool_execution_result": error_message, # 返回錯誤信息字符串
+                "tool_execution_status": "failed_tool_error",
+                "tool_used": tool_name
+            }
+        else:
+            # 成功執行，將結果對象（可能是字典）轉換為 JSON 字符串
+            try:
+                result_str = json.dumps(result_obj, ensure_ascii=False)
+            except TypeError as json_err:
+                logging.error(f"工具 {tool_name} 返回結果無法序列化為 JSON: {json_err}", exc_info=True)
+                result_str = str(result_obj) # 回退到普通字符串轉換
+            
+            logging.info(f"工具執行成功: {tool_name}")
+            return {
+                "tool_execution_result": result_str, # 返回 JSON 字符串或普通字符串
+                "tool_execution_status": "success",
+                "tool_used": tool_name
+            }
 
     except Exception as e:
         error_message = f"執行工具 {tool_name} 時發生錯誤: {str(e)}"
         logging.error(error_message, exc_info=True)
         return {
             "tool_execution_result": f"抱歉，我在嘗試執行 '{tool_name}' 操作時遇到了技術問題。",
-            "tool_execution_status": "failed_exception",
+            "tool_execution_status": "failed_exception", # 標記為執行時的異常
             "tool_used": tool_name
         }
 
@@ -296,25 +355,25 @@ def format_tool_result_for_llm(state: Dict[str, Any]) -> Dict[str, Any]:
         return {"formatted_tool_result": None}
 
 def integrate_tool_result(state: Dict[str, Any]) -> Dict[str, Any]:
-    """將工具執行結果整合到對話狀態中 - 讀取 formatted_tool_result 並設置 tool_result 給模板使用"""
+    """將工具執行結果整合到對話狀態中 - 處理結構化結果或錯誤字符串"""
     status = state.get("tool_execution_status")
-    raw_result = state.get("tool_execution_result", "")  # 原始結果
-    formatted_result = state.get("formatted_tool_result") # 格式化後的結果
+    # tool_execution_result 現在可能是 JSON 字符串 (成功) 或錯誤信息字符串 (失敗)
+    result_str = state.get("tool_execution_result", "") 
     tool_used = state.get("tool_used")
 
     update_dict = {}
 
     if status == "success":
         logging.info(f"工具 {tool_used} 執行成功，設置 tool_response 模板和結果。")
-        # 從 formatted_tool_result 讀取並設置 tool_result 給模板使用
-        update_dict["tool_result"] = formatted_result
+        # 將成功的 JSON 字符串設置到 tool_result
+        update_dict["tool_result"] = result_str 
         update_dict["prompt_template_key"] = "tool_response"
-        update_dict["tool_error"] = None # 清除可能存在的舊錯誤
-    elif status and "failed" in status:
-        logging.warning(f"工具 {tool_used} 執行失敗，設置 tool_error_response 模板和錯誤信息。")
+        update_dict["tool_error"] = None
+    elif status and "failed" in status: # 包括 failed_tool_error, failed_exception 等
+        logging.warning(f"工具 {tool_used} 執行失敗 (狀態: {status})，設置 tool_error_response 模板和錯誤信息。")
         update_dict["prompt_template_key"] = "tool_error_response"
-        update_dict["tool_error"] = raw_result # 將原始失敗結果作為錯誤信息
-        update_dict["tool_result"] = None # 清除成功結果
+        update_dict["tool_error"] = result_str # 將錯誤信息字符串設置到 tool_error
+        update_dict["tool_result"] = None
     else:
         logging.debug(f"工具狀態為 {status}，不改變提示模板或錯誤狀態。")
 

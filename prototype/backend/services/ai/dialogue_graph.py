@@ -23,6 +23,7 @@ from .graph_nodes.llm_interaction import call_llm_node, handle_llm_error, post_p
 from .graph_nodes.tool_processing import detect_tool_intent, parse_tool_parameters, execute_tool, format_tool_result_for_llm, integrate_tool_result
 from .tools.web_tools import search_wikipedia
 from .tools.space_tools import search_space_news
+from .tools.space_tools import get_iss_info, get_moon_phase
 
 # 配置基本日誌
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -122,6 +123,18 @@ class DialogueGraph:
                 "function": search_space_news,
                 "description": "獲取最新的幾條太空探索、天文發現或航天工業相關的新聞標題和摘要。",
                 "parameters": [] # 此工具通常不需要參數
+            },
+            "get_iss_info": {
+                "function": get_iss_info,
+                "description": "查詢國際太空站 (ISS) 的即時位置（經緯度）以及當前在太空中的總人數和在 ISS 上的人數。",
+                "parameters": [] # 無需參數
+            },
+            "get_moon_phase": {
+                "function": get_moon_phase,
+                "description": "查詢指定日期的月相。如果用戶沒有指定日期，則默認查詢今天。",
+                "parameters": [
+                    {"name": "date_str", "type": "string", "description": "要查詢的日期，格式可以是 YYYY-MM-DD，或者是 '今天'、'明天'、'昨天'。如果省略，則為今天。", "required": False}
+                ]
             }
         }
         
