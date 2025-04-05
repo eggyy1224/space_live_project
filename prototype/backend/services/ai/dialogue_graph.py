@@ -22,6 +22,7 @@ from .graph_nodes.prompting import select_prompt_and_style_node, build_prompt_no
 from .graph_nodes.llm_interaction import call_llm_node, handle_llm_error, post_process_node
 from .graph_nodes.tool_processing import detect_tool_intent, parse_tool_parameters, execute_tool, format_tool_result_for_llm, integrate_tool_result
 from .tools.web_tools import search_wikipedia
+from .tools.space_tools import search_space_news
 
 # 配置基本日誌
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -115,6 +116,11 @@ class DialogueGraph:
                     {"name": "query", "type": "string", "description": "要查詢的主題或關鍵字"}
                 ]
             },
+            "search_space_news": {
+                "function": search_space_news,
+                "description": "獲取最新的幾條太空探索、天文發現或航天工業相關的新聞標題和摘要。",
+                "parameters": [] # 此工具通常不需要參數
+            }
         }
         
         # 構建對話圖

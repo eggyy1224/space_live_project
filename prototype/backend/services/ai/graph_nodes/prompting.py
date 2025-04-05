@@ -16,7 +16,25 @@ from ..prompts import DIALOGUE_STYLES
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def select_prompt_and_style_node(state: TypedDict) -> Dict[str, Any]:
-    """選擇提示模板和對話風格節點"""
+    """選擇提示模板和對話風格節點
+    
+    如果工具已被執行，則跳過選擇，保留由 integrate_tool_result 設置的模板。
+    """
+    # *** 新增：檢查工具是否已執行 ***
+    tool_execution_status = state.get("tool_execution_status", "skipped")
+    if tool_execution_status != "skipped":
+        logging.info(f"工具已執行 (狀態: {tool_execution_status})，跳過提示/風格選擇，使用已設定的模板: {state.get('prompt_template_key')}")
+        # 直接返回當前狀態，保留 integrate_tool_result 設置的 key
+        # 但仍然需要計算風格，因為標準提示可能也需要風格
+        character_state = state["character_state"]
+        input_classification = state["input_classification"]
+        dialogue_style = select_dialogue_style(character_state, input_classification)
+        return { 
+            "prompt_template_key": state.get("prompt_template_key"), # 保留已設置的 key
+            "dialogue_style": dialogue_style # 仍然計算風格
+        }
+
+    # --- 只有在工具未執行時，才執行以下選擇邏輯 ---    
     input_classification = state["input_classification"]
     character_state = state["character_state"]
     error_count = state["error_count"]
