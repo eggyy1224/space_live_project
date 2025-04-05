@@ -112,14 +112,13 @@ def post_process_response(response: str, input_classification: Dict[str, Any], t
     processed_response = original_response_stripped
     was_heavily_modified = False
 
-    # *** 新增：如果是錯誤模板，則幾乎不處理，直接返回 ***
-    if template_key == "tool_error_response" or template_key == "error":
-        logging.info(f"檢測到錯誤模板 ('{template_key}')，跳過大部分後處理。")
-        # 可以選擇只移除 emoji，或者完全不處理
-        # 這裡選擇只做 strip()
-        return processed_response.strip(), False # 認為錯誤信息本身不算大幅修改
+    # *** 如果是工具回應或錯誤模板，幾乎不處理，保留原始內容 ***
+    if template_key == "tool_response" or template_key == "tool_error_response" or template_key == "error":
+        logging.info(f"檢測到工具回應或錯誤模板 ('{template_key}')，跳過大部分後處理以保留完整信息。")
+        # 對於工具回應，我們希望保留盡可能多的原始內容，只做最小程度清理
+        return processed_response.strip(), False # 認為工具回應不算大幅修改
 
-    # --- 僅對非錯誤模板執行以下處理 --- 
+    # --- 僅對非工具回應和非錯誤模板執行以下處理 --- 
 
     # 1. 移除可能的固定開場白
     fixed_intros = [
@@ -175,8 +174,7 @@ def post_process_response(response: str, input_classification: Dict[str, Any], t
             logging.info(f"後處理後回應過短 (長度 {final_processed_length})，但原始回應也很短 (長度 {original_length})，接受處理結果")
             # 不再設置 was_heavily_modified = True
 
-    # 5. **移除** 根據長度百分比判斷是否大幅修改的規則
-    # if not was_heavily_modified:
-    #     was_heavily_modified = (len(processed_response) < original_length * 0.7)
+    # 5. **完全移除** 根據長度百分比判斷是否大幅修改的規則，允許任何長度的處理結果
+    # 相對長度檢查已徹底移除
 
     return processed_response, was_heavily_modified 

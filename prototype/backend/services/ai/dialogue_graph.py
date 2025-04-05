@@ -121,8 +121,11 @@ class DialogueGraph:
             },
             "search_space_news": {
                 "function": search_space_news,
-                "description": "獲取最新的幾條太空探索、天文發現或航天工業相關的新聞標題和摘要。",
-                "parameters": [] # 此工具通常不需要參數
+                "description": "獲取太空探索、天文發現或航天工業相關的新聞標題和摘要，支持關鍵字搜索和時間範圍篩選（包括特定年份如'2020年'）。",
+                "parameters": [
+                    {"name": "keywords", "type": "string", "description": "要搜索的關鍵詞或主題，例如 'NASA', 'SpaceX', '火星'", "required": False},
+                    {"name": "time_period", "type": "string", "description": "指定的時間範圍，可以是'今天'、'昨天'、'本週'、'本月'、'今年'，或特定年份如'2020年'", "required": False}
+                ]
             },
             "get_iss_info": {
                 "function": get_iss_info,

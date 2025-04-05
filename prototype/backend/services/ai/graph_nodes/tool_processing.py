@@ -231,6 +231,93 @@ async def parse_tool_parameters(state: Dict[str, Any]) -> Dict[str, Any]:
                 tool_parameters = {}
     # --- 結束新增 ---
     
+    # --- 新增：處理 search_space_news 的多個參數 ---
+    elif potential_tool == 'search_space_news':
+        # 準備對話歷史供 LLM 參考
+        history_str = "\n".join([f"{msg.type}: {msg.content}" for msg in messages[-4:]])
+        
+        # 提取 keywords 參數
+        keywords_prompt = PromptTemplate.from_template(
+            "用戶想要搜索太空新聞。你需要從用戶輸入中提取關鍵詞。\n"\
+            "最近對話歷史 (僅供參考):\n{conversation_history}\n\n"\
+            "最新用戶輸入: \"{user_input}\"\n\n"\
+            "請分析用戶輸入，判斷用戶是否在尋找特定主題或關鍵詞的太空新聞。\n"\
+            "例如，如果用戶說'看看關於SpaceX的新聞'，關鍵詞就是'SpaceX'。\n"\
+            "如果用戶說'被困在太空站的太空人相關新聞'，關鍵詞就是'被困 太空站 太空人'。\n"\
+            "注意：時間範圍（如'今年'、'去年'、'2020年'、'2005'等）不應被視為關鍵詞，將由其他參數處理。\n"\
+            "如果用戶輸入是'今年的太空新聞'，'2018太空新聞'等，其中的時間詞不是關鍵詞，應回答'未指定'。\n"\
+            "請只專注於提取主題關鍵詞，不要提取時間相關的詞。\n"\
+            "如果用戶沒有明確指定任何特定主題，請回答 '未指定'。\n"\
+            "請只返回關鍵詞或'未指定'，不要添加任何解釋、引號或附加信息。"
+        )
+        
+        # 提取時間範圍參數
+        time_period_prompt = PromptTemplate.from_template(
+            "用戶想要搜索太空新聞。你需要從用戶輸入中提取時間範圍。\n"\
+            "最近對話歷史 (僅供參考):\n{conversation_history}\n\n"\
+            "最新用戶輸入: \"{user_input}\"\n\n"\
+            "請分析用戶輸入，判斷用戶是否指定了特定的時間範圍。\n"\
+            "支持的時間範圍包括: \n"\
+            "1. 一般時間：'今天'、'昨天'、'本週'、'上週'、'本月'、'上個月'、'今年'、'去年'等\n"\
+            "2. 相對時間：'X天前'或'X天後'的格式\n"\
+            "3. 特定年份：例如 '2020年'、'2019年'、'2005' 等年份數字\n"\
+            "如果用戶明確指定了時間範圍，請只返回該時間範圍字符串。\n"\
+            "以下是一些例子：\n"\
+            "- 用戶說'查看2020年的太空新聞'，請返回 '2020年'\n"\
+            "- 用戶說'2005 太空新聞'，請返回 '2005'\n"\
+            "- 用戶說'2018太空發展'，請返回 '2018'\n"\
+            "- 用戶說'五年前的太空新聞'，請返回 '五年前'\n"\
+            "- 用戶說'今年的太空新聞'，請返回 '今年'\n"\
+            "請特別注意解析'今年的太空新聞'中的'今年'，'去年太空發展'中的'去年'等\n"\
+            "請特別注意提取數字年份，即使它出現在句子的開頭或中間。\n"\
+            "如果用戶沒有指定時間範圍，請回答 '未指定'。\n"\
+            "請只返回時間範圍或'未指定'，不要添加任何解釋、引號或附加信息。"
+        )
+        
+        keywords_chain = keywords_prompt | llm | StrOutputParser()
+        time_period_chain = time_period_prompt | llm | StrOutputParser()
+        
+        try:
+            # 並行執行參數提取任務
+            logging.info(f"調用 LLM 提取工具 '{potential_tool}' 的參數...")
+            keywords_task = keywords_chain.ainvoke({
+                "conversation_history": history_str,
+                "user_input": processed_input
+            })
+            
+            time_period_task = time_period_chain.ainvoke({
+                "conversation_history": history_str,
+                "user_input": processed_input
+            })
+            
+            # 等待所有參數提取完成
+            keywords_result, time_period_result = await asyncio.gather(
+                keywords_task, time_period_task
+            )
+            
+            # 處理結果
+            keywords = keywords_result.strip()
+            time_period = time_period_result.strip()
+            
+            logging.info(f"LLM 提取到的關鍵詞: '{keywords}'")
+            logging.info(f"LLM 提取到的時間範圍: '{time_period}'")
+            
+            # 將有效參數添加到參數字典
+            if keywords and keywords.lower() != '未指定':
+                tool_parameters['keywords'] = keywords
+            
+            if time_period and time_period.lower() != '未指定':
+                tool_parameters['time_period'] = time_period
+                
+            # 默認參數
+            tool_parameters['limit'] = 3  # 默認返回3條新聞
+            
+        except Exception as e:
+            logging.error(f"LLM 參數提取失敗: {e}", exc_info=True)
+            # 提取失敗時，使用默認參數
+            tool_parameters = {'limit': 3}
+    # --- 結束新增 ---
+    
     # else: # 在這裡添加其他工具的參數提取邏輯
     #    pass 
 
@@ -298,27 +385,33 @@ async def execute_tool(state: Dict[str, Any]) -> Dict[str, Any]:
 
         # *** 關鍵修改：檢查返回的是否為包含 error 的字典 ***
         if isinstance(result_obj, dict) and "error" in result_obj:
-            error_message = str(result_obj["error"])
-            logging.warning(f"工具 {tool_name} 執行完成，但返回內部錯誤: {error_message[:100]}...")
-            return {
-                "tool_execution_result": error_message, # 返回錯誤信息字符串
-                "tool_execution_status": "failed_tool_error",
-                "tool_used": tool_name
-            }
-        else:
-            # 成功執行，將結果對象（可能是字典）轉換為 JSON 字符串
-            try:
-                result_str = json.dumps(result_obj, ensure_ascii=False)
-            except TypeError as json_err:
-                logging.error(f"工具 {tool_name} 返回結果無法序列化為 JSON: {json_err}", exc_info=True)
-                result_str = str(result_obj) # 回退到普通字符串轉換
-            
-            logging.info(f"工具執行成功: {tool_name}")
-            return {
-                "tool_execution_result": result_str, # 返回 JSON 字符串或普通字符串
-                "tool_execution_status": "success",
-                "tool_used": tool_name
-            }
+            # 重要修正：檢查 error 值是否為 False，如果是 False 則表示成功而非錯誤
+            if result_obj.get("error") is False:
+                # 此情況表示工具成功執行，不應該視為錯誤
+                logging.info(f"工具 {tool_name} 成功執行，返回結構化數據，error 字段為 False")
+            else:
+                # 真正的錯誤情況：error 不為 False（可能是 True 或錯誤消息）
+                error_message = str(result_obj["error"])
+                logging.warning(f"工具 {tool_name} 執行完成，但返回內部錯誤: {error_message[:100]}...")
+                return {
+                    "tool_execution_result": error_message, # 返回錯誤信息字符串
+                    "tool_execution_status": "failed_tool_error",
+                    "tool_used": tool_name
+                }
+        
+        # 成功執行，將結果對象（可能是字典）轉換為 JSON 字符串
+        try:
+            result_str = json.dumps(result_obj, ensure_ascii=False)
+        except TypeError as json_err:
+            logging.error(f"工具 {tool_name} 返回結果無法序列化為 JSON: {json_err}", exc_info=True)
+            result_str = str(result_obj) # 回退到普通字符串轉換
+        
+        logging.info(f"工具執行成功: {tool_name}")
+        return {
+            "tool_execution_result": result_str, # 返回 JSON 字符串或普通字符串
+            "tool_execution_status": "success",
+            "tool_used": tool_name
+        }
 
     except Exception as e:
         error_message = f"執行工具 {tool_name} 時發生錯誤: {str(e)}"
@@ -338,6 +431,21 @@ def format_tool_result_for_llm(state: Dict[str, Any]) -> Dict[str, Any]:
     if status == "success":
         # 基礎格式
         formatted = f"\n【你剛剛獲取的資訊】\n"
+        
+        # 嘗試解析 JSON 結果
+        try:
+            result_obj = json.loads(result)
+            
+            # 針對特定工具的特殊格式化
+            if tool_name == "search_space_news":
+                return format_space_news_result(result_obj)
+            elif tool_name == "get_moon_phase":
+                return format_moon_phase_result(result_obj)
+            # 其他工具類型可在此添加
+        except json.JSONDecodeError:
+            # 如果不是有效的JSON，使用原始字符串
+            pass
+        
         formatted += f"這是你透過內部工具找到的相關資訊：\n"
         formatted += f"`\n{result}\n`"
         
@@ -353,6 +461,112 @@ def format_tool_result_for_llm(state: Dict[str, Any]) -> Dict[str, Any]:
     else:
         # 其他狀態（如 skipped）
         return {"formatted_tool_result": None}
+
+def format_space_news_result(result_obj: Dict[str, Any]) -> Dict[str, Any]:
+    """格式化太空新聞搜索結果"""
+    if result_obj.get("error", False):
+        # 如果有錯誤
+        return {
+            "formatted_tool_result": f"\n【太空新聞搜索失敗】\n{result_obj.get('message', '未知錯誤')}",
+            "tool_result_summary": "太空新聞搜索失敗"
+        }
+    
+    search_description = result_obj.get("search_description", "最新")
+    search_params = result_obj.get("search_params", {})
+    articles = result_obj.get("articles", [])
+    count = result_obj.get("count", 0)
+    total_count = result_obj.get("total_count", 0)
+    note = result_obj.get("note", "")
+    
+    if count == 0:
+        # 針對年份搜索提供更具體的提示
+        time_period = search_params.get("time_period", "")
+        year_match = re.search(r'(\d{4})', time_period) if time_period else None
+        
+        if year_match and int(year_match.group(1)) < 2010:
+            # 針對過早年份(2010年之前)提供特別說明
+            formatted = f"\n【太空新聞搜索結果】\n"
+            formatted += f"抱歉，我找不到{search_description}的太空新聞。"
+            formatted += f"\n\n請注意，我們使用的太空新聞API可能對較早年份的數據支持有限。"
+            formatted += f"\n如果你對{time_period}的太空發展感興趣，可以嘗試詢問更具體的事件或任務，我會盡力提供相關信息。"
+            
+            return {
+                "formatted_tool_result": formatted,
+                "tool_result_summary": f"找不到{search_description}的太空新聞，可能因為年代較早"
+            }
+        else:
+            # 一般情況
+            return {
+                "formatted_tool_result": f"\n【太空新聞搜索結果】\n找不到{search_description}的太空新聞。",
+                "tool_result_summary": f"找不到{search_description}的太空新聞"
+            }
+    
+    # 構建格式化的新聞內容
+    formatted = f"\n【太空新聞搜索結果】\n"
+    
+    # 如果有備註，說明是備選新聞
+    if note:
+        formatted += f"未找到完全符合「{search_description}」的太空新聞，以下是最新太空新聞：\n\n"
+    else:
+        formatted += f"關於「{search_description}」的太空新聞，找到 {count} 條結果（共 {total_count} 條匹配）：\n\n"
+    
+    for i, article in enumerate(articles):
+        formatted += f"【新聞 {i+1}】{article.get('title')}\n"
+        formatted += f"來源: {article.get('news_site')} | 發布時間: {article.get('published_at')}\n"
+        formatted += f"摘要: {article.get('summary')}\n"
+        if i < len(articles) - 1:  # 如果不是最後一條新聞，添加分隔符
+            formatted += f"\n{'='*50}\n\n"
+    
+    # 提取關鍵信息作為摘要
+    if note:
+        summary = f"找不到{search_description}的太空新聞，改顯示最新太空新聞"
+    else:
+        summary = f"{search_description}太空新聞 {count} 條"
+        if articles:
+            first_title = articles[0].get('title', '')
+            summary = f"{summary}: {first_title[:30]}..."
+    
+    return {
+        "formatted_tool_result": formatted,
+        "tool_result_summary": summary
+    }
+
+def format_moon_phase_result(result_obj: Dict[str, Any]) -> Dict[str, Any]:
+    """格式化月相查詢結果"""
+    if "error" in result_obj:
+        return {
+            "formatted_tool_result": f"\n【月相查詢失敗】\n{result_obj.get('error', '未知錯誤')}",
+            "tool_result_summary": "月相查詢失敗"
+        }
+    
+    query_date = result_obj.get("query_date", "未知日期")
+    phase_name_en = result_obj.get("phase_name_en", "未知月相")
+    phase_name_zh = result_obj.get("phase_name_zh", "未知月相")
+    
+    formatted = f"\n【月相查詢結果】\n"
+    formatted += f"日期: {query_date}\n"
+    formatted += f"英文月相名稱: {phase_name_en}\n"
+    formatted += f"中文月相名稱: {phase_name_zh}\n"
+    
+    # 提供月相描述和觀測建議
+    phase_descriptions = {
+        "New Moon": "新月時，月球在地球和太陽之間，月球被陰影覆蓋，幾乎不可見。",
+        "Waxing Crescent": "眉月呈現為一道細細的弧光，這時可以看到月球的一小部分被陽光照亮。",
+        "First Quarter": "上弦月時，月球的一半被照亮，呈現為'D'形。",
+        "Waxing Gibbous": "盈凸月時，月球大部分被照亮，接近但還未到達滿月。",
+        "Full Moon": "滿月時，整個月球表面都被陽光照亮，是最亮的月相。",
+        "Waning Gibbous": "虧凸月是滿月後的階段，月球光亮面積逐漸減少。",
+        "Last Quarter": "下弦月時，月球的另一半被照亮，呈現為'C'形。",
+        "Waning Crescent": "殘月是月相周期的最後階段，只有一小部分月球被照亮。"
+    }
+    
+    if phase_name_en in phase_descriptions:
+        formatted += f"\n描述: {phase_descriptions[phase_name_en]}\n"
+    
+    return {
+        "formatted_tool_result": formatted,
+        "tool_result_summary": f"{query_date} 的月相是 {phase_name_zh}"
+    }
 
 def integrate_tool_result(state: Dict[str, Any]) -> Dict[str, Any]:
     """將工具執行結果整合到對話狀態中 - 處理結構化結果或錯誤字符串"""
