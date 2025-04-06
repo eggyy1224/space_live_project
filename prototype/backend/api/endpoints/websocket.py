@@ -3,12 +3,15 @@ import asyncio
 from typing import Dict, List
 from fastapi import WebSocket, WebSocketDisconnect
 import random
+import os
+import base64
 
 from services.emotion import EmotionAnalyzer
 from services.ai import AIService
 from services.text_to_speech import TextToSpeechService
 from services.animation import AnimationService
 from core.config import settings
+from utils.logger import logger
 
 # 建立服務實例
 emotion_analyzer = EmotionAnalyzer()
@@ -170,8 +173,41 @@ async def websocket_endpoint(websocket: WebSocket):
                         "role": "bot",
                         "content": ai_response,
                         "timestamp": None,  # 前端會使用收到訊息的時間
-                        "audioUrl": f"/audio/{int(asyncio.get_event_loop().time() * 1000)}.mp3" if audio_base64 else None
+                        "audioUrl": None  # 默認為空
                     }
+                    
+                    # 如果有音頻，保存到文件並設置URL
+                    if audio_base64:
+                        # 生成唯一的文件名
+                        audio_filename = f"{int(asyncio.get_event_loop().time() * 1000)}.mp3"
+                        audio_filepath = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "audio", audio_filename)
+                        
+                        # 解碼並保存音頻
+                        try:
+                            # 檢查base64數據格式
+                            if isinstance(audio_base64, str):
+                                # 檢查並移除可能的base64前綴
+                                if "," in audio_base64:
+                                    audio_base64 = audio_base64.split(",", 1)[1]
+                                
+                                # 解碼base64數據
+                                audio_data = base64.b64decode(audio_base64)
+                                
+                                # 寫入文件
+                                with open(audio_filepath, 'wb') as f:
+                                    f.write(audio_data)
+                                    
+                                # 檢查文件是否成功寫入
+                                if os.path.exists(audio_filepath) and os.path.getsize(audio_filepath) > 0:
+                                    # 設置音頻URL，使用備選路由
+                                    bot_message["audioUrl"] = f"/audio-file/{audio_filename}"
+                                    logger.info(f"保存音頻文件成功: {audio_filepath}, 大小: {os.path.getsize(audio_filepath)} 字節")
+                                else:
+                                    logger.error(f"保存音頻文件失敗: 文件不存在或大小為0")
+                            else:
+                                logger.error(f"音頻數據不是有效的字符串: {type(audio_base64)}")
+                        except Exception as e:
+                            logger.error(f"保存音頻文件失敗: {str(e)}")
                     
                     # 發送聊天回覆
                     await websocket.send_json({

@@ -59,7 +59,13 @@ class ChatService {
       // 如果消息包含音頻URL且不是用戶發送的消息，播放語音
       if (message.audioUrl && message.role === 'bot') {
         logger.info('播放消息語音:', LogCategory.CHAT, message.audioUrl);
-        this.audioService.playAudio(message.audioUrl);
+        
+        // 構建完整的音頻URL
+        const fullAudioUrl = `${API_BASE_URL}${message.audioUrl}`;
+        logger.info('完整音頻URL:', LogCategory.CHAT, fullAudioUrl);
+        
+        // 播放音頻
+        this.audioService.playAudio(fullAudioUrl);
       }
     });
     

@@ -99,3 +99,4 @@ prototype/frontend/*.sln
 
 # Backend (prototype/backend) Specific
 prototype/backend/debug_audio/
+prototype/backend/audio/

@@ -37,6 +37,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   handleKeyDown,
   clearMessages
 }) => {
+  // 處理發送消息並清空輸入
+  const handleSendClick = () => {
+    if (userInput.trim() && !isProcessing) {
+      sendMessage();
+      // 在此重複調用setUserInput以確保輸入框被清空
+      setTimeout(() => setUserInput(''), 50);
+    }
+  };
+
   return (
     <div className="controls-panel">
       <div className="tab-buttons">
@@ -95,7 +104,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               disabled={isProcessing}
             />
             <button 
-              onClick={sendMessage}
+              onClick={handleSendClick}
               disabled={!userInput.trim() || isProcessing}
               className="send-button"
             >

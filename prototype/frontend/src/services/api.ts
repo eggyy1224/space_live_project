@@ -209,7 +209,7 @@ export async function getPresetsList(): Promise<{
  * @returns 表情變形目標
  */
 export async function getPresetExpression(expression: string): Promise<Record<string, number>> {
-  return fetchApi(`/api/preset-expressions/${expression}`);
+  return fetchApi(`/api/expressions/preset-expressions/${expression}`);
 }
 
 // 導出API服務

@@ -328,6 +328,14 @@ class AudioService {
           // 將識別的文本添加到聊天中，由ChatService處理
           const chatService = (await import('./ChatService')).default.getInstance();
           chatService.sendMessage(result.text);
+          
+          // 確保設置處理狀態為false
+          setTimeout(() => {
+            if (useStore.getState().isProcessing) {
+              logger.info('手動重置處理狀態', LogCategory.AUDIO);
+              useStore.getState().setProcessing(false);
+            }
+          }, 2000); // 給後端處理預留時間
         } else if (result.error) {
           // 如果伺服器返回了明確的錯誤訊息
           logger.warn(`語音識別返回錯誤: ${result.error}`, LogCategory.AUDIO);
@@ -338,24 +346,23 @@ class AudioService {
           });
           useStore.getState().setProcessing(false);
         } else {
-          logger.warn('語音識別未返回文本', LogCategory.AUDIO);
+          // 沒有文本也沒有錯誤，但請求成功了
+          logger.warn('語音識別沒有返回文本或錯誤', LogCategory.AUDIO);
           useStore.getState().addToast({
-            message: '無法識別您的語音，請再試一次',
-            type: 'error',
+            message: '語音識別未返回結果，請重試',
+            type: 'info',
             duration: 3000
           });
           useStore.getState().setProcessing(false);
         }
       } catch (error) {
-        // 捕獲網絡請求錯誤
-        const errorMessage = error instanceof Error ? error.message : '未知錯誤';
+        // 捕獲網絡錯誤或JSON解析錯誤
+        const errorMessage = error instanceof Error ? error.message : '網絡請求失敗';
         logger.error(`語音識別請求錯誤: ${errorMessage}`, LogCategory.AUDIO, error);
-        
-        // 顯示錯誤通知
         useStore.getState().addToast({
-          message: `語音處理失敗: ${errorMessage}`,
+          message: `語音識別請求失敗: ${errorMessage}`,
           type: 'error',
-          duration: 5000
+          duration: 4000
         });
         useStore.getState().setProcessing(false);
       }
@@ -375,6 +382,14 @@ class AudioService {
   
   // 播放音頻
   public playAudio(audioUrl: string): void {
+    if (!audioUrl) {
+      logger.warn('嘗試播放空音頻URL', LogCategory.AUDIO);
+      useStore.getState().setPlaying(false);
+      return;
+    }
+    
+    logger.info(`嘗試播放音頻: ${audioUrl}`, LogCategory.AUDIO);
+    
     if (!this.audioElement) {
       this.audioElement = new Audio();
       this.setupAudioEvents();
@@ -390,7 +405,24 @@ class AudioService {
       // 設置新的音頻源
       this.audioElement.src = audioUrl;
       
+      // 驗證音頻URL格式
+      if (!audioUrl.startsWith('http://') && !audioUrl.startsWith('https://') && !audioUrl.startsWith('/')) {
+        logger.warn(`音頻URL格式可能不正確: ${audioUrl}`, LogCategory.AUDIO);
+      }
+      
+      // 添加加載錯誤處理
+      this.audioElement.onerror = (e) => {
+        const error = this.audioElement?.error;
+        logger.error('音頻加載錯誤', LogCategory.AUDIO, {
+          code: error?.code,
+          message: error?.message,
+          url: audioUrl
+        });
+        useStore.getState().setPlaying(false);
+      };
+      
       // 預加載並播放
+      logger.info(`預加載音頻: ${audioUrl}`, LogCategory.AUDIO);
       this.audioElement.load();
       
       // 添加播放開始事件
@@ -399,7 +431,7 @@ class AudioService {
       if (playPromise !== undefined) {
         playPromise
           .then(() => {
-            logger.info('開始播放音頻', LogCategory.AUDIO);
+            logger.info(`開始播放音頻: ${audioUrl}`, LogCategory.AUDIO);
             // 使用 Zustand 更新狀態
             useStore.getState().setPlaying(true);
             
@@ -410,13 +442,19 @@ class AudioService {
             this.notifySpeakingStart();
           })
           .catch(error => {
-            logger.error('播放音頻時發生錯誤', LogCategory.AUDIO, error);
+            logger.error(`播放音頻時發生錯誤: ${error.message}`, LogCategory.AUDIO, {
+              error,
+              url: audioUrl
+            });
             // 使用 Zustand 更新狀態
             useStore.getState().setPlaying(false);
           });
       }
     } catch (error) {
-      logger.error('設置音頻源時發生錯誤', LogCategory.AUDIO, error);
+      logger.error(`設置音頻源時發生錯誤: ${error instanceof Error ? error.message : '未知錯誤'}`, LogCategory.AUDIO, {
+        error,
+        url: audioUrl
+      });
       // 使用 Zustand 更新狀態
       useStore.getState().setPlaying(false);
     }

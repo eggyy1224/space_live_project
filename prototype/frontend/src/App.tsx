@@ -149,9 +149,11 @@ function App() {
       if (event.key === 'Enter' && !event.shiftKey) {
         event.preventDefault();
         handleSendMessage();
+        // 確保輸入框被清空
+        setTimeout(() => setUserInput(''), 50);
       }
     },
-    [handleSendMessage]
+    [handleSendMessage, setUserInput]
   );
 
   return (
