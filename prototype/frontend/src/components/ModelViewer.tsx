@@ -49,7 +49,7 @@ interface ModelViewerProps {
   // setMorphTargetInfluences: (influences: number[]) => void;
   // Pass initial dictionary/influences for Model initialization
   morphTargetDictionary: Record<string, number> | null; 
-  morphTargetInfluences: number[] | null; 
+  // morphTargetInfluences: number[] | null; // <-- 移除此行
   // Removed single value getter
   // getManualMorphTargetValue: (name: string) => number | undefined;
   // Added function to get all manual targets
@@ -70,7 +70,7 @@ const ModelViewer: React.FC<ModelViewerProps> = React.memo(({
   // setMorphTargetDictionary,
   // setMorphTargetInfluences,
   morphTargetDictionary, // Pass initial dict
-  morphTargetInfluences, // Pass initial influences
+  // morphTargetInfluences, // <-- 移除此處接收
   // Removed getManualMorphTargetValue
   getManualMorphTargets, // Pass the function
   setMorphTargetData // Pass the new function
@@ -116,7 +116,6 @@ const ModelViewer: React.FC<ModelViewerProps> = React.memo(({
             position={modelPosition}
             currentAnimation={currentAnimation === null ? undefined : currentAnimation}
             morphTargetDictionary={morphTargetDictionary} 
-            morphTargetInfluences={morphTargetInfluences} 
             morphTargets={morphTargets} 
             getManualMorphTargets={getManualMorphTargets} 
             setMorphTargetData={setMorphTargetData}

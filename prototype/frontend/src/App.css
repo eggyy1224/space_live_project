@@ -814,3 +814,88 @@ button:disabled {
   background-color: #770000;
   color: white;
 }
+
+/* Morph Target Bar Styling - Added Modern/Space Theme */
+.morph-target-bar {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px; /* Increased spacing */
+  padding: 4px 8px;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.05); /* Very light background */
+  transition: background-color 0.2s ease;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Common sans-serif */
+  color: #e0e0e0; /* Light gray text */
+}
+
+.morph-target-bar:hover {
+  background-color: rgba(255, 255, 255, 0.1); /* Darken background on hover */
+}
+
+.morph-target-bar.selected {
+  background-color: rgba(0, 150, 255, 0.15); /* Light blue background when selected */
+  outline: 1px solid rgba(0, 150, 255, 0.4); /* Blue outline */
+}
+
+.morph-target-bar label {
+  flex: 0 0 150px; /* Fixed label width */
+  margin-right: 10px;
+  font-size: 0.9em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis; /* Ellipsis for long names */
+  color: #bdbdbd; /* Slightly darker gray */
+}
+
+.morph-target-bar input[type=range] {
+  flex-grow: 1; /* Slider takes remaining space */
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px; /* Track height */
+  background: rgba(255, 255, 255, 0.1); /* Dark gray track */
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+}
+
+/* Webkit (Chrome, Safari) thumb */
+.morph-target-bar input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #00bfff; /* Bright cyan thumb */
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 5px rgba(0, 191, 255, 0.5); /* Subtle glow */
+  margin-top: -5px; /* Adjust vertical alignment */
+}
+
+/* Firefox thumb */
+.morph-target-bar input[type=range]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: #00bfff;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 1px solid rgba(0, 0, 0, 0.5);
+}
+
+/* Webkit track */
+.morph-target-bar input[type=range]::-webkit-slider-runnable-track {
+  height: 6px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.morph-target-bar span {
+  flex: 0 0 50px; /* Fixed width for value */
+  margin-left: 10px;
+  font-size: 0.9em;
+  text-align: right;
+  font-family: 'Roboto Mono', monospace; /* Monospace font for numbers */
+  color: #00e5ff; /* Bright cyan value */
+}

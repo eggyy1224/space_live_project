@@ -19,7 +19,6 @@ interface ModelProps {
   morphTargets?: Record<string, number>; // Dynamic targets from WS
   currentAnimation?: string; // Keep optional
   morphTargetDictionary: Record<string, number> | null;
-  morphTargetInfluences: number[] | null;
   getManualMorphTargets: () => Record<string, number>;
   setMorphTargetData: (dictionary: Record<string, number> | null, influences: number[] | null) => void;
 }
@@ -35,7 +34,6 @@ export const Model: React.FC<ModelProps> = ({
   morphTargets = {}, // Dynamic targets
   currentAnimation,
   morphTargetDictionary: initialMorphTargetDictionary, // Rename prop
-  morphTargetInfluences: initialMorphTargetInfluences, // Rename prop
   getManualMorphTargets,
   setMorphTargetData
 }) => {
@@ -118,14 +116,8 @@ export const Model: React.FC<ModelProps> = ({
 
           // Determine influences to use and set on mesh
           const meshInfluences = meshWithMorphs.morphTargetInfluences;
-          if (initialMorphTargetInfluences && initialMorphTargetInfluences.length === meshInfluences.length) {
-            finalInfluences = [...initialMorphTargetInfluences];
-            meshWithMorphs.morphTargetInfluences = finalInfluences;
-            logger.info('Model: Initialized influences from props.', LogCategory.MODEL);
-          } else {
-            finalInfluences = [...meshInfluences]; // Use mesh defaults
-            logger.info('Model: Initialized influences from mesh defaults.', LogCategory.MODEL);
-          }
+          finalInfluences = [...meshInfluences]; // Use mesh defaults
+          logger.info('Model: Initialized influences from mesh defaults.', LogCategory.MODEL);
         }
       });
     }
@@ -143,7 +135,7 @@ export const Model: React.FC<ModelProps> = ({
     lastMorphUpdateTimestampRef.current = performance.now() / 1000;
     prevMorphTargetsRef.current = {};
 
-  }, [url, scene, initialMorphTargetDictionary, initialMorphTargetInfluences, setMorphTargetData]); // Add setMorphTargetData to dependencies
+  }, [url, scene, initialMorphTargetDictionary, setMorphTargetData]); // Add setMorphTargetData to dependencies
 
   // useFrame for morph target updates
   useFrame((state, delta) => {

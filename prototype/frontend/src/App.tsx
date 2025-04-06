@@ -42,7 +42,6 @@ function App() {
     currentAnimation,
     availableAnimations,
     morphTargetDictionary,
-    morphTargetInfluences,
     morphTargets,
     manualMorphTargets,
     modelUrl,
@@ -135,7 +134,6 @@ function App() {
         morphTargets={morphTargets}
         showSpaceBackground={showSpaceBackground}
         morphTargetDictionary={morphTargetDictionary}
-        morphTargetInfluences={morphTargetInfluences}
         getManualMorphTargets={getManualMorphTargets}
         setMorphTargetData={setMorphTargetData}
       />
@@ -171,7 +169,6 @@ function App() {
           emotionConfidence={emotion.confidence}
           availableAnimations={availableAnimations}
           morphTargetDictionary={morphTargetDictionary}
-          morphTargetInfluences={morphTargetInfluences}
           manualMorphTargets={manualMorphTargets}
           selectedMorphTarget={selectedMorphTarget}
           setSelectedMorphTarget={setSelectedMorphTarget}
