@@ -43,16 +43,7 @@ interface ModelViewerProps {
   currentAnimation: string | null;
   morphTargets: Record<string, number>; // Dynamic targets from WS
   showSpaceBackground: boolean;
-  // Removed setters, Model handles this now
-  // setAvailableAnimations: (animations: string[]) => void;
-  // setMorphTargetDictionary: (dict: Record<string, number>) => void;
-  // setMorphTargetInfluences: (influences: number[]) => void;
-  // Pass initial dictionary/influences for Model initialization
   morphTargetDictionary: Record<string, number> | null; 
-  // morphTargetInfluences: number[] | null; // <-- 移除此行
-  // Removed single value getter
-  // getManualMorphTargetValue: (name: string) => number | undefined;
-  // Added function to get all manual targets
   getManualMorphTargets: () => Record<string, number>;
   setMorphTargetData: (dictionary: Record<string, number> | null, influences: number[] | null) => void;
 }
@@ -65,13 +56,7 @@ const ModelViewer: React.FC<ModelViewerProps> = React.memo(({
   currentAnimation,
   morphTargets, // Dynamic targets
   showSpaceBackground,
-  // Removed setters
-  // setAvailableAnimations,
-  // setMorphTargetDictionary,
-  // setMorphTargetInfluences,
   morphTargetDictionary, // Pass initial dict
-  // morphTargetInfluences, // <-- 移除此處接收
-  // Removed getManualMorphTargetValue
   getManualMorphTargets, // Pass the function
   setMorphTargetData // Pass the new function
 }) => {

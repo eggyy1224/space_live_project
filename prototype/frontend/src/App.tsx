@@ -8,6 +8,7 @@ import ControlPanel from './components/ControlPanel'
 import AudioControls from './components/AudioControls'
 import ModelDebugger from './components/ModelDebugger'
 import ModelAnalyzerTool from './components/ModelAnalyzerTool'
+import ErrorBoundary from './components/ErrorBoundary'
 
 // 引入服務
 import { 
@@ -123,134 +124,136 @@ function App() {
   ];
 
   return (
-    <div className="app-container">
-      {/* 3D 模型顯示 */}
-      <ModelViewer 
-        modelUrl={modelUrl}
-        modelScale={modelScale}
-        modelRotation={modelRotation}
-        modelPosition={modelPosition}
-        currentAnimation={currentAnimation}
-        morphTargets={morphTargets}
-        showSpaceBackground={showSpaceBackground}
-        morphTargetDictionary={morphTargetDictionary}
-        getManualMorphTargets={getManualMorphTargets}
-        setMorphTargetData={setMorphTargetData}
-      />
-      
-      {/* 調試面板 */}
-      {debugMode && <ModelDebugger url={modelUrl} />}
-      
-      {/* 模型分析工具 */}
-      {showModelAnalyzer && <ModelAnalyzerTool availableModels={availableModels} />}
-      
-      {/* 音頻控制 */}
-      <AudioControls 
-        isRecording={isRecording}
-        isSpeaking={isSpeaking}
-        isProcessing={isProcessing || audioProcessing}
-        startRecording={startRecording}
-        stopRecording={stopRecording}
-        playAudio={playAudio}
-        wsConnected={wsConnected}
-        micPermission={micPermission}
-      />
-      
-      {/* 控制面板和聊天界面 */}
-      {activeTab === 'control' ? (
-        <ControlPanel 
-          activeTab={activeTab}
-          switchTab={switchTab}
-          wsConnected={wsConnected}
-          isModelLoaded={modelLoaded}
+    <ErrorBoundary>
+      <div className="app-container">
+        {/* 3D 模型顯示 */}
+        <ModelViewer 
+          modelUrl={modelUrl}
           modelScale={modelScale}
+          modelRotation={modelRotation}
+          modelPosition={modelPosition}
           currentAnimation={currentAnimation}
-          currentEmotion={emotion.emotion}
-          emotionConfidence={emotion.confidence}
-          availableAnimations={availableAnimations}
-          morphTargetDictionary={morphTargetDictionary}
-          manualMorphTargets={manualMorphTargets}
-          selectedMorphTarget={selectedMorphTarget}
-          setSelectedMorphTarget={setSelectedMorphTarget}
-          updateMorphTargetInfluence={updateMorphTargetInfluence}
-          resetAllMorphTargets={resetAllMorphTargets}
-          rotateModel={rotateModel}
-          scaleModel={scaleModel}
-          resetModel={resetModel}
-          toggleBackground={toggleBackground}
-          selectAnimation={selectAnimation}
-          applyPresetExpression={applyPresetExpression}
+          morphTargets={morphTargets}
           showSpaceBackground={showSpaceBackground}
+          morphTargetDictionary={morphTargetDictionary}
+          getManualMorphTargets={getManualMorphTargets}
+          setMorphTargetData={setMorphTargetData}
         />
-      ) : (
-        <ChatInterface 
-          messages={messages}
-          userInput={userInput}
-          isProcessing={isProcessing}
-          wsConnected={wsConnected}
-          setUserInput={setUserInput}
-          sendMessage={sendMessage}
+        
+        {/* 調試面板 */}
+        {debugMode && <ModelDebugger url={modelUrl} />}
+        
+        {/* 模型分析工具 */}
+        {showModelAnalyzer && <ModelAnalyzerTool availableModels={availableModels} />}
+        
+        {/* 音頻控制 */}
+        <AudioControls 
+          isRecording={isRecording}
+          isSpeaking={isSpeaking}
+          isProcessing={isProcessing || audioProcessing}
           startRecording={startRecording}
           stopRecording={stopRecording}
-          isRecording={isRecording}
-          activeTab={activeTab}
-          switchTab={switchTab}
+          playAudio={playAudio}
+          wsConnected={wsConnected}
+          micPermission={micPermission}
         />
-      )}
-      
-      {/* 調試按鈕 */}
-      <div style={{
-        position: 'fixed',
-        bottom: '10px',
-        right: '10px',
-        zIndex: 1000,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '10px'
-      }}>
-        <button 
-          onClick={toggleDebugMode} 
-          style={{
-            padding: '5px 10px',
-            background: debugMode ? '#f44336' : '#2196F3',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          {debugMode ? '關閉調試' : '開啟調試'}
-        </button>
         
-        <button 
-          onClick={toggleModelAnalyzer} 
-          style={{
-            padding: '5px 10px',
-            background: showModelAnalyzer ? '#f44336' : '#9C27B0',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          {showModelAnalyzer ? '關閉模型分析' : '模型分析工具'}
-        </button>
+        {/* 控制面板和聊天界面 */}
+        {activeTab === 'control' ? (
+          <ControlPanel 
+            activeTab={activeTab}
+            switchTab={switchTab}
+            wsConnected={wsConnected}
+            isModelLoaded={modelLoaded}
+            modelScale={modelScale}
+            currentAnimation={currentAnimation}
+            currentEmotion={emotion.emotion}
+            emotionConfidence={emotion.confidence}
+            availableAnimations={availableAnimations}
+            morphTargetDictionary={morphTargetDictionary}
+            manualMorphTargets={manualMorphTargets}
+            selectedMorphTarget={selectedMorphTarget}
+            setSelectedMorphTarget={setSelectedMorphTarget}
+            updateMorphTargetInfluence={updateMorphTargetInfluence}
+            resetAllMorphTargets={resetAllMorphTargets}
+            rotateModel={rotateModel}
+            scaleModel={scaleModel}
+            resetModel={resetModel}
+            toggleBackground={toggleBackground}
+            selectAnimation={selectAnimation}
+            applyPresetExpression={applyPresetExpression}
+            showSpaceBackground={showSpaceBackground}
+          />
+        ) : (
+          <ChatInterface 
+            messages={messages}
+            userInput={userInput}
+            isProcessing={isProcessing}
+            wsConnected={wsConnected}
+            setUserInput={setUserInput}
+            sendMessage={sendMessage}
+            startRecording={startRecording}
+            stopRecording={stopRecording}
+            isRecording={isRecording}
+            activeTab={activeTab}
+            switchTab={switchTab}
+          />
+        )}
         
-        <button 
-          onClick={handleModelSwitch} 
-          style={{
-            padding: '5px 10px',
-            background: '#FF9800',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          切換模型：{modelUrl.split('/').pop()?.replace('.glb', '')}
-        </button>
+        {/* 調試按鈕 */}
+        <div style={{
+          position: 'fixed',
+          bottom: '10px',
+          right: '10px',
+          zIndex: 1000,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px'
+        }}>
+          <button 
+            onClick={toggleDebugMode} 
+            style={{
+              padding: '5px 10px',
+              background: debugMode ? '#f44336' : '#2196F3',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            {debugMode ? '關閉調試' : '開啟調試'}
+          </button>
+          
+          <button 
+            onClick={toggleModelAnalyzer} 
+            style={{
+              padding: '5px 10px',
+              background: showModelAnalyzer ? '#f44336' : '#9C27B0',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            {showModelAnalyzer ? '關閉模型分析' : '模型分析工具'}
+          </button>
+          
+          <button 
+            onClick={handleModelSwitch} 
+            style={{
+              padding: '5px 10px',
+              background: '#FF9800',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            切換模型：{modelUrl.split('/').pop()?.replace('.glb', '')}
+          </button>
+        </div>
       </div>
-    </div>
+    </ErrorBoundary>
   )
 }
 

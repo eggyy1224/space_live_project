@@ -50,6 +50,17 @@ class ModelService {
 
   private modelUrl: string = '/models/headonly.glb';
 
+  // 回調函數列表
+  private onModelChangeCallbacks: ((url: string) => void)[] = [];
+  private onTransformChangeCallbacks: (() => void)[] = [];
+  private onAnimationChangeCallbacks: ((animation: string | null) => void)[] = [];
+  private onMorphTargetsUpdateCallbacks: ((targets: Record<string, number>) => void)[] = [];
+  private onManualMorphTargetsUpdateCallbacks: ((targets: Record<string, number>) => void)[] = [];
+  private onDictionaryUpdateCallbacks: ((dict: Record<string, number> | null) => void)[] = [];
+  private onLoadStatusChangeCallbacks: ((isLoaded: boolean) => void)[] = [];
+  private onBackgroundToggleCallbacks: ((show: boolean) => void)[] = [];
+  private onAvailableAnimationsUpdateCallbacks: ((animations: string[]) => void)[] = [];
+
   // 單例模式
   public static getInstance(): ModelService {
     if (!ModelService.instance) {
@@ -67,6 +78,8 @@ class ModelService {
     
     // 設置WebSocket消息處理器
     this.setupMessageHandlers();
+
+    logger.info('ModelService initialized', LogCategory.MODEL);
   }
   
   // 設置WebSocket消息處理器
@@ -281,12 +294,21 @@ class ModelService {
 
   // 設置可用動畫列表
   public setAvailableAnimations(animations: string[]): void {
-    this.availableAnimations = animations;
+    const hasChanged = 
+      animations.length !== this.availableAnimations.length || 
+      !animations.every((val, index) => val === this.availableAnimations[index]);
+      
+    if (hasChanged) {
+      // 將詳細資訊放入第一個參數對象，省略第三個 type 參數
+      logger.info({ msg: 'Available animations updated', details: animations }, LogCategory.MODEL); 
+      this.availableAnimations = [...animations];
+      this.notifyAvailableAnimationsUpdate();
+    }
   }
 
   // 獲取可用動畫列表
   public getAvailableAnimations(): string[] {
-    return this.availableAnimations;
+    return [...this.availableAnimations];
   }
 
   // 設置當前動畫
@@ -576,6 +598,21 @@ class ModelService {
   public unregisterStateUpdateCallback(callback: () => void): void {
     this.onStateUpdateCallbacks = this.onStateUpdateCallbacks.filter(cb => cb !== callback);
   }
+
+  // Available Animations Update Callbacks
+  public onAvailableAnimationsUpdate(callback: (animations: string[]) => void): void {
+    this.onAvailableAnimationsUpdateCallbacks.push(callback);
+    callback([...this.availableAnimations]); // Immediately provide current state
+  }
+
+  public offAvailableAnimationsUpdate(callback: (animations: string[]) => void): void {
+    this.onAvailableAnimationsUpdateCallbacks = this.onAvailableAnimationsUpdateCallbacks.filter(cb => cb !== callback);
+  }
+
+  private notifyAvailableAnimationsUpdate(): void {
+    const animationsCopy = [...this.availableAnimations];
+    this.onAvailableAnimationsUpdateCallbacks.forEach(callback => callback(animationsCopy));
+  }
 }
 
 // React Hook - 使用模型服務
@@ -618,6 +655,11 @@ export function useModelService() {
     const handleMorphTargetsUpdate = (updatedMorphTargets: Record<string, number>) => {
       setMorphTargets(updatedMorphTargets);
     };
+
+    // 註冊可用動畫列表更新事件
+    const handleAvailableAnimationsUpdate = (updatedAnimations: string[]) => {
+      setAvailableAnimations(updatedAnimations);
+    };
     
     const handleStateUpdate = () => {
       setModelUrl(modelService.current.getModelUrl());
@@ -625,7 +667,6 @@ export function useModelService() {
       setModelRotation([...modelService.current.getModelRotation()]);
       setModelPosition([...modelService.current.getModelPosition()]);
       setShowSpaceBackground(modelService.current.getShowSpaceBackground());
-      setAvailableAnimations([...modelService.current.getAvailableAnimations()]);
       setCurrentAnimation(modelService.current.getCurrentAnimation());
       
       const dict = modelService.current.getMorphTargetDictionary();
@@ -638,14 +679,13 @@ export function useModelService() {
     
     modelService.current.onModelLoaded(handleModelLoaded);
     modelService.current.onMorphTargetsUpdate(handleMorphTargetsUpdate);
+    modelService.current.onAvailableAnimationsUpdate(handleAvailableAnimationsUpdate);
     modelService.current.registerStateUpdateCallback(handleStateUpdate);
-
-    handleStateUpdate();
-    handleMorphTargetsUpdate(modelService.current.getMorphTargets());
 
     return () => {
       modelService.current.offModelLoaded(handleModelLoaded);
       modelService.current.offMorphTargetsUpdate(handleMorphTargetsUpdate);
+      modelService.current.offAvailableAnimationsUpdate(handleAvailableAnimationsUpdate);
       modelService.current.unregisterStateUpdateCallback(handleStateUpdate);
     };
   }, []);

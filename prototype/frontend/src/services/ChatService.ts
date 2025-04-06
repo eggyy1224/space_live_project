@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import WebSocketService from './WebSocketService';
 import AudioService from './AudioService';
 import { v4 as uuidv4 } from 'uuid';
+import logger, { LogCategory } from '../utils/LogManager';
 
 // 聊天消息類型
 export interface ChatMessage {
@@ -47,8 +48,10 @@ class ChatService {
   private setupMessageHandlers(): void {
     // 處理bot回應
     this.wsService.registerHandler('response', (data) => {
+      logger.info('收到後端回應', LogCategory.CHAT, data);
       // 添加AI回應到聊天
       if (data.content) {
+        logger.debug({ msg: '添加機器人文字回應', details: { content: data.content } }, LogCategory.CHAT);
         this.addMessage({
           role: 'bot',
           content: data.content
@@ -57,11 +60,13 @@ class ChatService {
       
       // 更新情緒狀態
       if (data.emotion) {
+        logger.debug({ msg: '更新情緒狀態', details: { emotion: data.emotion, confidence: data.confidence } }, LogCategory.CHAT);
         this.updateEmotion(data.emotion, data.confidence || 0);
       }
       
       // 處理語音回應
       if (data.hasSpeech && data.audio) {
+        logger.debug('觸發音訊播放', LogCategory.CHAT);
         this.audioService.playAudio(`data:audio/mp3;base64,${data.audio}`);
       }
       
@@ -70,9 +75,10 @@ class ChatService {
     
     // 處理錯誤
     this.wsService.registerHandler('error', (data) => {
+      logger.error('收到後端錯誤消息', LogCategory.CHAT, data);
       this.addMessage({
         role: 'bot',
-        content: `發生錯誤: ${data.message}`
+        content: `發生錯誤: ${data.message || '未知錯誤'}`
       });
       
       this.setProcessing(false);
@@ -106,6 +112,8 @@ class ChatService {
       return false;
     }
     
+    logger.info({ msg: '用戶嘗試發送消息', details: { content } }, LogCategory.CHAT);
+    
     // 添加用戶消息到聊天
     this.addMessage({
       role: 'user',
@@ -120,6 +128,7 @@ class ChatService {
     
     // 如果消息發送失敗
     if (!sent) {
+      logger.error('通過WebSocket發送消息失敗', LogCategory.CHAT, { content });
       this.addMessage({
         role: 'bot',
         content: '發送消息失敗，請檢查網絡連接。'
@@ -137,8 +146,11 @@ class ChatService {
 
   // 設置處理狀態
   public setProcessing(processing: boolean): void {
-    this.isProcessing = processing;
-    this.notifyProcessingChange();
+    if (this.isProcessing !== processing) {
+      logger.debug(`設置處理狀態: ${processing}`, LogCategory.CHAT);
+      this.isProcessing = processing;
+      this.notifyProcessingChange();
+    }
   }
 
   // 獲取當前情緒
@@ -151,9 +163,12 @@ class ChatService {
 
   // 更新情緒
   public updateEmotion(emotion: string, confidence: number): void {
-    this.currentEmotion = emotion;
-    this.emotionConfidence = confidence;
-    this.notifyEmotionUpdate();
+    if (this.currentEmotion !== emotion || this.emotionConfidence !== confidence) {
+      logger.debug(`更新情緒: ${emotion}, Confidence: ${confidence.toFixed(2)}`, LogCategory.CHAT);
+      this.currentEmotion = emotion;
+      this.emotionConfidence = confidence;
+      this.notifyEmotionUpdate();
+    }
   }
 
   // 註冊消息更新事件

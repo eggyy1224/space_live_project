@@ -4,6 +4,7 @@ import { useGLTF, useAnimations } from '@react-three/drei';
 import * as THREE from 'three';
 import logger, { LogCategory } from '../utils/LogManager'; // Import logger
 import { Mesh } from 'three'; // Import Mesh type
+import ModelService from '../services/ModelService'; // <--- 引入 ModelService
 
 // 擴展的網格類型，包含morphTargets屬性
 interface MeshWithMorphs extends THREE.Mesh {
@@ -35,27 +36,28 @@ export const Model: React.FC<ModelProps> = ({
   currentAnimation,
   morphTargetDictionary: initialMorphTargetDictionary, // Rename prop
   getManualMorphTargets,
-  setMorphTargetData
+  setMorphTargetData,
 }) => {
   const group = useRef<THREE.Group>(null);
   const meshRef = useRef<MeshWithMorphs | null>(null);
   const { scene, animations } = useGLTF(url);
   const { actions, mixer } = useAnimations(animations, group);
+  const modelService = ModelService.getInstance(); // <--- 獲取服務實例
   
   // Local state for dictionary, initialized from props or mesh
   const [localMorphTargetDictionary, setLocalMorphTargetDictionary] = useState<Record<string, number>>({});
-  // Local state for available animations
-  const [availableAnimations, setAvailableAnimations] = useState<string[]>([]);
   
   // Refs for fallback animation logic
   const lastMorphUpdateTimestampRef = useRef<number>(0);
   const prevMorphTargetsRef = useRef<Record<string, number>>(morphTargets);
 
-  // Update available animations list locally
+  // Update available animations list in the service
   useEffect(() => {
     const animationNames = Object.keys(actions);
-    setAvailableAnimations(animationNames);
-  }, [actions]);
+    // 直接調用服務方法
+    modelService.setAvailableAnimations(animationNames); // <--- 調用服務方法
+    logger.info({ msg: 'Model: Extracted and sent available animations', details: animationNames }, LogCategory.MODEL);
+  }, [actions, modelService]); // <--- 移除 setAvailableAnimations，添加 modelService 到依賴項
 
   // Play animation based on selection
   useEffect(() => {
