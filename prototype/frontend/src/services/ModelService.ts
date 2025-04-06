@@ -33,6 +33,7 @@ class ModelService {
   private morphTargets: Record<string, number> = {};
   private onModelLoadedCallbacks: (() => void)[] = [];
   private onMorphTargetsUpdateCallbacks: ((morphTargets: Record<string, number>) => void)[] = [];
+  private onStateUpdateCallbacks: (() => void)[] = [];
   private wsService: WebSocketService;
   
   // 新增：保存最近的情緒表情
@@ -43,6 +44,11 @@ class ModelService {
   private _lastNotifyTime: number = 0;
   private _pendingMorphTargets: Record<string, number> | null = null;
   private _notifyTimeout: number | null = null;
+
+  // 新增：手動影響值更新的節流相關屬性
+  private _lastManualInfluenceUpdateTime: number = 0;
+  private _manualInfluenceUpdateScheduled: boolean = false;
+  private readonly MANUAL_INFLUENCE_THROTTLE_MS = 50; // 節流間隔 (毫秒)
 
   private modelUrl: string = '/models/headonly.glb';
 
@@ -549,7 +555,10 @@ class ModelService {
 
   // 觸發模型加載完成事件
   private notifyModelLoaded(): void {
-    this.onModelLoadedCallbacks.forEach(callback => callback());
+    this.modelLoaded = true;
+    this.onModelLoadedCallbacks.forEach(cb => cb());
+    this.notifyStateChange(); // 通知狀態變更
+    logger.info(`模型 ${this.modelUrl} 已觸發加載完成通知`, LogCategory.MODEL);
   }
 
   // 註冊Morph Targets更新事件
@@ -564,7 +573,7 @@ class ModelService {
 
   // 觸發Morph Targets更新事件
   private notifyMorphTargetsUpdate(morphTargets: Record<string, number>): void {
-    this.onMorphTargetsUpdateCallbacks.forEach(callback => callback(morphTargets));
+    this.onMorphTargetsUpdateCallbacks.forEach(cb => cb(morphTargets));
   }
 
   // 獲取模型URL
@@ -577,6 +586,48 @@ class ModelService {
     this.modelUrl = url;
     // 預加載新模型
     this.preloadModel(url);
+  }
+
+  // 通知其他狀態變更 (模型變換、動畫、字典、影響值等)
+  private notifyStateChange(): void {
+    // logger.debug('觸發 notifyStateChange', LogCategory.MODEL); // Debugging log
+    this.onStateUpdateCallbacks.forEach(cb => cb());
+  }
+
+  // 新增：節流處理手動更新的通知
+  private throttledNotifyManualInfluenceUpdate(): void {
+    const now = Date.now();
+    if (!this._manualInfluenceUpdateScheduled) {
+        const timeSinceLastUpdate = now - this._lastManualInfluenceUpdateTime;
+        if (timeSinceLastUpdate >= this.MANUAL_INFLUENCE_THROTTLE_MS) {
+            // 足夠時間已過，立即通知
+            // logger.debug('節流：立即通知狀態變更', LogCategory.MORPH);
+            this.notifyStateChange();
+            this._lastManualInfluenceUpdateTime = now;
+        } else {
+            // 時間不夠，計劃延遲通知
+            // logger.debug(\`節流：計劃在 ${this.MANUAL_INFLUENCE_THROTTLE_MS - timeSinceLastUpdate}ms 後通知\`, LogCategory.MORPH);
+            this._manualInfluenceUpdateScheduled = true;
+            setTimeout(() => {
+                // logger.debug('節流：執行延遲通知', LogCategory.MORPH);
+                this.notifyStateChange();
+                this._lastManualInfluenceUpdateTime = Date.now();
+                this._manualInfluenceUpdateScheduled = false;
+            }, this.MANUAL_INFLUENCE_THROTTLE_MS - timeSinceLastUpdate);
+        }
+    }
+    // 如果已經計劃了更新，則現有計時器將處理最新的狀態，無需做任何事情
+    // else { logger.debug('節流：更新已計劃，跳過', LogCategory.MORPH); }
+  }
+
+  // 註冊狀態更新回調 (用於模型變換、動畫、字典、影響值等)
+  public registerStateUpdateCallback(callback: () => void): void {
+    this.onStateUpdateCallbacks.push(callback);
+  }
+
+  // 取消註冊狀態更新回調
+  public unregisterStateUpdateCallback(callback: () => void): void {
+    this.onStateUpdateCallbacks = this.onStateUpdateCallbacks.filter(cb => cb !== callback);
   }
 }
 
