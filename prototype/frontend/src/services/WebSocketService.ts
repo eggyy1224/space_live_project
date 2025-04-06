@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import logger, { LogCategory } from '../utils/LogManager';
+import { useStore } from '../store';
 
 // WebSocket連接配置
 const WS_URL = 'ws://localhost:8000/ws';
@@ -20,7 +21,6 @@ class WebSocketService {
   private ws: WebSocket | null = null;
   private retryCount = 0;
   private messageHandlers: { [type: string]: MessageHandler[] } = {};
-  private connected = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
   // 添加防抖動和批量處理的函數
@@ -71,7 +71,8 @@ class WebSocketService {
       this.reconnectTimer = null;
     }
     
-    this.connected = false;
+    // 更新全局狀態
+    useStore.getState().setConnected(false);
     this.retryCount = 0;
   }
 
@@ -79,9 +80,10 @@ class WebSocketService {
   public sendMessage(message: WebSocketMessage): boolean {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(message));
+      logger.debug({ msg: `發送 WebSocket 消息: ${message.type}`, details: message }, LogCategory.WEBSOCKET, message.type);
       return true;
     }
-    console.error('WebSocket未連接，無法發送消息');
+    logger.error('WebSocket未連接，無法發送消息', LogCategory.WEBSOCKET, { message });
     return false;
   }
 
@@ -108,18 +110,20 @@ class WebSocketService {
     }
   }
 
-  // 獲取連接狀態
+  // 獲取連接狀態 (使用 Zustand)
   public isConnected(): boolean {
-    return this.connected;
+    return useStore.getState().isConnected;
   }
 
   // 處理WebSocket打開事件
   private handleOpen(): void {
     logger.info('WebSocket已連接', LogCategory.WEBSOCKET);
-    this.connected = true;
+    
+    // 更新全局狀態
+    useStore.getState().setConnected(true);
     this.retryCount = 0;
     
-    // 通知所有連接狀態變更的處理器
+    // 仍然保留通知處理器，以支持舊的代碼
     if (this.messageHandlers['connection_status']) {
       this.messageHandlers['connection_status'].forEach(handler => handler({ connected: true }));
     }
@@ -173,7 +177,10 @@ class WebSocketService {
   private handleError(error: Event): void {
     logger.error('WebSocket錯誤', LogCategory.WEBSOCKET, error);
     
-    // 通知所有連接狀態變更的處理器
+    // 更新全局狀態
+    useStore.getState().setConnected(false);
+    
+    // 仍然保留通知處理器，以支持舊的代碼
     if (this.messageHandlers['connection_status']) {
       this.messageHandlers['connection_status'].forEach(handler => 
         handler({ connected: false, error: true })
@@ -184,7 +191,9 @@ class WebSocketService {
   // 處理WebSocket關閉
   private handleClose(event: CloseEvent): void {
     logger.info(`WebSocket已關閉: ${event.code} ${event.reason}`, LogCategory.WEBSOCKET);
-    this.connected = false;
+    
+    // 更新全局狀態
+    useStore.getState().setConnected(false);
     this.ws = null;
     
     // 清理所有防抖動計時器
@@ -196,7 +205,7 @@ class WebSocketService {
     });
     this._debounceMap.clear();
     
-    // 通知所有連接狀態變更的處理器
+    // 仍然保留通知處理器，以支持舊的代碼
     if (this.messageHandlers['connection_status']) {
       this.messageHandlers['connection_status'].forEach(handler => 
         handler({ connected: false })
@@ -277,36 +286,22 @@ class WebSocketService {
   }
 }
 
-// React Hook - 使用WebSocket
+// React Hook - 使用WebSocket (簡化版，不再管理連接狀態)
 export function useWebSocket() {
-  const [isConnected, setIsConnected] = useState<boolean>(false);
   const wsService = useRef<WebSocketService>(WebSocketService.getInstance());
 
   useEffect(() => {
-    // 連接狀態處理器
-    const connectionHandler = (data: { connected: boolean }) => {
-      setIsConnected(data.connected);
-    };
-    
-    // 註冊連接狀態處理器
-    wsService.current.registerHandler('connection_status', connectionHandler);
-    
     // 建立連接
     wsService.current.connect();
     
-    // 首次檢查連接狀態
-    setIsConnected(wsService.current.isConnected());
-
     // 組件卸載時清理
     return () => {
-      wsService.current.removeHandler('connection_status', connectionHandler);
-      // 添加此行以在卸載時關閉連接
+      // 在卸載時關閉連接
       wsService.current.disconnect();
     };
   }, []);
 
   return {
-    isConnected,
     sendMessage: (message: WebSocketMessage) => wsService.current.sendMessage(message),
     sendTextMessage: (content: string) => wsService.current.sendTextMessage(content),
     registerHandler: (type: string, handler: MessageHandler) => 

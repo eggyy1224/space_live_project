@@ -16,9 +16,12 @@ import {
   useChatService 
 } from './services'
 
+// 引入 Zustand Store
+import { useStore } from './store'
+
 function App() {
-  // 使用WebSocket服務
-  const { isConnected: wsConnected } = useWebSocket();
+  // 從 Zustand Store 獲取 WebSocket 連接狀態
+  const wsConnected = useStore((state) => state.isConnected);
   
   // 使用音頻服務
   const { 
@@ -67,6 +70,10 @@ function App() {
     sendMessage,
     clearMessages
   } = useChatService();
+  
+  // 確保傳遞給 AppUI 的 currentEmotion 為 string 類型
+  // 使用類型斷言強制轉換
+  const currentEmotion = (emotion.emotion || 'neutral') as string;
   
   // 標籤切換狀態
   const [activeTab, setActiveTab] = useState<'control' | 'chat'>('control');
@@ -151,7 +158,7 @@ function App() {
           modelLoaded={modelLoaded}
           modelScale={modelScale}
           currentAnimation={currentAnimation}
-          currentEmotion={emotion.emotion} // 直接傳遞 string
+          currentEmotion={currentEmotion} // 使用類型斷言解決類型問題
           emotionConfidence={emotion.confidence}
           availableAnimations={availableAnimations}
           morphTargetDictionary={morphTargetDictionary}

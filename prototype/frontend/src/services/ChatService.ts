@@ -3,6 +3,7 @@ import WebSocketService from './WebSocketService';
 import AudioService from './AudioService';
 import { v4 as uuidv4 } from 'uuid';
 import logger, { LogCategory } from '../utils/LogManager';
+import { useStore } from '../store';
 
 // 聊天消息類型
 export interface ChatMessage {
@@ -20,15 +21,8 @@ export interface EmotionState {
 // 聊天服務類
 class ChatService {
   private static instance: ChatService;
-  private messages: ChatMessage[] = [];
-  private isProcessing: boolean = false;
-  private currentEmotion: string = 'neutral';
-  private emotionConfidence: number = 0;
   private wsService: WebSocketService;
   private audioService: AudioService;
-  private onMessagesUpdateCallbacks: ((messages: ChatMessage[]) => void)[] = [];
-  private onProcessingChangeCallbacks: ((isProcessing: boolean) => void)[] = [];
-  private onEmotionUpdateCallbacks: ((emotion: EmotionState) => void)[] = [];
 
   // 單例模式
   public static getInstance(): ChatService {
@@ -87,23 +81,21 @@ class ChatService {
 
   // 獲取所有消息
   public getMessages(): ChatMessage[] {
-    return [...this.messages];
+    return useStore.getState().messages;
   }
 
-  // 添加消息
+  // 添加消息 (使用 Zustand)
   public addMessage(messageData: Omit<ChatMessage, 'id'>): void {
     const newMessage: ChatMessage = {
       ...messageData,
       id: uuidv4()
     };
-    this.messages = [...this.messages, newMessage];
-    this.notifyMessagesUpdate();
+    useStore.getState().addMessage(newMessage);
   }
 
-  // 清空消息
+  // 清空消息 (使用 Zustand)
   public clearMessages(): void {
-    this.messages = [];
-    this.notifyMessagesUpdate();
+    useStore.getState().setMessages([]);
   }
 
   // 發送文本消息
@@ -139,142 +131,52 @@ class ChatService {
     return sent;
   }
 
-  // 獲取處理狀態
+  // 獲取處理狀態 (使用 Zustand)
   public isCurrentlyProcessing(): boolean {
-    return this.isProcessing;
+    return useStore.getState().isProcessing;
   }
 
-  // 設置處理狀態
+  // 設置處理狀態 (使用 Zustand)
   public setProcessing(processing: boolean): void {
-    if (this.isProcessing !== processing) {
+    const currentProcessing = useStore.getState().isProcessing;
+    if (currentProcessing !== processing) {
       logger.debug(`設置處理狀態: ${processing}`, LogCategory.CHAT);
-      this.isProcessing = processing;
-      this.notifyProcessingChange();
+      useStore.getState().setProcessing(processing);
     }
   }
 
-  // 獲取當前情緒
+  // 獲取當前情緒 (使用 Zustand)
   public getCurrentEmotion(): EmotionState {
+    const { emotion, confidence } = useStore.getState().currentEmotion;
     return {
-      emotion: this.currentEmotion,
-      confidence: this.emotionConfidence
+      emotion,
+      confidence
     };
   }
 
-  // 更新情緒
+  // 更新情緒 (使用 Zustand)
   public updateEmotion(emotion: string, confidence: number): void {
-    if (this.currentEmotion !== emotion || this.emotionConfidence !== confidence) {
+    const currentEmotion = useStore.getState().currentEmotion;
+    if (currentEmotion.emotion !== emotion || currentEmotion.confidence !== confidence) {
       logger.debug(`更新情緒: ${emotion}, Confidence: ${confidence.toFixed(2)}`, LogCategory.CHAT);
-      this.currentEmotion = emotion;
-      this.emotionConfidence = confidence;
-      this.notifyEmotionUpdate();
+      useStore.getState().setEmotion(emotion, confidence);
     }
-  }
-
-  // 註冊消息更新事件
-  public onMessagesUpdate(callback: (messages: ChatMessage[]) => void): void {
-    this.onMessagesUpdateCallbacks.push(callback);
-    
-    // 立即調用回調，提供當前狀態
-    callback([...this.messages]);
-  }
-
-  // 移除消息更新事件
-  public offMessagesUpdate(callback: (messages: ChatMessage[]) => void): void {
-    this.onMessagesUpdateCallbacks = this.onMessagesUpdateCallbacks.filter(cb => cb !== callback);
-  }
-
-  // 觸發消息更新事件
-  private notifyMessagesUpdate(): void {
-    const messagesCopy = [...this.messages];
-    this.onMessagesUpdateCallbacks.forEach(callback => callback(messagesCopy));
-  }
-
-  // 註冊處理狀態變更事件
-  public onProcessingChange(callback: (isProcessing: boolean) => void): void {
-    this.onProcessingChangeCallbacks.push(callback);
-    
-    // 立即調用回調，提供當前狀態
-    callback(this.isProcessing);
-  }
-
-  // 移除處理狀態變更事件
-  public offProcessingChange(callback: (isProcessing: boolean) => void): void {
-    this.onProcessingChangeCallbacks = this.onProcessingChangeCallbacks.filter(cb => cb !== callback);
-  }
-
-  // 觸發處理狀態變更事件
-  private notifyProcessingChange(): void {
-    this.onProcessingChangeCallbacks.forEach(callback => callback(this.isProcessing));
-  }
-
-  // 註冊情緒更新事件
-  public onEmotionUpdate(callback: (emotion: EmotionState) => void): void {
-    this.onEmotionUpdateCallbacks.push(callback);
-    
-    // 立即調用回調，提供當前狀態
-    callback({
-      emotion: this.currentEmotion,
-      confidence: this.emotionConfidence
-    });
-  }
-
-  // 移除情緒更新事件
-  public offEmotionUpdate(callback: (emotion: EmotionState) => void): void {
-    this.onEmotionUpdateCallbacks = this.onEmotionUpdateCallbacks.filter(cb => cb !== callback);
-  }
-
-  // 觸發情緒更新事件
-  private notifyEmotionUpdate(): void {
-    this.onEmotionUpdateCallbacks.forEach(callback => callback({
-      emotion: this.currentEmotion,
-      confidence: this.emotionConfidence
-    }));
   }
 }
 
-// React Hook - 使用聊天服務
+// React Hook - 使用聊天服務 (使用 Zustand)
 export function useChatService() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [isProcessing, setIsProcessing] = useState<boolean>(false);
-  const [emotionState, setEmotionState] = useState<EmotionState>({ emotion: 'neutral', confidence: 0 });
+  // 直接從 Zustand 獲取聊天相關狀態
+  const messages = useStore((state) => state.messages);
+  const isProcessing = useStore((state) => state.isProcessing);
+  const emotion = useStore((state) => state.currentEmotion);
   const [userInput, setUserInput] = useState<string>('');
+  
   const chatService = useRef<ChatService>(ChatService.getInstance());
 
   useEffect(() => {
-    // 消息更新處理
-    const handleMessagesUpdate = (updatedMessages: ChatMessage[]) => {
-      setMessages(updatedMessages);
-    };
-    
-    // 處理狀態變更處理
-    const handleProcessingChange = (processing: boolean) => {
-      setIsProcessing(processing);
-    };
-    
-    // 情緒更新處理 - 加入檢查避免不必要的狀態更新
-    const handleEmotionUpdate = (updatedEmotion: EmotionState) => {
-      // 只有當 emotion 或 confidence 實際改變時才更新狀態
-      setEmotionState(prevState => {
-        if (prevState.emotion !== updatedEmotion.emotion || prevState.confidence !== updatedEmotion.confidence) {
-          return updatedEmotion;
-        }
-        return prevState; // 保持原狀態，避免不必要的引用變更
-      });
-    };
-    
-    // 註冊事件處理
-    chatService.current.onMessagesUpdate(handleMessagesUpdate);
-    chatService.current.onProcessingChange(handleProcessingChange);
-    chatService.current.onEmotionUpdate(handleEmotionUpdate);
-    
-    // 清理函數
-    return () => {
-      chatService.current.offMessagesUpdate(handleMessagesUpdate);
-      chatService.current.offProcessingChange(handleProcessingChange);
-      chatService.current.offEmotionUpdate(handleEmotionUpdate);
-    };
-  }, []); // 空依賴數組確保只在掛載和卸載時執行
+    // 不再需要註冊/取消註冊回調，直接從 Zustand 獲取狀態
+  }, []);
 
   // 封裝 sendMessage 函數，使其能讀取 hook 內部狀態
   const sendMessage = () => {
@@ -295,7 +197,7 @@ export function useChatService() {
   return {
     messages,
     isProcessing,
-    emotion: emotionState,
+    emotion,
     userInput,
     setUserInput, // 直接返回 useState 的 setter
     sendMessage, // 返回封裝後的函數

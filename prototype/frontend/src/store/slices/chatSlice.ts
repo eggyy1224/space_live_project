@@ -1,0 +1,53 @@
+import { StateCreator } from 'zustand';
+import { v4 as uuidv4 } from 'uuid';
+
+// 聊天消息類型定義
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'bot';
+  content: string;
+}
+
+// 情緒狀態類型定義
+export interface EmotionState {
+  emotion: string;
+  confidence: number;
+}
+
+// ChatSlice 狀態與操作定義
+export interface ChatSlice {
+  // 狀態
+  messages: ChatMessage[];
+  isProcessing: boolean;
+  currentEmotion: EmotionState;
+
+  // 操作
+  addMessage: (message: Omit<ChatMessage, 'id'>) => void;
+  setMessages: (messages: ChatMessage[]) => void;
+  clearMessages: () => void;
+  setProcessing: (processing: boolean) => void;
+  setEmotion: (emotion: string, confidence: number) => void;
+}
+
+// 創建 Chat Slice
+export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
+  // 初始狀態
+  messages: [],
+  isProcessing: false,
+  currentEmotion: { emotion: 'neutral', confidence: 0 },
+
+  // 操作實現
+  addMessage: (message) => set((state) => ({
+    messages: [...state.messages, { ...message, id: uuidv4() }]
+  })),
+  
+  setMessages: (messages) => set({ messages }),
+  
+  clearMessages: () => set({ messages: [] }),
+  
+  setProcessing: (processing) => set({ isProcessing: processing }),
+  
+  setEmotion: (emotion, confidence) => set({
+    currentEmotion: { emotion, confidence }
+  }),
+}); 
