@@ -300,6 +300,8 @@ export function useWebSocket() {
     // 組件卸載時清理
     return () => {
       wsService.current.removeHandler('connection_status', connectionHandler);
+      // 添加此行以在卸載時關閉連接
+      wsService.current.disconnect();
     };
   }, []);
 
