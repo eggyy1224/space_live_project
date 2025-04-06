@@ -453,10 +453,23 @@ export function useModelService() {
   const modelService = useRef<ModelService>(ModelService.getInstance());
 
   const setMorphTargetData = useCallback((dictionary: Record<string, number> | null, influences: number[] | null) => {
+    // 如果 dictionary 存在，調用 ModelService 的 initialize 方法
+    // 該方法會處理設置 dictionary 和初始化 morphTargets 狀態
     if (dictionary) {
-      modelService.current.setMorphTargetDictionary(dictionary);
+      // modelService.current.setMorphTargetDictionary(dictionary); // 不再需要單獨調用這個
+      modelService.current.initialize(dictionary);
+      logger.info('useModelService: Called ModelService.initialize with new dictionary.', LogCategory.MODEL);
+    } else {
+      // 如果 dictionary 為 null (模型加載失敗或無 morphs)，也需要通知服務進行清理
+      // 可以考慮在 ModelService 中添加一個清理方法，或者讓 initialize 處理 null
+      // 暫時假設 initialize 可以處理 null 或添加一個明確的清理函數
+      // modelService.current.clearMorphData(); // 假設有此方法
+      // 或者，如果 initialize 能處理 null:
+      // modelService.current.initialize(null);
+      // 目前 ModelService.initialize 可能沒有處理 null 的情況，先只處理 dictionary 存在的情況
+      logger.warn('useModelService: Received null dictionary, state might not be cleared.', LogCategory.MODEL);
     }
-    // influences 已棄用
+    // influences 已棄用，無需處理
   }, []);
 
   const rotateModel = useCallback((direction: 'left' | 'right') => {
