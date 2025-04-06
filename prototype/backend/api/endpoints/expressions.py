@@ -3,6 +3,14 @@ from utils.constants import PRESET_EXPRESSIONS
 
 router = APIRouter()
 
+@router.get("/presets")
+async def get_all_presets():
+    """
+    獲取所有預設表情列表
+    """
+    presets = list(PRESET_EXPRESSIONS.keys())
+    return {"presets": presets}
+
 @router.get("/preset-expressions/{expression}")
 async def get_preset_expression(expression: str):
     """

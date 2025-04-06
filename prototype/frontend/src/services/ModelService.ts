@@ -23,49 +23,19 @@ interface ModelData {
 class ModelService {
   private static instance: ModelService;
   
-  // 使用 Zustand 管理的狀態，不再在這裡存儲
-  // private morphTargetDictionary: Record<string, number> | null = null;
-  // private morphTargetInfluences: number[] | null = null;
-  // private availableAnimations: string[] = [];
-  // private currentAnimation: string | null = null;
-  // private modelScale: number = 1;
-  // private modelRotation: [number, number, number] = [0, 0, 0];
-  // private modelPosition: [number, number, number] = [0, -1, 0];
-  // private showSpaceBackground: boolean = true;
-  // private modelLoaded: boolean = false;
-  
   // 這個暫時保留在本地，因為是高頻更新，會進行優化處理
   private morphTargets: Record<string, number> = {};
 
-  private onModelLoadedCallbacks: (() => void)[] = [];
-  private onMorphTargetsUpdateCallbacks: ((morphTargets: Record<string, number>) => void)[] = [];
-  private onStateUpdateCallbacks: (() => void)[] = [];
+  // 不再需要舊的回調列表，全部使用 Zustand 狀態更新
   private wsService: WebSocketService;
   
   // 新增：保存最近的情緒表情
   private _lastEmotionMorphs: Record<string, number> = {};
   
-  // 不再本地存儲
-  // private _currentEmotion: string = 'neutral';
-  
   // 限制更新頻率的變數
   private _lastNotifyTime: number = 0;
   private _pendingMorphTargets: Record<string, number> | null = null;
   private _notifyTimeout: number | null = null;
-
-  // 不再本地存儲，移到 Zustand
-  // private _manualMorphTargets: Record<string, number> = {};
-  // private modelUrl: string = '/models/headonly.glb';
-
-  // 回調函數列表
-  private onModelChangeCallbacks: ((url: string) => void)[] = [];
-  private onTransformChangeCallbacks: (() => void)[] = [];
-  private onAnimationChangeCallbacks: ((animation: string | null) => void)[] = [];
-  private onManualMorphTargetsUpdateCallbacks: ((targets: Record<string, number>) => void)[] = [];
-  private onDictionaryUpdateCallbacks: ((dict: Record<string, number> | null) => void)[] = [];
-  private onLoadStatusChangeCallbacks: ((isLoaded: boolean) => void)[] = [];
-  private onBackgroundToggleCallbacks: ((show: boolean) => void)[] = [];
-  private onAvailableAnimationsUpdateCallbacks: ((animations: string[]) => void)[] = [];
 
   // 單例模式
   public static getInstance(): ModelService {
@@ -248,522 +218,408 @@ class ModelService {
     // 預加載其他可能需要的模型
     const availableModels = [
       '/models/headonly.glb',
-      '/models/mixamowomanwithface.glb',
-      '/models/armature001_model.glb'
+      '/models/klee.glb',
+      '/models/fullbody.glb'
     ];
     
-    // 預加載所有模型
     availableModels.forEach(url => {
       if (url !== modelUrl) {
         useGLTF.preload(url);
       }
     });
-    
-    // 模擬模型加載完成
-    setTimeout(() => {
-      useStore.getState().setModelLoaded(true);
-      this.notifyModelLoaded();
-    }, 1000);
   }
 
-  // 獲取模型是否已加載
+  // 獲取模型是否已加載 (使用 Zustand)
   public isModelLoaded(): boolean {
     return useStore.getState().modelLoaded;
   }
 
-  // 設置模型加載狀態
+  // 設置模型加載狀態 (使用 Zustand)
   public setModelLoaded(loaded: boolean): void {
     useStore.getState().setModelLoaded(loaded);
-    
-    if (loaded) {
-      this.notifyModelLoaded();
-    }
   }
 
-  // 設置Morph Target字典
+  // 設置 MorphTarget 字典 (使用 Zustand)
   public setMorphTargetDictionary(dictionary: Record<string, number> | null): void {
     useStore.getState().setMorphTargetDictionary(dictionary);
   }
 
-  // 獲取Morph Target字典
+  // 獲取 MorphTarget 字典 (使用 Zustand)
   public getMorphTargetDictionary(): Record<string, number> | null {
     return useStore.getState().morphTargetDictionary;
   }
 
-  // 設置Morph Target影響值
+  // 設置 MorphTarget 影響值 (使用 Zustand)
   public setMorphTargetInfluences(influences: number[] | null): void {
-    // 在 Zustand 中還沒有對應的狀態，暫時不處理
+    // 這個方法已經棄用，保留只為兼容舊代碼
+    logger.warn('setMorphTargetInfluences 方法已棄用', LogCategory.MODEL);
   }
 
-  // 獲取Morph Target影響值
+  // 獲取 MorphTarget 影響值 (使用 Zustand)
   public getMorphTargetInfluences(): number[] | null {
-    // 在 Zustand 中還沒有對應的狀態，暫時返回 null
+    // 這個方法已經棄用，保留只為兼容舊代碼
+    logger.warn('getMorphTargetInfluences 方法已棄用', LogCategory.MODEL);
     return null;
   }
 
-  // 設置可用動畫列表
+  // 設置可用動畫列表 (使用 Zustand)
   public setAvailableAnimations(animations: string[]): void {
-    const currentAnimations = useStore.getState().availableAnimations;
-    const hasChanged = 
-      animations.length !== currentAnimations.length || 
-      !animations.every((val, index) => val === currentAnimations[index]);
+    useStore.getState().setAvailableAnimations(animations);
+    
+    // 如果有動畫，嘗試自動選擇一個默認動畫
+    if (animations.length > 0 && useStore.getState().currentAnimation === null) {
+      // 首選 "Idle" 或 "idle" 動畫
+      const idleAnimation = animations.find(anim => 
+        anim.toLowerCase() === 'idle'
+      );
       
-    if (hasChanged) {
-      // 將詳細資訊放入第一個參數對象，省略第三個 type 參數
-      logger.info({ msg: 'Available animations updated', details: animations }, LogCategory.MODEL); 
-      useStore.getState().setAvailableAnimations(animations);
-      this.notifyAvailableAnimationsUpdate();
+      if (idleAnimation) {
+        this.setCurrentAnimation(idleAnimation);
+      } else {
+        // 如果沒有 idle 動畫，選擇第一個可用的動畫
+        this.setCurrentAnimation(animations[0]);
+      }
     }
   }
 
-  // 獲取可用動畫列表
+  // 獲取可用動畫列表 (使用 Zustand)
   public getAvailableAnimations(): string[] {
-    return [...useStore.getState().availableAnimations];
+    return useStore.getState().availableAnimations;
   }
 
-  // 設置當前動畫
+  // 設置當前動畫 (使用 Zustand)
   public setCurrentAnimation(animation: string | null): void {
     useStore.getState().setCurrentAnimation(animation);
   }
 
-  // 獲取當前動畫
+  // 獲取當前動畫 (使用 Zustand)
   public getCurrentAnimation(): string | null {
     return useStore.getState().currentAnimation;
   }
 
-  // 設置模型縮放
+  // 設置模型縮放 (使用 Zustand)
   public setModelScale(scale: number): void {
-    const safeScale = scale > 0.1 ? scale : 0.1;
-    useStore.getState().setModelTransform([safeScale, safeScale, safeScale], undefined, undefined);
+    const store = useStore.getState();
+    store.setModelTransform([scale, scale, scale]);
   }
 
-  // 獲取模型縮放
+  // 獲取模型縮放 (使用 Zustand)
   public getModelScale(): number {
-    return useStore.getState().modelScale[0];
+    return useStore.getState().modelScale[0]; // 假設三個軸的縮放比例相同
   }
 
-  // 設置模型旋轉
+  // 設置模型旋轉 (使用 Zustand)
   public setModelRotation(rotation: [number, number, number]): void {
-    useStore.getState().setModelTransform(undefined, rotation, undefined);
+    useStore.getState().setModelTransform(undefined, rotation);
   }
 
-  // 獲取模型旋轉
+  // 獲取模型旋轉 (使用 Zustand)
   public getModelRotation(): [number, number, number] {
-    return [...useStore.getState().modelRotation] as [number, number, number];
+    return useStore.getState().modelRotation;
   }
 
-  // 設置模型位置
+  // 設置模型位置 (使用 Zustand)
   public setModelPosition(position: [number, number, number]): void {
     useStore.getState().setModelTransform(undefined, undefined, position);
   }
 
-  // 獲取模型位置
+  // 獲取模型位置 (使用 Zustand)
   public getModelPosition(): [number, number, number] {
-    return [...useStore.getState().modelPosition] as [number, number, number];
+    return useStore.getState().modelPosition;
   }
 
-  // 設置空間背景顯示
+  // 設置是否顯示太空背景 (使用 Zustand)
   public setShowSpaceBackground(show: boolean): void {
     useStore.getState().setShowSpaceBackground(show);
   }
 
-  // 獲取空間背景顯示
+  // 獲取是否顯示太空背景 (使用 Zustand)
   public getShowSpaceBackground(): boolean {
     return useStore.getState().showSpaceBackground;
   }
 
-  // 獲取當前Morph Target設置
+  // 獲取 MorphTargets (本地緩存版本)
   public getMorphTargets(): Record<string, number> {
     return this.morphTargets;
   }
 
-  // 設置Morph Target值 - 這是高頻更新，使用優化策略
+  // 設置 MorphTargets (更新本地緩存與 Zustand)
   public setMorphTargets(morphTargets: Record<string, number>): void {
-    // 效能優化：如果新值與舊值相同，則不進行更新
-    let hasChanged = false;
-    const currentKeys = Object.keys(this.morphTargets);
-    const newKeys = Object.keys(morphTargets);
+    // 更新本地緩存
+    this.morphTargets = { ...morphTargets };
     
-    // 檢查兩個對象是否有不同的鍵
-    if (currentKeys.length !== newKeys.length) {
-      hasChanged = true;
-    } else {
-      // 檢查值是否有變化
-      for (const key of newKeys) {
-        // 使用閾值比較，微小差異不觸發更新
-        if (!this.morphTargets.hasOwnProperty(key) || 
-            Math.abs(this.morphTargets[key] - morphTargets[key]) > 0.01) {
-          hasChanged = true;
-          break;
-        }
-      }
-    }
-    
-    // 如果沒有變化，則不更新
-    if (!hasChanged) {
-      return;
-    }
-    
-    // 更新本地值
-    this.morphTargets = morphTargets;
-    
-    // 使用 Zustand 更新 (由於是高頻更新，採用節流策略)
+    // 更新 Zustand (注意：這是個高頻操作)
+    // 使用節流控制更新頻率，避免過多的狀態更新
     this._throttledNotify(morphTargets);
   }
-
-  // 限制通知更新的頻率
+  
+  // 節流控制的狀態更新
   private _throttledNotify(morphTargets: Record<string, number>): void {
     const now = Date.now();
-    const timeSinceLastNotify = now - this._lastNotifyTime;
     
-    // 如果距離上次通知時間很短，則緩存此次更新
-    if (timeSinceLastNotify < 100) { // 限制為最多每100毫秒更新一次
-      // 保存最新的值，以便之後使用
+    // 使用節流控制，限制更新頻率
+    if (now - this._lastNotifyTime < 50) { // 節流閾值50毫秒
+      // 如果過於頻繁，則等待並保存最新狀態
       this._pendingMorphTargets = morphTargets;
       
-      // 如果沒有排定的更新，則安排一個
+      // 如果沒有設置定時器，則設置一個
       if (this._notifyTimeout === null) {
         this._notifyTimeout = window.setTimeout(() => {
+          // 更新時間戳
+          this._lastNotifyTime = Date.now();
+          
+          // 如果有待處理的數據，則使用它；否則什麼都不做
           if (this._pendingMorphTargets) {
-            this.notifyMorphTargetsUpdate(this._pendingMorphTargets);
-            this._lastNotifyTime = Date.now();
-            
-            // 使用 Zustand 更新 (節流後的批次更新)
             useStore.getState().setMorphTargets(this._pendingMorphTargets);
+            this._pendingMorphTargets = null;
           }
-          this._pendingMorphTargets = null;
+          
+          // 清除定時器引用
           this._notifyTimeout = null;
-        }, 100 - timeSinceLastNotify);
+        }, 50 - (now - this._lastNotifyTime));
       }
     } else {
-      // 如果距離上次通知時間較長，則立即通知
-      this.notifyMorphTargetsUpdate(morphTargets);
+      // 如果距離上次更新已經過了足夠時間，則立即更新
       this._lastNotifyTime = now;
-      
-      // 使用 Zustand 更新 (即時更新)
       useStore.getState().setMorphTargets(morphTargets);
       
-      // 清除任何待處理的更新
+      // 清除任何待處理的數據和定時器
+      this._pendingMorphTargets = null;
       if (this._notifyTimeout !== null) {
         window.clearTimeout(this._notifyTimeout);
         this._notifyTimeout = null;
-        this._pendingMorphTargets = null;
       }
     }
   }
 
-  // 更新特定Morph Target的影響值 (由 UI 調用)
+  // 更新單個 MorphTarget 的值 (使用 Zustand)
   public updateMorphTargetInfluence(name: string, value: number): void {
-    // 使用 Zustand 更新
     useStore.getState().updateMorphTarget(name, value);
-    logger.debug(`手動更新 Morph Target: ${name} = ${value}`, LogCategory.MORPH);
-    this.notifyStateChange(); 
+    // 同時更新本地緩存
+    this.morphTargets[name] = value;
   }
 
-  // 獲取所有手動設置的目標值 (供 useFrame 和 UI 使用)
+  // 獲取手動設置的 MorphTargets (使用 Zustand)
   public getManualMorphTargets(): Record<string, number> {
-    return useStore.getState().morphTargets; 
+    return useStore.getState().morphTargets;
   }
 
-  // 重置所有Morph Target
+  // 重置所有 MorphTargets (使用 Zustand)
   public resetAllMorphTargets(): void {
-    logger.info('重置所有 Morph Targets', LogCategory.MODEL);
-    // 將 Zustand 中的 morphTargets 重置
-    useStore.getState().setMorphTargets({});
+    // 創建一個所有值都設為0的新對象
+    const resetTargets: Record<string, number> = {};
     
-    // 清空本地臨時保存的數據
-    this.morphTargets = {}; 
+    // 獲取所有當前存在的Morph Target名稱
+    Object.keys(this.morphTargets).forEach(key => {
+      resetTargets[key] = 0;
+    });
     
-    // 通知 UI 更新
-    this.notifyMorphTargetsUpdate({});
-    this.notifyStateChange(); 
+    // 更新Morph Targets
+    this.setMorphTargets(resetTargets);
   }
 
-  // 旋轉模型
+  // 旋轉模型 (使用 Zustand)
   public rotateModel(direction: 'left' | 'right'): void {
-    const currentRotation = useStore.getState().modelRotation;
-    const step = direction === 'left' ? 0.1 : -0.1;
-    const newRotation: [number, number, number] = [
-      currentRotation[0],
-      currentRotation[1] + step,
-      currentRotation[2]
-    ];
-    useStore.getState().setModelTransform(undefined, newRotation, undefined);
+    const currentRotation = [...this.getModelRotation()];
+    const rotationStep = Math.PI / 8; // 約22.5度
+    
+    if (direction === 'left') {
+      currentRotation[1] += rotationStep;
+    } else {
+      currentRotation[1] -= rotationStep;
+    }
+    
+    this.setModelRotation(currentRotation as [number, number, number]);
   }
 
-  // 縮放模型
+  // 縮放模型 (使用 Zustand)
   public scaleModel(factor: number): void {
-    const currentScale = useStore.getState().modelScale;
-    const newScale = currentScale[0] + factor;
-    const safeScale = newScale > 0.1 ? newScale : 0.1;
-    useStore.getState().setModelTransform([safeScale, safeScale, safeScale], undefined, undefined);
+    const currentScale = this.getModelScale();
+    const newScale = currentScale * factor;
+    // 限制縮放範圍
+    this.setModelScale(Math.max(0.5, Math.min(newScale, 2.0)));
   }
 
-  // 重置模型
+  // 重置模型變換 (使用 Zustand)
   public resetModel(): void {
-    // 使用 Zustand 重置各項設置
-    useStore.getState().setModelTransform([1, 1, 1], [0, 0, 0], [0, -1, 0]);
-    useStore.getState().setCurrentAnimation(null);
-    this.resetAllMorphTargets();
+    // 重置到默認值
+    useStore.getState().setModelTransform(
+      [1, 1, 1], // 默認縮放
+      [0, 0, 0], // 默認旋轉
+      [0, -1, 0] // 默認位置
+    );
   }
 
-  // 切換背景
+  // 切換背景 (使用 Zustand)
   public toggleBackground(): void {
-    const current = useStore.getState().showSpaceBackground;
-    useStore.getState().setShowSpaceBackground(!current);
+    const currentState = this.getShowSpaceBackground();
+    this.setShowSpaceBackground(!currentState);
   }
 
-  // 選擇動畫
+  // 選擇動畫 (使用 Zustand)
   public selectAnimation(animation: string): void {
-    useStore.getState().setCurrentAnimation(animation);
+    this.setCurrentAnimation(animation);
   }
 
-  // 應用預設表情
+  // 應用預設表情 (使用 Zustand)
   public async applyPresetExpression(expression: string): Promise<boolean> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/preset-expressions/${expression}`);
+      // 獲取表情預設值
+      const response = await fetch(`${API_BASE_URL}/api/expressions/preset-expressions/${expression}`);
+      
       if (!response.ok) {
-        throw new Error(`API錯誤: ${response.status} ${response.statusText}`);
+        logger.error(`獲取表情預設 ${expression} 失敗: ${response.statusText}`, LogCategory.MODEL);
+        return false;
       }
       
       const data = await response.json();
       
       if (data.morphTargets) {
-        logger.info(`應用預設表情: ${expression}`, LogCategory.MODEL);
+        logger.info(`應用表情預設: ${expression}`, LogCategory.MODEL);
         
-        // 使用 Zustand 更新
-        useStore.getState().setMorphTargets(data.morphTargets);
+        // 獲取當前表情
+        const currentMorphs = this.getMorphTargets();
         
-        // 更新本地快取
-        this.morphTargets = { ...data.morphTargets };
+        // 創建新表情對象
+        const newMorphs = { ...currentMorphs };
         
-        this.notifyStateChange(); 
+        // 更新表情值
+        Object.entries(data.morphTargets).forEach(([key, value]) => {
+          newMorphs[key] = value as number;
+        });
+        
+        // 更新Morph Targets
+        this.setMorphTargets(newMorphs);
         return true;
       }
-      
-      return false;
     } catch (error) {
-      console.error('應用預設表情錯誤:', error);
-      return false;
+      logger.error(`應用表情預設時出錯: ${expression}`, LogCategory.MODEL, error);
     }
+    
+    return false;
   }
 
-  // 獲取模型數據
+  // 獲取模型數據 (使用 Zustand)
   public getModelData(): ModelData {
     const store = useStore.getState();
     return {
       modelUrl: store.modelUrl,
-      modelScale: store.modelScale[0],
+      modelScale: store.modelScale[0], // 假設三個軸的縮放比例相同
       modelRotation: store.modelRotation,
       modelPosition: store.modelPosition,
-      morphTargets: this.morphTargets,
+      morphTargets: this.morphTargets, // 使用本地緩存的版本
       showSpaceBackground: store.showSpaceBackground,
-      currentAnimation: store.currentAnimation,
+      currentAnimation: store.currentAnimation
     };
   }
 
-  // 註冊模型加載完成事件
-  public onModelLoaded(callback: () => void): void {
-    this.onModelLoadedCallbacks.push(callback);
-    
-    // 如果模型已經加載完成，立即調用回調
-    if (useStore.getState().modelLoaded) {
-      callback();
-    }
-  }
-
-  // 移除模型加載完成事件
-  public offModelLoaded(callback: () => void): void {
-    this.onModelLoadedCallbacks = this.onModelLoadedCallbacks.filter(cb => cb !== callback);
-  }
-
-  // 觸發模型加載完成事件
-  private notifyModelLoaded(): void {
-    // 更新 Zustand 狀態
-    useStore.getState().setModelLoaded(true);
-    
-    // 調用回調函數
-    this.onModelLoadedCallbacks.forEach(cb => cb());
-    this.notifyStateChange(); // 通知狀態變更
-    
-    logger.info(`模型 ${this.getModelUrl()} 已觸發加載完成通知`, LogCategory.MODEL);
-  }
-
-  // 註冊Morph Targets更新事件
-  public onMorphTargetsUpdate(callback: (morphTargets: Record<string, number>) => void): void {
-    this.onMorphTargetsUpdateCallbacks.push(callback);
-  }
-
-  // 移除Morph Targets更新事件
-  public offMorphTargetsUpdate(callback: (morphTargets: Record<string, number>) => void): void {
-    this.onMorphTargetsUpdateCallbacks = this.onMorphTargetsUpdateCallbacks.filter(cb => cb !== callback);
-  }
-
-  // 觸發Morph Targets更新事件
-  private notifyMorphTargetsUpdate(morphTargets: Record<string, number>): void {
-    this.onMorphTargetsUpdateCallbacks.forEach(cb => cb(morphTargets));
-  }
-
-  // 獲取模型URL
+  // 獲取模型URL (使用 Zustand)
   public getModelUrl(): string {
     return useStore.getState().modelUrl;
   }
 
-  // 設置模型URL (改為 switchModel)
+  // 切換模型 (使用 Zustand)
   public switchModel(url: string): void {
-    const currentUrl = useStore.getState().modelUrl;
-    if (url === currentUrl) {
-      logger.info(`Model URL is already ${url}, skipping switch.`, LogCategory.MODEL);
-      return; // 如果 URL 相同，不執行任何操作
+    if (url === this.getModelUrl()) {
+      return; // 如果URL相同，則不做任何事情
     }
 
-    logger.info(`Switching model to: ${url}`, LogCategory.MODEL);
+    logger.info(`切換模型: ${url}`, LogCategory.MODEL);
     
-    // 更新 Zustand 狀態 - 使用 setModelUrl 而不是直接 setState
-    useStore.getState().setModelUrl(url);
-
-    // 重置與模型相關的狀態
-    useStore.getState().setModelLoaded(false);
-    useStore.getState().setAvailableAnimations([]);
-    useStore.getState().setCurrentAnimation(null);
-    useStore.getState().setMorphTargetDictionary(null);
-    useStore.getState().setMorphTargets({});
-    
-    // 重置本地狀態
-    this.morphTargets = {};
-    this._lastEmotionMorphs = {};
-
     // 預加載新模型
     this.preloadModel(url);
-
-    // 觸發狀態更新，通知 UI 模型正在更換且狀態已重置
-    this.notifyStateChange(); 
-    this.notifyAvailableAnimationsUpdate(); // 通知動畫列表已清空
-    this.notifyModelLoaded(); // 通知模型加載狀態改變 (变为 false)
-  }
-
-  // 通知其他狀態變更 (模型變換、動畫、字典、影響值等)
-  private notifyStateChange(): void {
-    logger.debug('觸發通用狀態更新通知', LogCategory.MODEL);
-    this.onStateUpdateCallbacks.forEach(cb => cb());
-  }
-
-  // 重新加入 register/unregister 方法以修正 Linter 錯誤
-  public registerStateUpdateCallback(callback: () => void): void {
-    this.onStateUpdateCallbacks.push(callback);
-  }
-
-  public unregisterStateUpdateCallback(callback: () => void): void {
-    this.onStateUpdateCallbacks = this.onStateUpdateCallbacks.filter(cb => cb !== callback);
-  }
-
-  // Available Animations Update Callbacks
-  public onAvailableAnimationsUpdate(callback: (animations: string[]) => void): void {
-    this.onAvailableAnimationsUpdateCallbacks.push(callback);
-    callback([...useStore.getState().availableAnimations]); // Immediately provide current state
-  }
-
-  public offAvailableAnimationsUpdate(callback: (animations: string[]) => void): void {
-    this.onAvailableAnimationsUpdateCallbacks = this.onAvailableAnimationsUpdateCallbacks.filter(cb => cb !== callback);
-  }
-
-  private notifyAvailableAnimationsUpdate(): void {
-    const animationsCopy = [...useStore.getState().availableAnimations];
-    this.onAvailableAnimationsUpdateCallbacks.forEach(callback => callback(animationsCopy));
+    
+    // 重置所有狀態
+    this.resetAllMorphTargets();
+    
+    // 更新URL和重置相關狀態
+    useStore.getState().setModelUrl(url);
+    
+    // 重置加載狀態
+    this.setModelLoaded(false);
   }
 }
 
-// React Hook - 使用模型服務 (使用 Zustand)
+// React Hook - 使用模型服務
 export function useModelService() {
-  // 從 Zustand 獲取模型相關狀態
+  // 直接從 Zustand 獲取狀態
   const modelLoaded = useStore((state) => state.modelLoaded);
-  const modelScale = useStore((state) => state.modelScale[0]);
+  const modelUrl = useStore((state) => state.modelUrl);
+  const modelScale = useStore((state) => state.modelScale);
   const modelRotation = useStore((state) => state.modelRotation);
   const modelPosition = useStore((state) => state.modelPosition);
   const showSpaceBackground = useStore((state) => state.showSpaceBackground);
-  const currentAnimation = useStore((state) => state.currentAnimation);
   const availableAnimations = useStore((state) => state.availableAnimations);
-  const morphTargetDictionary = useStore((state) => state.morphTargetDictionary);
+  const currentAnimation = useStore((state) => state.currentAnimation);
   const morphTargets = useStore((state) => state.morphTargets);
-  const modelUrl = useStore((state) => state.modelUrl);
-  
+
   const modelService = useRef<ModelService>(ModelService.getInstance());
 
-  // 使用 Three.js 低級別的 API 直接查詢/設置狀態
-  const getManualMorphTargets = () => {
+  // 提供方法給組件使用
+  const getManualMorphTargets = useCallback(() => {
     return modelService.current.getManualMorphTargets();
-  };
+  }, []);
 
-  // 處理 MorphTarget 插值的函數，供 useFrame 使用
-  const setMorphTargetData = (dictionary: Record<string, number> | null, influences: number[] | null) => {
-    // 實現與原始函數相容的功能
+  const setMorphTargetData = useCallback((dictionary: Record<string, number> | null, influences: number[] | null) => {
     if (dictionary) {
-      useStore.getState().setMorphTargetDictionary(dictionary);
+      modelService.current.setMorphTargetDictionary(dictionary);
     }
     
-    // 如果有影響值，保存到模型中 (這裡僅做簡單處理，實際上可能需要更複雜的邏輯)
-    // influences 處理在舊版是透過 modelService.setMorphTargetInfluences 實現的
-    // 但目前 Zustand 中沒有對應的狀態，暫不處理
-  };
+    // influences 已棄用，但保留方法簽名以向後兼容
+    if (influences) {
+      logger.warn('setMorphTargetInfluences 已棄用', LogCategory.MODEL);
+    }
+  }, []);
 
-  // 旋轉模型
-  const rotateModel = (direction: 'left' | 'right') => {
+  const rotateModel = useCallback((direction: 'left' | 'right') => {
     modelService.current.rotateModel(direction);
-  };
+  }, []);
 
-  // 縮放模型
-  const scaleModel = (factor: number) => {
+  const scaleModel = useCallback((factor: number) => {
     modelService.current.scaleModel(factor);
-  };
+  }, []);
 
-  // 重置模型
-  const resetModel = () => {
+  const resetModel = useCallback(() => {
     modelService.current.resetModel();
-  };
+  }, []);
 
-  // 切換背景
-  const toggleBackground = () => {
+  const toggleBackground = useCallback(() => {
     modelService.current.toggleBackground();
-  };
+  }, []);
 
-  // 選擇動畫
-  const selectAnimation = (animation: string) => {
+  const selectAnimation = useCallback((animation: string) => {
     modelService.current.selectAnimation(animation);
-  };
+  }, []);
 
-  // 更新特定 Morph Target 的影響值
-  const updateMorphTargetInfluence = (name: string, value: number) => {
+  const updateMorphTargetInfluence = useCallback((name: string, value: number) => {
     modelService.current.updateMorphTargetInfluence(name, value);
-  };
+  }, []);
 
-  // 重置所有 Morph Target
-  const resetAllMorphTargets = () => {
+  const resetAllMorphTargets = useCallback(() => {
     modelService.current.resetAllMorphTargets();
-  };
+  }, []);
 
-  // 應用預設表情
-  const applyPresetExpression = (expression: string) => {
+  const applyPresetExpression = useCallback((expression: string) => {
     return modelService.current.applyPresetExpression(expression);
-  };
+  }, []);
 
-  // 切換模型
-  const switchModel = (url: string) => {
+  const switchModel = useCallback((url: string) => {
     modelService.current.switchModel(url);
-  };
+  }, []);
 
-  // 返回狀態和方法
+  // 返回所有狀態和方法
   return {
     modelLoaded,
+    modelUrl,
     modelScale,
     modelRotation,
     modelPosition,
     showSpaceBackground,
-    currentAnimation,
     availableAnimations,
-    morphTargetDictionary,
+    currentAnimation,
     morphTargets,
-    manualMorphTargets: morphTargets, // 使用 Zustand morphTargets
-    modelUrl,
+    getManualMorphTargets,
+    setMorphTargetData,
     rotateModel,
     scaleModel,
     resetModel,
@@ -772,11 +628,8 @@ export function useModelService() {
     updateMorphTargetInfluence,
     resetAllMorphTargets,
     applyPresetExpression,
-    switchModel,
-    getManualMorphTargets,
-    setMorphTargetData
+    switchModel
   };
 }
 
-// 添加默認導出
 export default ModelService; 

@@ -10,10 +10,17 @@ class Settings:
     API_PREFIX = "/api"
     
     # CORS配置
-    CORS_ORIGINS = ["*"]  # 在生產環境中應該設置為特定域名
+    CORS_ORIGINS = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174"
+    ]  # 明確指定允許的來源，提高安全性
     CORS_CREDENTIALS = True
-    CORS_METHODS = ["*"]
-    CORS_HEADERS = ["*"]
+    CORS_METHODS = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    CORS_HEADERS = ["Content-Type", "Authorization", "X-Requested-With"]
     
     # Google API配置
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")

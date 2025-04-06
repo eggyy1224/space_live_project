@@ -7,6 +7,7 @@ import AppUI from './components/layout/AppUI'
 import ModelDebugger from './components/ModelDebugger'
 import ModelAnalyzerTool from './components/ModelAnalyzerTool'
 import ErrorBoundary from './components/ErrorBoundary'
+import { ToastContainer } from './components/Toast'
 
 // 引入服務
 import { 
@@ -30,13 +31,18 @@ function App() {
   // 使用音頻服務
   const { 
     isRecording, 
-    isSpeaking, 
+    isPlaying: isSpeaking, 
     isProcessing: audioProcessing, 
     micPermission,
-    startRecording,
+    startRecording: origStartRecording,
     stopRecording,
     playAudio
   } = useAudioService();
+  
+  // 包裝 startRecording 以返回 Promise<void>
+  const startRecording = useCallback(async () => {
+    await origStartRecording();
+  }, [origStartRecording]);
   
   // 使用模型服務
   const { 
@@ -47,10 +53,9 @@ function App() {
     showSpaceBackground,
     currentAnimation,
     availableAnimations,
-    morphTargetDictionary,
     morphTargets,
-    manualMorphTargets,
-    modelUrl,
+    getManualMorphTargets,
+    setMorphTargetData,
     rotateModel,
     scaleModel,
     resetModel,
@@ -60,25 +65,29 @@ function App() {
     resetAllMorphTargets,
     applyPresetExpression,
     switchModel,
-    getManualMorphTargets,
-    setMorphTargetData
+    modelUrl
   } = useModelService();
   
   // 使用聊天服務
   const {
     messages,
-    isProcessing: chatProcessing,
-    emotion,
-    userInput,
-    setUserInput,
     sendMessage,
     clearMessages
   } = useChatService();
   
-  // 確保傳遞給 AppUI 的 currentEmotion 為 string 類型
-  // 使用類型斷言強制轉換
-  const currentEmotion = typeof emotion.emotion === 'string' ? emotion.emotion : 'neutral';
-  const emotionConfidence = emotion.confidence || 0;
+  // 從 Zustand 直接獲取處理狀態
+  const chatProcessing = useStore((state) => state.isProcessing);
+  
+  // 從 Zustand 直接獲取情緒狀態
+  const currentEmotionState = useStore((state) => state.currentEmotion);
+  const currentEmotion = currentEmotionState.emotion || 'neutral';
+  const emotionConfidence = currentEmotionState.confidence || 0;
+  
+  // 使用本地狀態管理用戶輸入
+  const [userInput, setUserInput] = useState('');
+  
+  // 獲取手動變形目標
+  const manualMorphTargets = getManualMorphTargets();
   
   // 標籤切換狀態
   const [activeTab, setActiveTab] = useState<'control' | 'chat'>('control');
@@ -125,7 +134,8 @@ function App() {
   // 處理發送消息 (Enter 鍵或點擊按鈕)
   const handleSendMessage = useCallback(() => {
     if (userInput.trim() && wsConnected) { // 確保已連接才發送
-      sendMessage();
+      sendMessage(userInput);
+      setUserInput(''); // 清空輸入
     } else if (!wsConnected) {
       console.warn("嘗試發送消息但 WebSocket 未連接");
       // 可以選擇性地給用戶提示
@@ -149,13 +159,13 @@ function App() {
       <div className="app-container">
         <SceneContainer 
           modelUrl={modelUrl}
-          modelScale={modelScale}
+          modelScale={modelScale[0] || 1.0}
           modelRotation={modelRotation}
           modelPosition={modelPosition}
           currentAnimation={currentAnimation}
-          morphTargets={morphTargets}
+          morphTargets={morphTargets as unknown as Record<string, number>}
           showSpaceBackground={showSpaceBackground}
-          morphTargetDictionary={morphTargetDictionary}
+          morphTargetDictionary={morphTargets as unknown as Record<string, number> | null}
           getManualMorphTargets={getManualMorphTargets}
           setMorphTargetData={setMorphTargetData}
         />
@@ -183,12 +193,12 @@ function App() {
           playAudio={playAudio}
           // 控制面板相關 props
           modelLoaded={modelLoaded}
-          modelScale={modelScale}
+          modelScale={modelScale[0] || 1.0}
           currentAnimation={currentAnimation}
           currentEmotion={currentEmotion}
           emotionConfidence={emotionConfidence}
           availableAnimations={availableAnimations}
-          morphTargetDictionary={morphTargetDictionary}
+          morphTargetDictionary={morphTargets as unknown as Record<string, number> | null}
           manualMorphTargets={manualMorphTargets}
           selectedMorphTarget={selectedMorphTarget}
           setSelectedMorphTarget={setSelectedMorphTarget}
@@ -206,8 +216,8 @@ function App() {
           userInput={userInput}
           isProcessing={chatProcessing}
           setUserInput={setUserInput}
-          handleKeyDown={handleKeyDown}
           sendMessage={handleSendMessage}
+          handleKeyDown={handleKeyDown}
           clearMessages={clearMessages}
           // 調試按鈕相關 props
           debugMode={debugMode}
@@ -217,6 +227,9 @@ function App() {
           toggleModelAnalyzer={toggleModelAnalyzer}
           handleModelSwitch={handleModelSwitch}
         />
+        
+        {/* 添加Toast通知容器 */}
+        <ToastContainer />
       </div>
     </ErrorBoundary>
   )

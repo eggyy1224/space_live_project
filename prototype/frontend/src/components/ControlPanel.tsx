@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import logger, { LogCategory } from '../utils/LogManager'; // Import logger
+import { getPresetsList } from '../services/api';
 
 // 子組件：單個Morph Target控制條
 interface MorphTargetBarProps {
@@ -172,9 +173,48 @@ const ControlPanel: React.FC<ControlPanelProps> = React.memo(({
   showSpaceBackground,
 }) => {
 
+  // 預設表情列表
+  const [presets, setPresets] = useState<string[]>([]);
+  const [loadingPresets, setLoadingPresets] = useState<boolean>(false);
+
+  // 在組件掛載時獲取預設表情列表
+  useEffect(() => {
+    const fetchPresets = async () => {
+      setLoadingPresets(true);
+      try {
+        const response = await getPresetsList();
+        if (response && response.presets) {
+          setPresets(response.presets);
+          logger.info(`已獲取到 ${response.presets.length} 個預設表情`, LogCategory.MODEL);
+        }
+      } catch (error) {
+        logger.error('無法獲取預設表情列表', LogCategory.MODEL, error);
+        // 使用默認表情列表作為備用
+        setPresets(['happy', 'sad', 'angry', 'surprised', 'reset']);
+      } finally {
+        setLoadingPresets(false);
+      }
+    };
+
+    fetchPresets();
+  }, []);
+
   const handlePresetApply = async (preset: string) => {
     logger.info(`UI: Applying preset ${preset}`, LogCategory.MODEL);
     await applyPresetExpression(preset);
+  };
+
+  // 翻譯預設表情名稱
+  const translatePreset = (preset: string): string => {
+    const translations: Record<string, string> = {
+      'happy': '快樂',
+      'sad': '悲傷',
+      'angry': '生氣',
+      'surprised': '驚訝',
+      'reset': '重置',
+      // 可以添加更多翻譯
+    };
+    return translations[preset] || preset;
   };
 
   return (
@@ -206,11 +246,15 @@ const ControlPanel: React.FC<ControlPanelProps> = React.memo(({
             當前情緒: {currentEmotion} (可信度: {emotionConfidence.toFixed(2)})
           </div>
           <div className="preset-buttons">
-            <button onClick={() => handlePresetApply('happy')}>快樂</button>
-            <button onClick={() => handlePresetApply('sad')}>悲傷</button>
-            <button onClick={() => handlePresetApply('angry')}>生氣</button>
-            <button onClick={() => handlePresetApply('surprised')}>驚訝</button>
-            <button onClick={resetAllMorphTargets}>重置表情</button>
+            {loadingPresets ? (
+              <p>加載表情中...</p>
+            ) : (
+              presets.map(preset => (
+                <button key={preset} onClick={() => handlePresetApply(preset)}>
+                  {translatePreset(preset)}
+                </button>
+              ))
+            )}
           </div>
           <div className="morph-target-list">
             {morphTargetDictionary ? (

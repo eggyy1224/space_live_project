@@ -119,8 +119,8 @@ class WebSocketService {
   // 發送文本消息
   public sendTextMessage(content: string): boolean {
     return this.sendMessage({
-      type: 'message',
-      content
+      type: 'chat-message',
+      message: content
     });
   }
 
@@ -254,33 +254,38 @@ class WebSocketService {
       );
     }
     
-    // 只有在非正常關閉時才重連 (例如 event.wasClean === false)
-    // 或者如果需要總是重連，則移除條件
-    if (!event.wasClean) {
-       this.handleReconnect();
+    // 判斷是否需要重新連接
+    if (event.code !== 1000 && event.code !== 1001) {
+      // 非正常關閉，嘗試重新連接
+      this.handleReconnect();
     }
   }
 
   // 處理重新連接
   private handleReconnect(): void {
     if (this.retryCount >= WS_RETRY_MAX) {
-      logger.warn('超過最大重試次數，停止嘗試連接', LogCategory.WEBSOCKET);
+      logger.warn(`嘗試重連已達最大次數 (${WS_RETRY_MAX})，不再嘗試重連`, LogCategory.WEBSOCKET);
       return;
     }
     
-    this.retryCount += 1;
-    logger.info(`WebSocket重連中... (${this.retryCount}/${WS_RETRY_MAX})`, LogCategory.WEBSOCKET);
+    this.retryCount++;
+    const delay = WS_RETRY_INTERVAL * Math.min(this.retryCount, 5);
+    
+    logger.info(`計劃在 ${delay}ms 後進行第 ${this.retryCount} 次重連`, LogCategory.WEBSOCKET);
+    
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+    }
     
     this.reconnectTimer = setTimeout(() => {
+      logger.info(`開始第 ${this.retryCount} 次重連...`, LogCategory.WEBSOCKET);
       this.connect();
-    }, WS_RETRY_INTERVAL);
+    }, delay);
   }
 
-  // 處理高頻消息的防抖動
+  // 處理高頻消息 (使用防抖動策略)
   private _handleHighFrequencyMessage(type: string, message: any): void {
-    const now = Date.now();
-    
-    // 獲取或創建此類型消息的防抖動信息
+    // 防抖動邏輯: 如果消息類型在防抖動映射中不存在，則創建一個
     if (!this._debounceMap.has(type)) {
       this._debounceMap.set(type, {
         timeout: null,
@@ -289,71 +294,76 @@ class WebSocketService {
       });
     }
     
-    const debounceInfo = this._debounceMap.get(type)!;
+    const info = this._debounceMap.get(type)!;
+    const now = Date.now();
+    const debounceTime = type === 'lipsync_update' ? 30 : 50; // 唇同步需要更快的響應
     
-    // 更新最新的數據
-    debounceInfo.lastData = message;
-    debounceInfo.lastTime = now;
+    // 保存最後收到的數據
+    info.lastData = message;
     
-    // 如果已經有一個計時器在運行，不做任何事
-    if (debounceInfo.timeout !== null) {
+    // 如果已經有一個定時器在運行，則不處理
+    if (info.timeout !== null) {
       return;
     }
     
-    // 設置防抖動計時器，對於不同類型的消息使用不同的延遲
-    const debounceDelay = type === 'lipsync_update' ? 50 : 100;
-    
-    debounceInfo.timeout = window.setTimeout(() => {
-      // 檢查是否有最新數據需要處理
-      if (debounceInfo.lastData) {
-        // 處理最新的數據
-        const handlers = this.messageHandlers[type];
-        if (handlers) {
-          handlers.forEach(handler => {
-            try {
-              handler(debounceInfo.lastData);
-            } catch (error) {
-              logger.error(`處理 ${type} 消息錯誤`, LogCategory.WEBSOCKET, error);
-            }
-          });
+    // 如果上次處理到現在的時間足夠長，則立即處理
+    if (now - info.lastTime > debounceTime) {
+      this._processHighFrequencyMessage(type, message);
+      info.lastTime = now;
+      
+      // 設置一個定時器來防止過於頻繁的消息處理
+      info.timeout = window.setTimeout(() => {
+        // 檢查在此期間是否收到新數據
+        if (info.lastData !== message) {
+          this._processHighFrequencyMessage(type, info.lastData);
+          info.lastTime = Date.now();
         }
-      }
-      
-      // 重置防抖動信息
-      debounceInfo.timeout = null;
-      debounceInfo.lastData = null;
-      
-      // 如果在處理過程中又收到新消息，則再次啟動計時器
-      const timeSinceLastUpdate = Date.now() - debounceInfo.lastTime;
-      if (timeSinceLastUpdate < debounceDelay) {
-        this._handleHighFrequencyMessage(type, debounceInfo.lastData);
-      }
-    }, debounceDelay);
+        info.timeout = null;
+      }, debounceTime);
+    } else {
+      // 設置一個定時器，等待足夠的時間後處理最後一條數據
+      info.timeout = window.setTimeout(() => {
+        this._processHighFrequencyMessage(type, info.lastData);
+        info.lastTime = Date.now();
+        info.timeout = null;
+      }, debounceTime - (now - info.lastTime));
+    }
+  }
+
+  // 處理高頻消息的具體實現
+  private _processHighFrequencyMessage(type: string, message: any): void {
+    // 調用對應類型的消息處理器
+    if (this.messageHandlers[type]) {
+      this.messageHandlers[type].forEach(handler => {
+        try {
+          handler(message);
+        } catch (error) {
+          logger.error(`處理 ${type} 高頻消息錯誤:`, LogCategory.WEBSOCKET, error);
+        }
+      });
+    }
   }
 }
 
-// React Hook - 使用WebSocket (簡化版，不再管理連接狀態)
+// 使用 WebSocket 服務的 React Hook
 export function useWebSocket() {
-  const wsService = useRef<WebSocketService>(WebSocketService.getInstance());
-
+  // 直接從 Zustand 獲取連接狀態
+  const isConnected = useStore((state) => state.isConnected);
+  
   useEffect(() => {
-    // 建立連接
-    wsService.current.connect();
+    // 獲取 WebSocketService 實例並連接
+    const wsService = WebSocketService.getInstance();
+    wsService.connect();
     
-    // 組件卸載時清理
+    // 在組件卸載時斷開連接
     return () => {
-      // 在卸載時關閉連接
-      wsService.current.disconnect();
+      wsService.disconnect();
     };
   }, []);
-
+  
+  // 返回連接狀態
   return {
-    sendMessage: (message: WebSocketMessage) => wsService.current.sendMessage(message),
-    sendTextMessage: (content: string) => wsService.current.sendTextMessage(content),
-    registerHandler: (type: string, handler: MessageHandler) => 
-      wsService.current.registerHandler(type, handler),
-    removeHandler: (type: string, handler: MessageHandler) => 
-      wsService.current.removeHandler(type, handler),
+    isConnected
   };
 }
 

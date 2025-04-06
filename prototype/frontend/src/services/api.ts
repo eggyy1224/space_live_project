@@ -194,6 +194,16 @@ export async function getLogs(limit: number = 100): Promise<{
 }
 
 /**
+ * 獲取所有預設表情列表
+ * @returns 可用的預設表情列表
+ */
+export async function getPresetsList(): Promise<{
+  presets: string[];
+}> {
+  return fetchApi('/api/expressions/presets');
+}
+
+/**
  * 獲取預設表情設定
  * @param expression 表情類型
  * @returns 表情變形目標
@@ -211,6 +221,7 @@ const apiService = {
   getVoiceConfigs,
   setVoiceConfig,
   getLogs,
+  getPresetsList,
   getPresetExpression,
 };
 

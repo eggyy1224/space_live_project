@@ -119,6 +119,89 @@ async def websocket_endpoint(websocket: WebSocket):
                         send_lipsync_frames(websocket, lipsync_frames, current_emotion)
                     )
                 
+                elif message["type"] == "chat-message":
+                    # 處理前端傳來的文字訊息
+                    print(f"收到聊天訊息: {message}")
+                    
+                    # 提取訊息內容
+                    user_text = message["message"]
+                    
+                    # 分析情緒並獲取置信度
+                    emotion, confidence = emotion_analyzer.analyze(user_text)
+                    print(f"分析情緒結果: {emotion}, 置信度: {confidence}")
+                    
+                    # 根據置信度決定是否切換情緒
+                    if confidence > emotion_confidence:
+                        # 只有新情緒的置信度更高時才切換
+                        next_emotion = emotion
+                        emotion_confidence = confidence
+                    else:
+                        # 否則保持當前情緒
+                        next_emotion = current_emotion
+                    
+                    # 計算平滑過渡的 Morph Targets
+                    target_morph = animation_service.calculate_morph_targets(next_emotion)
+                    transition_morph = animation_service.create_transition_morph(
+                        current_morph_targets, target_morph, transition_speed
+                    )
+                    
+                    # 更新當前表情狀態
+                    current_emotion = next_emotion
+                    current_morph_targets = transition_morph
+                    
+                    # 生成回復
+                    ai_response = await ai_service.generate_response(user_text, current_emotion)
+                    
+                    # 轉換回復為語音
+                    tts_result = await tts_service.synthesize_speech(ai_response)
+                    audio_base64 = tts_result["audio"] if tts_result else None
+                    audio_duration = tts_result["duration"] if tts_result else len(ai_response) * 0.3
+                    
+                    # 生成唇型同步序列 - 使用語音的實際持續時間和當前情緒
+                    lipsync_frames = animation_service.create_lipsync_morph(
+                        ai_response, 
+                        emotion=current_emotion,  # 傳遞當前情緒
+                        duration=audio_duration
+                    )
+                    
+                    # 創建機器人回覆消息
+                    bot_message = {
+                        "id": f"bot-{int(asyncio.get_event_loop().time() * 1000)}",
+                        "role": "bot",
+                        "content": ai_response,
+                        "timestamp": None,  # 前端會使用收到訊息的時間
+                        "audioUrl": f"/audio/{int(asyncio.get_event_loop().time() * 1000)}.mp3" if audio_base64 else None
+                    }
+                    
+                    # 發送聊天回覆
+                    await websocket.send_json({
+                        "type": "chat-message",
+                        "message": bot_message
+                    })
+                    
+                    # 發送表情和語音訊息
+                    await websocket.send_json({
+                        "type": "response",
+                        "content": ai_response,
+                        "morphTargets": transition_morph,
+                        "emotion": current_emotion,
+                        "confidence": emotion_confidence,
+                        "audio": audio_base64,
+                        "hasSpeech": audio_base64 is not None,
+                        "speechDuration": audio_duration,
+                        "characterState": ai_service.character_state
+                    })
+                    
+                    # 持續發送表情更新，實現平滑過渡
+                    asyncio.create_task(
+                        send_transition_updates(websocket, transition_morph, target_morph, current_emotion)
+                    )
+                    
+                    # 發送唇型同步序列
+                    asyncio.create_task(
+                        send_lipsync_frames(websocket, lipsync_frames, current_emotion)
+                    )
+                
                 elif message["type"] == "get_character_state":
                     # 返回角色當前狀態
                     await websocket.send_json({

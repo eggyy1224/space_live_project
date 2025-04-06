@@ -12,14 +12,10 @@ class AudioService {
   private audioElement: HTMLAudioElement | null = null;
   private mediaRecorder: MediaRecorder | null = null;
   private audioChunks: Blob[] = [];
+  
+  // 仍然保留這些回調以支持舊代碼
   private onSpeakingStartCallbacks: (() => void)[] = [];
   private onSpeakingEndCallbacks: (() => void)[] = [];
-  
-  // 不再需要存儲這些狀態，改用 Zustand
-  // private isRecording = false;
-  // private isSpeaking = false;
-  // private isProcessing = false;
-  // private micPermission: boolean | null = null;
   
   private modelService: ModelService;
   private mouthAnimInterval: number | null = null;
@@ -122,7 +118,6 @@ class AudioService {
       stream.getTracks().forEach(track => track.stop());
       
       // 使用 Zustand 更新 micPermission 狀態
-      // 注意：這裡需要確保 micPermission 的類型是 'granted' | 'denied' | 'prompt'，與要求的 string 類型相容
       useStore.getState().setMicPermission('granted');
       logger.info('麥克風權限已授權', LogCategory.AUDIO);
       return true;
@@ -250,328 +245,278 @@ class AudioService {
         return false;
       }
     }
+    
+    logger.warn('嘗試停止錄音，但沒有活動的錄音', LogCategory.AUDIO);
     return false;
   }
-
-  // 處理錄製的音頻
+  
+  // 處理錄製的音頻數據
   private async processRecordedAudio(): Promise<void> {
     if (this.audioChunks.length === 0) {
-      logger.warn('沒有錄製到音頻數據', LogCategory.AUDIO);
-      this.setProcessing(false);
+      logger.warn('沒有音頻數據可處理', LogCategory.AUDIO);
+      // 顯示錯誤通知
+      useStore.getState().addToast({
+        message: '錄音失敗: 未收集到有效的音頻數據',
+        type: 'error',
+        duration: 4000
+      });
+      useStore.getState().setProcessing(false);
       return;
     }
     
     try {
-      // 創建音頻Blob - 使用與錄製時相同的MIME類型
-      const mimeType = this.mediaRecorder?.mimeType || 'audio/webm;codecs=opus';
-      const audioBlob = new Blob(this.audioChunks, { type: mimeType });
-      logger.info(`創建音頻Blob，大小: ${audioBlob.size} 字節，MIME類型: ${mimeType}`, LogCategory.AUDIO);
+      // 設置處理狀態
+      useStore.getState().setProcessing(true);
       
-      if (audioBlob.size < 100) {
-        logger.warn('音頻數據太小，可能沒有捕獲到有效聲音', LogCategory.AUDIO);
-        this.setProcessing(false);
+      // 將記錄的音頻塊合併為一個Blob
+      const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+      this.audioChunks = []; // 清空以便下次錄製
+      
+      // 檢查音頻大小，如果太小，可能是誤觸或噪音
+      const audioSize = audioBlob.size;
+      logger.info(`處理音頻數據，大小：${audioSize} 字節`, LogCategory.AUDIO);
+      
+      if (audioSize < 1000) { // 小於1KB認為是無效的
+        logger.warn('音頻數據太小，可能是噪音或誤觸', LogCategory.AUDIO);
+        useStore.getState().addToast({
+          message: '錄音太短或聲音太小，請再試一次',
+          type: 'info',
+          duration: 3000
+        });
+        useStore.getState().setProcessing(false);
         return;
       }
       
-      // === 開始處理前，設置 isProcessing = true ===
-      this.setProcessing(true);
+      // 創建FormData對象，用於上傳
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'recording.webm');
       
-      // 將Blob轉為Base64
-      const reader = new FileReader();
-      reader.readAsDataURL(audioBlob);
-      
-      reader.onloadend = async () => {
-        try {
-          const base64data = reader.result as string;
-          // 移除data URL前綴
-          const audioData = base64data.split(',')[1];
-          logger.info(`音頻Base64編碼完成，長度: ${audioData.length}`, LogCategory.AUDIO);
+      try {
+        // 向伺服器發送POST請求
+        const response = await fetch(`${API_BASE_URL}/api/speech-to-text`, {
+          method: 'POST',
+          body: formData,
+          // 不設置Content-Type，讓瀏覽器自動設置帶有boundary的multipart/form-data
+        });
+        
+        if (!response.ok) {
+          let errorText = '';
+          try {
+            // 嘗試讀取錯誤訊息
+            const errorData = await response.json();
+            errorText = errorData.detail || errorData.error || `伺服器返回錯誤狀態碼: ${response.status}`;
+          } catch {
+            errorText = `伺服器返回錯誤狀態碼: ${response.status}`;
+          }
           
-          // === 不再在這裡設置 processing ===
-          // this.setProcessing(true); 
+          throw new Error(errorText);
+        }
+        
+        const result = await response.json();
+        
+        // 處理伺服器響應
+        if (result.text) {
+          logger.info(`語音識別成功: "${result.text}"`, LogCategory.AUDIO);
           
-          // 打印音頻MIME類型和支持的格式
-          logger.info(`MediaRecorder支持的MIME類型: ${
-            ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/ogg']
-              .map(type => `${type}: ${MediaRecorder.isTypeSupported(type) ? '支持' : '不支持'}`)
-              .join(', ')
-          }`, LogCategory.AUDIO);
-          
-          // 發送到後端進行STT處理
-          logger.info('正在發送音頻到後端處理...', LogCategory.AUDIO);
-          const response = await fetch(`${API_BASE_URL}/api/speech-to-text`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              audio_base64: audioData,
-              mime_type: mimeType // 同時傳遞MIME類型
-            })
+          // 顯示成功通知
+          useStore.getState().addToast({
+            message: '語音識別成功',
+            type: 'success',
+            duration: 2000
           });
           
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}, statusText: ${response.statusText}`);
-          }
-          
-          const data = await response.json();
-          logger.info('收到後端回應', LogCategory.AUDIO, data);
-          
-          // 清理音頻塊
-          this.audioChunks = [];
-          
-          // === 獲取 ChatService 實例 ===
-          const ChatService = (await import('./ChatService')).default;
-          const chatService = ChatService.getInstance();
-          
-          // 處理識別結果
-          if (data.success) {
-            // 如果有識別到文字，更新UI顯示
-            if (data.text) {
-              logger.info(`語音識別結果: ${data.text}`, LogCategory.AUDIO);
-              
-              // 將識別的文字添加為用戶消息
-              chatService.addMessage({
-                role: 'user',
-                content: data.text
-              });
-              
-              // 添加 AI 的文字回應到聊天
-              if (data.response) {
-                  chatService.addMessage({
-                    role: 'bot',
-                    content: data.response
-                  });
-              } else {
-                  logger.warn('後端回應中缺少 AI 文字回應 (data.response)', LogCategory.AUDIO);
-              }
-              
-              // HTTP API (/api/speech-to-text) 已經處理了語音識別和回應生成
-              logger.info(`使用HTTP API處理語音識別`, LogCategory.AUDIO);
-            } else {
-              logger.warn('未能識別有效的語音內容', LogCategory.AUDIO);
-              chatService.addMessage({
-                role: 'bot',
-                content: '抱歉，我沒有聽清您說的內容，請再試一次。'
-              });
-            }
-            
-            // 如果後端API提供了音頻（可能是測試模式），播放它
-            if (data.audio) {
-              logger.info('API返回了音頻，將直接播放', LogCategory.AUDIO);
-              this.playAudio(`data:audio/mp3;base64,${data.audio}`);
-            }
-          } else {
-            // 處理失敗情況
-            const errorMsg = data.error || '未知錯誤';
-            logger.warn(`語音識別失敗: ${errorMsg}`, LogCategory.AUDIO);
-            chatService.addMessage({
-              role: 'bot',
-              content: '抱歉，我沒有聽清您說的話，請再說一遍或嘗試靠近麥克風。'
-            });
-          }
-          
-          // === 所有處理完成後，設置 isProcessing = false ===
-          this.setProcessing(false);
-          
-          // return data; // 這個 return 似乎不需要
-        } catch (error) {
-          logger.error('處理語音錄製錯誤', LogCategory.AUDIO, error);
-          // === 出錯時也要設置 isProcessing = false ===
-          this.setProcessing(false);
-          // return null; // 這個 return 似乎不需要
+          // 將識別的文本添加到聊天中，由ChatService處理
+          const chatService = (await import('./ChatService')).default.getInstance();
+          chatService.sendMessage(result.text);
+        } else if (result.error) {
+          // 如果伺服器返回了明確的錯誤訊息
+          logger.warn(`語音識別返回錯誤: ${result.error}`, LogCategory.AUDIO);
+          useStore.getState().addToast({
+            message: `語音識別錯誤: ${result.error}`,
+            type: 'error',
+            duration: 4000
+          });
+          useStore.getState().setProcessing(false);
+        } else {
+          logger.warn('語音識別未返回文本', LogCategory.AUDIO);
+          useStore.getState().addToast({
+            message: '無法識別您的語音，請再試一次',
+            type: 'error',
+            duration: 3000
+          });
+          useStore.getState().setProcessing(false);
         }
-      };
+      } catch (error) {
+        // 捕獲網絡請求錯誤
+        const errorMessage = error instanceof Error ? error.message : '未知錯誤';
+        logger.error(`語音識別請求錯誤: ${errorMessage}`, LogCategory.AUDIO, error);
+        
+        // 顯示錯誤通知
+        useStore.getState().addToast({
+          message: `語音處理失敗: ${errorMessage}`,
+          type: 'error',
+          duration: 5000
+        });
+        useStore.getState().setProcessing(false);
+      }
     } catch (error) {
-      logger.error('處理錄音數據時發生錯誤', LogCategory.AUDIO, error);
-      // === 出錯時也要設置 isProcessing = false ===
-      this.setProcessing(false);
+      const errorMessage = error instanceof Error ? error.message : '未知錯誤';
+      logger.error(`處理音頻數據時發生錯誤: ${errorMessage}`, LogCategory.AUDIO, error);
+      
+      // 顯示錯誤通知
+      useStore.getState().addToast({
+        message: `音頻處理錯誤: ${errorMessage}`,
+        type: 'error',
+        duration: 4000
+      });
+      useStore.getState().setProcessing(false);
     }
   }
-
+  
   // 播放音頻
   public playAudio(audioUrl: string): void {
-    if (this.audioElement) {
-      try {
-        // 停止當前播放的音頻
+    if (!this.audioElement) {
+      this.audioElement = new Audio();
+      this.setupAudioEvents();
+    }
+    
+    try {
+      // 停止當前播放（如果有）
+      if (!this.audioElement.paused) {
         this.audioElement.pause();
-        this.audioElement.currentTime = 0;
-        
-        // 設置新的音頻源
-        this.audioElement.src = audioUrl;
-        
-        // 預加載音頻減少延遲
-        this.audioElement.load();
-        
-        // 確保音頻完全加載後再播放
-        this.audioElement.oncanplaythrough = () => {
-          // 啟動口型動畫
-          this.startMouthAnimation();
-          
-          // 使用 Zustand 更新播放狀態
-          useStore.getState().startPlaying(audioUrl);
-          this.notifySpeakingStart();
-          
-          // 延遲極短時間後播放，確保口型同步能夠先啟動
-          setTimeout(() => {
-            if (this.audioElement) {
-              this.audioElement.play()
-                .then(() => {
-                  logger.info('開始播放音頻', LogCategory.AUDIO);
-                })
-                .catch(error => {
-                  logger.error('播放音頻錯誤', LogCategory.AUDIO, error);
-                  useStore.getState().stopPlaying();
-                  this.stopMouthAnimation();
-                  this.notifySpeakingEnd();
-                });
-            }
-          }, 20);
-        };
-        
-        // 監聽錯誤
-        this.audioElement.onerror = (e) => {
-          logger.error('音頻加載錯誤', LogCategory.AUDIO, e);
-          useStore.getState().stopPlaying();
-          this.stopMouthAnimation();
-          this.notifySpeakingEnd();
-        };
-      } catch (error) {
-        logger.error('播放音頻時發生意外錯誤', LogCategory.AUDIO, error);
-        useStore.getState().stopPlaying();
         this.stopMouthAnimation();
-        this.notifySpeakingEnd();
       }
+      
+      // 設置新的音頻源
+      this.audioElement.src = audioUrl;
+      
+      // 預加載並播放
+      this.audioElement.load();
+      
+      // 添加播放開始事件
+      const playPromise = this.audioElement.play();
+      
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            logger.info('開始播放音頻', LogCategory.AUDIO);
+            // 使用 Zustand 更新狀態
+            useStore.getState().setPlaying(true);
+            
+            // 啟動口型動畫
+            this.startMouthAnimation();
+            
+            // 通知已開始播放
+            this.notifySpeakingStart();
+          })
+          .catch(error => {
+            logger.error('播放音頻時發生錯誤', LogCategory.AUDIO, error);
+            // 使用 Zustand 更新狀態
+            useStore.getState().setPlaying(false);
+          });
+      }
+    } catch (error) {
+      logger.error('設置音頻源時發生錯誤', LogCategory.AUDIO, error);
+      // 使用 Zustand 更新狀態
+      useStore.getState().setPlaying(false);
     }
   }
 
-  // 檢查是否正在錄音
+  // 獲取當前錄音狀態 (使用 Zustand)
   public isCurrentlyRecording(): boolean {
     return useStore.getState().isRecording;
   }
 
-  // 檢查是否正在說話
+  // 獲取當前語音播放狀態 (使用 Zustand)
   public isCurrentlySpeaking(): boolean {
     return useStore.getState().isPlaying;
   }
 
-  // 檢查是否正在處理音頻
+  // 獲取當前處理狀態 (使用 Zustand)
   public isCurrentlyProcessing(): boolean {
     return useStore.getState().isProcessing;
   }
 
-  // 設置處理狀態
+  // 設置處理狀態 (使用 Zustand)
   private setProcessing(processing: boolean): void {
-    // 使用 Zustand 更新處理狀態
-    useStore.getState().setProcessing(processing);
-    this.notifyAudioProcessing(processing);
+    const currentProcessing = useStore.getState().isProcessing;
+    if (currentProcessing !== processing) {
+      useStore.getState().setProcessing(processing);
+    }
   }
 
-  // 註冊說話開始事件
+  // 以下方法僅為向後兼容保留
+  // =========================================
+  
+  // 註冊語音開始回調
   public onSpeakingStart(callback: () => void): void {
     this.onSpeakingStartCallbacks.push(callback);
   }
 
-  // 移除說話開始事件
+  // 移除語音開始回調
   public offSpeakingStart(callback: () => void): void {
     this.onSpeakingStartCallbacks = this.onSpeakingStartCallbacks.filter(cb => cb !== callback);
   }
 
-  // 觸發說話開始事件
+  // 觸發語音開始回調
   private notifySpeakingStart(): void {
     this.onSpeakingStartCallbacks.forEach(callback => callback());
   }
 
-  // 註冊說話結束事件
+  // 註冊語音結束回調
   public onSpeakingEnd(callback: () => void): void {
     this.onSpeakingEndCallbacks.push(callback);
   }
 
-  // 移除說話結束事件
+  // 移除語音結束回調
   public offSpeakingEnd(callback: () => void): void {
     this.onSpeakingEndCallbacks = this.onSpeakingEndCallbacks.filter(cb => cb !== callback);
   }
 
-  // 觸發說話結束事件
+  // 觸發語音結束回調
   private notifySpeakingEnd(): void {
     this.onSpeakingEndCallbacks.forEach(callback => callback());
   }
-
-  // 註冊音頻處理事件 (移除，使用 Zustand 訂閱)
-  public onAudioProcessing(callback: (isProcessing: boolean) => void): void {
-    // 不再使用事件回調，而是直接從 Zustand 獲取狀態
-  }
-
-  // 移除音頻處理事件 (移除，使用 Zustand 訂閱)
-  public offAudioProcessing(callback: (isProcessing: boolean) => void): void {
-    // 不再使用事件回調，而是直接從 Zustand 獲取狀態
-  }
-
-  // 觸發音頻處理事件
-  private notifyAudioProcessing(isProcessing: boolean): void {
-    // 僅為兼容性保留，實際使用 Zustand 更新狀態
-  }
 }
 
-// React Hook - 使用音頻服務 (使用 Zustand)
+// React Hook - 使用音頻服務
 export function useAudioService() {
-  // 從 Zustand 獲取音頻相關狀態
+  // 直接從 Zustand 獲取相關狀態
   const isRecording = useStore((state) => state.isRecording);
-  const isSpeaking = useStore((state) => state.isPlaying);
+  const isPlaying = useStore((state) => state.isPlaying);
   const isProcessing = useStore((state) => state.isProcessing);
   const micPermission = useStore((state) => state.micPermission);
   
+  // 獲取 AudioService 實例
   const audioService = useRef<AudioService>(AudioService.getInstance());
-
-  useEffect(() => {
-    // 檢查麥克風權限（如果還未獲取）
-    if (micPermission === 'prompt') {
-      audioService.current.checkMicrophonePermission();
-    }
-    
-    // 註冊說話開始/結束事件處理器（兼容性保留）
-    const handleSpeakingStart = () => {
-      // 不再需要設置本地狀態
-    };
-
-    const handleSpeakingEnd = () => {
-      // 不再需要設置本地狀態
-    };
-
-    // 註冊事件處理
-    audioService.current.onSpeakingStart(handleSpeakingStart);
-    audioService.current.onSpeakingEnd(handleSpeakingEnd);
-
-    // 清理函數
-    return () => {
-      audioService.current.offSpeakingStart(handleSpeakingStart);
-      audioService.current.offSpeakingEnd(handleSpeakingEnd);
-    };
-  }, [micPermission]);
-
-  // 開始錄音
+  
+  // 封裝服務方法
   const startRecording = async () => {
-    await audioService.current.startRecording();
+    return await audioService.current.startRecording();
   };
-
-  // 停止錄音
+  
   const stopRecording = () => {
-    audioService.current.stopRecording();
+    return audioService.current.stopRecording();
   };
-
-  // 播放音頻
+  
   const playAudio = (audioUrl: string) => {
     audioService.current.playAudio(audioUrl);
   };
-
+  
+  const checkMicrophonePermission = async () => {
+    return await audioService.current.checkMicrophonePermission();
+  };
+  
+  // 返回狀態和方法
   return {
     isRecording,
-    isSpeaking,
+    isPlaying,
     isProcessing,
     micPermission,
     startRecording,
     stopRecording,
-    playAudio
+    playAudio,
+    checkMicrophonePermission
   };
 }
 
