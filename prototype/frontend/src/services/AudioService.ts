@@ -9,16 +9,16 @@ const API_BASE_URL = `http://${window.location.hostname}:8000`;
 // 音頻服務類
 class AudioService {
   private static instance: AudioService;
-  private audioElement: HTMLAudioElement | null = null;
-  private mediaRecorder: MediaRecorder | null = null;
+  private audioContext: AudioContext | null = null;
+  private analyser: AnalyserNode | null = null;
+  private mediaStream: MediaStream | null = null;
+  private sourceNode: MediaStreamAudioSourceNode | null = null;
   private audioChunks: Blob[] = [];
-  
-  // 仍然保留這些回調以支持舊代碼
-  private onSpeakingStartCallbacks: (() => void)[] = [];
-  private onSpeakingEndCallbacks: (() => void)[] = [];
-  
+  private audioBlob: Blob | null = null;
+  private playbackAudio: HTMLAudioElement | null = null;
+  private animationFrameId: number | null = null;
+  private mouthAnimationIntervalId: number | null = null;
   private modelService: ModelService;
-  private mouthAnimInterval: number | null = null;
 
   // 單例模式
   public static getInstance(): AudioService {
@@ -29,84 +29,278 @@ class AudioService {
   }
 
   constructor() {
-    // 初始化音頻元素
-    this.audioElement = new Audio();
-    this.setupAudioEvents();
-
-    // 檢查麥克風權限
-    this.checkMicrophonePermission();
-    
-    // 獲取模型服務
+    this.initializeAudioContext();
     this.modelService = ModelService.getInstance();
   }
 
-  // 設置音頻事件
-  private setupAudioEvents(): void {
-    if (this.audioElement) {
-      // 設置播放結束事件
-      this.audioElement.onended = () => {
-        logger.info('音頻播放結束', LogCategory.AUDIO);
-        // 播放結束後，延遲一下再關閉口型動畫，保持同步
-        setTimeout(() => {
-          this.stopMouthAnimation();
-          
-          // 使用 Zustand 更新狀態
-          useStore.getState().setPlaying(false);
-          this.notifySpeakingEnd();
-        }, 300);
-      };
+  private initializeAudioContext(): void {
+    if (!this.audioContext) {
+      try {
+        this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        logger.info('AudioContext initialized successfully.', LogCategory.AUDIO);
+      } catch (e) {
+        logger.error('Web Audio API is not supported in this browser.', LogCategory.AUDIO, e);
+        return;
+      }
+    }
+    // 確保在用戶互動後恢復 AudioContext
+    if (this.audioContext.state === 'suspended') {
+      this.audioContext.resume().then(() => {
+        logger.info('AudioContext resumed after user interaction.', LogCategory.AUDIO);
+      });
     }
   }
 
-  // 啟動口型動畫
-  private startMouthAnimation(): void {
-    // 如果已經有動畫在運行，先停止
-    this.stopMouthAnimation();
-    
-    // 預先計算一組隨機值，避免頻繁計算
-    const mouthValues = Array.from({ length: 10 }, () => ({
-      mouthOpen: Math.random() * 0.7,
-      jawOpen: Math.random() * 0.6,
-      mouthLeft: Math.random() * 0.2,
-      mouthRight: Math.random() * 0.2
-    }));
-    
-    let currentIndex = 0;
-    
-    // 啟動口型動畫後備機制 - 當WebSocket數據不可用時
-    this.mouthAnimInterval = window.setInterval(() => {
-      // 使用預先計算的隨機值
-      const values = mouthValues[currentIndex];
-      currentIndex = (currentIndex + 1) % mouthValues.length;
-      
-      try {
-        // 獲取當前表情 (使用淺拷貝避免深度複製開銷)
-        const currentMorphs = this.modelService.getMorphTargets();
+  public async startRecording(onStop: (audioBlob: Blob | null) => void): Promise<void> {
+    this.initializeAudioContext(); // 確保 AudioContext 已初始化
+    if (!this.audioContext || useStore.getState().isRecording) return;
+
+    logger.info('Starting audio recording...', LogCategory.AUDIO);
+    this.audioChunks = []; // 清空之前的音頻塊
+    useStore.getState().setRecording(true); // <-- 更新 Zustand 狀態
+
+    try {
+      this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this.sourceNode = this.audioContext.createMediaStreamSource(this.mediaStream);
+      this.analyser = this.audioContext.createAnalyser();
+      this.analyser.fftSize = 2048;
+      this.sourceNode.connect(this.analyser);
+      // 注意：這裡不連接到 destination，避免回聲
+
+      this.startMouthAnimation(); // 開始嘴型動畫
+
+      // 使用 MediaRecorder 處理錄音
+      const recorder = new MediaRecorder(this.mediaStream);
+      recorder.ondataavailable = (event) => {
+        this.audioChunks.push(event.data);
+      };
+
+      recorder.onstop = () => {
+        // 添加日誌
+        logger.info('[AudioService] MediaRecorder onstop triggered.', LogCategory.AUDIO);
+        this.audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
         
-        // 更新口型 (只更新嘴部相關的屬性)
-        const updatedMorphs = {
-          ...currentMorphs,
-          "mouthOpen": values.mouthOpen,
-          "jawOpen": values.jawOpen,
-          "mouthLeft": values.mouthLeft,
-          "mouthRight": values.mouthRight
-        };
+        try {
+            // 調用從 UI 傳來的回調
+            onStop(this.audioBlob);
+            logger.info('[AudioService] onStop callback executed.', LogCategory.AUDIO);
+        } catch (callbackError) {
+            logger.error('[AudioService] Error executing onStop callback:', LogCategory.AUDIO, callbackError);
+        }
         
-        this.modelService.setMorphTargets(updatedMorphs);
-      } catch (error) {
-        // 出錯時停止動畫，避免導致崩潰
-        logger.error('口型動畫更新錯誤', LogCategory.AUDIO, error);
-        this.stopMouthAnimation();
-      }
-    }, 250); // 降低更新頻率到250毫秒
-  }
-  
-  // 停止口型動畫
-  private stopMouthAnimation(): void {
-    if (this.mouthAnimInterval) {
-      window.clearInterval(this.mouthAnimInterval);
-      this.mouthAnimInterval = null;
+        useStore.getState().setRecording(false);
+        this.stopMouthAnimation(); // 停止嘴型動畫
+        logger.info('Recording stopped, audio blob created.', LogCategory.AUDIO);
+        
+        // 停止所有軌道以釋放資源
+        this.mediaStream?.getTracks().forEach(track => track.stop());
+        this.mediaStream = null;
+        this.sourceNode?.disconnect();
+        this.sourceNode = null;
+        this.analyser = null;
+      };
+
+      recorder.start(); // 開始錄製
+
+    } catch (error) {
+      logger.error('Error starting recording:', LogCategory.AUDIO, error);
+      useStore.getState().setRecording(false); // <-- 更新 Zustand 狀態
+      this.stopMouthAnimation();
     }
+  }
+
+  public stopRecording(): void {
+    if (!useStore.getState().isRecording || !this.mediaStream) return;
+    // 添加日誌
+    logger.info('[AudioService] stopRecording called. Stopping media tracks...', LogCategory.AUDIO);
+    this.mediaStream.getTracks().forEach(track => track.stop());
+    logger.info('Stopped recording via track stop.', LogCategory.AUDIO);
+  }
+
+  private startMouthAnimation(): void {
+    this.stopMouthAnimation(); // 確保之前的動畫已停止
+    this.animationFrameId = requestAnimationFrame(this.updateMouthShape.bind(this));
+    logger.debug('Started mouth animation loop.', LogCategory.AUDIO);
+    
+    // 移除多餘的 setInterval fallback
+    /*
+    this.mouthAnimationIntervalId = window.setInterval(() => {
+        if (useStore.getState().isRecording && this.analyser) {
+            const dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+            this.analyser.getByteFrequencyData(dataArray);
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+                sum += dataArray[i];
+            }
+            const average = sum / dataArray.length;
+            const mouthOpenValue = Math.min(1, (average / 128) * 1.5); // 根據音量計算嘴巴開合度
+            // 移除日誌
+            // console.log(`[AudioService Interval] Average: ${average.toFixed(2)}, MouthOpen: ${mouthOpenValue.toFixed(2)}`);
+
+            // 直接讀取和更新 Zustand 狀態
+            // const currentMorphs = useStore.getState().morphTargets;
+            // const updatedMorphs = { ...currentMorphs, jawOpen: mouthOpenValue };
+            // 使用 updateMorphTarget 更新，避免覆蓋其他表情
+            useStore.getState().updateMorphTarget('jawOpen', mouthOpenValue);
+            // logger.debug({ msg: 'Fallback mouth animation update', details: { jawOpen: mouthOpenValue }}, LogCategory.AUDIO);
+        }
+    }, 250); // 每 250ms 更新一次 fallback
+    */
+
+  }
+
+  private stopMouthAnimation(): void {
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+    // 不再需要清除 interval ID
+    /*
+    if (this.mouthAnimationIntervalId) {
+      clearInterval(this.mouthAnimationIntervalId);
+      this.mouthAnimationIntervalId = null;
+    }
+    */
+    // 重置嘴型到關閉狀態
+    useStore.getState().updateMorphTarget('jawOpen', 0);
+    logger.debug('Stopped mouth animation loop and reset jawOpen.', LogCategory.AUDIO);
+  }
+
+  private updateMouthShape = (): void => {
+    if (!this.analyser) {
+      this.mouthAnimationIntervalId = null;
+      return;
+    }
+
+    const dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+    this.analyser.getByteFrequencyData(dataArray);
+    const average = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
+    const normalizedAverage = Math.min(1, average / 128); 
+
+    const mouthOpenValue = normalizedAverage;
+
+    // 移除日誌
+    // logger.debug(`[AudioService Frame] Average: ${average.toFixed(2)}, MouthOpen: ${mouthOpenValue.toFixed(2)}`, LogCategory.AUDIO);
+
+    // 修正: 使用 setMorphTargets 並傳遞物件
+    useStore.getState().setMorphTargets({'jawOpen': mouthOpenValue});
+
+    this.mouthAnimationIntervalId = requestAnimationFrame(this.updateMouthShape);
+  };
+
+  // 播放音頻 Blob 或 URL
+  public playAudio(audioData: Blob | string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.stopPlayback(); // 停止任何正在播放的音頻
+      this.initializeAudioContext();
+
+      let audioUrl: string;
+      if (audioData instanceof Blob) {
+        audioUrl = URL.createObjectURL(audioData);
+      } else {
+        audioUrl = audioData;
+      }
+
+      this.playbackAudio = new Audio(audioUrl);
+
+      // --- AudioContext 分析節點設置 (用於播放時的嘴型動畫) ---
+      let playbackSourceNode: MediaElementAudioSourceNode | null = null;
+      if (this.audioContext && this.playbackAudio) {
+          try {
+              playbackSourceNode = this.audioContext.createMediaElementSource(this.playbackAudio);
+              this.analyser = this.audioContext.createAnalyser();
+              this.analyser.fftSize = 2048;
+              playbackSourceNode.connect(this.analyser);
+              this.analyser.connect(this.audioContext.destination); // 播放需要連接到輸出
+              logger.info('AudioContext analyser connected for playback.', LogCategory.AUDIO);
+          } catch (err) {
+              logger.error('Failed to connect analyser for playback:', LogCategory.AUDIO, err);
+              this.analyser = null; // 連接失敗則不使用分析器
+          }
+      }
+      // -------
+
+      this.playbackAudio.oncanplaythrough = () => {
+        logger.info('Audio ready for playback.', LogCategory.AUDIO);
+        if (!this.playbackAudio) return;
+
+        // 將播放邏輯放回 .then()
+        this.playbackAudio.play()
+          .then(() => {
+            useStore.getState().setPlaying(true);
+            logger.info('Audio playback started successfully within .then().', LogCategory.AUDIO); // 修改日誌
+            if (this.analyser) {
+                this.startMouthAnimation(); 
+            } else {
+                logger.warn('Analyser not available for playback mouth animation.', LogCategory.AUDIO);
+            }
+            
+            if (this.audioContext?.state === 'suspended') {
+              this.audioContext.resume();
+            }
+          })
+          .catch(error => {
+            logger.error('Error playing audio:', LogCategory.AUDIO, error);
+            useStore.getState().setPlaying(false);
+            this.stopMouthAnimation();
+            if (audioData instanceof Blob) URL.revokeObjectURL(audioUrl);
+            if (playbackSourceNode) playbackSourceNode.disconnect();
+            if (this.analyser) this.analyser.disconnect();
+            reject(error); // 將錯誤 reject 出去
+          });
+      };
+
+      this.playbackAudio.onended = () => {
+        logger.info('Audio playback finished.', LogCategory.AUDIO);
+        useStore.getState().setPlaying(false);
+        this.stopMouthAnimation();
+        if (audioData instanceof Blob) URL.revokeObjectURL(audioUrl);
+        if (playbackSourceNode) playbackSourceNode.disconnect();
+        if (this.analyser) this.analyser.disconnect();
+        resolve(); // 正常結束
+      };
+
+      this.playbackAudio.onerror = (e) => {
+        logger.error('Error loading or playing audio:', LogCategory.AUDIO, e);
+        useStore.getState().setPlaying(false);
+        this.stopMouthAnimation();
+        if (audioData instanceof Blob) URL.revokeObjectURL(audioUrl);
+        if (playbackSourceNode) playbackSourceNode.disconnect();
+        if (this.analyser) this.analyser.disconnect();
+        reject(e); // 出錯，reject promise
+      };
+
+      // 預加載音頻
+      this.playbackAudio.load();
+    });
+  }
+
+  // 停止播放
+  public stopPlayback(): void {
+    if (this.playbackAudio && useStore.getState().isPlaying) {
+      this.playbackAudio.pause();
+      this.playbackAudio.currentTime = 0; // 重置播放時間
+      useStore.getState().setPlaying(false); // <-- 更新 Zustand 狀態
+      this.stopMouthAnimation();
+      logger.info('Audio playback stopped manually.', LogCategory.AUDIO);
+      // 如果是 Blob URL，則釋放它
+      if (this.playbackAudio.src.startsWith('blob:')) {
+        URL.revokeObjectURL(this.playbackAudio.src);
+      }
+      // 斷開 analyser 連接 (如果存在)
+      // 這裡獲取 playbackSourceNode 比較困難，暫時只斷開 analyser
+      // 更好的做法是在 playAudio 創建時保存 sourceNode 引用
+      if (this.analyser) {
+          try {
+              this.analyser.disconnect();
+          } catch(e) { /* ignore */ }
+      }
+      this.playbackAudio = null;
+    }
+  }
+
+  public getIsRecording(): boolean {
+    return useStore.getState().isRecording;
   }
 
   // 檢查麥克風權限
@@ -134,332 +328,6 @@ class AudioService {
     return useStore.getState().micPermission;
   }
 
-  // 開始語音錄製
-  public async startRecording(): Promise<boolean> {
-    // 如果已經在錄音，則不執行
-    if (useStore.getState().isRecording) {
-      return false;
-    }
-
-    try {
-      // 請求麥克風訪問權限
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          // WebM-Opus格式適用的採樣率
-          sampleRate: 48000,
-        } 
-      });
-
-      logger.info('成功獲取麥克風流', LogCategory.AUDIO);
-      
-      // 檢查支持的MIME類型
-      const mimeTypes = [
-        'audio/webm;codecs=opus',
-        'audio/webm',
-        'audio/ogg;codecs=opus',
-        'audio/ogg'
-      ];
-      
-      let selectedMimeType = '';
-      for (const type of mimeTypes) {
-        if (MediaRecorder.isTypeSupported(type)) {
-          selectedMimeType = type;
-          logger.info(`找到支持的MIME類型: ${type}`, LogCategory.AUDIO);
-          break;
-        }
-      }
-      
-      if (!selectedMimeType) {
-        logger.error('瀏覽器不支持任何所需的音頻MIME類型', LogCategory.AUDIO);
-        return false;
-      }
-      
-      // 創建MediaRecorder
-      this.mediaRecorder = new MediaRecorder(stream, {
-        mimeType: selectedMimeType,
-        audioBitsPerSecond: 128000
-      });
-      this.audioChunks = [];
-      
-      // 設置資料處理
-      this.mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          logger.info(`收到音頻數據片段, 大小: ${event.data.size} 字節`, LogCategory.AUDIO);
-          this.audioChunks.push(event.data);
-        } else {
-          logger.warn('收到空音頻數據片段', LogCategory.AUDIO);
-        }
-      };
-      
-      // 錄音開始處理
-      this.mediaRecorder.onstart = () => {
-        logger.info(`錄音正式開始，使用MIME類型: ${selectedMimeType}`, LogCategory.AUDIO);
-      };
-      
-      // 錄音結束處理
-      this.mediaRecorder.onstop = async () => {
-        // 釋放麥克風
-        stream.getTracks().forEach(track => track.stop());
-        logger.info(`錄音結束，收集了 ${this.audioChunks.length} 個音頻片段`, LogCategory.AUDIO);
-        
-        // 處理錄音數據
-        await this.processRecordedAudio();
-      };
-
-      // 錄音錯誤處理
-      this.mediaRecorder.onerror = (event) => {
-        logger.error('錄音過程中發生錯誤', LogCategory.AUDIO, event);
-      };
-      
-      // 開始錄音 (設置較短的時間片段，增加實時性)
-      this.mediaRecorder.start(100);
-      logger.info('開始錄音，時間片段間隔: 100ms', LogCategory.AUDIO);
-      
-      // 使用 Zustand 更新狀態
-      useStore.getState().setRecording(true);
-      return true;
-    } catch (error) {
-      logger.error('啟動錄音錯誤', LogCategory.AUDIO, error);
-      return false;
-    }
-  }
-
-  // 停止語音錄製
-  public stopRecording(): boolean {
-    if (this.mediaRecorder && useStore.getState().isRecording) {
-      try {
-        logger.info('嘗試停止錄音', LogCategory.AUDIO);
-        this.mediaRecorder.stop();
-        
-        // 使用 Zustand 更新狀態
-        useStore.getState().setRecording(false);
-        return true;
-      } catch (error) {
-        logger.error('停止錄音時發生錯誤', LogCategory.AUDIO, error);
-        
-        // 使用 Zustand 更新狀態
-        useStore.getState().setRecording(false);
-        return false;
-      }
-    }
-    
-    logger.warn('嘗試停止錄音，但沒有活動的錄音', LogCategory.AUDIO);
-    return false;
-  }
-  
-  // 處理錄製的音頻數據
-  private async processRecordedAudio(): Promise<void> {
-    if (this.audioChunks.length === 0) {
-      logger.warn('沒有音頻數據可處理', LogCategory.AUDIO);
-      // 顯示錯誤通知
-      useStore.getState().addToast({
-        message: '錄音失敗: 未收集到有效的音頻數據',
-        type: 'error',
-        duration: 4000
-      });
-      useStore.getState().setProcessing(false);
-      return;
-    }
-    
-    try {
-      // 設置處理狀態
-      useStore.getState().setProcessing(true);
-      
-      // 將記錄的音頻塊合併為一個Blob
-      const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
-      this.audioChunks = []; // 清空以便下次錄製
-      
-      // 檢查音頻大小，如果太小，可能是誤觸或噪音
-      const audioSize = audioBlob.size;
-      logger.info(`處理音頻數據，大小：${audioSize} 字節`, LogCategory.AUDIO);
-      
-      if (audioSize < 1000) { // 小於1KB認為是無效的
-        logger.warn('音頻數據太小，可能是噪音或誤觸', LogCategory.AUDIO);
-        useStore.getState().addToast({
-          message: '錄音太短或聲音太小，請再試一次',
-          type: 'info',
-          duration: 3000
-        });
-        useStore.getState().setProcessing(false);
-        return;
-      }
-      
-      // 創建FormData對象，用於上傳
-      const formData = new FormData();
-      formData.append('audio', audioBlob, 'recording.webm');
-      
-      try {
-        // 向伺服器發送POST請求
-        const response = await fetch(`${API_BASE_URL}/api/speech-to-text`, {
-          method: 'POST',
-          body: formData,
-          // 不設置Content-Type，讓瀏覽器自動設置帶有boundary的multipart/form-data
-        });
-        
-        if (!response.ok) {
-          let errorText = '';
-          try {
-            // 嘗試讀取錯誤訊息
-            const errorData = await response.json();
-            errorText = errorData.detail || errorData.error || `伺服器返回錯誤狀態碼: ${response.status}`;
-          } catch {
-            errorText = `伺服器返回錯誤狀態碼: ${response.status}`;
-          }
-          
-          throw new Error(errorText);
-        }
-        
-        const result = await response.json();
-        
-        // 處理伺服器響應
-        if (result.text) {
-          logger.info(`語音識別成功: "${result.text}"`, LogCategory.AUDIO);
-          
-          // 顯示成功通知
-          useStore.getState().addToast({
-            message: '語音識別成功',
-            type: 'success',
-            duration: 2000
-          });
-          
-          // 將識別的文本添加到聊天中，由ChatService處理
-          const chatService = (await import('./ChatService')).default.getInstance();
-          chatService.sendMessage(result.text);
-          
-          // 確保設置處理狀態為false
-          setTimeout(() => {
-            if (useStore.getState().isProcessing) {
-              logger.info('手動重置處理狀態', LogCategory.AUDIO);
-              useStore.getState().setProcessing(false);
-            }
-          }, 2000); // 給後端處理預留時間
-        } else if (result.error) {
-          // 如果伺服器返回了明確的錯誤訊息
-          logger.warn(`語音識別返回錯誤: ${result.error}`, LogCategory.AUDIO);
-          useStore.getState().addToast({
-            message: `語音識別錯誤: ${result.error}`,
-            type: 'error',
-            duration: 4000
-          });
-          useStore.getState().setProcessing(false);
-        } else {
-          // 沒有文本也沒有錯誤，但請求成功了
-          logger.warn('語音識別沒有返回文本或錯誤', LogCategory.AUDIO);
-          useStore.getState().addToast({
-            message: '語音識別未返回結果，請重試',
-            type: 'info',
-            duration: 3000
-          });
-          useStore.getState().setProcessing(false);
-        }
-      } catch (error) {
-        // 捕獲網絡錯誤或JSON解析錯誤
-        const errorMessage = error instanceof Error ? error.message : '網絡請求失敗';
-        logger.error(`語音識別請求錯誤: ${errorMessage}`, LogCategory.AUDIO, error);
-        useStore.getState().addToast({
-          message: `語音識別請求失敗: ${errorMessage}`,
-          type: 'error',
-          duration: 4000
-        });
-        useStore.getState().setProcessing(false);
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '未知錯誤';
-      logger.error(`處理音頻數據時發生錯誤: ${errorMessage}`, LogCategory.AUDIO, error);
-      
-      // 顯示錯誤通知
-      useStore.getState().addToast({
-        message: `音頻處理錯誤: ${errorMessage}`,
-        type: 'error',
-        duration: 4000
-      });
-      useStore.getState().setProcessing(false);
-    }
-  }
-  
-  // 播放音頻
-  public playAudio(audioUrl: string): void {
-    if (!audioUrl) {
-      logger.warn('嘗試播放空音頻URL', LogCategory.AUDIO);
-      useStore.getState().setPlaying(false);
-      return;
-    }
-    
-    logger.info(`嘗試播放音頻: ${audioUrl}`, LogCategory.AUDIO);
-    
-    if (!this.audioElement) {
-      this.audioElement = new Audio();
-      this.setupAudioEvents();
-    }
-    
-    try {
-      // 停止當前播放（如果有）
-      if (!this.audioElement.paused) {
-        this.audioElement.pause();
-        this.stopMouthAnimation();
-      }
-      
-      // 設置新的音頻源
-      this.audioElement.src = audioUrl;
-      
-      // 驗證音頻URL格式
-      if (!audioUrl.startsWith('http://') && !audioUrl.startsWith('https://') && !audioUrl.startsWith('/')) {
-        logger.warn(`音頻URL格式可能不正確: ${audioUrl}`, LogCategory.AUDIO);
-      }
-      
-      // 添加加載錯誤處理
-      this.audioElement.onerror = (e) => {
-        const error = this.audioElement?.error;
-        logger.error('音頻加載錯誤', LogCategory.AUDIO, {
-          code: error?.code,
-          message: error?.message,
-          url: audioUrl
-        });
-        useStore.getState().setPlaying(false);
-      };
-      
-      // 預加載並播放
-      logger.info(`預加載音頻: ${audioUrl}`, LogCategory.AUDIO);
-      this.audioElement.load();
-      
-      // 添加播放開始事件
-      const playPromise = this.audioElement.play();
-      
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            logger.info(`開始播放音頻: ${audioUrl}`, LogCategory.AUDIO);
-            // 使用 Zustand 更新狀態
-            useStore.getState().setPlaying(true);
-            
-            // 啟動口型動畫
-            this.startMouthAnimation();
-            
-            // 通知已開始播放
-            this.notifySpeakingStart();
-          })
-          .catch(error => {
-            logger.error(`播放音頻時發生錯誤: ${error.message}`, LogCategory.AUDIO, {
-              error,
-              url: audioUrl
-            });
-            // 使用 Zustand 更新狀態
-            useStore.getState().setPlaying(false);
-          });
-      }
-    } catch (error) {
-      logger.error(`設置音頻源時發生錯誤: ${error instanceof Error ? error.message : '未知錯誤'}`, LogCategory.AUDIO, {
-        error,
-        url: audioUrl
-      });
-      // 使用 Zustand 更新狀態
-      useStore.getState().setPlaying(false);
-    }
-  }
-
   // 獲取當前錄音狀態 (使用 Zustand)
   public isCurrentlyRecording(): boolean {
     return useStore.getState().isRecording;
@@ -482,39 +350,6 @@ class AudioService {
       useStore.getState().setProcessing(processing);
     }
   }
-
-  // 以下方法僅為向後兼容保留
-  // =========================================
-  
-  // 註冊語音開始回調
-  public onSpeakingStart(callback: () => void): void {
-    this.onSpeakingStartCallbacks.push(callback);
-  }
-
-  // 移除語音開始回調
-  public offSpeakingStart(callback: () => void): void {
-    this.onSpeakingStartCallbacks = this.onSpeakingStartCallbacks.filter(cb => cb !== callback);
-  }
-
-  // 觸發語音開始回調
-  private notifySpeakingStart(): void {
-    this.onSpeakingStartCallbacks.forEach(callback => callback());
-  }
-
-  // 註冊語音結束回調
-  public onSpeakingEnd(callback: () => void): void {
-    this.onSpeakingEndCallbacks.push(callback);
-  }
-
-  // 移除語音結束回調
-  public offSpeakingEnd(callback: () => void): void {
-    this.onSpeakingEndCallbacks = this.onSpeakingEndCallbacks.filter(cb => cb !== callback);
-  }
-
-  // 觸發語音結束回調
-  private notifySpeakingEnd(): void {
-    this.onSpeakingEndCallbacks.forEach(callback => callback());
-  }
 }
 
 // React Hook - 使用音頻服務
@@ -527,18 +362,33 @@ export function useAudioService() {
   
   // 獲取 AudioService 實例
   const audioService = useRef<AudioService>(AudioService.getInstance());
-  
-  // 封裝服務方法
-  const startRecording = async () => {
-    return await audioService.current.startRecording();
+
+  // 包裝 startRecording 以記錄 onStop 回調
+  const startRecording = async (onStop: (audioBlob: Blob | null) => void) => {
+    const wrappedOnStop = (audioBlob: Blob | null) => {
+        logger.info('[useAudioService] Wrapped onStop called.', LogCategory.AUDIO);
+        try {
+            onStop(audioBlob); // 執行原始的回調
+            logger.info('[useAudioService] Original onStop executed successfully.', LogCategory.AUDIO);
+        } catch(err) {
+            logger.error('[useAudioService] Error in original onStop callback:', LogCategory.AUDIO, err);
+        }
+    };
+    await audioService.current.startRecording(wrappedOnStop);
   };
   
   const stopRecording = () => {
-    return audioService.current.stopRecording();
+    audioService.current.stopRecording();
   };
   
-  const playAudio = (audioUrl: string) => {
-    audioService.current.playAudio(audioUrl);
+  const playAudio = async (audioData: Blob | string) => {
+    // 包裝播放以捕獲可能的錯誤
+    try {
+        await audioService.current.playAudio(audioData);
+    } catch (error) {
+        logger.error('[useAudioService] Error during audio playback:', LogCategory.AUDIO, error);
+        // 可以在這裡添加 UI 提示
+    }
   };
   
   const checkMicrophonePermission = async () => {

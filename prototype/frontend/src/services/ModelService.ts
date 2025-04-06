@@ -25,7 +25,7 @@ class ModelService {
   private static instance: ModelService;
   
   // 這個暫時保留在本地，因為是高頻更新，會進行優化處理
-  private morphTargets: Record<string, number> = {};
+  // private morphTargets: Record<string, number> = {};
 
   // 不再需要舊的回調列表，全部使用 Zustand 狀態更新
   private wsService: WebSocketService;
@@ -34,9 +34,9 @@ class ModelService {
   private _lastEmotionMorphs: Record<string, number> = {};
   
   // 限制更新頻率的變數
-  private _lastNotifyTime: number = 0;
-  private _pendingMorphTargets: Record<string, number> | null = null;
-  private _notifyTimeout: number | null = null;
+  // private _lastNotifyTime: number = 0;
+  // private _pendingMorphTargets: Record<string, number> | null = null;
+  // private _notifyTimeout: number | null = null;
 
   // 確保 morphTargetDictionary 被正確定義為類的屬性
   private morphTargetDictionary: { [key: string]: number } = {};
@@ -140,6 +140,8 @@ class ModelService {
   // 設置 MorphTarget 字典 (使用 Zustand)
   public setMorphTargetDictionary(dictionary: Record<string, number> | null): void {
     useStore.getState().setMorphTargetDictionary(dictionary);
+    // 同時更新本地的 dictionary 引用，供 updateMorphTargetInfluence 內部檢查
+    this.morphTargetDictionary = dictionary || {};
   }
 
   // 獲取 MorphTarget 字典 (使用 Zustand)
@@ -237,63 +239,63 @@ class ModelService {
   }
 
   // 獲取 MorphTargets (本地緩存版本)
-  public getMorphTargets(): Record<string, number> {
-    return this.morphTargets;
-  }
+  // public getMorphTargets(): Record<string, number> {
+  //   return this.morphTargets;
+  // }
 
   // 設置 MorphTargets (更新本地緩存與 Zustand)
-  public setMorphTargets(morphTargets: Record<string, number>): void {
-    // 更新本地緩存
-    this.morphTargets = { ...morphTargets };
-    
-    // 更新 Zustand (注意：這是個高頻操作)
-    // 使用節流控制更新頻率，避免過多的狀態更新
-    this._throttledNotify(morphTargets);
-  }
+  // public setMorphTargets(morphTargets: Record<string, number>): void {
+  //   // 更新本地緩存
+  //   this.morphTargets = { ...morphTargets };
+  //   
+  //   // 更新 Zustand (注意：這是個高頻操作)
+  //   // 使用節流控制更新頻率，避免過多的狀態更新
+  //   this._throttledNotify(morphTargets);
+  // }
   
   // 節流控制的狀態更新
-  private _throttledNotify(morphTargets: Record<string, number>): void {
-    const now = Date.now();
-    
-    // 使用節流控制，限制更新頻率
-    if (now - this._lastNotifyTime < 50) { // 節流閾值50毫秒
-      // 如果過於頻繁，則等待並保存最新狀態
-      this._pendingMorphTargets = morphTargets;
-      
-      // 如果沒有設置定時器，則設置一個
-      if (this._notifyTimeout === null) {
-        this._notifyTimeout = window.setTimeout(() => {
-          // 更新時間戳
-          this._lastNotifyTime = Date.now();
-          
-          // 如果有待處理的數據，則使用它；否則什麼都不做
-          if (this._pendingMorphTargets) {
-            useStore.getState().setMorphTargets(this._pendingMorphTargets);
-            this._pendingMorphTargets = null;
-          }
-          
-          // 清除定時器引用
-          this._notifyTimeout = null;
-        }, 50 - (now - this._lastNotifyTime));
-      }
-    } else {
-      // 如果距離上次更新已經過了足夠時間，則立即更新
-      this._lastNotifyTime = now;
-      useStore.getState().setMorphTargets(morphTargets);
-      
-      // 清除任何待處理的數據和定時器
-      this._pendingMorphTargets = null;
-      if (this._notifyTimeout !== null) {
-        window.clearTimeout(this._notifyTimeout);
-        this._notifyTimeout = null;
-      }
-    }
-  }
+  // private _throttledNotify(morphTargets: Record<string, number>): void {
+  //   const now = Date.now();
+  //   
+  //   // 使用節流控制，限制更新頻率
+  //   if (now - this._lastNotifyTime < 50) { // 節流閾值50毫秒
+  //     // 如果過於頻繁，則等待並保存最新狀態
+  //     this._pendingMorphTargets = morphTargets;
+  //     
+  //     // 如果沒有設置定時器，則設置一個
+  //     if (this._notifyTimeout === null) {
+  //       this._notifyTimeout = window.setTimeout(() => {
+  //         // 更新時間戳
+  //         this._lastNotifyTime = Date.now();
+  //         
+  //         // 如果有待處理的數據，則使用它；否則什麼都不做
+  //         if (this._pendingMorphTargets) {
+  //           useStore.getState().setMorphTargets(this._pendingMorphTargets);
+  //           this._pendingMorphTargets = null;
+  //         }
+  //         
+  //         // 清除定時器引用
+  //         this._notifyTimeout = null;
+  //       }, 50 - (now - this._lastNotifyTime));
+  //     }
+  //   } else {
+  //     // 如果距離上次更新已經過了足夠時間，則立即更新
+  //     this._lastNotifyTime = now;
+  //     useStore.getState().setMorphTargets(morphTargets);
+  //     
+  //     // 清除任何待處理的數據和定時器
+  //     this._pendingMorphTargets = null;
+  //     if (this._notifyTimeout !== null) {
+  //       window.clearTimeout(this._notifyTimeout);
+  //       this._notifyTimeout = null;
+  //     }
+  //   }
+  // }
 
   // 更新單個 MorphTarget 的值 (使用 Zustand)
   public updateMorphTargetInfluence(name: string, value: number): void {
     // 使用 this.morphTargetDictionary 進行檢查
-    if (this.morphTargetDictionary[name] === undefined) {
+    if (this.morphTargetDictionary && this.morphTargetDictionary[name] === undefined) {
        // logger.warn(`Attempted to update unknown morph target: ${name}`, LogCategory.MODEL);
        return; // 如果名稱無效則返回
     }
@@ -308,13 +310,15 @@ class ModelService {
     // 創建一個所有值都設為0的新對象
     const resetTargets: Record<string, number> = {};
     
-    // 獲取所有當前存在的Morph Target名稱
-    Object.keys(this.morphTargets).forEach(key => {
+    // 獲取所有當前存在的Morph Target名稱 (從 Zustand 讀取)
+    const currentMorphs = useStore.getState().morphTargets;
+    Object.keys(currentMorphs).forEach(key => {
       resetTargets[key] = 0;
     });
     
-    // 更新Morph Targets
-    this.setMorphTargets(resetTargets);
+    // 直接更新 Zustand
+    useStore.getState().setMorphTargets(resetTargets);
+    logger.info('All morph targets reset via Zustand.', LogCategory.MODEL);
   }
 
   // 旋轉模型 (使用 Zustand)
@@ -395,7 +399,7 @@ class ModelService {
       modelScale: store.modelScale[0], // 假設三個軸的縮放比例相同
       modelRotation: store.modelRotation,
       modelPosition: store.modelPosition,
-      morphTargets: this.morphTargets, // 使用本地緩存的版本
+      morphTargets: store.morphTargets, // <-- 直接從 store 獲取
       showSpaceBackground: store.showSpaceBackground,
       currentAnimation: store.currentAnimation
     };
@@ -417,7 +421,7 @@ class ModelService {
     // 預加載新模型
     this.preloadModel(url);
     
-    // 重置所有狀態
+    // 重置所有狀態 (包括 morph targets - 現在會正確調用修改後的 reset)
     this.resetAllMorphTargets();
     
     // 更新URL和重置相關狀態
@@ -428,7 +432,7 @@ class ModelService {
   }
 
   public initialize(morphTargetDictionary: { [key: string]: number }): void {
-    this.morphTargetDictionary = morphTargetDictionary; // 確保這裡有賦值
+    // this.morphTargetDictionary = morphTargetDictionary; // <-- 這行已經被 setMorphTargetDictionary 取代
     logger.info("ModelService initialized with dictionary.", LogCategory.GENERAL);
   }
 }

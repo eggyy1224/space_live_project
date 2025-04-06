@@ -18,8 +18,17 @@ def init_app() -> FastAPI:
     """初始化應用並註冊所有路由"""
     app = create_app()
     
-    # 設置中間件
-    setup_cors(app)
+    # 設置中間件 
+    # setup_cors(app)  # 注釋掉，避免與下面的重複
+    
+    # 添加 CORS 中間件（確保適用於所有路由）
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # 允許所有來源訪問
+        allow_credentials=True,
+        allow_methods=["*"],  # 允許所有方法
+        allow_headers=["*"],  # 允許所有頭
+    )
     
     # 註冊WebSocket路由
     app.add_websocket_route("/ws", websocket.websocket_endpoint)
@@ -50,22 +59,21 @@ def init_app() -> FastAPI:
         filepath = os.path.join(audio_dir, filename)
         if os.path.exists(filepath):
             logger.info(f"提供音頻文件: {filepath}")
+            # 擴展 CORS 標頭
+            cors_headers = {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type, Authorization",
+                "Access-Control-Max-Age": "86400", # 24小時缓存預檢請求
+                "Cache-Control": "no-cache", # 避免瀏覽器緩存，確保始終從伺服器獲取最新音頻
+            }
             return FileResponse(
                 filepath, 
                 media_type="audio/mpeg",
-                headers={"Access-Control-Allow-Origin": "*"}
+                headers=cors_headers
             )
         else:
             logger.error(f"音頻文件不存在: {filepath}")
             return {"error": "音頻文件不存在"}
-    
-    # 添加額外的CORS設置，確保靜態文件可以被前端訪問
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],  # 允許所有來源訪問
-        allow_credentials=True,
-        allow_methods=["*"],  # 允許所有方法
-        allow_headers=["*"],  # 允許所有頭
-    )
     
     return app 

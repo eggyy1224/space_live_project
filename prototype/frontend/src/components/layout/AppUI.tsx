@@ -29,7 +29,6 @@ interface AppUIProps {
   emotionConfidence: number;
   availableAnimations: string[];
   morphTargetDictionary: Record<string, number> | null;
-  manualMorphTargets: Record<string, number>;
   selectedMorphTarget: string | null;
   setSelectedMorphTarget: (target: string | null) => void;
   updateMorphTargetInfluence: (name: string, value: number) => void;
@@ -78,7 +77,6 @@ const AppUI: React.FC<AppUIProps> = ({
   emotionConfidence,
   availableAnimations,
   morphTargetDictionary,
-  manualMorphTargets,
   selectedMorphTarget,
   setSelectedMorphTarget,
   updateMorphTargetInfluence,
@@ -138,7 +136,6 @@ const AppUI: React.FC<AppUIProps> = ({
           emotionConfidence={emotionConfidence}
           availableAnimations={availableAnimations}
           morphTargetDictionary={morphTargetDictionary}
-          manualMorphTargets={manualMorphTargets}
           selectedMorphTarget={selectedMorphTarget}
           setSelectedMorphTarget={setSelectedMorphTarget}
           updateMorphTargetInfluence={updateMorphTargetInfluence}

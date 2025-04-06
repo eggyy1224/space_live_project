@@ -64,8 +64,24 @@ class ChatService {
         const fullAudioUrl = `${API_BASE_URL}${message.audioUrl}`;
         logger.info('完整音頻URL:', LogCategory.CHAT, fullAudioUrl);
         
-        // 播放音頻
-        this.audioService.playAudio(fullAudioUrl);
+        // --- 修改播放邏輯：先獲取 Blob 再播放 ---
+        fetch(fullAudioUrl)
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(`無法獲取音頻文件: ${response.statusText}`);
+            }
+            return response.blob(); // 將響應轉換為 Blob
+          })
+          .then(audioBlob => {
+            logger.info('成功獲取音頻 Blob，開始播放', LogCategory.CHAT);
+            this.audioService.playAudio(audioBlob); // <--- 播放 Blob
+          })
+          .catch(error => {
+            logger.error('獲取或播放音頻時出錯:', LogCategory.CHAT, error);
+            // 可選：顯示錯誤給用戶或嘗試播放 URL 作為備用
+            // this.audioService.playAudio(fullAudioUrl); 
+          });
+        // --- 修改結束 ---
       }
     });
     

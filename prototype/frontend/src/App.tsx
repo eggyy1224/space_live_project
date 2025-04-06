@@ -17,8 +17,12 @@ import {
   useChatService 
 } from './services'
 
+// 引入 API 函數
+import { speechToText } from './services/api';
+
 // 引入 Zustand Store
 import { useStore } from './store'
+import logger, { LogCategory } from './utils/LogManager'
 
 function App() {
   // === 添加 useWebSocket 調用 ===
@@ -91,6 +95,49 @@ function App() {
   
   // 模型分析工具狀態
   const [showModelAnalyzer, setShowModelAnalyzer] = useState<boolean>(false);
+
+  // === 定義錄音結束後的回調 ===
+  const handleStopRecording = useCallback(async (audioBlob: Blob | null) => {
+    if (audioBlob && wsConnected) {
+      logger.info('[App] Recording finished. Audio blob received.', LogCategory.GENERAL);
+      
+      // 設置處理狀態
+      useStore.getState().setProcessing(true);
+      logger.info('[App] Sending audio to STT service...', LogCategory.GENERAL);
+      
+      try {
+        // 將音頻發送到 STT 服務
+        const result = await speechToText(audioBlob);
+        
+        // 檢查 STT 結果
+        if (result && result.text) {
+          // 記錄識別的文本
+          logger.info(`[App] STT result: "${result.text}"`, LogCategory.GENERAL);
+          
+          // 將文本發送給聊天服務
+          sendMessage(result.text);
+        } else {
+          logger.warn('[App] STT returned empty text.', LogCategory.GENERAL);
+          // 可選：顯示提示給用戶
+          // alert('無法識別您的語音，請再試一次。');
+        }
+      } catch (error) {
+        logger.error('[App] STT processing error:', LogCategory.GENERAL, error);
+        // 可選：顯示錯誤提示給用戶
+        // alert('語音識別失敗，請再試一次。');
+      } finally {
+        // 無論成功與否，都重置處理狀態
+        useStore.getState().setProcessing(false);
+      }
+      
+    } else if (!wsConnected) {
+      logger.warn('[App] Recording finished, but WebSocket not connected. Cannot process audio.', LogCategory.GENERAL);
+      // 可選：提示用戶連接狀態問題
+    } else if (!audioBlob) {
+      logger.warn('[App] Recording finished, but audio blob is null.', LogCategory.GENERAL);
+    }
+  }, [wsConnected, sendMessage]);
+  // === 回調定義結束 ===
 
   // 使用 useCallback 包裹 switchTab
   const switchTab = useCallback((tab: 'control' | 'chat') => {
@@ -180,7 +227,7 @@ function App() {
           isSpeaking={isSpeaking}
           audioProcessing={audioProcessing}
           micPermission={micPermission}
-          startRecording={startRecording}
+          startRecording={() => startRecording(handleStopRecording)}
           stopRecording={stopRecording}
           playAudio={playAudio}
           // 控制面板相關 props
