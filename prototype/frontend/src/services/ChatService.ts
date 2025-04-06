@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import WebSocketService from './WebSocketService';
 import AudioService from './AudioService';
+import { v4 as uuidv4 } from 'uuid';
 
 // 聊天消息類型
 export interface ChatMessage {
+  id: string;
   role: 'user' | 'bot';
   content: string;
 }
@@ -83,8 +85,12 @@ class ChatService {
   }
 
   // 添加消息
-  public addMessage(message: ChatMessage): void {
-    this.messages = [...this.messages, message];
+  public addMessage(messageData: Omit<ChatMessage, 'id'>): void {
+    const newMessage: ChatMessage = {
+      ...messageData,
+      id: uuidv4()
+    };
+    this.messages = [...this.messages, newMessage];
     this.notifyMessagesUpdate();
   }
 

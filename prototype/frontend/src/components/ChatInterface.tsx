@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 
 interface Message {
+  id: string;
   role: 'user' | 'bot';
   content: string;
 }
@@ -56,8 +57,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 發送訊息開始對話...
               </div>
             )}
-            {messages.map((msg, index) => (
-              <div key={index} className={`chat-message ${msg.role}`}>
+            {messages.map((msg) => (
+              <div key={msg.id} className={`chat-message ${msg.role}`}>
                 <div className="message-bubble">
                   {msg.content}
                 </div>
