@@ -1,6 +1,6 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Stars, useProgress } from '@react-three/drei';
+import { OrbitControls, Stars, useProgress, Environment, Stats } from '@react-three/drei';
 import * as THREE from 'three';
 import { Model } from './Model';
 
@@ -41,28 +41,39 @@ interface ModelViewerProps {
   modelRotation: [number, number, number];
   modelPosition: [number, number, number];
   currentAnimation: string | null;
-  morphTargets: Record<string, number>;
+  morphTargets: Record<string, number>; // Dynamic targets from WS
   showSpaceBackground: boolean;
-  setAvailableAnimations: (animations: string[]) => void;
-  setMorphTargetDictionary: (dict: Record<string, number>) => void;
-  setMorphTargetInfluences: (influences: number[]) => void;
-  morphTargetDictionary: Record<string, number> | null;
-  morphTargetInfluences: number[] | null;
+  // Removed setters, Model handles this now
+  // setAvailableAnimations: (animations: string[]) => void;
+  // setMorphTargetDictionary: (dict: Record<string, number>) => void;
+  // setMorphTargetInfluences: (influences: number[]) => void;
+  // Pass initial dictionary/influences for Model initialization
+  morphTargetDictionary: Record<string, number> | null; 
+  morphTargetInfluences: number[] | null; 
+  // Removed single value getter
+  // getManualMorphTargetValue: (name: string) => number | undefined;
+  // Added function to get all manual targets
+  getManualMorphTargets: () => Record<string, number>;
+  setMorphTargetData: (dictionary: Record<string, number> | null, influences: number[] | null) => void;
 }
 
-const ModelViewer: React.FC<ModelViewerProps> = ({
+const ModelViewer: React.FC<ModelViewerProps> = React.memo(({
   modelUrl,
   modelScale,
   modelRotation,
   modelPosition,
   currentAnimation,
-  morphTargets,
+  morphTargets, // Dynamic targets
   showSpaceBackground,
-  setAvailableAnimations,
-  setMorphTargetDictionary,
-  setMorphTargetInfluences,
-  morphTargetDictionary,
-  morphTargetInfluences
+  // Removed setters
+  // setAvailableAnimations,
+  // setMorphTargetDictionary,
+  // setMorphTargetInfluences,
+  morphTargetDictionary, // Pass initial dict
+  morphTargetInfluences, // Pass initial influences
+  // Removed getManualMorphTargetValue
+  getManualMorphTargets, // Pass the function
+  setMorphTargetData // Pass the new function
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const lastModelUrl = useRef(modelUrl);
@@ -97,24 +108,25 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
         <directionalLight position={[10, 10, 5]} intensity={1} />
         <directionalLight position={[-10, -10, -5]} intensity={0.5} />
         
-        <Model 
-          url={modelUrl} 
-          scale={modelScale}
-          rotation={modelRotation}
-          position={modelPosition}
-          currentAnimation={currentAnimation}
-          setAvailableAnimations={setAvailableAnimations}
-          morphTargetDictionary={morphTargetDictionary}
-          setMorphTargetDictionary={setMorphTargetDictionary}
-          morphTargetInfluences={morphTargetInfluences}
-          setMorphTargetInfluences={setMorphTargetInfluences}
-          morphTargets={morphTargets}
-        />
+        <Suspense fallback={null}>
+          <Model 
+            url={modelUrl} 
+            scale={modelScale}
+            rotation={modelRotation}
+            position={modelPosition}
+            currentAnimation={currentAnimation === null ? undefined : currentAnimation}
+            morphTargetDictionary={morphTargetDictionary} 
+            morphTargetInfluences={morphTargetInfluences} 
+            morphTargets={morphTargets} 
+            getManualMorphTargets={getManualMorphTargets} 
+            setMorphTargetData={setMorphTargetData}
+          />
+        </Suspense>
         <OrbitControls />
+        <Stats />
       </Canvas>
     </div>
   );
-};
+});
 
-// 使用 React.memo 包裹導出的組件
-export default React.memo(ModelViewer); 
+export default ModelViewer; 

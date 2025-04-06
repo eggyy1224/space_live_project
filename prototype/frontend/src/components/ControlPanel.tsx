@@ -1,19 +1,126 @@
 import React from 'react';
-import MorphTargetControls from './MorphTargetControls';
+import logger, { LogCategory } from '../utils/LogManager'; // Import logger
 
-// 獲取情緒顯示名稱
-const getEmotionDisplayName = (emotion: string): string => {
-  const emotionMap: Record<string, string> = {
-    'happy': '開心',
-    'sad': '悲傷',
-    'angry': '生氣',
-    'surprised': '驚訝',
-    'neutral': '中性',
-    'question': '疑問'
+// 子組件：單個Morph Target控制條
+interface MorphTargetBarProps {
+  name: string;
+  value: number; // 這個值現在應該來自 manualMorphTargets
+  onSelect: (name: string) => void;
+  onChange: (name: string, value: number) => void;
+  isSelected: boolean;
+}
+
+const MorphTargetBar: React.FC<MorphTargetBarProps> = React.memo(({ name, value, onSelect, onChange, isSelected }) => {
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    onChange(name, parseFloat(event.target.value));
   };
-  return emotionMap[emotion] || emotion;
-};
 
+  return (
+    <div 
+      className={`morph-target-bar ${isSelected ? 'selected' : ''}`}
+      onClick={() => onSelect(name)}
+    >
+      <label>{name}</label>
+      <input 
+        type="range" 
+        min="0" 
+        max="1" 
+        step="0.01" 
+        value={value} // 直接使用傳入的 value (來自 manualMorphTargets)
+        onChange={handleChange} 
+      />
+      <span>{value.toFixed(2)}</span>
+    </div>
+  );
+});
+
+// 子組件：動畫控制
+interface AnimationControlProps {
+  availableAnimations: string[];
+  currentAnimation: string | null;
+  selectAnimation: (animationName: string) => void;
+  isModelLoaded: boolean;
+}
+
+const AnimationControl: React.FC<AnimationControlProps> = React.memo(({
+  availableAnimations,
+  currentAnimation,
+  selectAnimation,
+  isModelLoaded
+}) => {
+  if (!availableAnimations || availableAnimations.length === 0) return null;
+
+  return (
+    <div className="control-section animation-control">
+      <h3>動畫控制</h3>
+      <div className="animation-buttons">
+        {availableAnimations.map((anim) => (
+          <button
+            key={anim}
+            onClick={() => selectAnimation(anim)}
+            className={currentAnimation === anim ? 'active' : ''}
+            disabled={!isModelLoaded}
+          >
+            {anim}
+          </button>
+        ))}
+        {/* Optionally add a button to stop animation */}
+        <button onClick={() => selectAnimation('')} disabled={!currentAnimation || !isModelLoaded}>停止動畫</button>
+      </div>
+    </div>
+  );
+});
+
+// 子組件：模型變換控制
+interface ModelTransformControlProps {
+  modelScale: number;
+  rotateModel: (direction: 'left' | 'right') => void;
+  scaleModel: (factor: number) => void;
+  resetModel: () => void;
+  toggleBackground: () => void;
+  showSpaceBackground: boolean;
+  isModelLoaded: boolean;
+}
+
+const ModelTransformControl: React.FC<ModelTransformControlProps> = React.memo(({
+  modelScale,
+  rotateModel,
+  scaleModel,
+  resetModel,
+  toggleBackground,
+  showSpaceBackground,
+  isModelLoaded
+}) => (
+  <div className="control-section model-transform-control">
+    <h3>模型變換</h3>
+     <div className="status-info"> {/* Moved status here */}
+       <p>模型狀態: {isModelLoaded ? '已加載' : '加載中...'}</p>
+       <p>模型縮放: {modelScale.toFixed(2)}</p>
+     </div>
+    <div className="button-row">
+      <button onClick={() => rotateModel('left')} disabled={!isModelLoaded}>
+        向左旋轉
+      </button>
+      <button onClick={() => rotateModel('right')} disabled={!isModelLoaded}>
+        向右旋轉
+      </button>
+      <button onClick={() => scaleModel(0.1)} disabled={!isModelLoaded}>
+        放大
+      </button>
+      <button onClick={() => scaleModel(-0.1)} disabled={!isModelLoaded}>
+        縮小
+      </button>
+      <button onClick={resetModel} disabled={!isModelLoaded}>
+        重置模型
+      </button>
+      <button onClick={toggleBackground}>
+        {showSpaceBackground ? '隱藏星空' : '顯示星空'}
+      </button>
+    </div>
+  </div>
+));
+
+// 主控制面板 Props
 interface ControlPanelProps {
   activeTab: 'control' | 'chat';
   switchTab: (tab: 'control' | 'chat') => void;
@@ -25,21 +132,22 @@ interface ControlPanelProps {
   emotionConfidence: number;
   availableAnimations: string[];
   morphTargetDictionary: Record<string, number> | null;
-  morphTargetInfluences: number[] | null;
+  manualMorphTargets: Record<string, number>;
   selectedMorphTarget: string | null;
-  setSelectedMorphTarget: (target: string | null) => void;
+  setSelectedMorphTarget: (name: string | null) => void;
   updateMorphTargetInfluence: (name: string, value: number) => void;
   resetAllMorphTargets: () => void;
   rotateModel: (direction: 'left' | 'right') => void;
   scaleModel: (factor: number) => void;
   resetModel: () => void;
   toggleBackground: () => void;
-  showSpaceBackground: boolean;
   selectAnimation: (animationName: string) => void;
-  applyPresetExpression: (expression: string) => void;
+  applyPresetExpression: (expression: string) => Promise<boolean>;
+  showSpaceBackground: boolean;
 }
 
-const ControlPanel: React.FC<ControlPanelProps> = ({
+// 主控制面板組件
+const ControlPanel: React.FC<ControlPanelProps> = React.memo(({
   activeTab,
   switchTab,
   wsConnected,
@@ -50,7 +158,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   emotionConfidence,
   availableAnimations,
   morphTargetDictionary,
-  morphTargetInfluences,
+  manualMorphTargets,
   selectedMorphTarget,
   setSelectedMorphTarget,
   updateMorphTargetInfluence,
@@ -59,20 +167,26 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   scaleModel,
   resetModel,
   toggleBackground,
-  showSpaceBackground,
   selectAnimation,
-  applyPresetExpression
+  applyPresetExpression,
+  showSpaceBackground,
 }) => {
+
+  const handlePresetApply = async (preset: string) => {
+    logger.info(`UI: Applying preset ${preset}`, LogCategory.MODEL);
+    await applyPresetExpression(preset);
+  };
+
   return (
     <div className="controls-panel">
       <div className="panel-tabs">
-        <button 
+        <button
           className={`tab-button ${activeTab === 'control' ? 'active' : ''}`}
           onClick={() => switchTab('control')}
         >
           控制面板
         </button>
-        <button 
+        <button
           className={`tab-button ${activeTab === 'chat' ? 'active' : ''}`}
           onClick={() => switchTab('chat')}
         >
@@ -82,97 +196,61 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
           {wsConnected ? '已連接' : '未連接'}
         </div>
       </div>
-      
+
       <div className={`tab-content control-tab ${activeTab === 'control' ? 'active' : ''}`}>
         <h1>虛擬太空人互動原型</h1>
-        
-        <div className="status-info">
-          <p>模型狀態: {isModelLoaded ? '已加載' : '加載中...'}</p>
-          <p>模型縮放: {modelScale.toFixed(2)}</p>
-          <p>當前動畫: {currentAnimation || '無'}</p>
-          <p>當前情緒: <span className={`emotion-tag ${currentEmotion}`}>{getEmotionDisplayName(currentEmotion)}</span> 
-             <span className="confidence-indicator" style={{width: `${emotionConfidence * 100}%`}}></span>
-          </p>
-        </div>
-        
-        <div className="button-row">
-          <button onClick={() => rotateModel('left')} disabled={!isModelLoaded}>
-            向左旋轉
-          </button>
-          <button onClick={() => rotateModel('right')} disabled={!isModelLoaded}>
-            向右旋轉
-          </button>
-          <button onClick={() => scaleModel(0.1)} disabled={!isModelLoaded}>
-            放大
-          </button>
-          <button onClick={() => scaleModel(-0.1)} disabled={!isModelLoaded}>
-            縮小
-          </button>
-          <button onClick={resetModel} disabled={!isModelLoaded}>
-            重置
-          </button>
-          <button onClick={toggleBackground}>
-            {showSpaceBackground ? '隱藏星空' : '顯示星空'}
-          </button>
-        </div>
-        
-        {/* 動畫控制面板 */}
-        {availableAnimations.length > 0 && (
-          <div className="animation-controls">
-            <h3>動畫控制</h3>
-            <div className="animation-buttons">
-              {availableAnimations.map((anim) => (
-                <button 
-                  key={anim}
-                  onClick={() => selectAnimation(anim)}
-                  className={currentAnimation === anim ? 'active' : ''}
-                  disabled={!isModelLoaded}
-                >
-                  {anim}
-                </button>
-              ))}
-            </div>
+
+        <div className="control-section expression-control">
+          <h3>表情控制</h3>
+          <div className="current-emotion">
+            當前情緒: {currentEmotion} (可信度: {emotionConfidence.toFixed(2)})
           </div>
-        )}
-        
-        {/* 預設表情控制 */}
-        <div className="preset-expressions">
-          <h3>預設表情</h3>
           <div className="preset-buttons">
-            <button onClick={() => applyPresetExpression('happy')} disabled={!isModelLoaded}>
-              開心
-            </button>
-            <button onClick={() => applyPresetExpression('sad')} disabled={!isModelLoaded}>
-              悲傷
-            </button>
-            <button onClick={() => applyPresetExpression('angry')} disabled={!isModelLoaded}>
-              生氣
-            </button>
-            <button onClick={() => applyPresetExpression('surprised')} disabled={!isModelLoaded}>
-              驚訝
-            </button>
-            <button onClick={() => applyPresetExpression('reset')} disabled={!isModelLoaded}>
-              重置表情
-            </button>
+            <button onClick={() => handlePresetApply('happy')}>快樂</button>
+            <button onClick={() => handlePresetApply('sad')}>悲傷</button>
+            <button onClick={() => handlePresetApply('angry')}>生氣</button>
+            <button onClick={() => handlePresetApply('surprised')}>驚訝</button>
+            <button onClick={resetAllMorphTargets}>重置表情</button>
+          </div>
+          <div className="morph-target-list">
+            {morphTargetDictionary ? (
+              Object.keys(morphTargetDictionary)
+                .sort()
+                .map(name => (
+                  <MorphTargetBar
+                    key={name}
+                    name={name}
+                    value={manualMorphTargets[name] ?? 0}
+                    onSelect={setSelectedMorphTarget}
+                    onChange={updateMorphTargetInfluence}
+                    isSelected={selectedMorphTarget === name}
+                  />
+                ))
+            ) : (
+              <p>模型未加載或無Morph Targets</p>
+            )}
           </div>
         </div>
-        
-        {/* Morph Target 控制面板 */}
-        {morphTargetDictionary && morphTargetInfluences && (
-          <MorphTargetControls
-            morphTargetDictionary={morphTargetDictionary}
-            morphTargetInfluences={morphTargetInfluences}
-            selectedMorphTarget={selectedMorphTarget}
-            setSelectedMorphTarget={setSelectedMorphTarget}
-            updateMorphTargetInfluence={updateMorphTargetInfluence}
-            resetAllMorphTargets={resetAllMorphTargets}
-            isModelLoaded={isModelLoaded}
-          />
-        )}
+
+        <AnimationControl
+          availableAnimations={availableAnimations}
+          currentAnimation={currentAnimation}
+          selectAnimation={selectAnimation}
+          isModelLoaded={isModelLoaded}
+        />
+
+        <ModelTransformControl
+          modelScale={modelScale}
+          rotateModel={rotateModel}
+          scaleModel={scaleModel}
+          resetModel={resetModel}
+          toggleBackground={toggleBackground}
+          showSpaceBackground={showSpaceBackground}
+          isModelLoaded={isModelLoaded}
+        />
       </div>
     </div>
   );
-};
+});
 
-// 使用 React.memo 包裹導出的組件
-export default React.memo(ControlPanel); 
+export default ControlPanel;

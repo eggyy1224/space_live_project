@@ -16,11 +16,12 @@ interface ModelProps {
   scale?: number | [number, number, number];
   position?: [number, number, number];
   rotation?: [number, number, number];
-  morphTargets?: Record<string, number>;
-  currentAnimation?: string;
-  setAvailableAnimations: (anims: string[]) => void;
-  setMorphTargetDictionary: (dict: Record<string, number>) => void;
-  setMorphTargetInfluences: (influences: number[]) => void;
+  morphTargets?: Record<string, number>; // Dynamic targets from WS
+  currentAnimation?: string; // Keep optional
+  morphTargetDictionary: Record<string, number> | null;
+  morphTargetInfluences: number[] | null;
+  getManualMorphTargets: () => Record<string, number>;
+  setMorphTargetData: (dictionary: Record<string, number> | null, influences: number[] | null) => void;
 }
 
 const FALLBACK_ANIMATION_THRESHOLD = 0.5; // Seconds
@@ -31,28 +32,32 @@ export const Model: React.FC<ModelProps> = ({
   scale = 1,
   position = [0, 0, 0],
   rotation = [0, 0, 0],
-  morphTargets = {},
+  morphTargets = {}, // Dynamic targets
   currentAnimation,
-  setAvailableAnimations,
-  setMorphTargetDictionary,
-  setMorphTargetInfluences
+  morphTargetDictionary: initialMorphTargetDictionary, // Rename prop
+  morphTargetInfluences: initialMorphTargetInfluences, // Rename prop
+  getManualMorphTargets,
+  setMorphTargetData
 }) => {
   const group = useRef<THREE.Group>(null);
   const meshRef = useRef<MeshWithMorphs | null>(null);
   const { scene, animations } = useGLTF(url);
   const { actions, mixer } = useAnimations(animations, group);
+  
+  // Local state for dictionary, initialized from props or mesh
   const [localMorphTargetDictionary, setLocalMorphTargetDictionary] = useState<Record<string, number>>({});
+  // Local state for available animations
+  const [availableAnimations, setAvailableAnimations] = useState<string[]>([]);
   
   // Refs for fallback animation logic
   const lastMorphUpdateTimestampRef = useRef<number>(0);
   const prevMorphTargetsRef = useRef<Record<string, number>>(morphTargets);
 
-  // Update available animations list and set default animation
+  // Update available animations list locally
   useEffect(() => {
     const animationNames = Object.keys(actions);
     setAvailableAnimations(animationNames);
-  // Add actions to dependency array as it changes when model reloads
-  }, [actions, setAvailableAnimations]);
+  }, [actions]);
 
   // Play animation based on selection
   useEffect(() => {
@@ -87,86 +92,101 @@ export const Model: React.FC<ModelProps> = ({
   // Add actions and mixer to dependencies
   }, [currentAnimation, actions, mixer]);
 
-  // Extract mesh with morph targets and update parent state
+  // Extract mesh, initialize dictionary and influences, AND set back to service
   useEffect(() => {
-    if (scene) {
-      let foundMeshWithMorphs = false;
-      let newMorphDict: Record<string, number> | null = null;
-      let newMorphInfluences: number[] | null = null;
+    let foundMeshWithMorphs = false;
+    meshRef.current = null;
+    let finalDict: Record<string, number> | null = null;
+    let finalInfluences: number[] | null = null;
 
-      // Traverse the loaded scene (which is a Group) to find the mesh
+    if (scene) {
       scene.traverse((object) => {
-        // Check if it's a Mesh and has morph targets
         if (!foundMeshWithMorphs && object instanceof THREE.Mesh && object.morphTargetInfluences && object.morphTargetDictionary) {
           const meshWithMorphs = object as MeshWithMorphs;
-          if (meshWithMorphs.morphTargetDictionary && meshWithMorphs.morphTargetInfluences) {
-            foundMeshWithMorphs = true;
-            meshRef.current = meshWithMorphs; // Store ref to the mesh
-            newMorphDict = { ...meshWithMorphs.morphTargetDictionary };
-            newMorphInfluences = [...meshWithMorphs.morphTargetInfluences];
-            setLocalMorphTargetDictionary(newMorphDict); // Update local dictionary
+          if (!meshWithMorphs.morphTargetInfluences) return;
+
+          meshRef.current = meshWithMorphs;
+          foundMeshWithMorphs = true;
+
+          // Determine dictionary to use
+          const dictFromMesh = meshWithMorphs.morphTargetDictionary;
+          finalDict = initialMorphTargetDictionary && Object.keys(initialMorphTargetDictionary).length > 0
+            ? initialMorphTargetDictionary
+            : dictFromMesh || null;
+          setLocalMorphTargetDictionary(finalDict || {}); // Update local state for useFrame
+          logger.info('Model: Found mesh, dictionary determined.', LogCategory.MODEL, JSON.stringify(finalDict));
+
+          // Determine influences to use and set on mesh
+          const meshInfluences = meshWithMorphs.morphTargetInfluences;
+          if (initialMorphTargetInfluences && initialMorphTargetInfluences.length === meshInfluences.length) {
+            finalInfluences = [...initialMorphTargetInfluences];
+            meshWithMorphs.morphTargetInfluences = finalInfluences;
+            logger.info('Model: Initialized influences from props.', LogCategory.MODEL);
+          } else {
+            finalInfluences = [...meshInfluences]; // Use mesh defaults
+            logger.info('Model: Initialized influences from mesh defaults.', LogCategory.MODEL);
           }
         }
       });
-
-      if (foundMeshWithMorphs && newMorphDict && newMorphInfluences) {
-        // Lift the state up to the parent component
-        setMorphTargetDictionary(newMorphDict);
-        setMorphTargetInfluences(newMorphInfluences);
-        // Reset timestamp and previous morphs ref on model change
-        lastMorphUpdateTimestampRef.current = performance.now() / 1000;
-        prevMorphTargetsRef.current = {}; 
-      } else {
-        // Reset if no mesh with morphs found
-        meshRef.current = null;
-        setMorphTargetDictionary({});
-        setMorphTargetInfluences([]);
-        setLocalMorphTargetDictionary({});
-      }
     }
-  }, [scene, url, setMorphTargetDictionary, setMorphTargetInfluences]); // Dependencies
 
-  // useFrame for morph target updates (API/Service OR Fallback)
+    // Call setMorphTargetData to update the service AFTER traversing the scene
+    if (foundMeshWithMorphs) {
+      setMorphTargetData(finalDict, finalInfluences);
+      logger.info('Model: Sent dictionary and influences back to service.', LogCategory.MODEL);
+    } else {
+      setLocalMorphTargetDictionary({}); // Clear local state if no mesh found
+      setMorphTargetData(null, null); // Inform service that no data is available
+      logger.warn('Model: No mesh with morph targets found. Sent null back.', LogCategory.MODEL, `URL: ${url}`);
+    }
+
+    lastMorphUpdateTimestampRef.current = performance.now() / 1000;
+    prevMorphTargetsRef.current = {};
+
+  }, [url, scene, initialMorphTargetDictionary, initialMorphTargetInfluences, setMorphTargetData]); // Add setMorphTargetData to dependencies
+
+  // useFrame for morph target updates
   useFrame((state, delta) => {
-    // Guard clauses
-    if (!meshRef.current || !meshRef.current.morphTargetInfluences || Object.keys(localMorphTargetDictionary).length === 0) {
+    // 嚴格檢查 mesh 和 influences
+    if (!meshRef.current?.morphTargetInfluences || Object.keys(localMorphTargetDictionary).length === 0) {
       return; 
     }
-
-    const meshWithMorphs = meshRef.current;
-    const influences = meshWithMorphs.morphTargetInfluences;
+    // 將 influences 賦值給常量
+    const influences = meshRef.current.morphTargetInfluences;
+    // 如果 influences 仍然可能是 null/undefined (理論上不應該，但為了 TS)，再次檢查
+    if (!influences) return;
+    
+    const mesh = meshRef.current;
     const dictionary = localMorphTargetDictionary;
     const currentTime = state.clock.elapsedTime;
+    const manualTargets = getManualMorphTargets(); 
 
-    // Check if morphTargets prop has updated
     if (morphTargets !== prevMorphTargetsRef.current) {
       lastMorphUpdateTimestampRef.current = currentTime;
       prevMorphTargetsRef.current = morphTargets;
     }
-
     const timeSinceLastUpdate = currentTime - lastMorphUpdateTimestampRef.current;
 
-    // Decide whether to use fallback or standard update
-    if (timeSinceLastUpdate > FALLBACK_ANIMATION_THRESHOLD) {
+    if (timeSinceLastUpdate > FALLBACK_ANIMATION_THRESHOLD && Object.keys(manualTargets).length === 0) {
       // --- Fallback Mouth Animation Logic ---
       FALLBACK_MORPH_KEYS.forEach((key, index) => {
         const morphIndex = dictionary[key];
+        // 現在使用確認非空的 influences 常量
         if (morphIndex !== undefined && morphIndex < influences.length) {
           const speedFactor = 0.5 + index * 0.2;
           const amplitudeFactor = 0.1 + Math.random() * 0.15;
           const phaseFactor = index * Math.PI / 3;
           const targetValue = Math.max(0, Math.sin(currentTime * speedFactor * Math.PI * 2 + phaseFactor) * amplitudeFactor);
-          const currentValue = influences[morphIndex];
+          const currentValue = influences[morphIndex]; // Use const
           const lerpFactor = Math.min(delta * 5, 1);
           influences[morphIndex] = THREE.MathUtils.lerp(currentValue, targetValue, lerpFactor);
         }
       });
-      // Smoothly zero out other mouth morphs not controlled by fallback
       Object.keys(dictionary).forEach(key => {
-        if (key.toLowerCase().includes('mouth') && !FALLBACK_MORPH_KEYS.includes(key)) {
+        if (key.toLowerCase().includes('mouth') && !FALLBACK_MORPH_KEYS.includes(key) && manualTargets[key] === undefined) {
            const morphIndex = dictionary[key];
-           if (morphIndex !== undefined && morphIndex < influences.length) {
-              const currentValue = influences[morphIndex];
+           if (morphIndex !== undefined && morphIndex < influences.length) { // Use const
+              const currentValue = influences[morphIndex]; // Use const
               if (currentValue > 0.01) {
                   const lerpFactor = Math.min(delta * 10, 1);
                   influences[morphIndex] = THREE.MathUtils.lerp(currentValue, 0, lerpFactor);
@@ -174,32 +194,30 @@ export const Model: React.FC<ModelProps> = ({
            }
         }
       });
-
     } else {
-      // --- Standard Morph Targets Update Logic (from props) ---
-      Object.entries(morphTargets).forEach(([name, value]) => {
+      // --- Standard Morph Targets Update Logic (Manual or Dynamic) ---
+      Object.keys(dictionary).forEach(name => {
         const index = dictionary[name];
-        if (index !== undefined && index < influences.length) {
-          const currentValue = influences[index];
-          const targetValue = value as number;
+        if (index !== undefined && index < influences.length) { // Use const
+          const manualValue = manualTargets[name];
+          const dynamicValue = morphTargets[name];
+
+          let targetValue: number = 0;
+          if (manualValue !== undefined) {
+            targetValue = manualValue;
+          } else if (dynamicValue !== undefined) {
+            targetValue = dynamicValue;
+          }
+          
+          const currentValue = influences[index]; // Use const
+
           if (Math.abs(currentValue - targetValue) > 0.01) {
-            const lerpFactor = Math.min(delta * 15, 1); 
+            const lerpFactor = Math.min(delta * 15, 1);
             influences[index] = THREE.MathUtils.lerp(currentValue, targetValue, lerpFactor);
           } else if (currentValue !== targetValue) {
             influences[index] = targetValue;
           }
         }
-      });
-      // Smoothly zero out fallback morphs if not present in new morphTargets prop
-      FALLBACK_MORPH_KEYS.forEach(key => {
-         const morphIndex = dictionary[key];
-         if (morphIndex !== undefined && morphIndex < influences.length && !(key in morphTargets)) {
-             const currentValue = influences[morphIndex];
-             if (currentValue > 0.01) {
-                 const lerpFactor = Math.min(delta * 10, 1);
-                 influences[morphIndex] = THREE.MathUtils.lerp(currentValue, 0, lerpFactor);
-             }
-         }
       });
     }
   });
