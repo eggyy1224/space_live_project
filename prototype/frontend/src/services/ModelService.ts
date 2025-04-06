@@ -90,12 +90,8 @@ class ModelService {
   
   // 處理唇型同步更新
   private handleLipsyncUpdate(data: any): void {
-    // 更新Morph Target值
     if (data.morphTargets) {
-      // 日誌記錄唇型更新 (使用debug級別避免過多輸出)
       logger.debug('處理唇型同步更新', LogCategory.MORPH, 'lipsync_update');
-      
-      // 使用較高優先級更新口型
       const faceKeys = [
         // 嘴部相關
         "jawOpen", "mouthOpen", "mouthFunnel", "mouthPucker", 
@@ -644,7 +640,6 @@ export function useModelService() {
   const [morphTargetInfluences, setMorphTargetInfluences] = useState<number[] | null>(null);
   const [morphTargets, setMorphTargets] = useState<Record<string, number>>({});
   const [modelUrl, setModelUrl] = useState<string>('/models/headonly.glb');
-  
   const modelService = useRef<ModelService>(ModelService.getInstance());
 
   useEffect(() => {
@@ -671,13 +666,36 @@ export function useModelService() {
       setMorphTargets(updatedMorphTargets);
     };
     
+    // 更新 handleStateUpdate 以同步後備動畫狀態
+    const handleStateUpdate = () => {
+      setModelUrl(modelService.current.getModelUrl());
+      setModelScale(modelService.current.getModelScale());
+      setModelRotation([...modelService.current.getModelRotation()]);
+      setModelPosition([...modelService.current.getModelPosition()]);
+      setShowSpaceBackground(modelService.current.getShowSpaceBackground());
+      setAvailableAnimations([...modelService.current.getAvailableAnimations()]);
+      setCurrentAnimation(modelService.current.getCurrentAnimation());
+      
+      const dict = modelService.current.getMorphTargetDictionary();
+      setMorphTargetDictionary(dict ? { ...dict } : null);
+      const inf = modelService.current.getMorphTargetInfluences();
+      setMorphTargetInfluences(inf ? [...inf] : null);
+      setModelLoaded(modelService.current.isModelLoaded());
+    };
+    
     modelService.current.onModelLoaded(handleModelLoaded);
     modelService.current.onMorphTargetsUpdate(handleMorphTargetsUpdate);
+    modelService.current.registerStateUpdateCallback(handleStateUpdate);
+
+    // 首次加載時獲取初始狀態
+    handleStateUpdate();
+    handleMorphTargetsUpdate(modelService.current.getMorphTargets());
 
     // 清理函數
     return () => {
       modelService.current.offModelLoaded(handleModelLoaded);
       modelService.current.offMorphTargetsUpdate(handleMorphTargetsUpdate);
+      modelService.current.unregisterStateUpdateCallback(handleStateUpdate);
     };
   }, []);
 
@@ -855,7 +873,7 @@ export function useModelService() {
     updateMorphTargetInfluence,
     resetAllMorphTargets,
     applyPresetExpression,
-    switchModel
+    switchModel,
   };
 }
 

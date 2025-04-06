@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { useGLTF, useAnimations } from '@react-three/drei';
 import * as THREE from 'three';
 import logger, { LogCategory } from '../utils/LogManager'; // Import logger
+import { Mesh } from 'three'; // Import Mesh type
 
 // 擴展的網格類型，包含morphTargets屬性
 interface MeshWithMorphs extends THREE.Mesh {
@@ -12,100 +13,39 @@ interface MeshWithMorphs extends THREE.Mesh {
 
 interface ModelProps {
   url: string;
-  scale: number;
-  rotation: [number, number, number];
-  position: [number, number, number];
-  currentAnimation: string | null;
+  scale?: number | [number, number, number];
+  position?: [number, number, number];
+  rotation?: [number, number, number];
+  morphTargets?: Record<string, number>;
+  currentAnimation?: string;
   setAvailableAnimations: (anims: string[]) => void;
-  morphTargetDictionary: Record<string, number> | null;
   setMorphTargetDictionary: (dict: Record<string, number>) => void;
-  morphTargetInfluences: number[] | null;
   setMorphTargetInfluences: (influences: number[]) => void;
-  morphTargets: Record<string, number>;
 }
+
+const FALLBACK_ANIMATION_THRESHOLD = 0.5; // Seconds
+const FALLBACK_MORPH_KEYS = ['jawOpen', 'mouthFunnel', 'mouthPucker', 'mouthSmile']; // Adjust based on model
 
 export const Model: React.FC<ModelProps> = ({
   url,
-  scale,
-  rotation,
-  position,
+  scale = 1,
+  position = [0, 0, 0],
+  rotation = [0, 0, 0],
+  morphTargets = {},
   currentAnimation,
   setAvailableAnimations,
-  morphTargetDictionary,
   setMorphTargetDictionary,
-  morphTargetInfluences,
-  setMorphTargetInfluences,
-  morphTargets
+  setMorphTargetInfluences
 }) => {
-  const group = useRef<THREE.Group>(null!);
-  // Keep track of the previous URL to manage cleanup
-  const previousUrlRef = useRef<string>(url);
-  // Ref to hold the current scene's group for cleanup, correctly typed as Group
-  const sceneRef = useRef<THREE.Group>();
-
-  // Load the model, Drei handles caching based on URL
-  // useGLTF returns a scene group
+  const group = useRef<THREE.Group>(null);
+  const meshRef = useRef<MeshWithMorphs | null>(null);
   const { scene, animations } = useGLTF(url);
   const { actions, mixer } = useAnimations(animations, group);
-  const meshRef = useRef<THREE.Mesh | null>(null);
-
-  // Store the current scene group in a ref for access in the cleanup function
-  useEffect(() => {
-    sceneRef.current = scene;
-  }, [scene]);
-
-  // Effect for cleaning up resources when the URL changes or component unmounts
-  useEffect(() => {
-    const currentUrl = url; // Capture url at the time of effect setup
-
-    // Return the cleanup function
-    return () => {
-      const sceneToClean = sceneRef.current;
-      const urlBeingCleaned = currentUrl;
-
-      // Only cleanup if the URL actually changed
-      if (sceneToClean && url !== urlBeingCleaned) { 
-        logger.info(`Cleaning up resources for model: ${urlBeingCleaned}`, LogCategory.MODEL);
-        sceneToClean.traverse((object) => {
-          // Check if it's a Mesh
-          if (object instanceof THREE.Mesh) {
-            // Dispose Geometry
-            if (object.geometry) {
-              object.geometry.dispose();
-              logger.debug(`Disposed geometry for mesh: ${object.name || 'unnamed'} in ${urlBeingCleaned}`, LogCategory.MODEL);
-            }
-            // Dispose Material(s)
-            if (object.material) {
-              if (Array.isArray(object.material)) {
-                // Iterate through materials array and dispose each
-                object.material.forEach((material: THREE.Material) => { // Explicitly type material
-                  disposeMaterial(material, urlBeingCleaned); // Ensure 2 arguments are passed
-                });
-              } else {
-                // Dispose single material
-                disposeMaterial(object.material as THREE.Material, urlBeingCleaned); // Ensure 2 arguments are passed
-              }
-            }
-          }
-        });
-         logger.info(`Finished cleanup for model: ${urlBeingCleaned}`, LogCategory.MODEL);
-      }
-    };
-  }, [url]);
-
-  // Helper function to dispose materials and their textures
-  const disposeMaterial = (material: THREE.Material, modelUrl: string) => {
-    logger.debug(`Disposing material: ${material.name || 'unnamed'} from ${modelUrl}`, LogCategory.MODEL);
-    material.dispose();
-    // Dispose textures
-    for (const key of Object.keys(material)) {
-      const value = (material as any)[key];
-      if (value && typeof value === 'object' && 'isTexture' in value) {
-         logger.debug(`Disposing texture: ${key} from ${modelUrl}`, LogCategory.MODEL);
-        (value as THREE.Texture).dispose();
-      }
-    }
-  };
+  const [localMorphTargetDictionary, setLocalMorphTargetDictionary] = useState<Record<string, number>>({});
+  
+  // Refs for fallback animation logic
+  const lastMorphUpdateTimestampRef = useRef<number>(0);
+  const prevMorphTargetsRef = useRef<Record<string, number>>(morphTargets);
 
   // Update available animations list and set default animation
   useEffect(() => {
@@ -147,66 +87,120 @@ export const Model: React.FC<ModelProps> = ({
   // Add actions and mixer to dependencies
   }, [currentAnimation, actions, mixer]);
 
-  // Get the mesh containing Morph Targets
+  // Extract mesh with morph targets and update parent state
   useEffect(() => {
     if (scene) {
       let foundMeshWithMorphs = false;
       let newMorphDict: Record<string, number> | null = null;
       let newMorphInfluences: number[] | null = null;
 
+      // Traverse the loaded scene (which is a Group) to find the mesh
       scene.traverse((object) => {
-        if (!foundMeshWithMorphs && object instanceof THREE.Mesh) {
+        // Check if it's a Mesh and has morph targets
+        if (!foundMeshWithMorphs && object instanceof THREE.Mesh && object.morphTargetInfluences && object.morphTargetDictionary) {
           const meshWithMorphs = object as MeshWithMorphs;
-
           if (meshWithMorphs.morphTargetDictionary && meshWithMorphs.morphTargetInfluences) {
             foundMeshWithMorphs = true;
-            meshRef.current = meshWithMorphs;
+            meshRef.current = meshWithMorphs; // Store ref to the mesh
             newMorphDict = { ...meshWithMorphs.morphTargetDictionary };
             newMorphInfluences = [...meshWithMorphs.morphTargetInfluences];
+            setLocalMorphTargetDictionary(newMorphDict); // Update local dictionary
           }
         }
       });
 
       if (foundMeshWithMorphs && newMorphDict && newMorphInfluences) {
+        // Lift the state up to the parent component
         setMorphTargetDictionary(newMorphDict);
         setMorphTargetInfluences(newMorphInfluences);
+        // Reset timestamp and previous morphs ref on model change
+        lastMorphUpdateTimestampRef.current = performance.now() / 1000;
+        prevMorphTargetsRef.current = {}; 
       } else {
-        // Reset morph target data if the new model doesn't have them
+        // Reset if no mesh with morphs found
         meshRef.current = null;
         setMorphTargetDictionary({});
         setMorphTargetInfluences([]);
+        setLocalMorphTargetDictionary({});
       }
     }
-  // Ensure url triggers reset
-  }, [scene, url, setMorphTargetDictionary, setMorphTargetInfluences]); 
+  }, [scene, url, setMorphTargetDictionary, setMorphTargetInfluences]); // Dependencies
 
-  // Update dynamic Morph Targets from API/Service using lerp for smoothing
-  useFrame((_, delta) => {
-    if (meshRef.current && morphTargetDictionary && Object.keys(morphTargets).length > 0) {
-      const meshWithMorphs = meshRef.current as MeshWithMorphs;
+  // useFrame for morph target updates (API/Service OR Fallback)
+  useFrame((state, delta) => {
+    // Guard clauses
+    if (!meshRef.current || !meshRef.current.morphTargetInfluences || Object.keys(localMorphTargetDictionary).length === 0) {
+      return; 
+    }
 
-      if (meshWithMorphs.morphTargetInfluences) {
-        // let influencesChanged = false; // Not needed if not updating state
-        Object.entries(morphTargets).forEach(([name, value]) => {
-          const index = morphTargetDictionary[name];
-          if (index !== undefined && index < meshWithMorphs.morphTargetInfluences!.length) {
-            const currentValue = meshWithMorphs.morphTargetInfluences![index];
-            const targetValue = value as number;
-            if (Math.abs(currentValue - targetValue) > 0.01) {
-              const lerpFactor = Math.min(delta * 15, 1); // Adjust 15 for speed
-              meshWithMorphs.morphTargetInfluences![index] = THREE.MathUtils.lerp(
-                currentValue,
-                targetValue,
-                lerpFactor
-              );
-              // influencesChanged = true;
-            } else if (currentValue !== targetValue) {
-                meshWithMorphs.morphTargetInfluences![index] = targetValue;
-                // influencesChanged = true;
-            }
+    const meshWithMorphs = meshRef.current;
+    const influences = meshWithMorphs.morphTargetInfluences;
+    const dictionary = localMorphTargetDictionary;
+    const currentTime = state.clock.elapsedTime;
+
+    // Check if morphTargets prop has updated
+    if (morphTargets !== prevMorphTargetsRef.current) {
+      lastMorphUpdateTimestampRef.current = currentTime;
+      prevMorphTargetsRef.current = morphTargets;
+    }
+
+    const timeSinceLastUpdate = currentTime - lastMorphUpdateTimestampRef.current;
+
+    // Decide whether to use fallback or standard update
+    if (timeSinceLastUpdate > FALLBACK_ANIMATION_THRESHOLD) {
+      // --- Fallback Mouth Animation Logic ---
+      FALLBACK_MORPH_KEYS.forEach((key, index) => {
+        const morphIndex = dictionary[key];
+        if (morphIndex !== undefined && morphIndex < influences.length) {
+          const speedFactor = 0.5 + index * 0.2;
+          const amplitudeFactor = 0.1 + Math.random() * 0.15;
+          const phaseFactor = index * Math.PI / 3;
+          const targetValue = Math.max(0, Math.sin(currentTime * speedFactor * Math.PI * 2 + phaseFactor) * amplitudeFactor);
+          const currentValue = influences[morphIndex];
+          const lerpFactor = Math.min(delta * 5, 1);
+          influences[morphIndex] = THREE.MathUtils.lerp(currentValue, targetValue, lerpFactor);
+        }
+      });
+      // Smoothly zero out other mouth morphs not controlled by fallback
+      Object.keys(dictionary).forEach(key => {
+        if (key.toLowerCase().includes('mouth') && !FALLBACK_MORPH_KEYS.includes(key)) {
+           const morphIndex = dictionary[key];
+           if (morphIndex !== undefined && morphIndex < influences.length) {
+              const currentValue = influences[morphIndex];
+              if (currentValue > 0.01) {
+                  const lerpFactor = Math.min(delta * 10, 1);
+                  influences[morphIndex] = THREE.MathUtils.lerp(currentValue, 0, lerpFactor);
+              }
+           }
+        }
+      });
+
+    } else {
+      // --- Standard Morph Targets Update Logic (from props) ---
+      Object.entries(morphTargets).forEach(([name, value]) => {
+        const index = dictionary[name];
+        if (index !== undefined && index < influences.length) {
+          const currentValue = influences[index];
+          const targetValue = value as number;
+          if (Math.abs(currentValue - targetValue) > 0.01) {
+            const lerpFactor = Math.min(delta * 15, 1); 
+            influences[index] = THREE.MathUtils.lerp(currentValue, targetValue, lerpFactor);
+          } else if (currentValue !== targetValue) {
+            influences[index] = targetValue;
           }
-        });
-      }
+        }
+      });
+      // Smoothly zero out fallback morphs if not present in new morphTargets prop
+      FALLBACK_MORPH_KEYS.forEach(key => {
+         const morphIndex = dictionary[key];
+         if (morphIndex !== undefined && morphIndex < influences.length && !(key in morphTargets)) {
+             const currentValue = influences[morphIndex];
+             if (currentValue > 0.01) {
+                 const lerpFactor = Math.min(delta * 10, 1);
+                 influences[morphIndex] = THREE.MathUtils.lerp(currentValue, 0, lerpFactor);
+             }
+         }
+      });
     }
   });
 
@@ -224,7 +218,7 @@ export const Model: React.FC<ModelProps> = ({
 
   return (
     <group ref={group} position={position} >
-      {/* Set key={url} to force re-creation of primitive when url changes */}
+      {/* Use the loaded scene directly, apply scale and key */}
       <primitive object={scene} scale={scale} key={url} />
     </group>
   );
