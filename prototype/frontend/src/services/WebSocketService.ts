@@ -79,10 +79,9 @@ class WebSocketService {
   public sendMessage(message: WebSocketMessage): boolean {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(message));
-      logger.debug({ msg: `發送 WebSocket 消息: ${message.type}`, details: message }, LogCategory.WEBSOCKET, message.type);
       return true;
     }
-    logger.error('WebSocket未連接，無法發送消息', LogCategory.WEBSOCKET, { message });
+    console.error('WebSocket未連接，無法發送消息');
     return false;
   }
 
