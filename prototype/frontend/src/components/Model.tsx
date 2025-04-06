@@ -55,38 +55,60 @@ export const Model: React.FC<ModelProps> = ({
   useEffect(() => {
     const animationNames = Object.keys(actions);
     // 直接調用服務方法
-    modelService.setAvailableAnimations(animationNames); // <--- 調用服務方法
+    modelService.setAvailableAnimations(animationNames);
     logger.info({ msg: 'Model: Extracted and sent available animations', details: animationNames }, LogCategory.MODEL);
-  }, [actions, modelService]); // <--- 移除 setAvailableAnimations，添加 modelService 到依賴項
+    // Log available animations when model changes
+    logger.debug({ msg: 'Model: Available actions', details: animationNames }, LogCategory.MODEL);
+  }, [actions, modelService]);
 
   // Play animation based on selection
   useEffect(() => {
+    // Log available actions for debugging when this effect runs
+    const availableActionKeys = Object.keys(actions);
+    logger.debug({ msg: 'Model: Setting animation based on current state', details: { currentAnimation, availableActionKeys } }, LogCategory.MODEL);
+
     // Stop all previous animations
     Object.values(actions).forEach(action => {
-      if (action && action.isRunning()) { // Check if running before stopping
+      if (action && action.isRunning()) {
         action.stop();
       }
     });
 
-    // Play the selected animation with fading
+    let animationToPlay: THREE.AnimationAction | null = null;
+    let animationName: string | null = null;
+
+    // Determine which animation to play
     if (currentAnimation && actions[currentAnimation]) {
-       // Fade in the new animation
-       actions[currentAnimation].reset().fadeIn(0.5).play();
+       animationToPlay = actions[currentAnimation];
+       animationName = currentAnimation;
+       logger.info(`Model: Playing selected animation: ${animationName}`, LogCategory.MODEL);
     } else {
-        // Optional: Play a default idle animation if no currentAnimation
+        // Try to play Idle as default
         if (actions.Idle) {
-            actions.Idle.reset().fadeIn(0.5).play();
+            animationToPlay = actions.Idle;
+            animationName = 'Idle';
+            logger.info('Model: Playing default animation: Idle', LogCategory.MODEL);
+        } 
+        // If Idle doesn't exist, try playing the first available animation
+        else if (availableActionKeys.length > 0) {
+           animationName = availableActionKeys[0];
+           animationToPlay = actions[animationName];
+           logger.info(`Model: Playing first available animation as default: ${animationName}`, LogCategory.MODEL);
+        } else {
+            logger.warn('Model: No animation selected and no default/available animation found.', LogCategory.MODEL);
         }
     }
 
-    // Cleanup function to fade out the current animation when it changes or component unmounts
+    // Play the determined animation with fading
+    if (animationToPlay) {
+        animationToPlay.reset().fadeIn(0.5).play();
+    }
+
+    // Cleanup function to fade out the currently playing animation
     return () => {
-       if (currentAnimation && actions[currentAnimation]) {
-           // Fade out the current animation
-           actions[currentAnimation].fadeOut(0.5);
-       } else if (actions.Idle && actions.Idle.isRunning()) {
-           // Fade out idle if it was playing
-           actions.Idle.fadeOut(0.5);
+       if (animationToPlay && animationToPlay.isRunning()) {
+           logger.debug(`Model: Fading out animation: ${animationName || 'unknown'}`, LogCategory.MODEL);
+           animationToPlay.fadeOut(0.5);
        }
     };
   // Add actions and mixer to dependencies

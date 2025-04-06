@@ -54,7 +54,6 @@ class ModelService {
   private onModelChangeCallbacks: ((url: string) => void)[] = [];
   private onTransformChangeCallbacks: (() => void)[] = [];
   private onAnimationChangeCallbacks: ((animation: string | null) => void)[] = [];
-  private onMorphTargetsUpdateCallbacks: ((targets: Record<string, number>) => void)[] = [];
   private onManualMorphTargetsUpdateCallbacks: ((targets: Record<string, number>) => void)[] = [];
   private onDictionaryUpdateCallbacks: ((dict: Record<string, number> | null) => void)[] = [];
   private onLoadStatusChangeCallbacks: ((isLoaded: boolean) => void)[] = [];
@@ -577,11 +576,34 @@ class ModelService {
     return this.modelUrl;
   }
 
-  // 設置模型URL
-  public setModelUrl(url: string): void {
+  // 設置模型URL (改為 switchModel)
+  public switchModel(url: string): void {
+    if (url === this.modelUrl) {
+      logger.info(`Model URL is already ${url}, skipping switch.`, LogCategory.MODEL);
+      return; // 如果 URL 相同，不執行任何操作
+    }
+
+    logger.info(`Switching model to: ${url}`, LogCategory.MODEL);
     this.modelUrl = url;
+
+    // 重置與模型相關的狀態
+    this.modelLoaded = false;
+    this.availableAnimations = [];
+    this.currentAnimation = null; // 可以考慮設置一個預設動畫，如果有的話
+    this.morphTargetDictionary = null;
+    this.morphTargetInfluences = null;
+    this.morphTargets = {};
+    this._manualMorphTargets = {};
+    this._lastEmotionMorphs = {};
+    this._currentEmotion = 'neutral';
+
     // 預加載新模型
     this.preloadModel(url);
+
+    // 觸發狀態更新，通知 UI 模型正在更換且狀態已重置
+    this.notifyStateChange(); 
+    this.notifyAvailableAnimationsUpdate(); // 通知動畫列表已清空
+    this.notifyModelLoaded(); // 通知模型加載狀態改變 (变为 false)
   }
 
   // 通知其他狀態變更 (模型變換、動畫、字典、影響值等)
@@ -717,7 +739,7 @@ export function useModelService() {
     }
     
     if (data.modelUrl !== undefined) {
-      modelService.current.setModelUrl(data.modelUrl);
+      modelService.current.switchModel(data.modelUrl);
       setModelUrl(data.modelUrl);
     }
   };
@@ -776,7 +798,7 @@ export function useModelService() {
   }, []);
 
   const switchModel = useCallback((url: string) => {
-    modelService.current.setModelUrl(url);
+    modelService.current.switchModel(url);
   }, []);
 
   const updateMorphTargetInfluence = useCallback((name: string, value: number) => {
