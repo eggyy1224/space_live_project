@@ -47,7 +47,9 @@ interface AppUIProps {
   userInput: string;
   isProcessing: boolean;
   setUserInput: (input: string) => void;
-  sendMessage: (message?: string) => void;
+  sendMessage: () => void; // 修改這裡，對應 App.tsx 傳遞的函數
+  handleKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void; // 添加 handleKeyDown
+  clearMessages: () => void; // 添加 clearMessages
   
   // 調試按鈕相關 props
   debugMode: boolean;
@@ -93,6 +95,8 @@ const AppUI: React.FC<AppUIProps> = ({
   isProcessing,
   setUserInput,
   sendMessage,
+  handleKeyDown, // 接收 handleKeyDown
+  clearMessages, // 接收 clearMessages
   debugMode,
   showModelAnalyzer,
   modelUrl,
@@ -148,6 +152,8 @@ const AppUI: React.FC<AppUIProps> = ({
           wsConnected={wsConnected}
           setUserInput={setUserInput}
           sendMessage={sendMessage}
+          handleKeyDown={handleKeyDown}
+          clearMessages={clearMessages}
           startRecording={startRecording}
           stopRecording={stopRecording}
           isRecording={isRecording}

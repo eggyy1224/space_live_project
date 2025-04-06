@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import './App.css'
 
 // 引入拆分出的組件
@@ -20,6 +20,10 @@ import {
 import { useStore } from './store'
 
 function App() {
+  // === 添加 useWebSocket 調用 ===
+  useWebSocket(); // 調用 hook 以建立 WebSocket 連接
+  // === 添加結束 ===
+
   // 從 Zustand Store 獲取 WebSocket 連接狀態
   const wsConnected = useStore((state) => state.isConnected);
   
@@ -63,7 +67,7 @@ function App() {
   // 使用聊天服務
   const {
     messages,
-    isProcessing,
+    isProcessing: chatProcessing,
     emotion,
     userInput,
     setUserInput,
@@ -73,7 +77,8 @@ function App() {
   
   // 確保傳遞給 AppUI 的 currentEmotion 為 string 類型
   // 使用類型斷言強制轉換
-  const currentEmotion = (emotion.emotion || 'neutral') as string;
+  const currentEmotion = typeof emotion.emotion === 'string' ? emotion.emotion : 'neutral';
+  const emotionConfidence = emotion.confidence || 0;
   
   // 標籤切換狀態
   const [activeTab, setActiveTab] = useState<'control' | 'chat'>('control');
@@ -117,6 +122,28 @@ function App() {
     switchModel(models[nextIndex]);
   }, [modelUrl, switchModel, availableModels]);
 
+  // 處理發送消息 (Enter 鍵或點擊按鈕)
+  const handleSendMessage = useCallback(() => {
+    if (userInput.trim() && wsConnected) { // 確保已連接才發送
+      sendMessage();
+    } else if (!wsConnected) {
+      console.warn("嘗試發送消息但 WebSocket 未連接");
+      // 可以選擇性地給用戶提示
+      // alert("連接已斷開，請稍後再試。");
+    }
+  }, [userInput, wsConnected, sendMessage]);
+
+  // 處理鍵盤事件 (Enter發送)
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        handleSendMessage();
+      }
+    },
+    [handleSendMessage]
+  );
+
   return (
     <ErrorBoundary>
       <div className="app-container">
@@ -159,7 +186,7 @@ function App() {
           modelScale={modelScale}
           currentAnimation={currentAnimation}
           currentEmotion={currentEmotion}
-          emotionConfidence={emotion.confidence}
+          emotionConfidence={emotionConfidence}
           availableAnimations={availableAnimations}
           morphTargetDictionary={morphTargetDictionary}
           manualMorphTargets={manualMorphTargets}
@@ -177,9 +204,11 @@ function App() {
           // 聊天界面相關 props
           messages={messages}
           userInput={userInput}
-          isProcessing={isProcessing}
+          isProcessing={chatProcessing}
           setUserInput={setUserInput}
-          sendMessage={sendMessage}
+          handleKeyDown={handleKeyDown}
+          handleSendMessage={handleSendMessage}
+          clearMessages={clearMessages}
           // 調試按鈕相關 props
           debugMode={debugMode}
           showModelAnalyzer={showModelAnalyzer}

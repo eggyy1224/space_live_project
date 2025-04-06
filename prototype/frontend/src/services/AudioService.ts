@@ -4,7 +4,7 @@ import logger, { LogCategory } from '../utils/LogManager';
 import { useStore } from '../store';
 
 // 後端API URL
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = `http://${window.location.hostname}:8000`;
 
 // 音頻服務類
 class AudioService {

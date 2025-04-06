@@ -3,7 +3,7 @@ import logger, { LogCategory } from '../utils/LogManager';
 import { useStore } from '../store';
 
 // WebSocket連接配置
-const WS_URL = 'ws://localhost:8000/ws';
+const WS_URL = `ws://${window.location.hostname}:8000/ws`;
 const WS_RETRY_MAX = 5;
 const WS_RETRY_INTERVAL = 3000; // 3秒
 
@@ -40,23 +40,46 @@ class WebSocketService {
 
   // 連接WebSocket
   public connect(): void {
-    if (this.ws && (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.OPEN)) {
-      logger.info('WebSocket已連接或正在連接中', LogCategory.WEBSOCKET);
-      return;
+    logger.debug("Connect method entered.", LogCategory.WEBSOCKET);
+
+    if (this.ws) {
+      logger.debug(`WebSocket object exists. Current state: ${this.ws.readyState}`, LogCategory.WEBSOCKET);
+      if (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.OPEN) {
+        logger.info({ msg: 'WebSocket已連接或正在連接中', details: { readyState: this.ws.readyState }}, LogCategory.WEBSOCKET);
+        return;
+      } else {
+        logger.warn(`WebSocket exists but state is ${this.ws.readyState}. Proceeding to reconnect.`, LogCategory.WEBSOCKET);
+        try { this.ws.close(); } catch (e) { /* ignore potential errors closing already closed socket */ }
+        this.ws = null;
+      }
+    } else {
+      logger.debug("WebSocket object (this.ws) is null. Proceeding to create.", LogCategory.WEBSOCKET);
     }
 
-    try {
-      logger.info('嘗試連接WebSocket...', LogCategory.WEBSOCKET);
-      this.ws = new WebSocket(WS_URL);
+    if (this.reconnectTimer) {
+        logger.debug("Clearing existing reconnect timer before new connection attempt.", LogCategory.WEBSOCKET);
+        clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = null;
+    }
+    this.retryCount = 0;
 
+    try {
+      logger.info({ msg: 'Attempting to create new WebSocket object...', details: { url: WS_URL }}, LogCategory.WEBSOCKET);
+      this.ws = new WebSocket(WS_URL);
+      logger.debug({ msg: 'New WebSocket object created.', details: { readyState: this.ws.readyState }}, LogCategory.WEBSOCKET);
+      logger.debug("Attaching WebSocket event handlers (onopen, onmessage, onerror, onclose)", LogCategory.WEBSOCKET);
       this.ws.onopen = this.handleOpen.bind(this);
       this.ws.onmessage = this.handleMessage.bind(this);
       this.ws.onerror = this.handleError.bind(this);
       this.ws.onclose = this.handleClose.bind(this);
+      logger.debug("WebSocket event handlers attached.", LogCategory.WEBSOCKET);
+
     } catch (error) {
-      logger.error('創建WebSocket連接錯誤:', LogCategory.WEBSOCKET, error);
+      logger.error('Error during WebSocket object creation or handler attachment:', LogCategory.WEBSOCKET, error);
+      this.ws = null;
       this.handleReconnect();
     }
+    logger.debug("Connect method finished.", LogCategory.WEBSOCKET);
   }
 
   // 關閉WebSocket連接
@@ -83,7 +106,13 @@ class WebSocketService {
       logger.debug({ msg: `發送 WebSocket 消息: ${message.type}`, details: message }, LogCategory.WEBSOCKET, message.type);
       return true;
     }
-    logger.error('WebSocket未連接，無法發送消息', LogCategory.WEBSOCKET, { message });
+    logger.error({ 
+      msg: 'WebSocket未連接，無法發送消息', 
+      details: {
+        readyState: this.ws?.readyState,
+        message 
+      }
+    }, LogCategory.WEBSOCKET);
     return false;
   }
 
@@ -175,7 +204,10 @@ class WebSocketService {
 
   // 處理WebSocket錯誤
   private handleError(error: Event): void {
-    logger.error('WebSocket錯誤', LogCategory.WEBSOCKET, error);
+    logger.error('WebSocket 發生錯誤', LogCategory.WEBSOCKET, { 
+      errorEvent: error, 
+      readyState: this.ws?.readyState // 添加 readyState 方便調試
+    });
     
     // 更新全局狀態
     useStore.getState().setConnected(false);
@@ -186,11 +218,21 @@ class WebSocketService {
         handler({ connected: false, error: true })
       );
     }
+    // 錯誤發生後也應該嘗試重連
+    this.handleReconnect(); 
   }
 
   // 處理WebSocket關閉
   private handleClose(event: CloseEvent): void {
-    logger.info(`WebSocket已關閉: ${event.code} ${event.reason}`, LogCategory.WEBSOCKET);
+    logger.info({ 
+      msg: `WebSocket 已關閉`, 
+      details: {
+        code: event.code,
+        reason: event.reason,
+        wasClean: event.wasClean,
+        readyState: this.ws?.readyState
+      }
+    }, LogCategory.WEBSOCKET);
     
     // 更新全局狀態
     useStore.getState().setConnected(false);
@@ -212,7 +254,11 @@ class WebSocketService {
       );
     }
     
-    this.handleReconnect();
+    // 只有在非正常關閉時才重連 (例如 event.wasClean === false)
+    // 或者如果需要總是重連，則移除條件
+    if (!event.wasClean) {
+       this.handleReconnect();
+    }
   }
 
   // 處理重新連接

@@ -6,7 +6,7 @@
 // API基礎URL - 移除production模式中的'/api'前綴，因為後端路由已包含'/api'前綴
 const API_BASE_URL = import.meta.env.MODE === 'production'
   ? window.location.origin
-  : 'http://localhost:8000';
+  : `http://${window.location.hostname}:8000`;
 
 // 可能的API錯誤類型
 export class ApiError extends Error {

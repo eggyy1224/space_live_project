@@ -18,6 +18,8 @@ interface ChatInterfaceProps {
   isRecording: boolean;
   activeTab: 'control' | 'chat';
   switchTab: (tab: 'control' | 'chat') => void;
+  handleKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void;
+  clearMessages: () => void;
 }
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({
@@ -31,7 +33,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   stopRecording,
   isRecording,
   activeTab,
-  switchTab
+  switchTab,
+  handleKeyDown,
+  clearMessages
 }) => {
   return (
     <div className="controls-panel">
@@ -86,7 +90,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               type="text" 
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+              onKeyDown={handleKeyDown}
               placeholder="輸入訊息..."
               disabled={isProcessing}
             />
@@ -109,6 +113,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               title={isRecording ? '正在錄音，鬆開停止' : '按住開始語音輸入'}
             >
               {isRecording ? '🔴' : '🎤'}
+            </button>
+            <button
+              onClick={clearMessages}
+              disabled={messages.length === 0 || isProcessing}
+              className="clear-button"
+              title="清除對話紀錄"
+              aria-label="清除對話紀錄"
+            >
+              🗑️
             </button>
           </div>
           
