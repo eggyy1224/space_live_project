@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import ModelService from './ModelService';
 import logger, { LogCategory } from '../utils/LogManager';
+import { useStore } from '../store';
 
 // 後端API URL
 const API_BASE_URL = 'http://localhost:8000';
@@ -13,11 +14,13 @@ class AudioService {
   private audioChunks: Blob[] = [];
   private onSpeakingStartCallbacks: (() => void)[] = [];
   private onSpeakingEndCallbacks: (() => void)[] = [];
-  private onAudioProcessingCallbacks: ((isProcessing: boolean) => void)[] = [];
-  private isRecording = false;
-  private isSpeaking = false;
-  private isProcessing = false;
-  private micPermission: boolean | null = null;
+  
+  // 不再需要存儲這些狀態，改用 Zustand
+  // private isRecording = false;
+  // private isSpeaking = false;
+  // private isProcessing = false;
+  // private micPermission: boolean | null = null;
+  
   private modelService: ModelService;
   private mouthAnimInterval: number | null = null;
 
@@ -50,7 +53,9 @@ class AudioService {
         // 播放結束後，延遲一下再關閉口型動畫，保持同步
         setTimeout(() => {
           this.stopMouthAnimation();
-          this.isSpeaking = false;
+          
+          // 使用 Zustand 更新狀態
+          useStore.getState().setPlaying(false);
           this.notifySpeakingEnd();
         }, 300);
       };
@@ -116,25 +121,28 @@ class AudioService {
       // 立即釋放麥克風
       stream.getTracks().forEach(track => track.stop());
       
-      this.micPermission = true;
+      // 使用 Zustand 更新 micPermission 狀態
+      // 注意：這裡需要確保 micPermission 的類型是 'granted' | 'denied' | 'prompt'，與要求的 string 類型相容
+      useStore.getState().setMicPermission('granted');
       logger.info('麥克風權限已授權', LogCategory.AUDIO);
       return true;
     } catch (error) {
-      this.micPermission = false;
+      // 使用 Zustand 更新 micPermission 狀態
+      useStore.getState().setMicPermission('denied');
       logger.error('麥克風權限被拒絕', LogCategory.AUDIO, error);
       return false;
     }
   }
 
   // 獲取麥克風權限狀態
-  public getMicrophonePermission(): boolean | null {
-    return this.micPermission;
+  public getMicrophonePermission(): string {
+    return useStore.getState().micPermission;
   }
 
   // 開始語音錄製
   public async startRecording(): Promise<boolean> {
     // 如果已經在錄音，則不執行
-    if (this.isRecording) {
+    if (useStore.getState().isRecording) {
       return false;
     }
 
@@ -214,7 +222,9 @@ class AudioService {
       // 開始錄音 (設置較短的時間片段，增加實時性)
       this.mediaRecorder.start(100);
       logger.info('開始錄音，時間片段間隔: 100ms', LogCategory.AUDIO);
-      this.isRecording = true;
+      
+      // 使用 Zustand 更新狀態
+      useStore.getState().setRecording(true);
       return true;
     } catch (error) {
       logger.error('啟動錄音錯誤', LogCategory.AUDIO, error);
@@ -224,15 +234,19 @@ class AudioService {
 
   // 停止語音錄製
   public stopRecording(): boolean {
-    if (this.mediaRecorder && this.isRecording) {
+    if (this.mediaRecorder && useStore.getState().isRecording) {
       try {
         logger.info('嘗試停止錄音', LogCategory.AUDIO);
         this.mediaRecorder.stop();
-        this.isRecording = false;
+        
+        // 使用 Zustand 更新狀態
+        useStore.getState().setRecording(false);
         return true;
       } catch (error) {
         logger.error('停止錄音時發生錯誤', LogCategory.AUDIO, error);
-        this.isRecording = false;
+        
+        // 使用 Zustand 更新狀態
+        useStore.getState().setRecording(false);
         return false;
       }
     }
@@ -394,8 +408,8 @@ class AudioService {
           // 啟動口型動畫
           this.startMouthAnimation();
           
-          // 標記為說話狀態
-          this.isSpeaking = true;
+          // 使用 Zustand 更新播放狀態
+          useStore.getState().startPlaying(audioUrl);
           this.notifySpeakingStart();
           
           // 延遲極短時間後播放，確保口型同步能夠先啟動
@@ -407,7 +421,7 @@ class AudioService {
                 })
                 .catch(error => {
                   logger.error('播放音頻錯誤', LogCategory.AUDIO, error);
-                  this.isSpeaking = false;
+                  useStore.getState().stopPlaying();
                   this.stopMouthAnimation();
                   this.notifySpeakingEnd();
                 });
@@ -418,13 +432,13 @@ class AudioService {
         // 監聽錯誤
         this.audioElement.onerror = (e) => {
           logger.error('音頻加載錯誤', LogCategory.AUDIO, e);
-          this.isSpeaking = false;
+          useStore.getState().stopPlaying();
           this.stopMouthAnimation();
           this.notifySpeakingEnd();
         };
       } catch (error) {
         logger.error('播放音頻時發生意外錯誤', LogCategory.AUDIO, error);
-        this.isSpeaking = false;
+        useStore.getState().stopPlaying();
         this.stopMouthAnimation();
         this.notifySpeakingEnd();
       }
@@ -433,22 +447,23 @@ class AudioService {
 
   // 檢查是否正在錄音
   public isCurrentlyRecording(): boolean {
-    return this.isRecording;
+    return useStore.getState().isRecording;
   }
 
   // 檢查是否正在說話
   public isCurrentlySpeaking(): boolean {
-    return this.isSpeaking;
+    return useStore.getState().isPlaying;
   }
 
   // 檢查是否正在處理音頻
   public isCurrentlyProcessing(): boolean {
-    return this.isProcessing;
+    return useStore.getState().isProcessing;
   }
 
   // 設置處理狀態
   private setProcessing(processing: boolean): void {
-    this.isProcessing = processing;
+    // 使用 Zustand 更新處理狀態
+    useStore.getState().setProcessing(processing);
     this.notifyAudioProcessing(processing);
   }
 
@@ -482,84 +497,66 @@ class AudioService {
     this.onSpeakingEndCallbacks.forEach(callback => callback());
   }
 
-  // 註冊音頻處理事件
+  // 註冊音頻處理事件 (移除，使用 Zustand 訂閱)
   public onAudioProcessing(callback: (isProcessing: boolean) => void): void {
-    this.onAudioProcessingCallbacks.push(callback);
+    // 不再使用事件回調，而是直接從 Zustand 獲取狀態
   }
 
-  // 移除音頻處理事件
+  // 移除音頻處理事件 (移除，使用 Zustand 訂閱)
   public offAudioProcessing(callback: (isProcessing: boolean) => void): void {
-    this.onAudioProcessingCallbacks = this.onAudioProcessingCallbacks.filter(cb => cb !== callback);
+    // 不再使用事件回調，而是直接從 Zustand 獲取狀態
   }
 
   // 觸發音頻處理事件
   private notifyAudioProcessing(isProcessing: boolean): void {
-    this.onAudioProcessingCallbacks.forEach(callback => callback(isProcessing));
+    // 僅為兼容性保留，實際使用 Zustand 更新狀態
   }
 }
 
-// React Hook - 使用音頻服務
+// React Hook - 使用音頻服務 (使用 Zustand)
 export function useAudioService() {
-  const [isRecording, setIsRecording] = useState<boolean>(false);
-  const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
-  const [isProcessing, setIsProcessing] = useState<boolean>(false);
-  const [micPermission, setMicPermission] = useState<boolean | null>(null);
+  // 從 Zustand 獲取音頻相關狀態
+  const isRecording = useStore((state) => state.isRecording);
+  const isSpeaking = useStore((state) => state.isPlaying);
+  const isProcessing = useStore((state) => state.isProcessing);
+  const micPermission = useStore((state) => state.micPermission);
+  
   const audioService = useRef<AudioService>(AudioService.getInstance());
 
   useEffect(() => {
-    // 獲取初始狀態
-    setIsRecording(audioService.current.isCurrentlyRecording());
-    setIsSpeaking(audioService.current.isCurrentlySpeaking());
-    setIsProcessing(audioService.current.isCurrentlyProcessing());
-    setMicPermission(audioService.current.getMicrophonePermission());
-
-    // 說話開始事件處理
+    // 檢查麥克風權限（如果還未獲取）
+    if (micPermission === 'prompt') {
+      audioService.current.checkMicrophonePermission();
+    }
+    
+    // 註冊說話開始/結束事件處理器（兼容性保留）
     const handleSpeakingStart = () => {
-      setIsSpeaking(true);
+      // 不再需要設置本地狀態
     };
 
-    // 說話結束事件處理
     const handleSpeakingEnd = () => {
-      setIsSpeaking(false);
-    };
-
-    // 音頻處理事件處理
-    const handleAudioProcessing = (processing: boolean) => {
-      setIsProcessing(processing);
+      // 不再需要設置本地狀態
     };
 
     // 註冊事件處理
     audioService.current.onSpeakingStart(handleSpeakingStart);
     audioService.current.onSpeakingEnd(handleSpeakingEnd);
-    audioService.current.onAudioProcessing(handleAudioProcessing);
-
-    // 檢查麥克風權限
-    audioService.current.checkMicrophonePermission().then(
-      hasPermission => setMicPermission(hasPermission)
-    );
 
     // 清理函數
     return () => {
       audioService.current.offSpeakingStart(handleSpeakingStart);
       audioService.current.offSpeakingEnd(handleSpeakingEnd);
-      audioService.current.offAudioProcessing(handleAudioProcessing);
     };
-  }, []);
+  }, [micPermission]);
 
   // 開始錄音
   const startRecording = async () => {
-    const started = await audioService.current.startRecording();
-    if (started) {
-      setIsRecording(true);
-    }
+    await audioService.current.startRecording();
   };
 
   // 停止錄音
   const stopRecording = () => {
-    const stopped = audioService.current.stopRecording();
-    if (stopped) {
-      setIsRecording(false);
-    }
+    audioService.current.stopRecording();
   };
 
   // 播放音頻

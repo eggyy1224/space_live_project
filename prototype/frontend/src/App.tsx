@@ -158,7 +158,7 @@ function App() {
           modelLoaded={modelLoaded}
           modelScale={modelScale}
           currentAnimation={currentAnimation}
-          currentEmotion={currentEmotion} // 使用類型斷言解決類型問題
+          currentEmotion={currentEmotion}
           emotionConfidence={emotion.confidence}
           availableAnimations={availableAnimations}
           morphTargetDictionary={morphTargetDictionary}
@@ -167,7 +167,7 @@ function App() {
           setSelectedMorphTarget={setSelectedMorphTarget}
           updateMorphTargetInfluence={updateMorphTargetInfluence}
           resetAllMorphTargets={resetAllMorphTargets}
-          rotateModel={rotateModel} // 傳遞從 useModelService 獲取的 rotateModel
+          rotateModel={rotateModel}
           scaleModel={scaleModel}
           resetModel={resetModel}
           toggleBackground={toggleBackground}
