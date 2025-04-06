@@ -96,3 +96,6 @@ prototype/frontend/*.suo
 prototype/frontend/*.ntvs*
 prototype/frontend/*.njsproj
 prototype/frontend/*.sln
+
+# Backend (prototype/backend) Specific
+prototype/backend/debug_audio/

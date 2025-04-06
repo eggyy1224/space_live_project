@@ -222,7 +222,7 @@ class ChatService {
 export function useChatService() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
-  const [emotion, setEmotion] = useState<EmotionState>({ emotion: 'neutral', confidence: 0 });
+  const [emotionState, setEmotionState] = useState<EmotionState>({ emotion: 'neutral', confidence: 0 });
   const [userInput, setUserInput] = useState<string>('');
   const chatService = useRef<ChatService>(ChatService.getInstance());
 
@@ -237,9 +237,15 @@ export function useChatService() {
       setIsProcessing(processing);
     };
     
-    // 情緒更新處理
+    // 情緒更新處理 - 加入檢查避免不必要的狀態更新
     const handleEmotionUpdate = (updatedEmotion: EmotionState) => {
-      setEmotion(updatedEmotion);
+      // 只有當 emotion 或 confidence 實際改變時才更新狀態
+      setEmotionState(prevState => {
+        if (prevState.emotion !== updatedEmotion.emotion || prevState.confidence !== updatedEmotion.confidence) {
+          return updatedEmotion;
+        }
+        return prevState; // 保持原狀態，避免不必要的引用變更
+      });
     };
     
     // 註冊事件處理
@@ -253,31 +259,32 @@ export function useChatService() {
       chatService.current.offProcessingChange(handleProcessingChange);
       chatService.current.offEmotionUpdate(handleEmotionUpdate);
     };
-  }, []);
+  }, []); // 空依賴數組確保只在掛載和卸載時執行
 
-  // 發送消息
+  // 封裝 sendMessage 函數，使其能讀取 hook 內部狀態
   const sendMessage = () => {
     if (userInput.trim()) {
       const success = chatService.current.sendMessage(userInput);
       if (success) {
-        setUserInput('');
+        setUserInput(''); // 發送成功後清空輸入框
       }
     }
   };
 
-  // 清空消息
+  // 封裝 clearMessages 函數
   const clearMessages = () => {
     chatService.current.clearMessages();
   };
 
+  // 返回狀態和封裝後的函數
   return {
     messages,
     isProcessing,
-    emotion,
+    emotion: emotionState,
     userInput,
-    setUserInput,
-    sendMessage,
-    clearMessages
+    setUserInput, // 直接返回 useState 的 setter
+    sendMessage, // 返回封裝後的函數
+    clearMessages // 返回封裝後的函數
   };
 }
 
