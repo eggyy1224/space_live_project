@@ -31,30 +31,25 @@ function App() {
   // 使用音頻服務
   const { 
     isRecording, 
-    isPlaying: isSpeaking, 
-    isProcessing: audioProcessing, 
-    micPermission,
-    startRecording: origStartRecording,
-    stopRecording,
+    isPlaying: isSpeaking,
+    isProcessing: audioProcessing,
+    micPermission, 
+    startRecording, 
+    stopRecording, 
     playAudio
   } = useAudioService();
   
-  // 包裝 startRecording 以返回 Promise<void>
-  const startRecording = useCallback(async () => {
-    await origStartRecording();
-  }, [origStartRecording]);
-  
   // 使用模型服務
-  const { 
+  const {
     modelLoaded,
+    modelUrl,
     modelScale,
     modelRotation,
     modelPosition,
     showSpaceBackground,
-    currentAnimation,
     availableAnimations,
+    currentAnimation,
     morphTargets,
-    getManualMorphTargets,
     setMorphTargetData,
     rotateModel,
     scaleModel,
@@ -64,8 +59,7 @@ function App() {
     updateMorphTargetInfluence,
     resetAllMorphTargets,
     applyPresetExpression,
-    switchModel,
-    modelUrl
+    switchModel
   } = useModelService();
   
   // 使用聊天服務
@@ -85,9 +79,6 @@ function App() {
   
   // 使用本地狀態管理用戶輸入
   const [userInput, setUserInput] = useState('');
-  
-  // 獲取手動變形目標
-  const manualMorphTargets = getManualMorphTargets();
   
   // 標籤切換狀態
   const [activeTab, setActiveTab] = useState<'control' | 'chat'>('control');
@@ -168,7 +159,6 @@ function App() {
           morphTargets={morphTargets as unknown as Record<string, number>}
           showSpaceBackground={showSpaceBackground}
           morphTargetDictionary={morphTargets as unknown as Record<string, number> | null}
-          getManualMorphTargets={getManualMorphTargets}
           setMorphTargetData={setMorphTargetData}
         />
         
@@ -201,7 +191,6 @@ function App() {
           emotionConfidence={emotionConfidence}
           availableAnimations={availableAnimations}
           morphTargetDictionary={morphTargets as unknown as Record<string, number> | null}
-          manualMorphTargets={manualMorphTargets}
           selectedMorphTarget={selectedMorphTarget}
           setSelectedMorphTarget={setSelectedMorphTarget}
           updateMorphTargetInfluence={updateMorphTargetInfluence}

@@ -1,5 +1,7 @@
-import React from 'react';
-import ModelViewer from '../ModelViewer'; // 假設 ModelViewer 在上層 components 目錄
+import React, { Suspense } from 'react';
+import { Model } from '../Model'; // 直接使用 Model 組件
+import { Canvas } from '@react-three/fiber';
+import { Html, OrbitControls, Stars } from '@react-three/drei';
 
 interface SceneContainerProps {
   modelUrl: string;
@@ -10,11 +12,10 @@ interface SceneContainerProps {
   morphTargets: Record<string, number>;
   showSpaceBackground: boolean;
   morphTargetDictionary: Record<string, number> | null;
-  getManualMorphTargets: () => Record<string, number>;
   setMorphTargetData: (dictionary: Record<string, number> | null, influences: number[] | null) => void;
 }
 
-const SceneContainer: React.FC<SceneContainerProps> = ({
+const SceneContainer: React.FC<SceneContainerProps> = React.memo(({
   modelUrl,
   modelScale,
   modelRotation,
@@ -23,23 +24,28 @@ const SceneContainer: React.FC<SceneContainerProps> = ({
   morphTargets,
   showSpaceBackground,
   morphTargetDictionary,
-  getManualMorphTargets,
   setMorphTargetData,
 }) => {
   return (
-    <ModelViewer
-      modelUrl={modelUrl}
-      modelScale={modelScale}
-      modelRotation={modelRotation}
-      modelPosition={modelPosition}
-      currentAnimation={currentAnimation}
-      morphTargets={morphTargets}
-      showSpaceBackground={showSpaceBackground}
-      morphTargetDictionary={morphTargetDictionary}
-      getManualMorphTargets={getManualMorphTargets}
-      setMorphTargetData={setMorphTargetData}
-    />
+    <Canvas className="scene-canvas" camera={{ position: [0, 0, 2], fov: 50 }}>
+      <Suspense fallback={<Html center>加載模型中...</Html>}>
+        <ambientLight intensity={0.5} />
+        <directionalLight position={[5, 5, 5]} intensity={1} />
+        <Model
+          url={modelUrl}
+          scale={modelScale}
+          rotation={modelRotation}
+          position={modelPosition}
+          currentAnimation={currentAnimation ?? undefined}
+          morphTargets={morphTargets}
+          morphTargetDictionary={morphTargetDictionary}
+          setMorphTargetData={setMorphTargetData}
+        />
+        <OrbitControls />
+        {showSpaceBackground && <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />}
+      </Suspense>
+    </Canvas>
   );
-};
+});
 
 export default SceneContainer; 

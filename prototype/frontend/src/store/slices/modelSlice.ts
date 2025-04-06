@@ -88,12 +88,19 @@ export const createModelSlice: StateCreator<ModelSlice> = (set) => ({
   setMorphTargets: (targets) => set({ morphTargets: targets }),
   
   // 單個更新 morphTarget (適用於 UI 控制)
-  updateMorphTarget: (key, value) => set((state) => ({
-    morphTargets: {
+  updateMorphTarget: (key, value) => set((state) => {
+    // 使用更強的日誌顯示
+    console.log(`[ZUSTAND STATE] 更新MorphTarget: ${key} = ${value}`);
+    
+    // 創建新的狀態對象，確保觸發更新
+    const newMorphTargets = {
       ...state.morphTargets,
       [key]: value
-    }
-  })),
+    };
+    
+    // 返回新狀態
+    return { morphTargets: newMorphTargets };
+  }),
   
   setMorphTargetDictionary: (dict) => set({ morphTargetDictionary: dict }),
   

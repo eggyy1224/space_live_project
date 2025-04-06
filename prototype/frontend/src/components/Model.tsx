@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import logger, { LogCategory } from '../utils/LogManager'; // Import logger
 import { Mesh } from 'three'; // Import Mesh type
 import ModelService from '../services/ModelService'; // <--- 引入 ModelService
+import { useStore } from '../store'; // 修正導入路徑
 
 // 擴展的網格類型，包含morphTargets屬性
 interface MeshWithMorphs extends THREE.Mesh {
@@ -20,7 +21,6 @@ interface ModelProps {
   morphTargets?: Record<string, number>; // Dynamic targets from WS
   currentAnimation?: string; // Keep optional
   morphTargetDictionary: Record<string, number> | null;
-  getManualMorphTargets: () => Record<string, number>;
   setMorphTargetData: (dictionary: Record<string, number> | null, influences: number[] | null) => void;
 }
 
@@ -35,7 +35,6 @@ export const Model: React.FC<ModelProps> = ({
   morphTargets = {}, // Dynamic targets
   currentAnimation,
   morphTargetDictionary: initialMorphTargetDictionary, // Rename prop
-  getManualMorphTargets,
   setMorphTargetData,
 }) => {
   const group = useRef<THREE.Group>(null);
@@ -119,7 +118,6 @@ export const Model: React.FC<ModelProps> = ({
     let foundMeshWithMorphs = false;
     meshRef.current = null;
     let finalDict: Record<string, number> | null = null;
-    let finalInfluences: number[] | null = null;
 
     if (scene) {
       scene.traverse((object) => {
@@ -138,101 +136,76 @@ export const Model: React.FC<ModelProps> = ({
           setLocalMorphTargetDictionary(finalDict || {}); // Update local state for useFrame
           logger.info('Model: Found mesh, dictionary determined.', LogCategory.MODEL, JSON.stringify(finalDict));
 
-          // Determine influences to use and set on mesh
-          const meshInfluences = meshWithMorphs.morphTargetInfluences;
-          finalInfluences = [...meshInfluences]; // Use mesh defaults
-          logger.info('Model: Initialized influences from mesh defaults.', LogCategory.MODEL);
+          // 不再從這裡初始化或重置 influences，讓 useFrame 從 Zustand 控制
+          logger.info('Model: Influences will be controlled by Zustand via useFrame.', LogCategory.MODEL);
         }
       });
     }
 
     // Call setMorphTargetData to update the service AFTER traversing the scene
-    if (foundMeshWithMorphs) {
-      setMorphTargetData(finalDict, finalInfluences);
-      logger.info('Model: Sent dictionary and influences back to service.', LogCategory.MODEL);
+    if (foundMeshWithMorphs && finalDict) { // 確保 finalDict 存在才回傳
+      setMorphTargetData(finalDict, null); // 只回傳 dictionary，influences 由 Zustand 管理
+      logger.info('Model: Sent dictionary back to service.', LogCategory.MODEL);
     } else {
       setLocalMorphTargetDictionary({}); // Clear local state if no mesh found
       setMorphTargetData(null, null); // Inform service that no data is available
       logger.warn('Model: No mesh with morph targets found. Sent null back.', LogCategory.MODEL, `URL: ${url}`);
     }
 
+    // 重置 fallback 計時器和狀態 (這部分可以保留)
     lastMorphUpdateTimestampRef.current = performance.now() / 1000;
     prevMorphTargetsRef.current = {};
 
-  }, [url, scene, initialMorphTargetDictionary, setMorphTargetData]); // Add setMorphTargetData to dependencies
+  }, [url, scene]); // <<<--- 修改依賴項數組，只依賴 url 和 scene
 
   // useFrame for morph target updates
   useFrame((state, delta) => {
     // 嚴格檢查 mesh 和 influences
-    if (!meshRef.current?.morphTargetInfluences || Object.keys(localMorphTargetDictionary).length === 0) {
+    if (!meshRef.current?.morphTargetInfluences || !localMorphTargetDictionary) {
       return; 
     }
-    // 將 influences 賦值給常量
-    const influences = meshRef.current.morphTargetInfluences;
-    // 如果 influences 仍然可能是 null/undefined (理論上不應該，但為了 TS)，再次檢查
-    if (!influences) return;
     
-    const mesh = meshRef.current;
+    // 從 Zustand 獲取當前的目標 morph targets 狀態
+    const currentMorphTargetState = useStore.getState().morphTargets;
+    const influences = meshRef.current.morphTargetInfluences;
     const dictionary = localMorphTargetDictionary;
-    const currentTime = state.clock.elapsedTime;
-    const manualTargets = getManualMorphTargets(); 
-
-    if (morphTargets !== prevMorphTargetsRef.current) {
-      lastMorphUpdateTimestampRef.current = currentTime;
-      prevMorphTargetsRef.current = morphTargets;
-    }
-    const timeSinceLastUpdate = currentTime - lastMorphUpdateTimestampRef.current;
-
-    if (timeSinceLastUpdate > FALLBACK_ANIMATION_THRESHOLD && Object.keys(manualTargets).length === 0) {
-      // --- Fallback Mouth Animation Logic ---
+    
+    // 應用 Zustand 中的 morphTargets 狀態到模型的 influences
+    Object.keys(dictionary).forEach(name => {
+      const index = dictionary[name];
+      if (index !== undefined && index < influences.length) {
+        // 從 Zustand store 獲取目標值，如果不存在則默認為 0
+        const targetValue = currentMorphTargetState[name] ?? 0;
+        const currentValue = influences[index];
+        
+        // 使用平滑插值 (lerp) 應用變化
+        if (Math.abs(currentValue - targetValue) > 0.01) {
+          const lerpFactor = Math.min(delta * 15, 1); // 可以調整插值速度
+          influences[index] = THREE.MathUtils.lerp(currentValue, targetValue, lerpFactor);
+        } else if (currentValue !== targetValue) {
+          // 如果差異很小，直接設置為目標值
+          influences[index] = targetValue;
+        }
+      }
+    });
+    
+    // Fallback 嘴型動畫 (可以保留，但確保它只在沒有任何其他嘴部活動時觸發)
+    // 注意：這部分可能需要根據 Zustand 狀態來判斷是否觸發，
+    // 例如，檢查 currentMorphTargetState 中是否有嘴部相關的值正在變化。
+    // 為了簡化，暫時保留原邏輯，但理想情況下應與 Zustand 狀態同步。
+    const timeSinceLastUpdate = state.clock.elapsedTime - lastMorphUpdateTimestampRef.current;
+    if (timeSinceLastUpdate > FALLBACK_ANIMATION_THRESHOLD && 
+        !Object.keys(currentMorphTargetState).some(key => key.toLowerCase().includes('mouth') || key.toLowerCase().includes('jaw'))) {
+      // Fallback嘴型動畫邏輯...
       FALLBACK_MORPH_KEYS.forEach((key, index) => {
         const morphIndex = dictionary[key];
-        // 現在使用確認非空的 influences 常量
         if (morphIndex !== undefined && morphIndex < influences.length) {
           const speedFactor = 0.5 + index * 0.2;
           const amplitudeFactor = 0.1 + Math.random() * 0.15;
           const phaseFactor = index * Math.PI / 3;
-          const targetValue = Math.max(0, Math.sin(currentTime * speedFactor * Math.PI * 2 + phaseFactor) * amplitudeFactor);
-          const currentValue = influences[morphIndex]; // Use const
-          const lerpFactor = Math.min(delta * 5, 1);
-          influences[morphIndex] = THREE.MathUtils.lerp(currentValue, targetValue, lerpFactor);
-        }
-      });
-      Object.keys(dictionary).forEach(key => {
-        if (key.toLowerCase().includes('mouth') && !FALLBACK_MORPH_KEYS.includes(key) && manualTargets[key] === undefined) {
-           const morphIndex = dictionary[key];
-           if (morphIndex !== undefined && morphIndex < influences.length) { // Use const
-              const currentValue = influences[morphIndex]; // Use const
-              if (currentValue > 0.01) {
-                  const lerpFactor = Math.min(delta * 10, 1);
-                  influences[morphIndex] = THREE.MathUtils.lerp(currentValue, 0, lerpFactor);
-              }
-           }
-        }
-      });
-    } else {
-      // --- Standard Morph Targets Update Logic (Manual or Dynamic) ---
-      Object.keys(dictionary).forEach(name => {
-        const index = dictionary[name];
-        if (index !== undefined && index < influences.length) { // Use const
-          const manualValue = manualTargets[name];
-          const dynamicValue = morphTargets[name];
-
-          let targetValue: number = 0;
-          if (manualValue !== undefined) {
-            targetValue = manualValue;
-          } else if (dynamicValue !== undefined) {
-            targetValue = dynamicValue;
-          }
-          
-          const currentValue = influences[index]; // Use const
-
-          if (Math.abs(currentValue - targetValue) > 0.01) {
-            const lerpFactor = Math.min(delta * 15, 1);
-            influences[index] = THREE.MathUtils.lerp(currentValue, targetValue, lerpFactor);
-          } else if (currentValue !== targetValue) {
-            influences[index] = targetValue;
-          }
+          const targetValue = Math.max(0, Math.sin(state.clock.elapsedTime * speedFactor * Math.PI * 2 + phaseFactor) * amplitudeFactor);
+          const currentValue = influences[morphIndex];
+          influences[morphIndex] = THREE.MathUtils.lerp(currentValue, targetValue, Math.min(delta * 5, 1));
         }
       });
     }

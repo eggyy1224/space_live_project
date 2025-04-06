@@ -44,7 +44,7 @@ async function fetchApi<T>(url: string, options: RequestInit = {}): Promise<T> {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     },
-    credentials: 'include', // 包含cookies
+    credentials: 'omit', // 不包含cookies
   };
 
   // 合併選項
@@ -200,7 +200,7 @@ export async function getLogs(limit: number = 100): Promise<{
 export async function getPresetsList(): Promise<{
   presets: string[];
 }> {
-  return fetchApi('/api/expressions/presets');
+  return fetchApi('/api/presets');
 }
 
 /**
@@ -209,7 +209,7 @@ export async function getPresetsList(): Promise<{
  * @returns 表情變形目標
  */
 export async function getPresetExpression(expression: string): Promise<Record<string, number>> {
-  return fetchApi(`/api/expressions/preset-expressions/${expression}`);
+  return fetchApi(`/api/preset-expressions/${expression}`);
 }
 
 // 導出API服務

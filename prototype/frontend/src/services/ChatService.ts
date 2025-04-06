@@ -173,7 +173,7 @@ class ChatService {
   // 請求表達預設列表
   public async requestExpressionPresets(): Promise<any> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/expressions/presets`);
+      const response = await fetch(`${API_BASE_URL}/api/presets`);
       
       if (!response.ok) {
         throw new Error(`API 請求失敗: ${response.status}`);

@@ -4,6 +4,7 @@ import { useGLTF } from '@react-three/drei';
 import WebSocketService from './WebSocketService';
 import logger, { LogCategory } from '../utils/LogManager';
 import { useStore } from '../store';
+import { getPresetExpression } from './api';
 
 // 後端API URL
 const API_BASE_URL = `http://${window.location.hostname}:8000`;
@@ -36,6 +37,9 @@ class ModelService {
   private _lastNotifyTime: number = 0;
   private _pendingMorphTargets: Record<string, number> | null = null;
   private _notifyTimeout: number | null = null;
+
+  // 確保 morphTargetDictionary 被正確定義為類的屬性
+  private morphTargetDictionary: { [key: string]: number } = {};
 
   // 單例模式
   public static getInstance(): ModelService {
@@ -76,139 +80,33 @@ class ModelService {
   }
   
   // 處理唇型同步更新
-  private handleLipsyncUpdate(data: any): void {
-    if (data.morphTargets) {
-      logger.debug('處理唇型同步更新', LogCategory.MORPH, 'lipsync_update');
-      const faceKeys = [
-        // 嘴部相關
-        "jawOpen", "mouthOpen", "mouthFunnel", "mouthPucker", 
-        "mouthLowerDownLeft", "mouthLowerDownRight", "mouthLeft", "mouthRight",
-        "mouthStretchLeft", "mouthStretchRight", "mouthSmileLeft", "mouthSmileRight",
-        "mouthFrownLeft", "mouthFrownRight",
-        // 眉毛和眼睛相關
-        "browInnerUp", "browOuterUpLeft", "browOuterUpRight",
-        "eyeWideLeft", "eyeWideRight", "eyeSquintLeft", "eyeSquintRight",
-        "eyeBlinkLeft", "eyeBlinkRight",
-        // 臉頰相關
-        "cheekPuff", "cheekSquintLeft", "cheekSquintRight"
-      ];
-      
-      // 嘴型相關的關鍵字，用於區分嘴部和非嘴部表情
-      const mouthKeys = [
-        "jawOpen", "mouthOpen", "mouthFunnel", "mouthPucker", 
-        "mouthLowerDownLeft", "mouthLowerDownRight", "mouthLeft", "mouthRight",
-        "mouthStretchLeft", "mouthStretchRight", "mouthClose", "jawLeft", "jawRight"
-      ];
-      
-      // 創建新物件，保留所有原有值
-      const newMorphTargets = { ...this.morphTargets };
-      
-      // 更新表情值 - 融合情緒表情和唇型
-      Object.entries(data.morphTargets).forEach(([key, value]) => {
-        if (faceKeys.includes(key)) {
-          // 嘴部動作優先使用lipsync數據
-          if (mouthKeys.includes(key)) {
-            // 為嘴巴相關的目標值設置一個最小閾值，避免完全閉合
-            if (key === "jawOpen" || key === "mouthOpen") {
-              newMorphTargets[key] = Math.max(value as number, 0.05);
-            } else {
-              newMorphTargets[key] = value as number;
-            }
-          } 
-          // 表情相關的臉部動作（例如笑或皺眉）需要融合lipsync和情緒表情
-          else if (key.includes("mouthSmile") || key.includes("mouthFrown")) {
-            const lipsyncValue = value as number;
-            const emotionValue = this._lastEmotionMorphs[key] || 0;
-            // 選擇較強的表情效果，確保表情明顯
-            newMorphTargets[key] = Math.max(lipsyncValue, emotionValue * 0.8);
-          }
-          // 眼睛和眉毛動作：如果lipsync提供了強烈的表情，使用它；否則優先使用情緒表情
-          else if (key.startsWith("eye") || key.startsWith("brow") || key.startsWith("cheek")) {
-            const lipsyncValue = value as number;
-            const emotionValue = this._lastEmotionMorphs[key] || 0;
-            
-            // 眨眼動作需要特殊處理，確保其可以正常進行
-            if (key.startsWith("eyeBlink")) {
-              newMorphTargets[key] = lipsyncValue > 0.3 ? lipsyncValue : emotionValue;
-            } else {
-              // 其他眼睛和眉毛動作，選擇較強的值或融合兩者
-              // 如果lipsync數據中的值很小，使用情緒表情的值
-              newMorphTargets[key] = lipsyncValue > 0.2 ? lipsyncValue : emotionValue;
-            }
-          } else {
-            // 其他臉部表情，直接使用lipsync值
-            newMorphTargets[key] = value as number;
-          }
-        }
-      });
-      
-      // 確保將所有情緒表情中存在但lipsync中不存在的值也添加到結果中
-      // 這確保了即使lipsync數據不包括某些表情，情緒表情仍然會顯示
-      Object.entries(this._lastEmotionMorphs).forEach(([key, value]) => {
-        if (!data.morphTargets[key] && !mouthKeys.includes(key) && value > 0.1) {
-          newMorphTargets[key] = value;
-        }
-      });
-      
-      // 保存情緒信息（如果有）
-      if (data.emotion) {
-        // 使用 Zustand 更新情緒
-        useStore.getState().setEmotion(data.emotion, data.confidence || 0);
-      }
-      
-      // 更新morphTargets
-      this.setMorphTargets(newMorphTargets);
+  public handleLipsyncUpdate(data: any): void {
+    if (!data || typeof data !== 'object') {
+      logger.warn('Received invalid lipsync data', LogCategory.WEBSOCKET);
+      return;
     }
+    // 迭代更新 Zustand store
+    Object.entries(data).forEach(([key, value]) => {
+      if (typeof value === 'number') {
+        useStore.getState().updateMorphTarget(key, value);
+      }
+    });
+    // logger.debug(`Lipsync update applied via Zustand: ${JSON.stringify(data)}`, LogCategory.MODEL);
   }
   
   // 處理表情更新
-  private handleMorphUpdate(data: any): void {
-    if (data.morphTargets) {
-      // 日誌記錄表情更新 (使用debug級別避免過多輸出)
-      logger.debug('處理表情更新', LogCategory.MORPH, 'morph_update');
-      
-      // 口型相關的關鍵字列表
-      const mouthKeys = [
-        "jawOpen", "mouthOpen", "mouthFunnel", "mouthPucker", 
-        "mouthLowerDownLeft", "mouthLowerDownRight", "mouthLeft", "mouthRight",
-        "mouthStretchLeft", "mouthStretchRight", "mouthSmileLeft", "mouthSmileRight",
-        "mouthFrownLeft", "mouthFrownRight", "mouthDimpleLeft", "mouthDimpleRight",
-        "mouthUpperUpLeft", "mouthUpperUpRight", "mouthShrugLower", "mouthShrugUpper",
-        "mouthRollLower", "mouthRollUpper", "mouthClose", "jawLeft", "jawRight",
-        "eyeBlinkLeft", "eyeBlinkRight"
-      ];
-      
-      // 保存當前的情緒表情，供handleLipsyncUpdate使用
-      this._lastEmotionMorphs = {...data.morphTargets};
-      
-      // 如果提供了情緒信息，保存它
-      if (data.emotion) {
-        // 使用 Zustand 更新情緒
-        useStore.getState().setEmotion(data.emotion, data.confidence || 0);
-      }
-      
-      // 創建新物件，保留所有原有值
-      const newMorphTargets = { ...this.morphTargets };
-      
-      // 如果正在播放語音，只更新非嘴部相關的值，否則更新所有值
-      Object.entries(data.morphTargets).forEach(([key, value]) => {
-        // 判斷是否正在播放語音
-        const isPlayingAudio = document.querySelector('audio')?.paused === false;
-        
-        if (isPlayingAudio) {
-          // 如果正在播放語音，只更新非嘴部相關的值
-          if (!mouthKeys.some(mouthKey => key.includes(mouthKey))) {
-            newMorphTargets[key] = value as number;
-          }
-        } else {
-          // 如果不在播放語音，更新所有值
-          newMorphTargets[key] = value as number;
-        }
-      });
-      
-      // 更新morphTargets
-      this.setMorphTargets(newMorphTargets);
+  public handleMorphUpdate(data: any): void {
+    if (!data || typeof data !== 'object') {
+      logger.warn('Received invalid morph target data', LogCategory.WEBSOCKET);
+      return;
     }
+    // 迭代更新 Zustand store
+    Object.entries(data).forEach(([key, value]) => {
+      if (typeof value === 'number') {
+        useStore.getState().updateMorphTarget(key, value);
+      }
+    });
+    // logger.debug(`Morph update applied via Zustand: ${JSON.stringify(data)}`, LogCategory.MODEL);
   }
 
   // 預加載模型
@@ -251,14 +149,14 @@ class ModelService {
 
   // 設置 MorphTarget 影響值 (使用 Zustand)
   public setMorphTargetInfluences(influences: number[] | null): void {
-    // 這個方法已經棄用，保留只為兼容舊代碼
-    logger.warn('setMorphTargetInfluences 方法已棄用', LogCategory.MODEL);
+    // 這個方法已經棄用，移除日誌警告
+    // logger.warn('setMorphTargetInfluences 方法已棄用', LogCategory.MODEL);
   }
 
   // 獲取 MorphTarget 影響值 (使用 Zustand)
   public getMorphTargetInfluences(): number[] | null {
-    // 這個方法已經棄用，保留只為兼容舊代碼
-    logger.warn('getMorphTargetInfluences 方法已棄用', LogCategory.MODEL);
+    // 這個方法已經棄用，移除日誌警告
+    // logger.warn('getMorphTargetInfluences 方法已棄用', LogCategory.MODEL);
     return null;
   }
 
@@ -394,14 +292,15 @@ class ModelService {
 
   // 更新單個 MorphTarget 的值 (使用 Zustand)
   public updateMorphTargetInfluence(name: string, value: number): void {
-    useStore.getState().updateMorphTarget(name, value);
-    // 同時更新本地緩存
-    this.morphTargets[name] = value;
-  }
+    // 使用 this.morphTargetDictionary 進行檢查
+    if (this.morphTargetDictionary[name] === undefined) {
+       // logger.warn(`Attempted to update unknown morph target: ${name}`, LogCategory.MODEL);
+       return; // 如果名稱無效則返回
+    }
 
-  // 獲取手動設置的 MorphTargets (使用 Zustand)
-  public getManualMorphTargets(): Record<string, number> {
-    return useStore.getState().morphTargets;
+    // 直接更新 Zustand store 使用正確的方法名
+    useStore.getState().updateMorphTarget(name, value);
+    // logger.debug(`Manual morph target updated via Zustand: ${name} = ${value}`, LogCategory.MODEL);
   }
 
   // 重置所有 MorphTargets (使用 Zustand)
@@ -461,42 +360,31 @@ class ModelService {
     this.setCurrentAnimation(animation);
   }
 
-  // 應用預設表情 (使用 Zustand)
+  // 應用預設表情
   public async applyPresetExpression(expression: string): Promise<boolean> {
+    logger.info(`應用表情預設: ${expression}`, LogCategory.MODEL);
     try {
-      // 獲取表情預設值
-      const response = await fetch(`${API_BASE_URL}/api/expressions/preset-expressions/${expression}`);
-      
-      if (!response.ok) {
-        logger.error(`獲取表情預設 ${expression} 失敗: ${response.statusText}`, LogCategory.MODEL);
+      const presetData = await getPresetExpression(expression);
+      if (presetData && presetData.morphTargets) {
+        // 在處理前打印從 API 收到的數據
+        console.log('[ModelService] Received preset data:', JSON.stringify(presetData.morphTargets)); 
+        
+        // 保存情緒信息（如果存在）
+        // if (presetData.emotion) {
+        //   useStore.getState().setEmotion(presetData.emotion, presetData.confidence || 0);
+        // }
+        
+        // 使用 handleMorphUpdate 處理 morph targets
+        this.handleMorphUpdate(presetData.morphTargets);
+        return true;
+      } else {
+        logger.error(`無法獲取或解析預設表情數據: ${expression}`, LogCategory.MODEL);
         return false;
       }
-      
-      const data = await response.json();
-      
-      if (data.morphTargets) {
-        logger.info(`應用表情預設: ${expression}`, LogCategory.MODEL);
-        
-        // 獲取當前表情
-        const currentMorphs = this.getMorphTargets();
-        
-        // 創建新表情對象
-        const newMorphs = { ...currentMorphs };
-        
-        // 更新表情值
-        Object.entries(data.morphTargets).forEach(([key, value]) => {
-          newMorphs[key] = value as number;
-        });
-        
-        // 更新Morph Targets
-        this.setMorphTargets(newMorphs);
-        return true;
-      }
     } catch (error) {
-      logger.error(`應用表情預設時出錯: ${expression}`, LogCategory.MODEL, error);
+      logger.error(`應用預設表情時出錯 (${expression}):`, LogCategory.MODEL, error);
+      return false;
     }
-    
-    return false;
   }
 
   // 獲取模型數據 (使用 Zustand)
@@ -538,6 +426,11 @@ class ModelService {
     // 重置加載狀態
     this.setModelLoaded(false);
   }
+
+  public initialize(morphTargetDictionary: { [key: string]: number }): void {
+    this.morphTargetDictionary = morphTargetDictionary; // 確保這裡有賦值
+    logger.info("ModelService initialized with dictionary.", LogCategory.GENERAL);
+  }
 }
 
 // React Hook - 使用模型服務
@@ -555,20 +448,11 @@ export function useModelService() {
 
   const modelService = useRef<ModelService>(ModelService.getInstance());
 
-  // 提供方法給組件使用
-  const getManualMorphTargets = useCallback(() => {
-    return modelService.current.getManualMorphTargets();
-  }, []);
-
   const setMorphTargetData = useCallback((dictionary: Record<string, number> | null, influences: number[] | null) => {
     if (dictionary) {
       modelService.current.setMorphTargetDictionary(dictionary);
     }
-    
-    // influences 已棄用，但保留方法簽名以向後兼容
-    if (influences) {
-      logger.warn('setMorphTargetInfluences 已棄用', LogCategory.MODEL);
-    }
+    // influences 已棄用
   }, []);
 
   const rotateModel = useCallback((direction: 'left' | 'right') => {
@@ -607,7 +491,7 @@ export function useModelService() {
     modelService.current.switchModel(url);
   }, []);
 
-  // 返回所有狀態和方法
+  // 從返回物件中移除 getManualMorphTargets
   return {
     modelLoaded,
     modelUrl,
@@ -618,7 +502,6 @@ export function useModelService() {
     availableAnimations,
     currentAnimation,
     morphTargets,
-    getManualMorphTargets,
     setMorphTargetData,
     rotateModel,
     scaleModel,

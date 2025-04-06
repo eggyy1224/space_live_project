@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import logger, { LogCategory } from '../utils/LogManager'; // Import logger
 import { getPresetsList } from '../services/api';
+import { useStore } from '../store'; // <--- 導入 useStore
 
 // 子組件：單個Morph Target控制條
 interface MorphTargetBarProps {
@@ -133,7 +134,6 @@ interface ControlPanelProps {
   emotionConfidence: number;
   availableAnimations: string[];
   morphTargetDictionary: Record<string, number> | null;
-  manualMorphTargets: Record<string, number>;
   selectedMorphTarget: string | null;
   setSelectedMorphTarget: (name: string | null) => void;
   updateMorphTargetInfluence: (name: string, value: number) => void;
@@ -159,7 +159,6 @@ const ControlPanel: React.FC<ControlPanelProps> = React.memo(({
   emotionConfidence,
   availableAnimations,
   morphTargetDictionary,
-  manualMorphTargets,
   selectedMorphTarget,
   setSelectedMorphTarget,
   updateMorphTargetInfluence,
@@ -172,6 +171,8 @@ const ControlPanel: React.FC<ControlPanelProps> = React.memo(({
   applyPresetExpression,
   showSpaceBackground,
 }) => {
+  // 從 Zustand Store 獲取 morphTargets 狀態
+  const morphTargetsFromStore = useStore((state) => state.morphTargets);
 
   // 預設表情列表
   const [presets, setPresets] = useState<string[]>([]);
@@ -215,6 +216,17 @@ const ControlPanel: React.FC<ControlPanelProps> = React.memo(({
       // 可以添加更多翻譯
     };
     return translations[preset] || preset;
+  };
+
+  // 添加日誌記錄來幫助調試
+  const handleMorphTargetSelect = (name: string) => {
+    logger.info(`選擇MorphTarget: ${name}`, LogCategory.MODEL);
+    setSelectedMorphTarget(name);
+  };
+
+  const handleMorphTargetChange = (name: string, value: number) => {
+    logger.info(`設置MorphTarget值: ${name} = ${value}`, LogCategory.MODEL);
+    updateMorphTargetInfluence(name, value);
   };
 
   return (
@@ -264,9 +276,9 @@ const ControlPanel: React.FC<ControlPanelProps> = React.memo(({
                   <MorphTargetBar
                     key={name}
                     name={name}
-                    value={manualMorphTargets[name] ?? 0}
-                    onSelect={setSelectedMorphTarget}
-                    onChange={updateMorphTargetInfluence}
+                    value={morphTargetsFromStore[name] ?? 0}
+                    onSelect={handleMorphTargetSelect}
+                    onChange={handleMorphTargetChange}
                     isSelected={selectedMorphTarget === name}
                   />
                 ))
