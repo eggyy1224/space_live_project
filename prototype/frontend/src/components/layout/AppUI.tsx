@@ -104,6 +104,13 @@ const AppUI: React.FC<AppUIProps> = ({
   toggleModelAnalyzer,
   handleModelSwitch,
 }) => {
+  // === 添加 micPermission 轉換邏輯 ===
+  const micPermissionBool: boolean | null = 
+    micPermission === 'granted' ? true : 
+    micPermission === 'denied' ? false : 
+    null;
+  // === 添加結束 ===
+
   return (
     <>
       {/* 音頻控制 */}
@@ -115,7 +122,7 @@ const AppUI: React.FC<AppUIProps> = ({
         stopRecording={stopRecording}
         playAudio={playAudio}
         wsConnected={wsConnected}
-        micPermission={micPermission}
+        micPermission={micPermissionBool}
       />
 
       {/* 控制面板和聊天界面 */}

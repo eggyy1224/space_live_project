@@ -207,7 +207,7 @@ function App() {
           isProcessing={chatProcessing}
           setUserInput={setUserInput}
           handleKeyDown={handleKeyDown}
-          handleSendMessage={handleSendMessage}
+          sendMessage={handleSendMessage}
           clearMessages={clearMessages}
           // 調試按鈕相關 props
           debugMode={debugMode}
