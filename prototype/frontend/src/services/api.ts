@@ -133,13 +133,12 @@ export async function speechToText(audioBlob: Blob): Promise<{
   text: string;
   confidence?: number;
 }> {
-  const formData = new FormData();
-  formData.append('audio', audioBlob, 'speech.webm');
-
   return fetchApi('/api/speech-to-text', {
     method: 'POST',
-    headers: {}, // 重置headers，讓瀏覽器自動設置Content-Type為multipart/form-data
-    body: formData,
+    headers: {
+      'Content-Type': 'audio/webm; codecs=opus',
+    },
+    body: audioBlob,
   });
 }
 

@@ -28,24 +28,28 @@ DEBUG_DIR = "debug_audio"
 os.makedirs(DEBUG_DIR, exist_ok=True)
 
 @router.post("/speech-to-text")
-async def process_speech_file(audio: UploadFile = File(...)):
+async def process_speech_file(request: Request):
     """
     處理語音檔案上傳請求，轉換為文字並生成回應
     """
     try:
-        # 獲取請求中的音頻數據
-        logger.info(f"收到語音識別請求，文件名：{audio.filename}")
+        # 獲取 Content-Type
+        content_type = request.headers.get("content-type")
+        if not content_type or "audio" not in content_type: 
+             # 如果沒有 content-type 或不是音頻，嘗試默認為 webm
+            mime_type = "audio/webm;codecs=opus"
+            logger.warning(f"缺少或無效的 Content-Type，默認為: {mime_type}")
+        else:
+            mime_type = content_type
+            
+        logger.info(f"收到語音識別請求，MIME類型: {mime_type}")
         
-        # 設置合適的MIME類型
-        mime_type = audio.content_type or "audio/webm;codecs=opus"
-        logger.info(f"音頻文件MIME類型: {mime_type}")
-        
-        # 讀取音頻數據
-        audio_data = await audio.read()
+        # 讀取原始請求體中的音頻數據
+        audio_data = await request.body()
         
         if not audio_data or len(audio_data) == 0:
             logger.warning("上傳的音頻文件為空")
-            return {"success": False, "error": "音頻文件為空"}
+            raise HTTPException(status_code=400, detail="音頻文件為空")
         
         logger.info(f"成功讀取音頻數據，大小：{len(audio_data)} 字節")
         
@@ -56,11 +60,18 @@ async def process_speech_file(audio: UploadFile = File(...)):
         extension = "webm"
         if "ogg" in mime_type:
             extension = "ogg"
-        
+        elif "wav" in mime_type:
+            extension = "wav"
+        elif "mpeg" in mime_type:
+             extension = "mp3"
+
         debug_file_path = os.path.join(DEBUG_DIR, f"audio_{timestamp}.{extension}")
-        with open(debug_file_path, "wb") as f:
-            f.write(audio_data)
-        logger.info(f"已保存音頻文件用於調試：{debug_file_path}")
+        try:
+            with open(debug_file_path, "wb") as f:
+                f.write(audio_data)
+            logger.info(f"已保存音頻文件用於調試：{debug_file_path}")
+        except Exception as save_err:
+             logger.error(f"保存調試音頻失敗: {save_err}")
         
         # 轉換語音為文字
         logger.info(f"開始轉換語音為文字...")
@@ -68,7 +79,7 @@ async def process_speech_file(audio: UploadFile = File(...)):
         logger.info(f"轉換結果: {result}")
         
         # 如果語音識別成功且有文字，則生成回應
-        if result["success"] and result["text"]:
+        if result.get("success") and result.get("text"):
             transcribed_text = result["text"]
             logger.info(f"識別到的文字: '{transcribed_text}'，開始分析情緒和生成回應...")
             
@@ -94,7 +105,7 @@ async def process_speech_file(audio: UploadFile = File(...)):
                     return {
                         "text": transcribed_text,
                         "response": response,
-                        "audio": tts_result["audio"],
+                        "audio_filename": tts_result.get("filename", ""),
                         "duration": tts_result["duration"],
                         "confidence": result.get("confidence", 0),
                         "detected_emotion": detected_emotion,
@@ -119,12 +130,17 @@ async def process_speech_file(audio: UploadFile = File(...)):
                     "error": f"生成回應失敗: {str(e)}"
                 }
         else:
-            logger.warning(f"語音識別失敗：{result.get('error', '未知錯誤')}")
-            return result
+            # 如果識別失敗，返回包含錯誤信息的結果
+            error_message = result.get('error', '語音識別失敗，未知錯誤')
+            logger.warning(f"語音識別失敗：{error_message}")
+            raise HTTPException(status_code=400, detail=error_message)
             
+    except HTTPException as http_exc:
+        # 直接重新拋出 HTTPException
+        raise http_exc
     except Exception as e:
-        logger.error(f"處理語音轉文字失敗: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"處理語音轉文字失敗: {str(e)}")
+        logger.error(f"處理語音轉文字時發生未預期錯誤: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"處理語音轉文字失敗")
 
 # 保留舊接口以兼容
 @router.post("/speech-to-text/base64")
