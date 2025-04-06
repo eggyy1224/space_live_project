@@ -116,4 +116,5 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   );
 };
 
-export default ModelViewer; 
+// 使用 React.memo 包裹導出的組件
+export default React.memo(ModelViewer); 

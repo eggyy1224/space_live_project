@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import './App.css'
 
 // 引入拆分出的組件
@@ -81,22 +81,22 @@ function App() {
   // 模型分析工具狀態
   const [showModelAnalyzer, setShowModelAnalyzer] = useState<boolean>(false);
 
-  // 切換標籤
-  const switchTab = (tab: 'control' | 'chat') => {
+  // 使用 useCallback 包裹 switchTab
+  const switchTab = useCallback((tab: 'control' | 'chat') => {
     setActiveTab(tab);
-  };
+  }, []); // 空依賴數組，因為 setActiveTab 的引用是穩定的
 
-  // 切換調試模式
+  // 切換調試模式 (不需要 useCallback，除非傳遞給 memoized 子組件)
   const toggleDebugMode = () => {
     setDebugMode(!debugMode);
   };
   
-  // 切換模型分析工具
+  // 切換模型分析工具 (不需要 useCallback，除非傳遞給 memoized 子組件)
   const toggleModelAnalyzer = () => {
     setShowModelAnalyzer(!showModelAnalyzer);
   };
   
-  // 切換模型
+  // 切換模型 (不需要 useCallback，除非傳遞給 memoized 子組件)
   const handleModelSwitch = () => {
     // 定義模型循環順序
     const models = [
@@ -122,9 +122,20 @@ function App() {
     '/models/armature001_model.glb'
   ];
 
+  // 為傳遞給 ModelViewer 的函數創建 useCallback 版本
+  const handleSetMorphTargetDictionary = useCallback((dict: Record<string, number> | null) => {
+    setMorphTargetData(dict, null);
+    // setMorphTargetData 來自 useModelService，其引用理論上穩定，但為確保，可以加入依賴
+  }, [setMorphTargetData]); 
+
+  const handleSetMorphTargetInfluences = useCallback((inf: number[] | null) => {
+    setMorphTargetData(null, inf);
+    // setMorphTargetData 來自 useModelService，其引用理論上穩定，但為確保，可以加入依賴
+  }, [setMorphTargetData]);
+
   return (
     <div className="app-container">
-      {/* 3D 模型顯示 */}
+      {/* 3D 模型顯示 - 傳遞 useCallback 後的函數 */}
       <ModelViewer 
         modelUrl={modelUrl}
         modelScale={modelScale}
@@ -133,11 +144,11 @@ function App() {
         currentAnimation={currentAnimation}
         morphTargets={morphTargets}
         showSpaceBackground={showSpaceBackground}
-        setAvailableAnimations={setAnimations}
-        setMorphTargetDictionary={(dict) => setMorphTargetData(dict, null)}
-        setMorphTargetInfluences={(inf) => setMorphTargetData(null, inf)}
-        morphTargetDictionary={morphTargetDictionary}
-        morphTargetInfluences={morphTargetInfluences}
+        setAvailableAnimations={setAnimations} // 來自 useModelService，引用穩定
+        setMorphTargetDictionary={handleSetMorphTargetDictionary}
+        setMorphTargetInfluences={handleSetMorphTargetInfluences}
+        morphTargetDictionary={morphTargetDictionary} // 來自 useModelService
+        morphTargetInfluences={morphTargetInfluences} // 來自 useModelService
       />
       
       {/* 調試面板 */}
@@ -158,7 +169,7 @@ function App() {
         micPermission={micPermission}
       />
       
-      {/* 控制面板和聊天界面 */}
+      {/* 控制面板和聊天界面 - 傳遞 useCallback 後的 switchTab */}
       {activeTab === 'control' ? (
         <ControlPanel 
           activeTab={activeTab}
@@ -169,20 +180,22 @@ function App() {
           currentAnimation={currentAnimation}
           currentEmotion={emotion.emotion}
           emotionConfidence={emotion.confidence}
-          availableAnimations={availableAnimations}
-          morphTargetDictionary={morphTargetDictionary}
-          morphTargetInfluences={morphTargetInfluences}
+          availableAnimations={availableAnimations} // 來自 useModelService
+          morphTargetDictionary={morphTargetDictionary} // 來自 useModelService
+          morphTargetInfluences={morphTargetInfluences} // 來自 useModelService
           selectedMorphTarget={selectedMorphTarget}
-          setSelectedMorphTarget={setSelectedMorphTarget}
+          setSelectedMorphTarget={setSelectedMorphTarget} // 來自 useState，引用穩定
+          // 以下函數來自 useModelService，引用穩定
           updateMorphTargetInfluence={updateMorphTargetInfluence}
           resetAllMorphTargets={resetAllMorphTargets}
           rotateModel={rotateModel}
           scaleModel={scaleModel}
           resetModel={resetModel}
           toggleBackground={toggleBackground}
-          showSpaceBackground={showSpaceBackground}
           selectAnimation={selectAnimation}
           applyPresetExpression={applyPresetExpression}
+          // 以下 prop 來自 useState 或 useWebSocket/useChatService，引用穩定
+          showSpaceBackground={showSpaceBackground}
         />
       ) : (
         <ChatInterface 
@@ -196,7 +209,7 @@ function App() {
           stopRecording={stopRecording}
           isRecording={isRecording}
           activeTab={activeTab}
-          switchTab={switchTab}
+          switchTab={switchTab} // 也傳遞給 ChatInterface
         />
       )}
       

@@ -174,4 +174,5 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   );
 };
 
-export default ControlPanel; 
+// 使用 React.memo 包裹導出的組件
+export default React.memo(ControlPanel); 
