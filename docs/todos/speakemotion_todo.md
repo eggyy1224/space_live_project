@@ -12,13 +12,13 @@
 
 ### 1. 模型理解與分類 (基於 mixamowomanwithface.glb)
 
-*   [ ] **研究 ARKit Blendshapes:** 熟悉模型提供的 51 個 ARKit blendshape 名稱及其視覺效果。
-*   [ ] **分類 Blendshapes:** 將 51 個 blendshapes 分類為：
+*   [x] **研究 ARKit Blendshapes:** 熟悉模型提供的 51 個 ARKit blendshape 名稱及其視覺效果。
+*   [x] **分類 Blendshapes:** 將 51 個 blendshapes 分類為：
     *   **基礎說話嘴型:** 識別主要控制嘴巴**開合**的 blendshape(s) (核心: `jawOpen`, 輔助: `mouthClose`)。
     *   **情緒表達:** 識別控制眉毛、眼睛、臉頰、嘴部（除基礎開合外）、鼻子等的 blendshape。
     *   **其他:** 識別控制視線 (`eyeLook...`)、眨眼 (`eyeBlink...`) 等。
-*   [ ] **文檔記錄分類:** 記錄每個 blendshape 的分類和預期用途。
-*   [ ] **測試 Blendshape 組合:** 實驗不同情緒 blendshape 與 `jawOpen`/`mouthClose` 組合的效果。
+*   [x] **文檔記錄分類:** 記錄每個 blendshape 的分類和預期用途。
+*   [x] **測試 Blendshape 組合:** 實驗不同情緒 blendshape 與 `jawOpen`/`mouthClose` 組合的效果。
 
 ### 2. 前端狀態管理 (Zustand - `ModelSlice`)
 
@@ -89,3 +89,59 @@
     *   [ ] 重構 Zustand 狀態以包含 `targetVisemeWeights`。
     *   [ ] 重構 `Model.tsx` 的 `useFrame` 合併邏輯以處理 `targetVisemeWeights` 和 `targetEmotionWeights`。
     *   [ ] 進行詳細的音素同步測試。 
+
+---
+
+## 參考文件：ARKit Blendshape 分類與分析 (基於 mixamowomanwithface.glb)
+
+模型提供了 51 個遵循 Apple ARKit 標準的 Blendshapes。以下是基於其名稱和標準定義的分類，用於指導情緒表達和基礎說話動畫的實現：
+
+**1. 基礎說話嘴型 (Core Speaking Shapes):**
+   - `jawOpen`: 控制下巴張開程度，核心。
+   - `mouthClose`: 控制嘴唇閉合，用於非說話狀態。
+
+**2. 情緒表達 (Emotional Expression):**
+   - **眉毛 (Brow):**
+     - `browDownLeft`, `browDownRight`: 皺眉。
+     - `browInnerUp`: 眉毛內側向上（悲傷/擔憂）。
+     - `browOuterUpLeft`, `browOuterUpRight`: 眉毛外側向上（驚訝/疑問）。
+   - **眼睛 (相關表情 - Eye Emotion-Related):**
+     - `eyeSquintLeft`, `eyeSquintRight`: 瞇眼（微笑/厭惡）。
+     - `eyeWideLeft`, `eyeWideRight`: 睜大眼睛（驚訝/恐懼）。
+   - **臉頰 (Cheek):**
+     - `cheekPuff`: 鼓臉頰。
+     - `cheekSquintLeft`, `cheekSquintRight`: 臉頰擠壓。
+   - **嘴部 (表情 - Mouth Emotion):**
+     - `mouthDimpleLeft/Right`: 酒窩（微笑）。
+     - `mouthFrownLeft/Right`: 嘴角向下（悲傷）。
+     - `mouthLeft/Right`: 嘴巴側移。
+     - `mouthLowerDownLeft/Right`: 下唇特定移動。
+     - `mouthPressLeft/Right`: 嘴角壓緊。
+     - `mouthSmileLeft/Right`: 微笑。
+     - `mouthStretchLeft/Right`: 嘴角拉伸。
+     - `mouthUpperUpLeft/Right`: 上唇特定移動。
+   - **鼻子 (Nose):**
+     - `noseSneerLeft`, `noseSneerRight`: 鼻子皺起（厭惡）。
+   - **下巴 (表情相關 - Jaw Emotion-Related):**
+     - `jawForward`: 下巴前突。
+     - `jawLeft`, `jawRight`: 下巴側移。
+
+**3. 精確嘴型同步相關 (Viseme-Related - Bonus):**
+   - `mouthFunnel`: 發 'oo' 音。
+   - `mouthPucker`: 發 'u' 音。
+   - `mouthRollLower`, `mouthRollUpper`: 嘴唇內捲。
+   - `mouthShrugLower`, `mouthShrugUpper`: 嘴唇皺起。
+   - *(部分基礎/情緒 blendshape 也參與精確嘴型)*
+
+**4. 其他 (輔助真實感 - Others for Realism):**
+   - `eyeBlinkLeft/Right`: 眨眼。
+   - `eyeLookDown/Up/In/Out Left/Right`: 眼球視線。
+
+**組合效果分析 (預期):**
+
+*   **微笑 + 說話:** `mouthSmile*`, `cheekSquint*` (情緒) + `jawOpen` (說話)。效果應自然，需確定 `jawOpen` 混合策略。
+*   **悲傷 + 說話:** `browInnerUp`, `mouthFrown*` (情緒) + `jawOpen` (說話)。
+*   **驚訝 + 說話:** `brow*Up*`, `eyeWide*`, 可能微弱 `jawOpen` (情緒) + `jawOpen` (說話)。需處理 `jawOpen` 疊加 (取最大值或說話優先)。
+*   **憤怒 + 說話:** `browDown*`, `mouthPress*`/`mouthStretch*`, `noseSneer*` (情緒) + `jawOpen` (說話)。需關注嘴角壓緊與下巴張開的視覺協調。
+
+此分類為後續狀態管理、權重計算和混合策略提供了依據。 
