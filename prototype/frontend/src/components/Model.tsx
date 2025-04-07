@@ -177,21 +177,21 @@ export const Model: React.FC<ModelProps> = ({
       if (index !== undefined && index < influences.length) {
         const targetValue = currentMorphTargetState[name] ?? 0;
         
-        // --- DEBUG: 直接設置 influence，繞過 lerp --- 
-        if (influences[index] !== targetValue) {
-          // console.log(`[DEBUG] Setting influence ${name} (${index}) from ${influences[index].toFixed(3)} to ${targetValue}`); // 可選：添加日誌
-          influences[index] = targetValue;
-        }
-        // --- END DEBUG ---
-
-        /* // 原來的 Lerp 邏輯
+        // --- Restore Lerp Logic --- 
         const currentValue = influences[index];
-        if (Math.abs(currentValue - targetValue) > 0.01) {
-          const lerpFactor = Math.min(delta * 15, 1);
+        if (Math.abs(currentValue - targetValue) > 0.01) { // Threshold to avoid unnecessary lerping
+          const lerpFactor = Math.min(delta * 15, 1); // Adjust lerp speed (15 is a common value)
           influences[index] = THREE.MathUtils.lerp(currentValue, targetValue, lerpFactor);
         } else if (currentValue !== targetValue) {
+          // Snap to target if close enough
           influences[index] = targetValue;
         } 
+        // --- End Restore --- 
+
+        /* // Debug direct assignment
+        if (influences[index] !== targetValue) {
+          influences[index] = targetValue;
+        }
         */
       }
     });
