@@ -20,6 +20,7 @@ export interface ChatSlice {
   messages: ChatMessage[];
   isProcessing: boolean;
   currentEmotion: EmotionState;
+  isChatWindowVisible: boolean;
 
   // 操作
   addMessage: (message: Omit<ChatMessage, 'id'>) => void;
@@ -27,6 +28,7 @@ export interface ChatSlice {
   clearMessages: () => void;
   setProcessing: (processing: boolean) => void;
   setEmotion: (emotion: string, confidence: number) => void;
+  toggleChatWindow: () => void;
 }
 
 // 創建 Chat Slice
@@ -35,6 +37,7 @@ export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
   messages: [],
   isProcessing: false,
   currentEmotion: { emotion: 'neutral', confidence: 0 },
+  isChatWindowVisible: false,
 
   // 操作實現
   addMessage: (message) => set((state) => ({
@@ -50,4 +53,6 @@ export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
   setEmotion: (emotion, confidence) => set({
     currentEmotion: { emotion, confidence }
   }),
+  
+  toggleChatWindow: () => set((state) => ({ isChatWindowVisible: !state.isChatWindowVisible })),
 }); 

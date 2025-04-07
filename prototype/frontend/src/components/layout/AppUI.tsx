@@ -57,6 +57,9 @@ interface AppUIProps {
   toggleDebugMode: () => void;
   toggleModelAnalyzer: () => void;
   handleModelSwitch: () => void;
+  
+  // 新增: 浮動聊天視窗控制
+  toggleChatWindow: () => void;
 }
 
 const AppUI: React.FC<AppUIProps> = ({
@@ -101,6 +104,7 @@ const AppUI: React.FC<AppUIProps> = ({
   toggleDebugMode,
   toggleModelAnalyzer,
   handleModelSwitch,
+  toggleChatWindow, // <--- 接收 toggleChatWindow prop
 }) => {
   // === 添加 micPermission 轉換邏輯 ===
   const micPermissionBool: boolean | null = 
@@ -218,6 +222,34 @@ const AppUI: React.FC<AppUIProps> = ({
           切換模型：{modelUrl.split('/').pop()?.replace('.glb', '')}
         </button>
       </div>
+      
+      {/* 新增: 觸發浮動聊天視窗的按鈕 (暫時放在這裡) */}
+      <button
+        onClick={toggleChatWindow}
+        style={{
+          position: 'fixed',
+          bottom: '120px', // 放在調試按鈕上方
+          right: '10px',
+          zIndex: 1000,
+          padding: '8px 12px',
+          background: '#4CAF50', // 綠色
+          color: 'white',
+          border: 'none',
+          borderRadius: '50%', // 圓形按鈕
+          width: '50px',       // 固定寬度
+          height: '50px',      // 固定高度
+          fontSize: '24px',      // 圖示大小
+          cursor: 'pointer',
+          boxShadow: '0 2px 5px rgba(0,0,0,0.2)', // 添加陰影
+          display: 'flex',        // 使用 Flexbox 居中
+          alignItems: 'center',   // 垂直居中
+          justifyContent: 'center' // 水平居中
+        }}
+        title="開啟/關閉聊天視窗"
+        aria-label="開啟/關閉聊天視窗"
+      >
+        💬 {/* 聊天圖示 */}
+      </button>
     </>
   );
 };

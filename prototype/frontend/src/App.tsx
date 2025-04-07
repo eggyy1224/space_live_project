@@ -8,6 +8,7 @@ import ModelDebugger from './components/ModelDebugger'
 import ModelAnalyzerTool from './components/ModelAnalyzerTool'
 import ErrorBoundary from './components/ErrorBoundary'
 import { ToastContainer } from './components/Toast'
+import FloatingChatWindow from './components/FloatingChatWindow'
 
 // 引入服務
 import { 
@@ -31,6 +32,10 @@ function App() {
 
   // 從 Zustand Store 獲取 WebSocket 連接狀態
   const wsConnected = useStore((state) => state.isConnected);
+  
+  // 從 Zustand Store 獲取聊天視窗狀態和操作
+  const isChatWindowVisible = useStore((state) => state.isChatWindowVisible);
+  const toggleChatWindow = useStore((state) => state.toggleChatWindow);
   
   // 使用音頻服務
   const { 
@@ -215,11 +220,28 @@ function App() {
         
         {/* 模型分析工具 (保持在 App 層) */}
         {showModelAnalyzer && <ModelAnalyzerTool availableModels={availableModels} />}
+
+        {/* 渲染新的浮動聊天視窗 */}
+        <FloatingChatWindow 
+          isVisible={isChatWindowVisible}
+          onClose={toggleChatWindow}
+          messages={messages || []}
+          userInput={userInput}
+          setUserInput={setUserInput}
+          isProcessing={chatProcessing}
+          wsConnected={wsConnected}
+          sendMessage={handleSendMessage}
+          handleKeyDown={handleKeyDown}
+          clearMessages={clearMessages}
+          isRecording={isRecording}
+          startRecording={() => startRecording(handleStopRecording)}
+          stopRecording={stopRecording}
+        />
         
         {/* 渲染 AppUI 組件，傳遞所有需要的 props */}
         <AppUI
-          // Tab 狀態與切換
-          activeTab={activeTab}
+          // Tab 狀態與切換 (activeTab/switchTab 可能會被浮動視窗取代或修改)
+          activeTab={activeTab} 
           switchTab={switchTab}
           // WebSocket 連接狀態
           wsConnected={wsConnected}
@@ -258,16 +280,17 @@ function App() {
           sendMessage={handleSendMessage}
           handleKeyDown={handleKeyDown}
           clearMessages={clearMessages}
-          // 調試按鈕相關 props
+          // 調試按鈕相關 props (之後可能移到 SettingsPanel)
           debugMode={debugMode}
           showModelAnalyzer={showModelAnalyzer}
-          modelUrl={modelUrl} 
+          modelUrl={modelUrl}
           toggleDebugMode={toggleDebugMode}
           toggleModelAnalyzer={toggleModelAnalyzer}
           handleModelSwitch={handleModelSwitch}
+          // <--- 傳遞 toggleChatWindow 給 AppUI 以便添加觸發按鈕 --->
+          toggleChatWindow={toggleChatWindow}
         />
         
-        {/* 添加Toast通知容器 */}
         <ToastContainer />
       </div>
     </ErrorBoundary>
