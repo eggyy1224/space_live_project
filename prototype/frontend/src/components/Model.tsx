@@ -42,6 +42,7 @@ export const Model: React.FC<ModelProps> = ({
   const modelService = ModelService.getInstance();
   
   const currentMorphTargetState = useStore((state) => state.morphTargets);
+  const setModelLoaded = useStore((state) => state.setModelLoaded);
   
   // Local state for dictionary, initialized from props or mesh
   const [localMorphTargetDictionary, setLocalMorphTargetDictionary] = useState<Record<string, number>>({});
@@ -142,16 +143,15 @@ export const Model: React.FC<ModelProps> = ({
       });
     }
 
-    // Call setMorphTargetData to update the service AFTER traversing the scene
-    if (foundMeshWithMorphs && finalDict) { // 確保 finalDict 存在才回傳
-      setMorphTargetData(finalDict, null); // 只回傳 dictionary，influences 由 Zustand 管理
-      logger.info('Model: Sent dictionary back to service.', LogCategory.MODEL);
-      useStore.getState().setModelLoaded(true);
+    // Call setMorphTargetData and setModelLoaded
+    if (foundMeshWithMorphs && finalDict) {
+      setMorphTargetData(finalDict, null);
+      setModelLoaded(true);
       logger.info('Model: Set modelLoaded state to true in Zustand.', LogCategory.MODEL);
     } else {
-      setLocalMorphTargetDictionary({}); // Clear local state if no mesh found
-      setMorphTargetData(null, null); // Inform service that no data is available
-      useStore.getState().setModelLoaded(false);
+      setLocalMorphTargetDictionary({});
+      setMorphTargetData(null, null);
+      setModelLoaded(false);
       logger.warn('Model: No mesh with morph targets found. Sent null back.', LogCategory.MODEL, `URL: ${url}`);
     }
 
@@ -159,7 +159,7 @@ export const Model: React.FC<ModelProps> = ({
     lastMorphUpdateTimestampRef.current = performance.now() / 1000;
     prevMorphTargetsRef.current = {};
 
-  }, [url, scene]); // <<<--- 修改依賴項數組，只依賴 url 和 scene
+  }, [url, scene, setModelLoaded, setMorphTargetData]);
 
   // useFrame for morph target updates
   useFrame((state, delta) => {

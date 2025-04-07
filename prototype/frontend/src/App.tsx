@@ -105,13 +105,17 @@ function App() {
   // 模型分析工具狀態
   const [showModelAnalyzer, setShowModelAnalyzer] = useState<boolean>(false);
 
+  // --- Zustand State and Actions ---
+  const setProcessing = useStore((state) => state.setProcessing); // <-- Get action via selector
+  // --- End Zustand --- 
+
   // === 定義錄音結束後的回調 ===
   const handleStopRecording = useCallback(async (audioBlob: Blob | null) => {
     if (audioBlob && wsConnected) {
       logger.info('[App] Recording finished. Audio blob received.', LogCategory.GENERAL);
       
       // 設置處理狀態
-      useStore.getState().setProcessing(true);
+      setProcessing(true); // <-- Use action from selector
       logger.info('[App] Sending audio to STT service...', LogCategory.GENERAL);
       
       try {
@@ -136,7 +140,7 @@ function App() {
         // alert('語音識別失敗，請再試一次。');
       } finally {
         // 無論成功與否，都重置處理狀態
-        useStore.getState().setProcessing(false);
+        setProcessing(false); // <-- Use action from selector
       }
       
     } else if (!wsConnected) {
@@ -145,7 +149,7 @@ function App() {
     } else if (!audioBlob) {
       logger.warn('[App] Recording finished, but audio blob is null.', LogCategory.GENERAL);
     }
-  }, [wsConnected, sendMessage]);
+  }, [wsConnected, sendMessage, setProcessing]); // <-- Add setProcessing to dependency array
   // === 回調定義結束 ===
 
   // 切換調試模式 
@@ -273,51 +277,16 @@ function App() {
         <AppUI
           // WebSocket 連接狀態
           wsConnected={wsConnected}
-          // 音頻控制相關 props
-          isRecording={isRecording}
-          isSpeaking={isSpeaking}
-          audioProcessing={audioProcessing}
-          micPermission={micPermission}
-          startRecording={() => startRecording(handleStopRecording)}
-          stopRecording={stopRecording}
-          playAudio={playAudio}
-          // 控制面板相關 props
-          modelLoaded={modelLoaded}
-          modelScale={modelScale[0] || 1.0}
-          currentAnimation={currentAnimation}
-          currentEmotion={currentEmotion}
-          emotionConfidence={emotionConfidence}
-          availableAnimations={availableAnimations}
-          morphTargetDictionary={morphTargetDictionary}
-          selectedMorphTarget={selectedMorphTarget}
-          setSelectedMorphTarget={setSelectedMorphTarget}
-          updateMorphTargetInfluence={updateMorphTargetInfluence}
-          resetAllMorphTargets={resetAllMorphTargets}
-          rotateModel={rotateModel}
-          scaleModel={scaleModel}
-          resetModel={resetModel}
-          toggleBackground={toggleBackground}
-          selectAnimation={selectAnimation}
-          applyPresetExpression={applyPresetExpression}
-          showSpaceBackground={showSpaceBackground}
-          // 聊天界面相關 props
-          messages={messages}
-          userInput={userInput}
-          isProcessing={chatProcessing}
-          setUserInput={setUserInput}
-          sendMessage={handleSendMessage}
-          handleKeyDown={handleKeyDown}
-          clearMessages={clearMessages}
-          // 調試按鈕相關 props (之後可能移到 SettingsPanel)
-          debugMode={debugMode}
-          showModelAnalyzer={showModelAnalyzer}
-          modelUrl={modelUrl}
-          toggleDebugMode={toggleDebugMode}
-          toggleModelAnalyzer={toggleModelAnalyzer}
-          handleModelSwitch={handleModelSwitch}
+          // 音頻控制相關 props (部分傳遞給 FloatingChatWindow)
+          // isRecording={isRecording} // No longer needed here
+          // isSpeaking={isSpeaking} // No longer needed here
+          // audioProcessing={audioProcessing} // No longer needed here
+          // micPermission={micPermission} // No longer needed here
+          // playAudio={playAudio} // If not needed, remove later
+          
           // 傳遞 toggleChatWindow 給 AppUI 以便添加觸發按鈕
           toggleChatWindow={toggleChatWindow}
-          // <--- 傳遞 toggleSettingsPanel 給 AppUI 以便添加觸發按鈕 --->
+          // 傳遞 toggleSettingsPanel 給 AppUI 以便添加觸發按鈕
           toggleSettingsPanel={toggleSettingsPanel}
         />
         
