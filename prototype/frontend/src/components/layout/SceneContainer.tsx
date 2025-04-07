@@ -9,7 +9,6 @@ interface SceneContainerProps {
   modelRotation: [number, number, number];
   modelPosition: [number, number, number];
   currentAnimation: string | null;
-  morphTargets: Record<string, number>;
   showSpaceBackground: boolean;
   morphTargetDictionary: Record<string, number> | null;
   setMorphTargetData: (dictionary: Record<string, number> | null, influences: number[] | null) => void;
@@ -21,7 +20,6 @@ const SceneContainer: React.FC<SceneContainerProps> = React.memo(({
   modelRotation,
   modelPosition,
   currentAnimation,
-  morphTargets,
   showSpaceBackground,
   morphTargetDictionary,
   setMorphTargetData,
@@ -37,7 +35,6 @@ const SceneContainer: React.FC<SceneContainerProps> = React.memo(({
           rotation={modelRotation}
           position={modelPosition}
           currentAnimation={currentAnimation ?? undefined}
-          morphTargets={morphTargets}
           morphTargetDictionary={morphTargetDictionary}
           setMorphTargetData={setMorphTargetData}
         />

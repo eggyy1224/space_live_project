@@ -15,6 +15,7 @@ export interface AppSlice {
   isDebugMode: boolean;
   isCameraFar: boolean;
   toasts: Toast[];
+  isSettingsPanelVisible: boolean;
   
   // 操作
   setActiveTab: (tab: string) => void;
@@ -23,6 +24,7 @@ export interface AppSlice {
   addToast: (toast: Omit<Toast, 'id'>) => void;
   removeToast: (id: string) => void;
   clearToasts: () => void;
+  toggleSettingsPanel: () => void;
 }
 
 // 創建 App Slice
@@ -32,6 +34,7 @@ export const createAppSlice: StateCreator<AppSlice> = (set) => ({
   isDebugMode: false,
   isCameraFar: true,
   toasts: [],
+  isSettingsPanelVisible: false,
   
   // 操作實現
   setActiveTab: (tab) => set({ activeTab: tab }),
@@ -51,4 +54,6 @@ export const createAppSlice: StateCreator<AppSlice> = (set) => ({
   })),
   
   clearToasts: () => set({ toasts: [] }),
+  
+  toggleSettingsPanel: () => set((state) => ({ isSettingsPanelVisible: !state.isSettingsPanelVisible })),
 }); 

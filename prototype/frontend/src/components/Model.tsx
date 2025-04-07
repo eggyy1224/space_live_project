@@ -18,7 +18,6 @@ interface ModelProps {
   scale?: number | [number, number, number];
   position?: [number, number, number];
   rotation?: [number, number, number];
-  morphTargets?: Record<string, number>; // Dynamic targets from WS
   currentAnimation?: string; // Keep optional
   morphTargetDictionary: Record<string, number> | null;
   setMorphTargetData: (dictionary: Record<string, number> | null, influences: number[] | null) => void;
@@ -32,23 +31,24 @@ export const Model: React.FC<ModelProps> = ({
   scale = 1,
   position = [0, 0, 0],
   rotation = [0, 0, 0],
-  morphTargets = {}, // Dynamic targets
   currentAnimation,
-  morphTargetDictionary: initialMorphTargetDictionary, // Rename prop
+  morphTargetDictionary: initialMorphTargetDictionary,
   setMorphTargetData,
 }) => {
   const group = useRef<THREE.Group>(null);
   const meshRef = useRef<MeshWithMorphs | null>(null);
   const { scene, animations } = useGLTF(url);
   const { actions, mixer } = useAnimations(animations, group);
-  const modelService = ModelService.getInstance(); // <--- 獲取服務實例
+  const modelService = ModelService.getInstance();
+  
+  const currentMorphTargetState = useStore((state) => state.morphTargets);
   
   // Local state for dictionary, initialized from props or mesh
   const [localMorphTargetDictionary, setLocalMorphTargetDictionary] = useState<Record<string, number>>({});
   
   // Refs for fallback animation logic
   const lastMorphUpdateTimestampRef = useRef<number>(0);
-  const prevMorphTargetsRef = useRef<Record<string, number>>(morphTargets);
+  const prevMorphTargetsRef = useRef<Record<string, number>>({});
 
   // Update available animations list in the service
   useEffect(() => {
@@ -146,9 +146,12 @@ export const Model: React.FC<ModelProps> = ({
     if (foundMeshWithMorphs && finalDict) { // 確保 finalDict 存在才回傳
       setMorphTargetData(finalDict, null); // 只回傳 dictionary，influences 由 Zustand 管理
       logger.info('Model: Sent dictionary back to service.', LogCategory.MODEL);
+      useStore.getState().setModelLoaded(true);
+      logger.info('Model: Set modelLoaded state to true in Zustand.', LogCategory.MODEL);
     } else {
       setLocalMorphTargetDictionary({}); // Clear local state if no mesh found
       setMorphTargetData(null, null); // Inform service that no data is available
+      useStore.getState().setModelLoaded(false);
       logger.warn('Model: No mesh with morph targets found. Sent null back.', LogCategory.MODEL, `URL: ${url}`);
     }
 
@@ -165,8 +168,6 @@ export const Model: React.FC<ModelProps> = ({
       return; 
     }
     
-    // 從 Zustand 獲取當前的目標 morph targets 狀態
-    const currentMorphTargetState = useStore.getState().morphTargets;
     const influences = meshRef.current.morphTargetInfluences;
     const dictionary = localMorphTargetDictionary;
     
@@ -174,18 +175,24 @@ export const Model: React.FC<ModelProps> = ({
     Object.keys(dictionary).forEach(name => {
       const index = dictionary[name];
       if (index !== undefined && index < influences.length) {
-        // 從 Zustand store 獲取目標值，如果不存在則默認為 0
         const targetValue = currentMorphTargetState[name] ?? 0;
-        const currentValue = influences[index];
         
-        // 使用平滑插值 (lerp) 應用變化
-        if (Math.abs(currentValue - targetValue) > 0.01) {
-          const lerpFactor = Math.min(delta * 15, 1); // 可以調整插值速度
-          influences[index] = THREE.MathUtils.lerp(currentValue, targetValue, lerpFactor);
-        } else if (currentValue !== targetValue) {
-          // 如果差異很小，直接設置為目標值
+        // --- DEBUG: 直接設置 influence，繞過 lerp --- 
+        if (influences[index] !== targetValue) {
+          // console.log(`[DEBUG] Setting influence ${name} (${index}) from ${influences[index].toFixed(3)} to ${targetValue}`); // 可選：添加日誌
           influences[index] = targetValue;
         }
+        // --- END DEBUG ---
+
+        /* // 原來的 Lerp 邏輯
+        const currentValue = influences[index];
+        if (Math.abs(currentValue - targetValue) > 0.01) {
+          const lerpFactor = Math.min(delta * 15, 1);
+          influences[index] = THREE.MathUtils.lerp(currentValue, targetValue, lerpFactor);
+        } else if (currentValue !== targetValue) {
+          influences[index] = targetValue;
+        } 
+        */
       }
     });
     

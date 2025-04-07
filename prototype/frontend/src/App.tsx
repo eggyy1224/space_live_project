@@ -9,6 +9,7 @@ import ModelAnalyzerTool from './components/ModelAnalyzerTool'
 import ErrorBoundary from './components/ErrorBoundary'
 import { ToastContainer } from './components/Toast'
 import FloatingChatWindow from './components/FloatingChatWindow'
+import SettingsPanel from './components/SettingsPanel'
 
 // 引入服務
 import { 
@@ -36,6 +37,11 @@ function App() {
   // 從 Zustand Store 獲取聊天視窗狀態和操作
   const isChatWindowVisible = useStore((state) => state.isChatWindowVisible);
   const toggleChatWindow = useStore((state) => state.toggleChatWindow);
+  
+  // <--- 從 Zustand Store 獲取設定面板狀態和操作 --->
+  const isSettingsPanelVisible = useStore((state) => state.isSettingsPanelVisible);
+  const toggleSettingsPanel = useStore((state) => state.toggleSettingsPanel);
+  // <--- 結束 --->
   
   // 使用音頻服務
   const { 
@@ -90,9 +96,6 @@ function App() {
   // 使用本地狀態管理用戶輸入
   const [userInput, setUserInput] = useState('');
   
-  // 標籤切換狀態
-  const [activeTab, setActiveTab] = useState<'control' | 'chat'>('control');
-  
   // 選定的Morph Target
   const [selectedMorphTarget, setSelectedMorphTarget] = useState<string | null>(null);
 
@@ -144,11 +147,6 @@ function App() {
     }
   }, [wsConnected, sendMessage]);
   // === 回調定義結束 ===
-
-  // 使用 useCallback 包裹 switchTab
-  const switchTab = useCallback((tab: 'control' | 'chat') => {
-    setActiveTab(tab);
-  }, []); // 空依賴數組，因為 setActiveTab 的引用是穩定的
 
   // 切換調試模式 
   const toggleDebugMode = useCallback(() => {
@@ -209,7 +207,6 @@ function App() {
           modelRotation={modelRotation}
           modelPosition={modelPosition}
           currentAnimation={currentAnimation}
-          morphTargets={morphTargets as unknown as Record<string, number>}
           showSpaceBackground={showSpaceBackground}
           morphTargetDictionary={morphTargetDictionary}
           setMorphTargetData={setMorphTargetData}
@@ -237,12 +234,43 @@ function App() {
           startRecording={() => startRecording(handleStopRecording)}
           stopRecording={stopRecording}
         />
+
+        {/* <--- 渲染設定面板 ---> */}
+        <SettingsPanel
+          isVisible={isSettingsPanelVisible}
+          onClose={toggleSettingsPanel}
+          // Pass model control props
+          isModelLoaded={modelLoaded}
+          modelScale={modelScale[0] || 1.0}
+          currentAnimation={currentAnimation}
+          availableAnimations={availableAnimations}
+          morphTargetDictionary={morphTargetDictionary}
+          selectedMorphTarget={selectedMorphTarget}
+          setSelectedMorphTarget={setSelectedMorphTarget}
+          updateMorphTargetInfluence={updateMorphTargetInfluence}
+          resetAllMorphTargets={resetAllMorphTargets}
+          rotateModel={rotateModel}
+          scaleModel={scaleModel}
+          resetModel={resetModel}
+          toggleBackground={toggleBackground}
+          selectAnimation={selectAnimation}
+          applyPresetExpression={applyPresetExpression}
+          showSpaceBackground={showSpaceBackground}
+          // Pass emotion state for display (optional, but was in old panel)
+          currentEmotion={currentEmotion}
+          emotionConfidence={emotionConfidence}
+          // Pass Debug Control Props
+          debugMode={debugMode}                 // Pass debugMode state
+          showModelAnalyzer={showModelAnalyzer} // Pass modelAnalyzer state
+          modelUrl={modelUrl}                   // Pass modelUrl for display
+          toggleDebugMode={toggleDebugMode}       // Pass toggle function
+          toggleModelAnalyzer={toggleModelAnalyzer} // Pass toggle function
+          handleModelSwitch={handleModelSwitch}   // Pass switch function
+        />
+        {/* <--- 結束 ---> */}
         
         {/* 渲染 AppUI 組件，傳遞所有需要的 props */}
         <AppUI
-          // Tab 狀態與切換 (activeTab/switchTab 可能會被浮動視窗取代或修改)
-          activeTab={activeTab} 
-          switchTab={switchTab}
           // WebSocket 連接狀態
           wsConnected={wsConnected}
           // 音頻控制相關 props
@@ -287,8 +315,10 @@ function App() {
           toggleDebugMode={toggleDebugMode}
           toggleModelAnalyzer={toggleModelAnalyzer}
           handleModelSwitch={handleModelSwitch}
-          // <--- 傳遞 toggleChatWindow 給 AppUI 以便添加觸發按鈕 --->
+          // 傳遞 toggleChatWindow 給 AppUI 以便添加觸發按鈕
           toggleChatWindow={toggleChatWindow}
+          // <--- 傳遞 toggleSettingsPanel 給 AppUI 以便添加觸發按鈕 --->
+          toggleSettingsPanel={toggleSettingsPanel}
         />
         
         <ToastContainer />
