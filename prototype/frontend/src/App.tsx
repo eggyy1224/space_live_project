@@ -54,6 +54,7 @@ function App() {
     availableAnimations,
     currentAnimation,
     morphTargets,
+    morphTargetDictionary,
     setMorphTargetData,
     rotateModel,
     scaleModel,
@@ -205,7 +206,7 @@ function App() {
           currentAnimation={currentAnimation}
           morphTargets={morphTargets as unknown as Record<string, number>}
           showSpaceBackground={showSpaceBackground}
-          morphTargetDictionary={morphTargets as unknown as Record<string, number> | null}
+          morphTargetDictionary={morphTargetDictionary}
           setMorphTargetData={setMorphTargetData}
         />
         
@@ -237,7 +238,7 @@ function App() {
           currentEmotion={currentEmotion}
           emotionConfidence={emotionConfidence}
           availableAnimations={availableAnimations}
-          morphTargetDictionary={morphTargets as unknown as Record<string, number> | null}
+          morphTargetDictionary={morphTargetDictionary}
           selectedMorphTarget={selectedMorphTarget}
           setSelectedMorphTarget={setSelectedMorphTarget}
           updateMorphTargetInfluence={updateMorphTargetInfluence}

@@ -310,15 +310,24 @@ class ModelService {
     // 創建一個所有值都設為0的新對象
     const resetTargets: Record<string, number> = {};
     
-    // 獲取所有當前存在的Morph Target名稱 (從 Zustand 讀取)
-    const currentMorphs = useStore.getState().morphTargets;
-    Object.keys(currentMorphs).forEach(key => {
-      resetTargets[key] = 0;
-    });
+    // 獲取完整的 Morph Target 字典 (從 Zustand 讀取)
+    const dictionary = useStore.getState().morphTargetDictionary;
     
-    // 直接更新 Zustand
-    useStore.getState().setMorphTargets(resetTargets);
-    logger.info('All morph targets reset via Zustand.', LogCategory.MODEL);
+    // 如果字典存在，則基於字典的鍵進行重置
+    if (dictionary) {
+      Object.keys(dictionary).forEach(key => {
+        resetTargets[key] = 0;
+      });
+      
+      // 直接更新 Zustand
+      useStore.getState().setMorphTargets(resetTargets);
+      logger.info('All morph targets reset based on dictionary via Zustand.', LogCategory.MODEL);
+    } else {
+      // 如果字典不存在，可能無法正確重置，記錄警告
+      logger.warn('Cannot reset morph targets: Dictionary not found in Zustand.', LogCategory.MODEL);
+      // 作為備選，可以嘗試清空現有狀態，但這可能不理想
+      // useStore.getState().setMorphTargets({});
+    }
   }
 
   // 旋轉模型 (使用 Zustand)
@@ -431,9 +440,38 @@ class ModelService {
     this.setModelLoaded(false);
   }
 
-  public initialize(morphTargetDictionary: { [key: string]: number }): void {
-    // this.morphTargetDictionary = morphTargetDictionary; // <-- 這行已經被 setMorphTargetDictionary 取代
-    logger.info("ModelService initialized with dictionary.", LogCategory.GENERAL);
+  public initialize(morphTargetDictionary: { [key: string]: number } | null): void {
+    if (morphTargetDictionary) {
+      // 1. 更新 Zustand Store 中的字典
+      // 直接調用 Store 的 action，或者通過 Service 內部方法（如果有的話）
+      // 這裡我們假設 Store 有 setMorphTargetDictionary action
+      useStore.getState().setMorphTargetDictionary(morphTargetDictionary);
+      // 同步更新 Service 內部持有的字典引用 (如果其他地方還需要)
+      this.morphTargetDictionary = morphTargetDictionary;
+
+      // 2. 計算初始的 Morph Targets 狀態（所有值為 0）
+      const initialMorphTargets: Record<string, number> = {};
+      Object.keys(morphTargetDictionary).forEach(key => {
+        initialMorphTargets[key] = 0;
+      });
+
+      // 3. 更新 Zustand Store 中的 Morph Targets 狀態
+      // 這裡我們假設 Store 有 setMorphTargets action
+      useStore.getState().setMorphTargets(initialMorphTargets);
+
+      // logger.info("ModelService initialized: Zustand dictionary and morphs set.", LogCategory.MODEL, initialMorphTargets);
+      // 使用正確的日誌格式
+      logger.info({
+        msg: "ModelService initialized: Zustand dictionary and morphs set.", 
+        details: initialMorphTargets // 將物件放在 details 欄位
+      }, LogCategory.MODEL);
+    } else {
+      // 如果傳入 null (例如模型加載失敗或無 morphs)
+      useStore.getState().setMorphTargetDictionary(null);
+      useStore.getState().setMorphTargets({}); // 清空 morphs
+      this.morphTargetDictionary = {}; // 清空內部引用
+      logger.warn("ModelService initialized with null dictionary: Cleared morph state.", LogCategory.MODEL);
+    }
   }
 }
 
@@ -449,6 +487,7 @@ export function useModelService() {
   const availableAnimations = useStore((state) => state.availableAnimations);
   const currentAnimation = useStore((state) => state.currentAnimation);
   const morphTargets = useStore((state) => state.morphTargets);
+  const morphTargetDictionary = useStore((state) => state.morphTargetDictionary);
 
   const modelService = useRef<ModelService>(ModelService.getInstance());
 
@@ -519,6 +558,7 @@ export function useModelService() {
     availableAnimations,
     currentAnimation,
     morphTargets,
+    morphTargetDictionary,
     setMorphTargetData,
     rotateModel,
     scaleModel,
