@@ -85,6 +85,14 @@ class ModelService {
       logger.warn('Received invalid lipsync data', LogCategory.WEBSOCKET);
       return;
     }
+    
+    // <--- 新增日誌：打印收到的完整 lipsync 數據
+    logger.debug({ 
+      msg: '[ModelService] Received lipsync update data:', 
+      details: data 
+    }, LogCategory.WEBSOCKET);
+    // --->
+    
     // 迭代更新 Zustand store
     Object.entries(data).forEach(([key, value]) => {
       if (typeof value === 'number') {

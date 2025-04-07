@@ -182,10 +182,13 @@ class AudioService {
     // 移除日誌
     // logger.debug(`[AudioService Frame] Average: ${average.toFixed(2)}, MouthOpen: ${mouthOpenValue.toFixed(2)}`, LogCategory.AUDIO);
 
-    // 修正: 使用 setMorphTargets 並傳遞物件
-    useStore.getState().setMorphTargets({'jawOpen': mouthOpenValue});
+    // 修正: 使用 updateMorphTarget 只更新 jawOpen，而不是 setMorphTargets 覆蓋整個狀態
+    // useStore.getState().setMorphTargets({'jawOpen': mouthOpenValue});
+    useStore.getState().updateMorphTarget('jawOpen', mouthOpenValue);
 
-    this.mouthAnimationIntervalId = requestAnimationFrame(this.updateMouthShape);
+    // 修正：遞迴調用應該賦值給 animationFrameId
+    // this.mouthAnimationIntervalId = requestAnimationFrame(this.updateMouthShape);
+    this.animationFrameId = requestAnimationFrame(this.updateMouthShape);
   };
 
   // 播放音頻 Blob 或 URL
