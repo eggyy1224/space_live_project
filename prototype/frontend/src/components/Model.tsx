@@ -136,6 +136,14 @@ export const Model: React.FC<ModelProps> = ({
     let finalTargetWeights: Record<string, number>;
     const hasManualTargets = manualOrPresetTargets && Object.keys(manualOrPresetTargets).length > 0;
 
+    if (Object.keys(autoTargetWeights).length > 0 || hasManualTargets) { // 只在有權重時打印
+        console.log('[Model useFrame] Weights Check:', {
+            manualTargets: JSON.stringify(manualOrPresetTargets),
+            hasManual: hasManualTargets,
+            autoTargets: JSON.stringify(autoTargetWeights),
+        });
+    }
+
     if (hasManualTargets) {
       // Priority to manual/preset targets if they exist
       finalTargetWeights = manualOrPresetTargets;

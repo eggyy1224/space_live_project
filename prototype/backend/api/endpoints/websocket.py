@@ -124,165 +124,155 @@ async def websocket_endpoint(websocket: WebSocket):
                 
                 elif message["type"] == "chat-message":
                     # 處理前端傳來的文字訊息
-                    print(f"收到聊天訊息: {message}")
-                    
-                    # --- 開始硬編碼測試 ---
-                    logger.info("[WebSocket Test] 收到聊天消息，觸發硬編碼 emotionalTrajectory")
-                    user_text = message["message"] # 保留用戶文本，可能用於日誌
+                    logger.info(f"收到聊天訊息: {message}")
+                    user_text = message["message"]
 
-                    hardcoded_payload = {
-                        "duration": 15.0, # 示例：15秒
-                        "keyframes": [
-                            { "tag": "happy", "proportion": 0.0 },
-                            { "tag": "surprised", "proportion": 0.5 },
-                            { "tag": "happy", "proportion": 1.0 },
-                        ]
-                    }
+                    # --- 恢復原來的邏輯 ---
+                    # 分析情緒 (這部分可以考慮移除或調整，因為主要情緒來自 LLM keyframes)
+                    # emotion, confidence = emotion_analyzer.analyze(user_text)
+                    # logger.info(f"初步分析情緒結果: {emotion}, 置信度: {confidence}")
+                    # next_emotion = emotion # 暫時使用初步分析結果，或設為 neutral
+                    # current_emotion = next_emotion # 更新當前情緒狀態
 
-                    # 發送硬編碼的 emotionalTrajectory
+                    # --- 調用 AI Service 生成回應和 Keyframes ---
                     try:
-                        await websocket.send_json({
-                            "type": "emotionalTrajectory",
-                            "payload": hardcoded_payload
-                        })
-                        logger.info(f"[WebSocket Test] 已發送硬編碼 emotionalTrajectory")
+                        # 調用 generate_response，預期返回包含 final_response 和 emotional_keyframes 的字典
+                        # 注意：這裡暫時不傳遞初步分析的情緒，讓 DialogueGraph 決定
+                        ai_result = await ai_service.generate_response(user_text) # 移除 current_emotion
 
-                        # 發送一個簡單的文本回覆，告知前端觸發了測試
+                        # 提取結果
+                        ai_response = ai_result.get("final_response", "抱歉，我好像有點短路了...")
+                        emotional_keyframes = ai_result.get("emotional_keyframes") # 可能為 None
+
+                        logger.info(f"AI 回應: {ai_response}")
+                        if emotional_keyframes:
+                            logger.info(f"生成的情緒 Keyframes: {emotional_keyframes}")
+                        else:
+                             logger.warning("AI Service 未返回有效的 emotional_keyframes")
+
+
+                        # --- 後續處理：TTS, Lipsync, 發送訊息 ---
+
+                        # 轉換回復為語音
+                        tts_result = await tts_service.synthesize_speech(ai_response)
+                        audio_base64 = tts_result.get("audio") if tts_result else None
+                        # 修正：如果 tts_result 為 None 或不含 duration，則估算時間
+                        audio_duration = tts_result.get("duration") if tts_result and "duration" in tts_result else len(ai_response) * 0.15 # 調整估算時間並添加檢查
+
+                        # 創建機器人回覆的文字消息
+                        bot_message = {
+                            "id": f"bot-{int(asyncio.get_event_loop().time() * 1000)}",
+                            "role": "bot",
+                            "content": ai_response,
+                            "timestamp": None,
+                            "audioUrl": None # 稍後填充
+                        }
+
+                        # 如果有音頻，保存到文件並設置URL
+                        if audio_base64:
+                            # 生成唯一的文件名
+                            audio_filename = f"{int(asyncio.get_event_loop().time() * 1000)}.mp3"
+                            # 修正路徑查找方式，使其更健壯
+                            backend_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                            audio_dir = os.path.join(backend_root, "audio")
+                            os.makedirs(audio_dir, exist_ok=True) # 確保目錄存在
+                            audio_filepath = os.path.join(audio_dir, audio_filename)
+
+                            # 解碼並保存音頻
+                            try:
+                                if isinstance(audio_base64, str):
+                                    if "," in audio_base64:
+                                        audio_base64_data = audio_base64.split(",", 1)[1]
+                                    else:
+                                        audio_base64_data = audio_base64 # Assume it's pure base64
+
+                                    # Decode base64 data
+                                    audio_data = base64.b64decode(audio_base64_data)
+
+                                    with open(audio_filepath, 'wb') as f:
+                                        f.write(audio_data)
+
+                                    if os.path.exists(audio_filepath) and os.path.getsize(audio_filepath) > 0:
+                                        bot_message["audioUrl"] = f"/audio-file/{audio_filename}"
+                                        logger.info(f"保存音頻文件成功: {audio_filepath}, 大小: {os.path.getsize(audio_filepath)} 字節")
+                                    else:
+                                        logger.error(f"保存音頻文件失敗: 文件不存在或大小為0 {audio_filepath}")
+                                else:
+                                    logger.error(f"音頻數據不是有效的字符串: {type(audio_base64)}")
+                            except base64.binascii.Error as b64_error:
+                                 logger.error(f"Base64 解碼錯誤: {b64_error}")
+                            except Exception as e:
+                                logger.error(f"保存音頻文件時發生未知錯誤: {e}", exc_info=True)
+
+
+                        # 發送聊天文字回覆
                         await websocket.send_json({
-                            "type": "chat-message", # 保持類型一致，讓前端聊天窗口顯示
-                            "message": {
-                                 "id": f"bot-hardcoded-{int(asyncio.get_event_loop().time() * 1000)}",
-                                 "role": "bot",
-                                 "content": f"[後端硬編碼測試] 已觸發 '開心->驚訝->開心' (15s) 動畫。",
-                                 "timestamp": None,
-                                 "audioUrl": None
-                            }
+                            "type": "chat-message",
+                            "message": bot_message
                         })
-                        logger.info(f"[WebSocket Test] 已發送硬編碼測試文本回覆")
+                        logger.info("已發送聊天文字回覆")
+
+                        # --- 發送 Emotional Trajectory ---
+                        if emotional_keyframes:
+                             # 使用 audio_duration 作為軌跡持續時間
+                            trajectory_payload = {
+                                "duration": audio_duration,
+                                "keyframes": emotional_keyframes
+                            }
+                            await websocket.send_json({
+                                "type": "emotionalTrajectory",
+                                "payload": trajectory_payload
+                            })
+                            logger.info(f"已發送 Emotional Trajectory，時長: {audio_duration:.2f}s")
+                        else:
+                            # 如果沒有 keyframes，可以考慮發送一個默認的靜態表情或不發送
+                            logger.warning("未生成 keyframes，不發送 emotionalTrajectory")
+                            # 或者發送一個中性表情作為 fallback?
+                            # await websocket.send_json({
+                            #     "type": "morph_update",
+                            #     "morphTargets": animation_service.calculate_morph_targets("neutral"),
+                            #     "emotion": "neutral"
+                            # })
+
+
+                        # --- 生成並發送唇型同步序列 (如果需要的話) ---
+                        # 注意：唇型同步現在可能需要與 emotionalTrajectory 協調
+                        # 這裡的 lipsync_frames 可能需要調整，或者前端主要依賴 emotionalTrajectory
+                        # 暫時保留原有的唇型同步邏輯，但可能需要後續調整
+
+                        # 獲取 lipsync 的基礎情緒 (例如，軌跡的第一個情緒，或保持 neutral)
+                        lipsync_base_emotion = emotional_keyframes[0]['tag'] if emotional_keyframes else 'neutral'
+
+                        lipsync_frames = animation_service.create_lipsync_morph(
+                            ai_response,
+                            emotion=lipsync_base_emotion, # 使用基礎情緒
+                            duration=audio_duration
+                        )
+                        if lipsync_frames:
+                            # 發送唇型同步序列 (需要 emotion 參數)
+                            asyncio.create_task(
+                                send_lipsync_frames(websocket, lipsync_frames, lipsync_base_emotion) # 傳遞基礎情緒
+                            )
+                            logger.info("已啟動唇型同步幀發送任務")
+                        else:
+                            logger.warning("未能生成唇型同步幀")
+
 
                     except WebSocketDisconnect:
-                        logger.warning("[WebSocket Test] 發送硬編碼消息時連接已斷開")
-                        manager.disconnect(websocket) # 確保斷開連接
-                        # 不需要再做其他事，循環會在下一次迭代時退出
+                        logger.warning("處理 chat-message 時 WebSocket 連接斷開")
+                        manager.disconnect(websocket)
+                        #不需要做其他事，外層循環會處理
                     except Exception as e:
-                        logger.error(f"[WebSocket Test] 發送硬編碼消息時出錯: {e}", exc_info=True)
-                    
-                    # --- 結束硬編碼測試 ---
-                    
-                    # --- 原來的邏輯 (暫時註釋掉) ---
-                    '''
-                    # 提取訊息內容
-                    user_text = message["message"]
-                    
-                    # 分析情緒並獲取置信度
-                    emotion, confidence = emotion_analyzer.analyze(user_text)
-                    print(f"分析情緒結果: {emotion}, 置信度: {confidence}")
-                    
-                    # 根據置信度決定是否切換情緒
-                    if confidence > emotion_confidence:
-                        # 只有新情緒的置信度更高時才切換
-                        next_emotion = emotion
-                        emotion_confidence = confidence
-                    else:
-                        # 否則保持當前情緒
-                        next_emotion = current_emotion
-                    
-                    # 計算平滑過渡的 Morph Targets
-                    target_morph = animation_service.calculate_morph_targets(next_emotion)
-                    transition_morph = animation_service.create_transition_morph(
-                        current_morph_targets, target_morph, transition_speed
-                    )
-                    
-                    # 更新當前表情狀態
-                    current_emotion = next_emotion
-                    current_morph_targets = transition_morph
-                    
-                    # 生成回復
-                    ai_response = await ai_service.generate_response(user_text, current_emotion)
-                    
-                    # 轉換回復為語音
-                    tts_result = await tts_service.synthesize_speech(ai_response)
-                    audio_base64 = tts_result["audio"] if tts_result else None
-                    audio_duration = tts_result["duration"] if tts_result else len(ai_response) * 0.3
-                    
-                    # 生成唇型同步序列 - 使用語音的實際持續時間和當前情緒
-                    lipsync_frames = animation_service.create_lipsync_morph(
-                        ai_response, 
-                        emotion=current_emotion,  # 傳遞當前情緒
-                        duration=audio_duration
-                    )
-                    
-                    # 創建機器人回覆消息
-                    bot_message = {
-                        "id": f"bot-{int(asyncio.get_event_loop().time() * 1000)}",
-                        "role": "bot",
-                        "content": ai_response,
-                        "timestamp": None,  # 前端會使用收到訊息的時間
-                        "audioUrl": None  # 默認為空
-                    }
-                    
-                    # 如果有音頻，保存到文件並設置URL
-                    if audio_base64:
-                        # 生成唯一的文件名
-                        audio_filename = f"{int(asyncio.get_event_loop().time() * 1000)}.mp3"
-                        audio_filepath = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "audio", audio_filename)
-                        
-                        # 解碼並保存音頻
+                        logger.error(f"處理 chat-message 時發生錯誤: {e}", exc_info=True)
                         try:
-                            # 檢查base64數據格式
-                            if isinstance(audio_base64, str):
-                                # 檢查並移除可能的base64前綴
-                                if "," in audio_base64:
-                                    audio_base64 = audio_base64.split(",", 1)[1]
-                                
-                                # 解碼base64數據
-                                audio_data = base64.b64decode(audio_base64)
-                                
-                                # 寫入文件
-                                with open(audio_filepath, 'wb') as f:
-                                    f.write(audio_data)
-                                    
-                                # 檢查文件是否成功寫入
-                                if os.path.exists(audio_filepath) and os.path.getsize(audio_filepath) > 0:
-                                    # 設置音頻URL，使用備選路由
-                                    bot_message["audioUrl"] = f"/audio-file/{audio_filename}"
-                                    logger.info(f"保存音頻文件成功: {audio_filepath}, 大小: {os.path.getsize(audio_filepath)} 字節")
-                                else:
-                                    logger.error(f"保存音頻文件失敗: 文件不存在或大小為0")
-                            else:
-                                logger.error(f"音頻數據不是有效的字符串: {type(audio_base64)}")
-                        except Exception as e:
-                            logger.error(f"保存音頻文件失敗: {str(e)}")
-                    
-                    # 發送聊天回覆
-                    await websocket.send_json({
-                        "type": "chat-message",
-                        "message": bot_message
-                    })
-                    
-                    # 發送表情和語音訊息
-                    await websocket.send_json({
-                        "type": "response",
-                        "content": ai_response,
-                        "morphTargets": transition_morph,
-                        "emotion": current_emotion,
-                        "confidence": emotion_confidence,
-                        "audio": audio_base64,
-                        "hasSpeech": audio_base64 is not None,
-                        "speechDuration": audio_duration,
-                        "characterState": ai_service.character_state
-                    })
-                    
-                    # 持續發送表情更新，實現平滑過渡
-                    asyncio.create_task(
-                        send_transition_updates(websocket, transition_morph, target_morph, current_emotion)
-                    )
-                    
-                    # 發送唇型同步序列
-                    asyncio.create_task(
-                        send_lipsync_frames(websocket, lipsync_frames, current_emotion)
-                    )
-                    '''
+                            await websocket.send_json({
+                                "type": "error",
+                                "message": f"處理您的消息時發生內部錯誤: {e}"
+                            })
+                        except Exception: # 如果連發送錯誤消息都失敗，就放棄
+                            logger.error("發送錯誤消息給客戶端時也發生錯誤")
+
+
                     # --- 原來的邏輯結束 ---
                 
                 elif message["type"] == "get_character_state":

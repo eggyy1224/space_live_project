@@ -35,6 +35,11 @@ export const useEmotionalSpeaking = (): EmotionalSpeakingControl => {
   const lastMessage = useStore((state) => state.lastJsonMessage); // Assume exists, linter warning ignored
 
   const [currentTrajectory, setCurrentTrajectory] = useState<EmotionalTrajectory | null>(null);
+  // --- 新增：本地參考時間和標記 ---
+  const [localReferenceTime, setLocalReferenceTime] = useState<number | null>(null);
+  const [trajectoryActive, setTrajectoryActive] = useState<boolean>(false);
+  const trajectoryCompleted = useRef<boolean>(false);
+  // --- 新增結束 ---
 
   // Effect to handle incoming trajectories
   useEffect(() => {
@@ -49,6 +54,11 @@ export const useEmotionalSpeaking = (): EmotionalSpeakingControl => {
           const trajectoryData = payload as EmotionalTrajectory;
           trajectoryData.keyframes.sort((a, b) => a.proportion - b.proportion);
           setCurrentTrajectory(trajectoryData); // Update local state
+          // --- 新增：重置本地參考時間和標記 ---
+          setLocalReferenceTime(null); // 會在下面的 useEffect 中設定
+          setTrajectoryActive(true);
+          trajectoryCompleted.current = false;
+          // --- 新增結束 ---
           logger.info('[useEmotionalSpeaking] Successfully set currentTrajectory:', LogCategory.ANIMATION, JSON.stringify(trajectoryData, null, 2));
       } else {
           logger.warn(
@@ -67,6 +77,16 @@ export const useEmotionalSpeaking = (): EmotionalSpeakingControl => {
     }
   }, [lastMessage]); 
 
+  // --- 新增：監聽 audioStartTime 變化，設置本地參考時間 ---
+  useEffect(() => {
+    if (audioStartTime !== null && trajectoryActive && localReferenceTime === null) {
+      // 音頻開始播放且軌跡處於活躍狀態，設置本地參考時間
+      setLocalReferenceTime(audioStartTime);
+      logger.info(`[useEmotionalSpeaking] Setting localReferenceTime to ${audioStartTime}`, LogCategory.ANIMATION);
+    }
+  }, [audioStartTime, trajectoryActive, localReferenceTime]);
+  // --- 新增結束 ---
+
   // --- Step 3.2: 計算基礎說話權重 ---
   const calculateSpeakingWeights = useCallback((): Record<string, number> => {
     if (isSpeaking) {
@@ -83,26 +103,59 @@ export const useEmotionalSpeaking = (): EmotionalSpeakingControl => {
   }, [isSpeaking]);
   // --------------------------------
 
-  // --- Step 3.1: 計算當前情緒權重 --- (Code from previous step, slightly renamed)
+  // --- 修改：重寫計算當前情緒權重函數 ---
   const calculateCurrentEmotionWeights = useCallback((): Record<string, number> => {
-    if (!currentTrajectory || audioStartTime === null || !isSpeaking) {
-        // Log why it's returning neutral
-        if (!isSpeaking) logger.debug('[calculateCurrentEmotionWeights] Returning neutral because isSpeaking is false.', LogCategory.ANIMATION);
-        else if (!currentTrajectory) logger.debug('[calculateCurrentEmotionWeights] Returning neutral because currentTrajectory is null.', LogCategory.ANIMATION);
-        else logger.debug('[calculateCurrentEmotionWeights] Returning neutral because audioStartTime is null.', LogCategory.ANIMATION);
+    if (!currentTrajectory || (!trajectoryActive && !trajectoryCompleted.current)) {
         return getEmotionBaseWeights('neutral');
     }
 
-    const elapsedTime = (performance.now() - audioStartTime) / 1000;
-    const duration = currentTrajectory.duration;
-    if (duration <= 0) return getEmotionBaseWeights('neutral');
+    // 使用本地參考時間或音頻開始時間
+    let referenceTime = localReferenceTime !== null 
+        ? localReferenceTime 
+        : (audioStartTime !== null ? audioStartTime : null);
 
+    // 如果沒有參考時間且軌跡處於活躍狀態，立即設置當前時間
+    if (referenceTime === null && trajectoryActive) {
+        referenceTime = performance.now();
+        setLocalReferenceTime(referenceTime);
+        logger.info(`[calculateCurrentEmotionWeights] No reference time, setting new one: ${referenceTime}`, LogCategory.ANIMATION);
+    }
+
+    // 如果依然沒有參考時間，返回 neutral
+    if (referenceTime === null) {
+        logger.debug('[calculateCurrentEmotionWeights] No reference time available, returning neutral.', LogCategory.ANIMATION);
+        return getEmotionBaseWeights('neutral');
+    }
+
+    const elapsedTime = (performance.now() - referenceTime) / 1000;
+    const duration = currentTrajectory.duration;
+    
+    // 檢查軌跡是否已完成
+    if (elapsedTime >= duration) {
+        if (trajectoryActive) {
+            // 標記軌跡已完成，但保留最終情緒
+            setTrajectoryActive(false);
+            trajectoryCompleted.current = true;
+            logger.info('[calculateCurrentEmotionWeights] Trajectory completed, maintaining final emotion.', LogCategory.ANIMATION);
+        }
+        
+        // 返回最後一個關鍵幀的情緒
+        const keyframes = currentTrajectory.keyframes;
+        if (keyframes && keyframes.length > 0) {
+            const lastKeyframe = keyframes[keyframes.length - 1];
+            return getEmotionBaseWeights(lastKeyframe.tag);
+        }
+        return getEmotionBaseWeights('neutral');
+    }
+
+    // 軌跡尚未完成，計算當前進度
     const progress = Math.max(0, Math.min(elapsedTime / duration, 1.0));
     const keyframes = currentTrajectory.keyframes;
 
     if (!keyframes || keyframes.length === 0) return getEmotionBaseWeights('neutral');
     if (keyframes.length === 1) return getEmotionBaseWeights(keyframes[0].tag);
 
+    // 找到當前進度對應的兩個關鍵幀
     let prevFrame = keyframes[0];
     let nextFrame = keyframes[keyframes.length - 1];
 
@@ -122,10 +175,12 @@ export const useEmotionalSpeaking = (): EmotionalSpeakingControl => {
         return getEmotionBaseWeights(nextFrame.tag);
     }
 
+    // 計算兩個關鍵幀之間的插值
     const segmentProportion = nextFrame.proportion - prevFrame.proportion;
     const progressInSegment = progress - prevFrame.proportion;
     const localProgress = segmentProportion > 0.0001 ? Math.max(0, Math.min(progressInSegment / segmentProportion, 1.0)) : 0;
 
+    // 混合兩個關鍵幀的權重
     const weightsPrev = getEmotionBaseWeights(prevFrame.tag);
     const weightsNext = getEmotionBaseWeights(nextFrame.tag);
     const currentEmotionWeights: Record<string, number> = {};
@@ -137,11 +192,11 @@ export const useEmotionalSpeaking = (): EmotionalSpeakingControl => {
         currentEmotionWeights[key] = THREE.MathUtils.lerp(prevValue, nextValue, localProgress);
     });
 
-    // Log the calculated weights
-    logger.debug('[calculateCurrentEmotionWeights] Calculated weights:', LogCategory.ANIMATION, JSON.stringify(currentEmotionWeights));
+    // 記錄計算過程
+    logger.debug(`[calculateCurrentEmotionWeights] Progress: ${progress.toFixed(2)}, elapsed: ${elapsedTime.toFixed(2)}s, duration: ${duration.toFixed(2)}s`, LogCategory.ANIMATION);
     return currentEmotionWeights;
-  }, [currentTrajectory, audioStartTime, isSpeaking]);
-  // -------------------------------
+  }, [currentTrajectory, audioStartTime, localReferenceTime, trajectoryActive]);
+  // --- 修改結束 ---
 
   // --- Step 3.3: 混合權重 (下一步實現) ---
   const calculateFinalWeights = useCallback((): Record<string, number> => {

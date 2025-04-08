@@ -11,7 +11,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmb
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 
 from .memory_system import MemorySystem
-from .dialogue_graph import DialogueGraph
+from .dialogue_graph import DialogueGraph, DEFAULT_NEUTRAL_KEYFRAMES
 
 # 配置基本日誌
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -57,24 +57,22 @@ class AIService:
         
         logging.info("AIService (基於 LangGraph 的兼容模式) 初始化完成")
         
-    async def generate_response(self, user_text: str, current_emotion: str = None) -> str:
+    async def generate_response(self, user_text: str, current_emotion: str = None) -> Dict[str, Any]:
         """
-        基於使用者輸入和記憶生成AI回應 - 兼容舊版 API
+        基於使用者輸入和記憶生成AI回應 - 兼容舊版 API，但返回字典
         
         Args:
             user_text: 使用者輸入文本
             current_emotion: 當前檢測到的情緒 (已棄用，保留參數兼容)
             
         Returns:
-            AI生成的回應
+            包含 'final_response' 和 'emotional_keyframes' 的字典
         """
         try:
-            # 將原始對話歷史轉換為 BaseMessage 格式（如果需要）
-            # 這確保即使外部傳入原始對話歷史，我們也能正確處理
             messages = self.messages.copy()
             
-            # 調用 LangGraph 生成回應
-            ai_response, updated_messages = await self.dialogue_graph.generate_response(
+            # 調用 LangGraph 生成回應，接收字典
+            graph_result: Dict[str, Any] = await self.dialogue_graph.generate_response(
                 user_text=user_text,
                 messages=messages,
                 character_state=self.character_state,
@@ -83,14 +81,26 @@ class AIService:
             )
             
             # 更新對話歷史
-            self.messages = updated_messages
+            self.messages = graph_result.get("updated_messages", messages)  # 使用 get 以防萬一
             
-            return ai_response
+            # 提取需要的返回內容
+            final_response = graph_result.get("final_response", "嗯...我好像有點走神了。")
+            emotional_keyframes = graph_result.get("emotional_keyframes")  # 可能為 None
+            
+            # 返回包含回應和 keyframes 的字典
+            return {
+                "final_response": final_response,
+                "emotional_keyframes": emotional_keyframes
+            }
             
         except Exception as e:
             logging.error(f"生成 AI 回應失敗: {str(e)}", exc_info=True)
-            # 返回一個友好的錯誤消息 
-            return "哎呀，我的系統出了點小問題。太空干擾有時候真的很煩人，你能再說一次嗎？"
+            # 返回一個包含錯誤和預設值的字典
+            return {
+                "final_response": "哎呀，我的系統出了點小問題。太空干擾有時候真的很煩人，你能再說一次嗎？",
+                "emotional_keyframes": DEFAULT_NEUTRAL_KEYFRAMES.copy(),  # 使用 dialogue_graph 中的定義
+                "error": str(e)
+            }
             
     def update_character_state(self, updates: Dict[str, Any]) -> None:
         """

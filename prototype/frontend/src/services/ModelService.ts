@@ -95,7 +95,7 @@ class ModelService {
     
     // 迭代更新 Zustand store
     Object.entries(data).forEach(([key, value]) => {
-      if (typeof value === 'number') {
+      if (typeof value === 'number' && this.morphTargetDictionary && this.morphTargetDictionary.hasOwnProperty(key)) {
         useStore.getState().updateMorphTarget(key, value);
       }
     });
