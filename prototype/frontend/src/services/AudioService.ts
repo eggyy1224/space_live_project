@@ -184,7 +184,7 @@ class AudioService {
     // const normalizedAverage = Math.min(1, average / 128); 
 
     if (useStore.getState().isRecording) {
-        this.animationFrameId = requestAnimationFrame(this.updateMouthShape);
+    this.animationFrameId = requestAnimationFrame(this.updateMouthShape);
     }
   };
 
@@ -249,12 +249,12 @@ class AudioService {
      // Simple cleanup: just nullify the reference
      // Proper listener removal is complex without storing references
      if (this.playbackAudio) {
-        if (this.playbackAudio.src.startsWith('blob:')) {
-            URL.revokeObjectURL(this.playbackAudio.src);
+      if (this.playbackAudio.src.startsWith('blob:')) {
+        URL.revokeObjectURL(this.playbackAudio.src);
             logger.debug('Revoked object URL.', LogCategory.AUDIO);
-        }
-        this.playbackAudio = null;
-     }
+      }
+      this.playbackAudio = null;
+    }
   }
 
   public getIsRecording(): boolean {
