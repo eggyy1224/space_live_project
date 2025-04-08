@@ -126,6 +126,51 @@ async def websocket_endpoint(websocket: WebSocket):
                     # 處理前端傳來的文字訊息
                     print(f"收到聊天訊息: {message}")
                     
+                    # --- 開始硬編碼測試 ---
+                    logger.info("[WebSocket Test] 收到聊天消息，觸發硬編碼 emotionalTrajectory")
+                    user_text = message["message"] # 保留用戶文本，可能用於日誌
+
+                    hardcoded_payload = {
+                        "duration": 15.0, # 示例：15秒
+                        "keyframes": [
+                            { "tag": "happy", "proportion": 0.0 },
+                            { "tag": "surprised", "proportion": 0.5 },
+                            { "tag": "happy", "proportion": 1.0 },
+                        ]
+                    }
+
+                    # 發送硬編碼的 emotionalTrajectory
+                    try:
+                        await websocket.send_json({
+                            "type": "emotionalTrajectory",
+                            "payload": hardcoded_payload
+                        })
+                        logger.info(f"[WebSocket Test] 已發送硬編碼 emotionalTrajectory")
+
+                        # 發送一個簡單的文本回覆，告知前端觸發了測試
+                        await websocket.send_json({
+                            "type": "chat-message", # 保持類型一致，讓前端聊天窗口顯示
+                            "message": {
+                                 "id": f"bot-hardcoded-{int(asyncio.get_event_loop().time() * 1000)}",
+                                 "role": "bot",
+                                 "content": f"[後端硬編碼測試] 已觸發 '開心->驚訝->開心' (15s) 動畫。",
+                                 "timestamp": None,
+                                 "audioUrl": None
+                            }
+                        })
+                        logger.info(f"[WebSocket Test] 已發送硬編碼測試文本回覆")
+
+                    except WebSocketDisconnect:
+                        logger.warning("[WebSocket Test] 發送硬編碼消息時連接已斷開")
+                        manager.disconnect(websocket) # 確保斷開連接
+                        # 不需要再做其他事，循環會在下一次迭代時退出
+                    except Exception as e:
+                        logger.error(f"[WebSocket Test] 發送硬編碼消息時出錯: {e}", exc_info=True)
+                    
+                    # --- 結束硬編碼測試 ---
+                    
+                    # --- 原來的邏輯 (暫時註釋掉) ---
+                    '''
                     # 提取訊息內容
                     user_text = message["message"]
                     
@@ -237,6 +282,8 @@ async def websocket_endpoint(websocket: WebSocket):
                     asyncio.create_task(
                         send_lipsync_frames(websocket, lipsync_frames, current_emotion)
                     )
+                    '''
+                    # --- 原來的邏輯結束 ---
                 
                 elif message["type"] == "get_character_state":
                     # 返回角色當前狀態

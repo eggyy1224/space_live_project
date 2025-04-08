@@ -36,21 +36,33 @@ export const useEmotionalSpeaking = (): EmotionalSpeakingControl => {
 
   const [currentTrajectory, setCurrentTrajectory] = useState<EmotionalTrajectory | null>(null);
 
-  // Effect to handle incoming trajectories (logic from previous step)
+  // Effect to handle incoming trajectories
   useEffect(() => {
+    // Add detailed logging here
+    logger.debug('[useEmotionalSpeaking] useEffect triggered by lastMessage change. Current lastMessage:', LogCategory.ANIMATION, JSON.stringify(lastMessage));
+    
     if (lastMessage?.type === 'emotionalTrajectory') {
+      logger.info('[useEmotionalSpeaking] Detected emotionalTrajectory message type.', LogCategory.ANIMATION);
       const payload = lastMessage.payload;
       if (payload && typeof payload.duration === 'number' && Array.isArray(payload.keyframes)) {
+          logger.info('[useEmotionalSpeaking] Payload is valid. Processing trajectory...', LogCategory.ANIMATION);
           const trajectoryData = payload as EmotionalTrajectory;
           trajectoryData.keyframes.sort((a, b) => a.proportion - b.proportion);
-          setCurrentTrajectory(trajectoryData);
-          logger.info('[useEmotionalSpeaking] Received new trajectory:', LogCategory.ANIMATION, JSON.stringify(trajectoryData, null, 2));
+          setCurrentTrajectory(trajectoryData); // Update local state
+          logger.info('[useEmotionalSpeaking] Successfully set currentTrajectory:', LogCategory.ANIMATION, JSON.stringify(trajectoryData, null, 2));
       } else {
           logger.warn(
               '[useEmotionalSpeaking] Received invalid trajectory data format:',
               LogCategory.ANIMATION,
-              JSON.stringify(payload) // Stringify for logging - linter warning ignored
+              JSON.stringify(payload)
           );
+      }
+    } else {
+      // Log if it's not the expected type or null
+      if (lastMessage) {
+        logger.debug(`[useEmotionalSpeaking] lastMessage type is not 'emotionalTrajectory': ${lastMessage?.type}`, LogCategory.ANIMATION);
+      } else {
+        logger.debug('[useEmotionalSpeaking] lastMessage is null.', LogCategory.ANIMATION);
       }
     }
   }, [lastMessage]); 
@@ -74,9 +86,10 @@ export const useEmotionalSpeaking = (): EmotionalSpeakingControl => {
   // --- Step 3.1: 計算當前情緒權重 --- (Code from previous step, slightly renamed)
   const calculateCurrentEmotionWeights = useCallback((): Record<string, number> => {
     if (!currentTrajectory || audioStartTime === null || !isSpeaking) {
-        // 如果不在播放，或者沒有軌跡數據，返回 neutral
-        // 注意：這裡的設計是，情緒只在 isSpeaking 為 true 時跟隨軌跡變化
-        // 如果希望角色在不說話時也保持最後的情緒，需要修改此邏輯
+        // Log why it's returning neutral
+        if (!isSpeaking) logger.debug('[calculateCurrentEmotionWeights] Returning neutral because isSpeaking is false.', LogCategory.ANIMATION);
+        else if (!currentTrajectory) logger.debug('[calculateCurrentEmotionWeights] Returning neutral because currentTrajectory is null.', LogCategory.ANIMATION);
+        else logger.debug('[calculateCurrentEmotionWeights] Returning neutral because audioStartTime is null.', LogCategory.ANIMATION);
         return getEmotionBaseWeights('neutral');
     }
 
@@ -124,6 +137,8 @@ export const useEmotionalSpeaking = (): EmotionalSpeakingControl => {
         currentEmotionWeights[key] = THREE.MathUtils.lerp(prevValue, nextValue, localProgress);
     });
 
+    // Log the calculated weights
+    logger.debug('[calculateCurrentEmotionWeights] Calculated weights:', LogCategory.ANIMATION, JSON.stringify(currentEmotionWeights));
     return currentEmotionWeights;
   }, [currentTrajectory, audioStartTime, isSpeaking]);
   // -------------------------------
@@ -144,6 +159,8 @@ export const useEmotionalSpeaking = (): EmotionalSpeakingControl => {
     
     // 其他權重暫時直接使用情緒權重，未來可添加更複雜混合
 
+    // Log the final weights before returning
+    logger.debug('[calculateFinalWeights] Calculated final weights:', LogCategory.ANIMATION, JSON.stringify(finalWeights));
     return finalWeights;
 
   }, [calculateCurrentEmotionWeights, calculateSpeakingWeights]);

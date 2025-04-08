@@ -162,17 +162,24 @@ class WebSocketService {
   private handleMessage(event: MessageEvent): void {
     try {
       const data = JSON.parse(event.data) as WebSocketMessage;
-      // 只保留重要消息類型的日誌，移除高頻消息類型的日誌
-      const highFrequencyTypes = ['lipsync_update', 'morph_update', 'animation_update'];
+      const highFrequencyTypes = ['lipsync_update', 'morph_update', 'animation_update']; // Keep this for logging efficiency
+
+      // Log received message (conditionally based on frequency)
       if (data.type && !highFrequencyTypes.includes(data.type)) {
         logger.info(`收到WebSocket消息: ${data.type}`, LogCategory.WEBSOCKET);
       } else if (data.type) {
-        // 高頻消息使用debug級別，並提供消息類型以進行過濾
         logger.debug(`收到WebSocket消息: ${data.type}`, LogCategory.WEBSOCKET, data.type);
       }
       
-      if (data.type && highFrequencyTypes.includes(data.type)) {
-        // 使用防抖動機制處理高頻消息
+      // --- 新增：直接處理 emotionalTrajectory 消息 --- 
+      if (data.type === 'emotionalTrajectory') {
+        logger.debug('[WebSocketService] Detected emotionalTrajectory, updating lastJsonMessage.', LogCategory.WEBSOCKET);
+        useStore.getState().setLastJsonMessage(data); // 直接更新 Zustand 狀態
+      } 
+      // --- 新增結束 ---
+      
+      // --- 原有邏輯：處理高頻消息和註冊的 handlers --- 
+      else if (data.type && highFrequencyTypes.includes(data.type)) {
         this._handleHighFrequencyMessage(data.type, data);
       } else {
         // 調用對應類型的消息處理器
@@ -186,7 +193,7 @@ class WebSocketService {
           });
         }
         
-        // 調用通用消息處理器
+        // 調用通用消息處理器 (如果有的話)
         if (this.messageHandlers['*']) {
           this.messageHandlers['*'].forEach(handler => {
             try {
@@ -197,6 +204,8 @@ class WebSocketService {
           });
         }
       }
+      // --- 原有邏輯結束 ---
+
     } catch (error) {
       logger.error('解析WebSocket消息錯誤', LogCategory.WEBSOCKET, error);
     }
