@@ -23,7 +23,8 @@ interface EmotionalSpeakingControl {
 }
 
 // 定義說話狀態的 Blendshape 目標值 (可配置)
-const SPEAKING_JAW_OPEN = 0.7; // 說話時下巴張開程度
+// const SPEAKING_JAW_OPEN = 0.7; // 說話時下巴張開程度 (原值)
+const SPEAKING_JAW_OPEN = 0.85; // <-- 增大基礎張嘴幅度
 const IDLE_MOUTH_CLOSE = 0.1; // 不說話時嘴巴閉合程度
 
 /**

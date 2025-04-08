@@ -92,13 +92,6 @@ async def websocket_endpoint(websocket: WebSocket):
                     audio_base64 = tts_result["audio"] if tts_result else None
                     audio_duration = tts_result["duration"] if tts_result else len(ai_response) * 0.3
                     
-                    # 生成唇型同步序列 - 使用語音的實際持續時間和當前情緒
-                    lipsync_frames = animation_service.create_lipsync_morph(
-                        ai_response, 
-                        emotion=current_emotion,  # 傳遞當前情緒
-                        duration=audio_duration
-                    )
-                    
                     # 發送回覆
                     await websocket.send_json({
                         "type": "response",
@@ -115,11 +108,6 @@ async def websocket_endpoint(websocket: WebSocket):
                     # 持續發送表情更新，實現平滑過渡
                     asyncio.create_task(
                         send_transition_updates(websocket, transition_morph, target_morph, current_emotion)
-                    )
-                    
-                    # 發送唇型同步序列
-                    asyncio.create_task(
-                        send_lipsync_frames(websocket, lipsync_frames, current_emotion)
                     )
                 
                 elif message["type"] == "chat-message":
@@ -235,28 +223,29 @@ async def websocket_endpoint(websocket: WebSocket):
                             # })
 
 
-                        # --- 生成並發送唇型同步序列 (如果需要的話) ---
-                        # 注意：唇型同步現在可能需要與 emotionalTrajectory 協調
-                        # 這裡的 lipsync_frames 可能需要調整，或者前端主要依賴 emotionalTrajectory
-                        # 暫時保留原有的唇型同步邏輯，但可能需要後續調整
-
-                        # 獲取 lipsync 的基礎情緒 (例如，軌跡的第一個情緒，或保持 neutral)
-                        lipsync_base_emotion = emotional_keyframes[0]['tag'] if emotional_keyframes else 'neutral'
-
-                        lipsync_frames = animation_service.create_lipsync_morph(
-                            ai_response,
-                            emotion=lipsync_base_emotion, # 使用基礎情緒
-                            duration=audio_duration
-                        )
-                        if lipsync_frames:
-                            # 發送唇型同步序列 (需要 emotion 參數)
-                            asyncio.create_task(
-                                send_lipsync_frames(websocket, lipsync_frames, lipsync_base_emotion) # 傳遞基礎情緒
-                            )
-                            logger.info("已啟動唇型同步幀發送任務")
-                        else:
-                            logger.warning("未能生成唇型同步幀")
-
+                        # --- 移除後端唇型同步邏輯 ---
+                        # # --- 生成並發送唇型同步序列 (如果需要的話) ---
+                        # # 注意：唇型同步現在可能需要與 emotionalTrajectory 協調
+                        # # 這裡的 lipsync_frames 可能需要調整，或者前端主要依賴 emotionalTrajectory
+                        # # 暫時保留原有的唇型同步邏輯，但可能需要後續調整
+                        # 
+                        # # 獲取 lipsync 的基礎情緒 (例如，軌跡的第一個情緒，或保持 neutral)
+                        # lipsync_base_emotion = emotional_keyframes[0]['tag'] if emotional_keyframes else 'neutral'
+                        # 
+                        # lipsync_frames = animation_service.create_lipsync_morph(
+                        #     ai_response,
+                        #     emotion=lipsync_base_emotion, # 使用基礎情緒
+                        #     duration=audio_duration
+                        # )
+                        # if lipsync_frames:
+                        #     # 發送唇型同步序列 (需要 emotion 參數)
+                        #     asyncio.create_task(
+                        #         send_lipsync_frames(websocket, lipsync_frames, lipsync_base_emotion) # 傳遞基礎情緒
+                        #     )
+                        #     logger.info("已啟動唇型同步幀發送任務")
+                        # else:
+                        #     logger.warning("未能生成唇型同步幀")
+                        # --- 移除結束 ---
 
                     except WebSocketDisconnect:
                         logger.warning("處理 chat-message 時 WebSocket 連接斷開")
@@ -361,70 +350,71 @@ async def send_transition_updates(websocket: WebSocket, start_morph: Dict[str, f
     except Exception as e:
         print(f"發送表情過渡更新錯誤: {e}")
 
-# 發送唇型同步幀
-async def send_lipsync_frames(websocket: WebSocket, frames: List[Dict[str, float]], emotion: str):
-    try:
-        if not frames:
-            print("警告: 未提供唇型同步幀")
-            return
-            
-        # 開始唇型同步前先等待一小段時間，讓語音開始播放
-        await asyncio.sleep(0.05)  # 減少初始延遲，使口型盡快開始
-        
-        # 計算每幀的延遲時間，調整為更流暢的幀率
-        frame_delay = 1 / 30  # 約30fps，使動畫更流暢
-        
-        # 發送更少的幀，但保持同步
-        skip_interval = max(1, len(frames) // 60)  # 控制幀數，避免發送過多幀
-        
-        # 為眨眼動作添加隨機時刻
-        blink_frames = []
-        if len(frames) > 60:  # 只在較長的序列中添加額外的眨眼
-            blink_times = random.randint(1, max(1, len(frames) // 120))  # 控制眨眼次數
-            for _ in range(blink_times):
-                # 避免在開始和結束時添加眨眼
-                blink_idx = random.randint(15, len(frames) - 30) // skip_interval
-                blink_frames.append(blink_idx)
-        
-        try:
-            for i in range(0, len(frames), skip_interval):
-                frame_index = i // skip_interval
-                frame = frames[i].copy()  # 複製一份，避免修改原始數據
-                
-                # 檢查是否需要在此幀添加額外的眨眼
-                if frame_index in blink_frames:
-                    frame["eyeBlinkLeft"] = 0.9
-                    frame["eyeBlinkRight"] = 0.9
-                elif frame_index - 1 in blink_frames:
-                    # 眨眼恢復階段
-                    frame["eyeBlinkLeft"] = 0.3
-                    frame["eyeBlinkRight"] = 0.3
-                
-                # 發送更新，包含更多信息，並傳遞情緒信息
-                await websocket.send_json({
-                    "type": "lipsync_update",
-                    "morphTargets": frame,
-                    "frameIndex": frame_index,
-                    "totalFrames": (len(frames) + skip_interval - 1) // skip_interval,
-                    "hasSpeech": True,
-                    "emotion": emotion  # 添加情緒信息
-                })
-                
-                # 等待到下一幀
-                await asyncio.sleep(frame_delay)
-                
-            # 最後發送完成幀，通知前端唇型同步結束
-            await websocket.send_json({
-                "type": "lipsync_update",
-                "morphTargets": animation_service.calculate_morph_targets(emotion),
-                "frameIndex": len(frames) // skip_interval,
-                "totalFrames": len(frames) // skip_interval,
-                "hasSpeech": False,
-                "emotion": emotion  # 添加情緒信息
-            })
-            
-        except Exception as e:
-            print(f"發送唇型同步幀錯誤 (內部循環): {e}")
-            
-    except Exception as e:
-        print(f"發送唇型同步幀錯誤: {e}") 
+# --- 移除 send_lipsync_frames 輔助函數 ---
+# async def send_lipsync_frames(websocket: WebSocket, frames: List[Dict[str, float]], emotion: str):
+#     try:
+#         if not frames:
+#             print("警告: 未提供唇型同步幀")
+#             return
+#             
+#         # 開始唇型同步前先等待一小段時間，讓語音開始播放
+#         await asyncio.sleep(0.05)  # 減少初始延遲，使口型盡快開始
+#         
+#         # 計算每幀的延遲時間，調整為更流暢的幀率
+#         frame_delay = 1 / 30  # 約30fps，使動畫更流暢
+#         
+#         # 發送更少的幀，但保持同步
+#         skip_interval = max(1, len(frames) // 60)  # 控制幀數，避免發送過多幀
+#         
+#         # 為眨眼動作添加隨機時刻
+#         blink_frames = []
+#         if len(frames) > 60:  # 只在較長的序列中添加額外的眨眼
+#             blink_times = random.randint(1, max(1, len(frames) // 120))  # 控制眨眼次數
+#             for _ in range(blink_times):
+#                 # 避免在開始和結束時添加眨眼
+#                 blink_idx = random.randint(15, len(frames) - 30) // skip_interval
+#                 blink_frames.append(blink_idx)
+#         
+#         try:
+#             for i in range(0, len(frames), skip_interval):
+#                 frame_index = i // skip_interval
+#                 frame = frames[i].copy()  # 複製一份，避免修改原始數據
+#                 
+#                 # 檢查是否需要在此幀添加額外的眨眼
+#                 if frame_index in blink_frames:
+#                     frame["eyeBlinkLeft"] = 0.9
+#                     frame["eyeBlinkRight"] = 0.9
+#                 elif frame_index - 1 in blink_frames:
+#                     # 眨眼恢復階段
+#                     frame["eyeBlinkLeft"] = 0.3
+#                     frame["eyeBlinkRight"] = 0.3
+#                 
+#                 # 發送更新，包含更多信息，並傳遞情緒信息
+#                 await websocket.send_json({
+#                     "type": "lipsync_update",
+#                     "morphTargets": frame,
+#                     "frameIndex": frame_index,
+#                     "totalFrames": (len(frames) + skip_interval - 1) // skip_interval,
+#                     "hasSpeech": True,
+#                     "emotion": emotion  # 添加情緒信息
+#                 })
+#                 
+#                 # 等待到下一幀
+#                 await asyncio.sleep(frame_delay)
+#                 
+#             # 最後發送完成幀，通知前端唇型同步結束
+#             await websocket.send_json({
+#                 "type": "lipsync_update",
+#                 "morphTargets": animation_service.calculate_morph_targets(emotion),
+#                 "frameIndex": len(frames) // skip_interval,
+#                 "totalFrames": len(frames) // skip_interval,
+#                 "hasSpeech": False,
+#                 "emotion": emotion  # 添加情緒信息
+#             })
+#             
+#         except Exception as e:
+#             print(f"發送唇型同步幀錯誤 (內部循環): {e}")
+#             
+#     except Exception as e:
+#         print(f"發送唇型同步幀錯誤: {e}") 
+# --- 移除結束 --- 

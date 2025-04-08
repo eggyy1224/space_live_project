@@ -8,6 +8,18 @@ import ModelService from '../services/ModelService'; // <--- 引入 ModelService
 import { useStore } from '../store'; // 修正導入路徑
 import { useEmotionalSpeaking } from '../hooks/useEmotionalSpeaking'; // <-- 導入新的 Hook
 
+// --- 新增：定義口型相關的 Morph Target Keys ---
+const MOUTH_MORPH_TARGET_KEYS = new Set([
+  'jawForward', 'jawLeft', 'jawOpen', 'jawRight',
+  'mouthClose', 'mouthDimpleLeft', 'mouthDimpleRight', 'mouthFrownLeft',
+  'mouthFrownRight', 'mouthFunnel', 'mouthLeft', 'mouthLowerDownLeft',
+  'mouthLowerDownRight', 'mouthPressLeft', 'mouthPressRight', 'mouthPucker',
+  'mouthRight', 'mouthRollLower', 'mouthRollUpper', 'mouthShrugLower',
+  'mouthShrugUpper', 'mouthSmileLeft', 'mouthSmileRight', 'mouthStretchLeft',
+  'mouthStretchRight', 'mouthUpperUpLeft', 'mouthUpperUpRight'
+]);
+// --- 新增結束 ---
+
 // 擴展的網格類型，包含morphTargets屬性
 interface MeshWithMorphs extends THREE.Mesh {
   morphTargetDictionary?: {[key: string]: number};
@@ -40,7 +52,15 @@ export const Model: React.FC<ModelProps> = ({
   const [localMorphTargetDictionary, setLocalMorphTargetDictionary] = useState<Record<string, number>>({});
 
   const { calculateFinalWeights } = useEmotionalSpeaking();
-  const manualOrPresetTargets = useStore((state) => state.morphTargets); // <-- Read manual/preset targets from Zustand
+
+  // --- 正確讀取 Zustand 狀態並使用 Ref 傳遞 --- 
+  const manualOrPresetTargetsFromStore = useStore((state) => state.morphTargets);
+  const manualOrPresetTargetsRef = useRef(manualOrPresetTargetsFromStore);
+
+  useEffect(() => {
+    manualOrPresetTargetsRef.current = manualOrPresetTargetsFromStore;
+  }, [manualOrPresetTargetsFromStore]);
+  // --- Ref 傳遞結束 ---
 
   useEffect(() => {
     const animationNames = Object.keys(actions);
@@ -130,43 +150,35 @@ export const Model: React.FC<ModelProps> = ({
     const influences = meshRef.current.morphTargetInfluences;
     const dictionary = localMorphTargetDictionary;
     
-    const autoTargetWeights = calculateFinalWeights(); // Automatic weights
+    const autoTargetWeights = calculateFinalWeights(); // 自動權重 (情緒 + 基礎說話口型)
+    // --- 安全地從 Ref 讀取最新狀態 --- 
+    const currentManualTargets = manualOrPresetTargetsRef.current; // 手動/預設/唇型同步權重
     
-    // Determine final target weights based on priority
-    let finalTargetWeights: Record<string, number>;
-    const hasManualTargets = manualOrPresetTargets && Object.keys(manualOrPresetTargets).length > 0;
-
-    if (Object.keys(autoTargetWeights).length > 0 || hasManualTargets) { // 只在有權重時打印
-        console.log('[Model useFrame] Weights Check:', {
-            manualTargets: JSON.stringify(manualOrPresetTargets),
-            hasManual: hasManualTargets,
-            autoTargets: JSON.stringify(autoTargetWeights),
-        });
-    }
-
-    if (hasManualTargets) {
-      // Priority to manual/preset targets if they exist
-      finalTargetWeights = manualOrPresetTargets;
-      // Optional refinement: Maybe still allow automatic jawOpen/mouthClose for speaking?
-      // Example: if (autoTargetWeights.jawOpen !== undefined) finalTargetWeights.jawOpen = Math.max(autoTargetWeights.jawOpen, manualOrPresetTargets.jawOpen ?? 0);
-      // Example: if (autoTargetWeights.mouthClose !== undefined) finalTargetWeights.mouthClose = autoTargetWeights.mouthClose; 
-    } else {
-      // Otherwise, use automatic weights
-      finalTargetWeights = autoTargetWeights;
-    }
+    // --- 恢復合併邏輯 --- 
+    // 1. 基礎權重來自情緒軌跡計算結果
+    const finalTargetWeights: Record<string, number> = { ...autoTargetWeights }; 
+    
+    // 2. 遍歷手動/唇型同步權重 (來自 Ref)
+    Object.entries(currentManualTargets).forEach(([key, value]) => {
+      // 3. 如果 key 是口型相關的，則用手動/唇型同步的值覆蓋基礎權重
+      if (MOUTH_MORPH_TARGET_KEYS.has(key)) {
+        finalTargetWeights[key] = value;
+      }
+    });
+    // --- 合併邏輯結束 ---
     
     // Apply the final weights with lerp (existing logic)
     Object.keys(dictionary).forEach(name => {
       const index = dictionary[name];
       if (index !== undefined && index < influences.length) {
-        // Use finalTargetWeights determined above
+        // 使用合併後的 finalTargetWeights
         const targetValue = finalTargetWeights[name] ?? 0; 
         
         const currentValue = influences[index];
         
         // Existing lerp logic
         if (Math.abs(currentValue - targetValue) > 0.01) { 
-          const lerpFactor = Math.min(delta * 15, 1); // Adjust lerp speed as needed
+          const lerpFactor = Math.min(delta * 25, 1); // <-- 提高插值速度
           influences[index] = THREE.MathUtils.lerp(currentValue, targetValue, lerpFactor);
         } else if (currentValue !== targetValue) {
           influences[index] = targetValue;

@@ -64,42 +64,12 @@ class ModelService {
   
   // 設置WebSocket消息處理器
   private setupMessageHandlers(): void {
-    // 處理唇型同步更新
-    this.wsService.registerHandler('lipsync_update', (data) => {
-      if (data.morphTargets) {
-        this.handleLipsyncUpdate(data);
-      }
-    });
-    
     // 處理表情更新
     this.wsService.registerHandler('morph_update', (data) => {
       if (data.morphTargets) {
         this.handleMorphUpdate(data);
       }
     });
-  }
-  
-  // 處理唇型同步更新
-  public handleLipsyncUpdate(data: any): void {
-    if (!data || typeof data !== 'object') {
-      logger.warn('Received invalid lipsync data', LogCategory.WEBSOCKET);
-      return;
-    }
-    
-    // <--- 新增日誌：打印收到的完整 lipsync 數據
-    logger.debug({ 
-      msg: '[ModelService] Received lipsync update data:', 
-      details: data 
-    }, LogCategory.WEBSOCKET);
-    // --->
-    
-    // 迭代更新 Zustand store
-    Object.entries(data).forEach(([key, value]) => {
-      if (typeof value === 'number' && this.morphTargetDictionary && this.morphTargetDictionary.hasOwnProperty(key)) {
-        useStore.getState().updateMorphTarget(key, value);
-      }
-    });
-    // logger.debug(`Lipsync update applied via Zustand: ${JSON.stringify(data)}`, LogCategory.MODEL);
   }
   
   // 處理表情更新

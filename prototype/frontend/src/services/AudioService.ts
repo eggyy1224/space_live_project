@@ -11,6 +11,10 @@ class AudioService {
   private static instance: AudioService;
   private audioContext: AudioContext | null = null;
   private analyser: AnalyserNode | null = null;
+  private playbackSourceNode: MediaElementAudioSourceNode | null = null;
+  private playbackAnalyserNode: AnalyserNode | null = null;
+  private playbackAnalysisFrameId: number | null = null;
+  private playbackDataArray: Uint8Array | null = null;
   private mediaStream: MediaStream | null = null;
   private sourceNode: MediaStreamAudioSourceNode | null = null;
   private audioChunks: Blob[] = [];
@@ -191,8 +195,16 @@ class AudioService {
   // 播放音頻 Blob 或 URL
   public playAudio(audioData: Blob | string): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.stopPlayback(); 
+      this.stopPlayback(); // 確保停止之前的播放和分析
       this.initializeAudioContext();
+
+      // --- 音頻上下文檢查 ---
+      if (!this.audioContext) {
+        const errorMsg = 'AudioContext not initialized.';
+        logger.error(errorMsg, LogCategory.AUDIO);
+        return reject(new Error(errorMsg));
+      }
+      // --- 檢查結束 ---
 
       let audioUrl: string;
       if (audioData instanceof Blob) {
@@ -202,17 +214,41 @@ class AudioService {
       }
 
       this.playbackAudio = new Audio(audioUrl);
+      this.playbackAudio.crossOrigin = "anonymous"; // 允許跨域加載，如果需要的話
+
+      // --- 創建並連接 Web Audio 節點 --- 
+      try {
+        this.playbackSourceNode = this.audioContext.createMediaElementSource(this.playbackAudio);
+        this.playbackAnalyserNode = this.audioContext.createAnalyser();
+        this.playbackAnalyserNode.fftSize = 256; // 較小的 FFT size 可能足夠用於音量分析
+        this.playbackDataArray = new Uint8Array(this.playbackAnalyserNode.frequencyBinCount);
+
+        this.playbackSourceNode.connect(this.playbackAnalyserNode);
+        this.playbackAnalyserNode.connect(this.audioContext.destination); // 連接到輸出
+        logger.info('Web Audio nodes for playback created and connected.', LogCategory.AUDIO);
+      } catch (error) {
+        logger.error('Error creating or connecting Web Audio nodes for playback:', LogCategory.AUDIO, error);
+        this.cleanupPlaybackAudioNodes(); // 出錯時清理
+        return reject(error);
+      }
+      // --- 連接結束 ---
 
       const onPlay = () => {
         logger.info(`Audio playback started: ${audioUrl}`, LogCategory.AUDIO);
         useStore.getState().setSpeaking(true);
         useStore.getState().setAudioStartTime(performance.now());
+        // --- 啟動音頻分析循環 ---
+        this.startPlaybackAnalysis();
+        // --- 啟動結束 ---
       };
 
       const onEnded = () => {
         logger.info(`Audio playback finished: ${audioUrl}`, LogCategory.AUDIO);
         useStore.getState().setSpeaking(false);
         useStore.getState().setAudioStartTime(null);
+        // --- 停止音頻分析循環 ---
+        this.stopPlaybackAnalysis();
+        // --- 停止結束 ---
         this.cleanupPlayback();
         resolve();
       };
@@ -221,6 +257,9 @@ class AudioService {
         logger.error(`Error during audio playback: ${audioUrl}`, LogCategory.AUDIO, e);
         useStore.getState().setSpeaking(false);
         useStore.getState().setAudioStartTime(null);
+        // --- 停止音頻分析循環 ---
+        this.stopPlaybackAnalysis();
+        // --- 停止結束 ---
         this.cleanupPlayback();
         reject(new Error(`Playback failed: ${String(e)}`)); // Ensure e is stringified
       };
@@ -239,6 +278,9 @@ class AudioService {
       logger.info('Stopping audio playback manually.', LogCategory.AUDIO);
       this.playbackAudio.pause();
       this.playbackAudio.currentTime = 0; 
+      // --- 停止音頻分析循環 ---
+      this.stopPlaybackAnalysis();
+      // --- 停止結束 ---
       this.cleanupPlayback(); 
       useStore.getState().setSpeaking(false);
       useStore.getState().setAudioStartTime(null);
@@ -246,16 +288,89 @@ class AudioService {
   }
 
   private cleanupPlayback(): void {
-     // Simple cleanup: just nullify the reference
-     // Proper listener removal is complex without storing references
+     // 移除事件監聽器 (更健壯的清理方式)
      if (this.playbackAudio) {
-      if (this.playbackAudio.src.startsWith('blob:')) {
-        URL.revokeObjectURL(this.playbackAudio.src);
-            logger.debug('Revoked object URL.', LogCategory.AUDIO);
-      }
-      this.playbackAudio = null;
+         this.playbackAudio.removeEventListener('play', ()=>{}); // 移除匿名函數可能無效，最好存儲引用
+         this.playbackAudio.removeEventListener('ended', ()=>{});
+         this.playbackAudio.removeEventListener('error', ()=>{});
+         // 釋放 Object URL
+         if (this.playbackAudio.src.startsWith('blob:')) {
+             URL.revokeObjectURL(this.playbackAudio.src);
+             logger.debug('Revoked Object URL for audio blob.', LogCategory.AUDIO);
+         }
+         this.playbackAudio = null;
+     }
+     // --- 清理 Web Audio 節點 ---
+     this.cleanupPlaybackAudioNodes();
+     // --- 清理結束 ---
+     logger.debug('Audio playback resources cleaned up.', LogCategory.AUDIO);
+  }
+
+  // --- 新增：清理播放相關的 Web Audio 節點 ---
+  private cleanupPlaybackAudioNodes(): void {
+    this.playbackSourceNode?.disconnect();
+    this.playbackAnalyserNode?.disconnect();
+    this.playbackSourceNode = null;
+    this.playbackAnalyserNode = null;
+    this.playbackDataArray = null;
+    logger.debug('Playback Web Audio nodes disconnected and cleaned up.', LogCategory.AUDIO);
+  }
+  // --- 新增結束 ---
+
+  // --- 新增：啟動播放時的音頻分析 ---
+  private startPlaybackAnalysis(): void {
+    if (!this.playbackAnalyserNode || this.playbackAnalysisFrameId !== null) return;
+    logger.debug('Starting playback audio analysis loop.', LogCategory.AUDIO);
+    this.analysePlaybackFrame(); // 啟動第一幀
+  }
+  // --- 新增結束 ---
+
+  // --- 新增：停止播放時的音頻分析 ---
+  private stopPlaybackAnalysis(): void {
+    if (this.playbackAnalysisFrameId !== null) {
+      cancelAnimationFrame(this.playbackAnalysisFrameId);
+      this.playbackAnalysisFrameId = null;
+      // 將嘴形重置為關閉狀態
+      useStore.getState().updateMorphTarget('jawOpen', 0);
+      logger.debug('Stopped playback audio analysis loop and reset jawOpen.', LogCategory.AUDIO);
     }
   }
+  // --- 新增結束 ---
+
+  // --- 新增：處理單幀音頻分析 ---
+  private analysePlaybackFrame = (): void => {
+    if (!this.playbackAnalyserNode || !this.playbackDataArray || !useStore.getState().isSpeaking) {
+        this.stopPlaybackAnalysis(); // 如果節點丟失或不再說話，停止分析
+        return;
+    }
+
+    // 獲取音量數據（時域數據的振幅）
+    this.playbackAnalyserNode.getByteTimeDomainData(this.playbackDataArray);
+    let sumOfSquares = 0;
+    for (let i = 0; i < this.playbackDataArray.length; i++) {
+        const norm = (this.playbackDataArray[i] / 128.0) - 1.0; // 歸一化到 [-1, 1]
+        sumOfSquares += norm * norm;
+    }
+    const rms = Math.sqrt(sumOfSquares / this.playbackDataArray.length);
+
+    // 將 RMS 值映射到 jawOpen (需要調整映射函數和閾值)
+    const sensitivity = 4.0; // 靈敏度調整
+    const threshold = 0.01; // 音量閾值，低於此值視為靜音
+    let jawOpenValue = 0;
+    if (rms > threshold) {
+        jawOpenValue = Math.min(1.0, rms * sensitivity); // 映射到 0-1 範圍
+    }
+
+    // 更新 Zustand store
+    useStore.getState().updateMorphTarget('jawOpen', jawOpenValue);
+    
+    // 移除之前的調試日誌
+    // logger.debug(`[AnalyseFrame] RMS: ${rms.toFixed(3)}, jawOpen: ${jawOpenValue.toFixed(3)}`, LogCategory.AUDIO);
+
+    // 請求下一幀
+    this.playbackAnalysisFrameId = requestAnimationFrame(this.analysePlaybackFrame);
+  };
+  // --- 新增結束 ---
 
   public getIsRecording(): boolean {
     return useStore.getState().isRecording;
