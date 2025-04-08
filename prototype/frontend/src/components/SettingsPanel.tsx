@@ -403,6 +403,36 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               <span className="ml-2 px-1.5 py-0.5 text-xs bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded">測試工具</span>
             </h3>
             
+            {/* 手動控制說話狀態 */}
+            <div className="mb-2">
+               <button 
+                 onClick={() => {
+                   if (!isSpeaking) {
+                     logger.info('[SettingsPanel] 手動觸發開始說話狀態', LogCategory.ANIMATION);
+                     setSpeaking(true);
+                     setAudioStartTime(performance.now());
+                   }
+                 }}
+                 disabled={isSpeaking} // 如果正在說話，則禁用此按鈕
+                 className={`px-3 py-1.5 rounded text-white w-full ${isSpeaking ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600'}`}
+               >
+                 {isSpeaking ? '正在說話中...' : '手動開始說話 (設置 isSpeaking=true)'}
+               </button>
+               {/* 可以保留或移除手動停止按鈕，取決於您的測試需求 */} 
+               {isSpeaking && (
+                 <button 
+                   onClick={() => {
+                     setSpeaking(false);
+                     setAudioStartTime(null);
+                     logger.info('[SettingsPanel] 手動停止說話', LogCategory.ANIMATION);
+                   }}
+                   className="w-full px-2 py-1.5 mt-2 bg-red-500 hover:bg-red-600 text-white rounded text-xs"
+                 >
+                   手動停止說話
+                 </button>
+               )}
+            </div>
+            
             {/* 同時播放與情緒變化測試 */}
             <div className="space-y-2">
               <p className="text-xs text-gray-500 dark:text-gray-400">以下按鈕會同時模擬「說話狀態」和「情緒變化」，並在指定時間後自動停止:</p>
@@ -468,20 +498,6 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               <p className="text-xs text-gray-400 italic mt-2">
                 每個按鈕按一下就會：1) 設置說話狀態 2) 發送情緒軌跡 3) 計時結束後自動停止
               </p>
-              
-              {/* 添加手動停止按鈕 */}
-              {isSpeaking && (
-                <button 
-                  onClick={() => {
-                    setSpeaking(false);
-                    setAudioStartTime(null);
-                    logger.info('[SettingsPanel] 手動停止說話', LogCategory.ANIMATION);
-                  }}
-                  className="w-full px-2 py-1.5 mt-2 bg-red-500 hover:bg-red-600 text-white rounded text-xs"
-                >
-                  提前停止說話
-                </button>
-              )}
             </div>
           </div>
           {/* --- 測試工具區塊結束 --- */}
