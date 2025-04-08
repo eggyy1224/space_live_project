@@ -105,6 +105,10 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
 }) => {
   const nodeRef = useRef<HTMLDivElement>(null); // Ref for Draggable
   const morphTargetsFromStore = useStore((state) => state.morphTargets);
+  const setLastJsonMessage = useStore((state) => state.setLastJsonMessage); // 取得設置 WebSocket 訊息的函數
+  const isSpeaking = useStore((state) => state.isSpeaking); // 取得當前說話狀態
+  const setSpeaking = useStore((state) => state.setSpeaking); // 取得設置說話狀態的函數
+  const setAudioStartTime = useStore((state) => state.setAudioStartTime); // 取得設置音頻開始時間的函數
 
   // State for presets
   const [presets, setPresets] = useState<string[]>([]);
@@ -153,6 +157,89 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   }, [updateMorphTargetInfluence]);
 
   const sortedMorphTargetKeys = Object.keys(morphTargetDictionary || {}).sort();
+
+  // 模擬情緒軌跡數據
+  const mockEmotionalTrajectories = {
+    // 開心 -> 驚訝 -> 開心 (持續15秒)
+    happyToSurprisedToHappy: {
+      type: 'emotionalTrajectory',
+      payload: {
+        duration: 15.0, // 15秒長
+        keyframes: [
+          { tag: 'happy', proportion: 0.0 }, // 開始：開心
+          { tag: 'surprised', proportion: 0.5 }, // 中間：驚訝
+          { tag: 'happy', proportion: 1.0 }, // 結束：開心
+        ]
+      }
+    },
+    
+    // 悲傷 -> 生氣 -> 中性 (持續10秒)
+    sadToAngryToNeutral: {
+      type: 'emotionalTrajectory',
+      payload: {
+        duration: 10.0, // 10秒長
+        keyframes: [
+          { tag: 'sad', proportion: 0.0 }, // 開始：悲傷
+          { tag: 'angry', proportion: 0.4 }, // 40%處：生氣
+          { tag: 'neutral', proportion: 1.0 }, // 結束：中性
+        ]
+      }
+    },
+    
+    // 中性 -> 快速輪流所有情緒 (持續20秒)
+    emotionTour: {
+      type: 'emotionalTrajectory',
+      payload: {
+        duration: 20.0, // 20秒長
+        keyframes: [
+          { tag: 'neutral', proportion: 0.0 }, // 開始：中性
+          { tag: 'happy', proportion: 0.2 }, // 20%處：開心
+          { tag: 'sad', proportion: 0.4 }, // 40%處：悲傷
+          { tag: 'angry', proportion: 0.6 }, // 60%處：生氣
+          { tag: 'surprised', proportion: 0.8 }, // 80%處：驚訝
+          { tag: 'neutral', proportion: 1.0 }, // 結束：中性
+        ]
+      }
+    }
+  };
+  
+  // 發送模擬情緒軌跡數據
+  const sendMockTrajectory = useCallback((trajectoryKey: keyof typeof mockEmotionalTrajectories) => {
+    const trajectory = mockEmotionalTrajectories[trajectoryKey];
+    logger.info(`[SettingsPanel] 發送模擬情緒軌跡: ${trajectoryKey}`, LogCategory.ANIMATION);
+    
+    // 設置 lastJsonMessage，模擬接收 WebSocket 訊息
+    setLastJsonMessage(trajectory);
+    
+    // 移除自動設置說話狀態的邏輯，讓用戶必須明確使用上面的「開始說話」按鈕
+    /* 
+    if (!isSpeaking) {
+      logger.info('[SettingsPanel] 模擬開始說話狀態', LogCategory.ANIMATION);
+      setSpeaking(true);
+      setAudioStartTime(performance.now()); // 設置時間戳
+    }
+    */
+    
+    // 如果尚未開始說話，提醒用戶先點擊「開始說話」按鈕
+    if (!isSpeaking) {
+      logger.warn('[SettingsPanel] 發送了情緒軌跡，但說話狀態為 false，可能看不到完整效果', LogCategory.ANIMATION);
+    }
+  }, [setLastJsonMessage, isSpeaking]);
+  
+  // 切換說話狀態
+  const toggleSpeaking = useCallback(() => {
+    if (isSpeaking) {
+      // 如果正在說話，停止
+      logger.info('[SettingsPanel] 模擬停止說話', LogCategory.ANIMATION);
+      setSpeaking(false);
+      setAudioStartTime(null);
+    } else {
+      // 如果沒在說話，開始
+      logger.info('[SettingsPanel] 模擬開始說話', LogCategory.ANIMATION);
+      setSpeaking(true);
+      setAudioStartTime(performance.now());
+    }
+  }, [isSpeaking, setSpeaking, setAudioStartTime]);
 
   if (!isVisible) {
     return null;
@@ -308,6 +395,96 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               </button>
             </div>
           </div>
+
+          {/* --- 測試工具區塊 (只在Debug模式顯示) --- */}
+          <div className="space-y-2 border-t border-gray-200 dark:border-gray-700 pt-4">
+            <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase flex items-center">
+              <span>情緒化說話測試</span>
+              <span className="ml-2 px-1.5 py-0.5 text-xs bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded">測試工具</span>
+            </h3>
+            
+            {/* 同時播放與情緒變化測試 */}
+            <div className="space-y-2">
+              <p className="text-xs text-gray-500 dark:text-gray-400">以下按鈕會同時模擬「說話狀態」和「情緒變化」，並在指定時間後自動停止:</p>
+              <div className="grid grid-cols-1 gap-2">
+                <button 
+                  onClick={() => {
+                    // 設置說話狀態
+                    setSpeaking(true);
+                    setAudioStartTime(performance.now());
+                    // 發送情緒軌跡
+                    sendMockTrajectory('happyToSurprisedToHappy');
+                    // 15秒後自動停止說話
+                    setTimeout(() => {
+                      setSpeaking(false);
+                      setAudioStartTime(null);
+                      logger.info('[SettingsPanel] 自動停止說話 (15秒完畢)', LogCategory.ANIMATION);
+                    }, 15000);
+                  }}
+                  disabled={!isModelLoaded || isSpeaking}
+                  className="px-2 py-2 bg-gradient-to-r from-blue-400 to-cyan-500 text-white rounded hover:from-blue-500 hover:to-cyan-600 disabled:opacity-50 text-xs"
+                >
+                  1. 模擬講話 15 秒 (開心→驚訝→開心)
+                </button>
+                <button 
+                  onClick={() => {
+                    // 設置說話狀態
+                    setSpeaking(true);
+                    setAudioStartTime(performance.now());
+                    // 發送情緒軌跡
+                    sendMockTrajectory('sadToAngryToNeutral');
+                    // 10秒後自動停止說話
+                    setTimeout(() => {
+                      setSpeaking(false);
+                      setAudioStartTime(null);
+                      logger.info('[SettingsPanel] 自動停止說話 (10秒完畢)', LogCategory.ANIMATION);
+                    }, 10000);
+                  }}
+                  disabled={!isModelLoaded || isSpeaking}
+                  className="px-2 py-2 bg-gradient-to-r from-purple-400 to-pink-500 text-white rounded hover:from-purple-500 hover:to-pink-600 disabled:opacity-50 text-xs"
+                >
+                  2. 模擬講話 10 秒 (悲傷→生氣→中性)
+                </button>
+                <button 
+                  onClick={() => {
+                    // 設置說話狀態
+                    setSpeaking(true);
+                    setAudioStartTime(performance.now());
+                    // 發送情緒軌跡
+                    sendMockTrajectory('emotionTour');
+                    // 20秒後自動停止說話
+                    setTimeout(() => {
+                      setSpeaking(false);
+                      setAudioStartTime(null);
+                      logger.info('[SettingsPanel] 自動停止說話 (20秒完畢)', LogCategory.ANIMATION);
+                    }, 20000);
+                  }}
+                  disabled={!isModelLoaded || isSpeaking}
+                  className="px-2 py-2 bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded hover:from-amber-500 hover:to-orange-600 disabled:opacity-50 text-xs"
+                >
+                  3. 模擬講話 20 秒 (情緒巡迴)
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 italic mt-2">
+                每個按鈕按一下就會：1) 設置說話狀態 2) 發送情緒軌跡 3) 計時結束後自動停止
+              </p>
+              
+              {/* 添加手動停止按鈕 */}
+              {isSpeaking && (
+                <button 
+                  onClick={() => {
+                    setSpeaking(false);
+                    setAudioStartTime(null);
+                    logger.info('[SettingsPanel] 手動停止說話', LogCategory.ANIMATION);
+                  }}
+                  className="w-full px-2 py-1.5 mt-2 bg-red-500 hover:bg-red-600 text-white rounded text-xs"
+                >
+                  提前停止說話
+                </button>
+              )}
+            </div>
+          </div>
+          {/* --- 測試工具區塊結束 --- */}
         </div>
       </div>
     </Draggable>
