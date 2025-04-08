@@ -16,6 +16,11 @@ export interface AppSlice {
   isCameraFar: boolean;
   toasts: Toast[];
   isSettingsPanelVisible: boolean;
+  isLoading: boolean;
+  errorMessage: string | null;
+  currentAction: string | null;
+  userInteracted: boolean;
+  micPermission: 'prompt' | 'granted' | 'denied';
   
   // 操作
   setActiveTab: (tab: string) => void;
@@ -25,6 +30,11 @@ export interface AppSlice {
   removeToast: (id: string) => void;
   clearToasts: () => void;
   toggleSettingsPanel: () => void;
+  setLoading: (loading: boolean) => void;
+  setError: (message: string | null) => void;
+  setCurrentAction: (action: string | null) => void;
+  setUserInteracted: () => void;
+  setMicPermission: (permission: 'prompt' | 'granted' | 'denied') => void;
 }
 
 // 創建 App Slice
@@ -35,6 +45,11 @@ export const createAppSlice: StateCreator<AppSlice> = (set) => ({
   isCameraFar: true,
   toasts: [],
   isSettingsPanelVisible: false,
+  isLoading: false,
+  errorMessage: null,
+  currentAction: null,
+  userInteracted: false,
+  micPermission: 'prompt',
   
   // 操作實現
   setActiveTab: (tab) => set({ activeTab: tab }),
@@ -56,4 +71,14 @@ export const createAppSlice: StateCreator<AppSlice> = (set) => ({
   clearToasts: () => set({ toasts: [] }),
   
   toggleSettingsPanel: () => set((state) => ({ isSettingsPanelVisible: !state.isSettingsPanelVisible })),
+  
+  setLoading: (loading) => set({ isLoading: loading }),
+  
+  setError: (message) => set({ errorMessage: message }),
+  
+  setCurrentAction: (action) => set({ currentAction: action }),
+  
+  setUserInteracted: () => set({ userInteracted: true }),
+  
+  setMicPermission: (permission) => set({ micPermission: permission }),
 }); 
