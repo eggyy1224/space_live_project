@@ -132,6 +132,7 @@ class AudioService {
     this.animationFrameId = requestAnimationFrame(this.updateMouthShape.bind(this));
     logger.debug('Started mouth animation loop (for analysis only).', LogCategory.AUDIO);
     
+    // --- 移除已註釋掉的 fallback 邏輯 ---
     // 移除多餘的 setInterval fallback
     /*
     this.mouthAnimationIntervalId = window.setInterval(() => {
@@ -156,7 +157,7 @@ class AudioService {
         }
     }, 250); // 每 250ms 更新一次 fallback
     */
-
+    // --- 移除結束 ---
   }
 
   private stopMouthAnimation(): void {
@@ -164,6 +165,7 @@ class AudioService {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
     }
+    // --- 移除已註釋掉的 fallback 邏輯 ---
     // 不再需要清除 interval ID
     /*
     if (this.mouthAnimationIntervalId) {
@@ -171,6 +173,7 @@ class AudioService {
       this.mouthAnimationIntervalId = null;
     }
     */
+    // --- 移除結束 ---
     // 重置嘴型到關閉狀態
     useStore.getState().updateMorphTarget('jawOpen', 0);
     logger.debug('Stopped mouth animation loop (analysis only).', LogCategory.AUDIO);
