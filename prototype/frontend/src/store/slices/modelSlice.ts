@@ -1,5 +1,8 @@
 import { StateCreator } from 'zustand';
 import * as THREE from 'three';
+// --- 引入模型設定 ---
+import { DEFAULT_MODEL_URL } from '../../config/modelConfig'; // 注意路徑可能需要調整
+// --- 引入結束 ---
 
 // ModelSlice 狀態與操作定義
 export interface ModelSlice {
@@ -42,7 +45,7 @@ export interface ModelSlice {
 // 創建 Model Slice
 export const createModelSlice: StateCreator<ModelSlice> = (set) => ({
   // 初始狀態
-  modelUrl: '/models/armature001_model.glb',
+  modelUrl: DEFAULT_MODEL_URL,
   modelScale: [1, 1, 1],
   modelRotation: [0, 0, 0],
   modelPosition: [0, -1, 0],

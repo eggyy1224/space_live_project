@@ -7,12 +7,15 @@ import { Mesh } from 'three'; // Import Mesh type
 import ModelService from '../services/ModelService'; // <--- 引入 ModelService
 import { useStore } from '../store'; // 修正導入路徑
 import { useEmotionalSpeaking } from '../hooks/useEmotionalSpeaking'; // <-- 導入新的 Hook
+// --- 引入模型設定 ---
+import { EXTERNAL_ANIMATION_PATHS } from '../config/modelConfig';
+// --- 引入結束 ---
 
-// --- 定義外部動畫路徑 ---
-const EXTERNAL_ANIMATION_PATHS = [
-  '/animations/BaseballHit_animation.glb',
-  '/animations/BodyBlock_animation.glb'
-];
+// --- 定義外部動畫路徑 (移至 modelConfig.ts) ---
+// const EXTERNAL_ANIMATION_PATHS = [
+//   \'/animations/BaseballHit_animation.glb\',
+//   \'/animations/BodyBlock_animation.glb\'
+// ];
 // --- 定義結束 ---
 
 // --- 新增：定義口型相關的 Morph Target Keys ---
@@ -50,7 +53,7 @@ export const Model: React.FC<ModelProps> = ({
 }) => {
   const group = useRef<THREE.Group>(null);
   const meshRef = useRef<MeshWithMorphs | null>(null);
-  const modelService = ModelService.getInstance(); // <-- 將初始化移到前面
+  const modelService = ModelService.getInstance();
   
   // --- 預加載外部動畫 ---
   useEffect(() => {

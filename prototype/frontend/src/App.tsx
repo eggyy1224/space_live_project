@@ -30,6 +30,10 @@ import { useStore } from './store'
 import logger, { LogCategory } from './utils/LogManager'
 import { toast } from 'react-hot-toast'
 
+// --- 引入模型設定 ---
+import { AVAILABLE_MODELS } from './config/modelConfig';
+// --- 引入結束 ---
+
 function App() {
   // === 添加 useWebSocket 調用 ===
   useWebSocket(); // 調用 hook 以建立 WebSocket 連接
@@ -50,7 +54,7 @@ function App() {
   // 使用音頻服務
   const { 
     isRecording, 
-    isPlaying: isSpeaking,
+    isSpeaking,
     isProcessing: audioProcessing,
     micPermission, 
     startRecording, 
@@ -171,20 +175,21 @@ function App() {
     setShowModelAnalyzer(prev => !prev);
   }, []);
   
-  // 可用模型列表 (移到 App 頂層，以便傳遞給 AppUI)
-  const availableModels = [
-    '/models/mixamowomanwithface.glb',
-    '/models/headonly.glb',
-    '/models/armature001_model.glb'
-  ];
+  // 可用模型列表 (從設定檔導入)
+  // const availableModels = [
+  //   '/models/mixamowomanwithface.glb',
+  //   '/models/headonly.glb',
+  //   '/models/Armature_000A.glb',
+  //   '/models/Armature_000B.glb'
+  // ];
 
   // 切換模型 (需要 useCallback 因為 handleModelSwitch 依賴 modelUrl)
   const handleModelSwitch = useCallback(() => {
-    const models = availableModels;
+    const models = AVAILABLE_MODELS; // <-- 使用導入的常數
     const currentIndex = models.findIndex(model => modelUrl.includes(model));
     const nextIndex = (currentIndex + 1) % models.length;
     switchModel(models[nextIndex]);
-  }, [modelUrl, switchModel, availableModels]);
+  }, [modelUrl, switchModel, AVAILABLE_MODELS]);
 
   // 處理發送消息 (Enter 鍵或點擊按鈕)
   const handleSendMessage = useCallback(() => {
@@ -229,7 +234,7 @@ function App() {
         {debugMode && <ModelDebugger url={modelUrl} />}
         
         {/* 模型分析工具 (保持在 App 層) */}
-        {showModelAnalyzer && <ModelAnalyzerTool availableModels={availableModels} />}
+        {showModelAnalyzer && <ModelAnalyzerTool availableModels={AVAILABLE_MODELS} />}
 
         {/* 渲染新的浮動聊天視窗 */}
         <FloatingChatWindow 

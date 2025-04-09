@@ -5,6 +5,7 @@ import WebSocketService from './WebSocketService';
 import logger, { LogCategory } from '../utils/LogManager';
 import { useStore } from '../store';
 import { getEmotionBaseWeights } from '../config/emotionMappings';
+import { DEFAULT_MODEL_URL } from '../config/modelConfig';
 
 // 後端API URL
 const API_BASE_URL = `http://${window.location.hostname}:8000`;
@@ -399,7 +400,7 @@ class ModelService {
   public getModelUrl(): string {
     // return useStore.getState().modelUrl; // 不再從 store 讀取初始值
     // 直接返回新的預設模型路徑
-    return '/models/armature001_model.glb'; 
+    return DEFAULT_MODEL_URL; 
   }
 
   // 切換模型 (使用 Zustand)
