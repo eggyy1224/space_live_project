@@ -46,7 +46,7 @@ interface SettingsPanelProps {
   // Model Control Props (migrated from ControlPanel)
   isModelLoaded: boolean;
   modelScale: number;
-  currentAnimation: string | null;
+  currentAnimation?: string | null;
   availableAnimations: string[];
   morphTargetDictionary: Record<string, number> | null;
   selectedMorphTarget: string | null; // This state is now managed in App.tsx
@@ -92,7 +92,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   scaleModel,
   resetModel,
   toggleBackground,
-  selectAnimation,
+  // selectAnimation, // 移除
   applyPresetExpression,
   showSpaceBackground,
   // Emotion State Props
@@ -101,10 +101,10 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   // Debug Control Props
   debugMode,
   showModelAnalyzer,
-  modelUrl,
+  modelUrl, // 保持，現在是 headModelUrl
   toggleDebugMode,
   toggleModelAnalyzer,
-  handleModelSwitch,
+  // handleModelSwitch, // 移除
 }) => {
   const nodeRef = useRef<HTMLDivElement>(null); // Ref for Draggable
   const morphTargetsFromStore = useStore((state) => state.morphTargets);
@@ -223,7 +223,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
     return null;
   }
 
-  // Helper function for button classes (updated to handle active state)
+  // Helper function for button classes (保持不變，但動畫按鈕會禁用)
   const buttonClasses = (active = false, disabled = false) => 
     `px-2 py-1 text-xs rounded ${active ? 'bg-blue-600 text-white ring-2 ring-blue-400' : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500'} ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`;
 
@@ -260,15 +260,15 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
           <div className="space-y-2">
             <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">模型變換</h3>
             <div className="grid grid-cols-3 gap-2">
-              <button onClick={() => rotateModel('left')} disabled={!isModelLoaded} className={controlButtonClasses(!isModelLoaded)}>左旋</button>
-              <button onClick={() => rotateModel('right')} disabled={!isModelLoaded} className={controlButtonClasses(!isModelLoaded)}>右旋</button>
-              <button onClick={() => scaleModel(0.1)} disabled={!isModelLoaded} className={controlButtonClasses(!isModelLoaded)}>放大</button>
-              <button onClick={() => scaleModel(-0.1)} disabled={!isModelLoaded} className={controlButtonClasses(!isModelLoaded)}>縮小</button>
-              <button onClick={resetModel} disabled={!isModelLoaded} className={controlButtonClasses(!isModelLoaded)}>重置</button>
-              <button onClick={toggleBackground} className={controlButtonClasses()}>{showSpaceBackground ? '隱藏背景' : '顯示背景'}</button>
+              <button onClick={() => rotateModel('left')} disabled={!isModelLoaded} className={buttonClasses(false, !isModelLoaded)}>左旋</button>
+              <button onClick={() => rotateModel('right')} disabled={!isModelLoaded} className={buttonClasses(false, !isModelLoaded)}>右旋</button>
+              <button onClick={() => scaleModel(1.1)} disabled={!isModelLoaded} className={buttonClasses(false, !isModelLoaded)}>放大</button>
+              <button onClick={() => scaleModel(0.9)} disabled={!isModelLoaded} className={buttonClasses(false, !isModelLoaded)}>縮小</button>
+              <button onClick={resetModel} disabled={!isModelLoaded} className={buttonClasses(false, !isModelLoaded)}>重置</button>
+              <button onClick={toggleBackground} className={buttonClasses(showSpaceBackground)}> {showSpaceBackground ? '顯示背景' : '隱藏背景'} </button>
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400">
-              縮放: {modelScale.toFixed(2)} | 狀態: {isModelLoaded ? '已載入' : '載入中...'}
+              縮放: {typeof modelScale === 'number' ? modelScale.toFixed(2) : 'N/A'} | 狀態: {isModelLoaded ? '已載入' : '載入中...'}
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400">
                當前情緒: {currentEmotion} ({(emotionConfidence * 100).toFixed(1)}%)
@@ -276,30 +276,29 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
           </div>
 
           {/* --- Animation Controls --- */}  
-          {availableAnimations && availableAnimations.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">動畫控制</h3>
-              <div className="flex flex-wrap gap-1.5">
-                {availableAnimations.map((anim) => (
-                  <button
-                    key={anim}
-                    onClick={() => selectAnimation(anim)}
-                    className={buttonClasses(currentAnimation === anim, !isModelLoaded)}
-                    disabled={!isModelLoaded}
-                  >
-                    {anim}
-                  </button>
-                ))}
-                <button 
-                  onClick={() => selectAnimation('')} 
-                  disabled={!currentAnimation || !isModelLoaded} 
-                  className={buttonClasses(false, !currentAnimation || !isModelLoaded)}
+          <div className="space-y-2">
+            <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">動畫控制 (已禁用)</h3>
+            <div className="flex flex-wrap gap-1.5">
+              {availableAnimations.map((anim) => (
+                <button
+                  key={anim}
+                  onClick={() => {}} // 空操作
+                  disabled={true} // 強制禁用
+                  className={buttonClasses(false, true)} // 禁用樣式
+                  title={anim}
                 >
-                  停止
+                  {anim}
                 </button>
-              </div>
+              ))}
+              <button 
+                onClick={() => {}} // 空操作
+                disabled={true} // 強制禁用
+                className={controlButtonClasses(true)} // 禁用樣式
+              >
+                停止
+              </button>
             </div>
-          )}
+          </div>
 
           {/* --- Preset Expressions (Collapsible) --- */}
           <div className="space-y-2">
@@ -378,22 +377,33 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={toggleDebugMode}
-                className={`px-3 py-1.5 rounded text-xs text-white shadow-md transition-colors duration-200 ${debugMode ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'}`}
+                className={buttonClasses(debugMode)}
               >
-                {debugMode ? '關閉調試' : '開啟調試'}
+                {debugMode ? '關閉除錯' : '開啟除錯'}
               </button>
               <button
                 onClick={toggleModelAnalyzer}
-                className={`px-3 py-1.5 rounded text-xs text-white shadow-md transition-colors duration-200 ${showModelAnalyzer ? 'bg-red-500 hover:bg-red-600' : 'bg-purple-500 hover:bg-purple-600'}`}
+                className={buttonClasses(showModelAnalyzer)}
               >
-                {showModelAnalyzer ? '關閉分析' : '模型分析'}
+                模型分析
               </button>
-              <button
-                onClick={handleModelSwitch}
-                className="px-3 py-1.5 rounded text-xs text-white bg-orange-500 hover:bg-orange-600 shadow-md transition-colors duration-200 truncate col-span-2" // Span 2 columns
-                title={`切換模型: ${modelUrl.split('/').pop()?.replace('.glb', '')}`}
+              {/* 移除模型切換按鈕 */}
+              {/* 
+              <button 
+                onClick={handleModelSwitch} 
+                disabled // 暫時禁用
+                className={controlButtonClasses(true)}
               >
                 切換模型: {modelUrl.split('/').pop()?.replace('.glb', '')}
+              </button>
+              */}
+               <button 
+                onClick={() => logger.warn('Model switching is temporarily disabled.', LogCategory.GENERAL)}
+                disabled
+                className={controlButtonClasses(true)}
+                title="模型切換功能暫時禁用"
+              >
+                切換模型 (已禁用)
               </button>
             </div>
           </div>
@@ -408,17 +418,10 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
             {/* 手動控制說話狀態 */}
             <div className="mb-2">
                <button 
-                 onClick={() => {
-                   if (!isSpeaking) {
-                     logger.info('[SettingsPanel] 手動觸發開始說話狀態', LogCategory.ANIMATION);
-                     setSpeaking(true);
-                     setAudioStartTime(performance.now());
-                   }
-                 }}
-                 disabled={isSpeaking} // 如果正在說話，則禁用此按鈕
-                 className={`px-3 py-1.5 rounded text-white w-full ${isSpeaking ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600'}`}
+                 onClick={toggleSpeaking} 
+                 className={controlButtonClasses()}
                >
-                 {isSpeaking ? '正在說話中...' : '手動開始說話 (設置 isSpeaking=true)'}
+                 {isSpeaking ? '手動停止說話 (設置 isSpeaking=false)' : '手動開始說話 (設置 isSpeaking=true)'}
                </button>
                {/* 可以保留或移除手動停止按鈕，取決於您的測試需求 */} 
                {isSpeaking && (
@@ -434,6 +437,11 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                  </button>
                )}
             </div>
+            
+            {/* 顯示當前 isSpeaking 狀態 */}
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              目前 isSpeaking 狀態: {isSpeaking ? 'true' : 'false'}
+            </p>
             
             {/* 同時播放與情緒變化測試 */}
             <div className="space-y-2">

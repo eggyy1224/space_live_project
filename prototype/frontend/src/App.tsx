@@ -15,7 +15,7 @@ import SettingsPanel from './components/SettingsPanel'
 import { 
   useWebSocket, 
   useAudioService, 
-  useModelService, 
+  useHeadService,
   useChatService 
 } from './services'
 
@@ -31,7 +31,7 @@ import logger, { LogCategory } from './utils/LogManager'
 import { toast } from 'react-hot-toast'
 
 // --- 引入模型設定 ---
-import { AVAILABLE_MODELS } from './config/modelConfig';
+// import { AVAILABLE_MODELS } from './config/modelConfig';
 // --- 引入結束 ---
 
 function App() {
@@ -62,16 +62,14 @@ function App() {
     playAudio
   } = useAudioService();
   
-  // 使用模型服務
+  // --- 使用頭部服務 (替換 useModelService) ---
   const {
-    modelLoaded,
-    modelUrl,
+    headModelLoaded,
+    headModelUrl,
     modelScale,
     modelRotation,
     modelPosition,
     showSpaceBackground,
-    availableAnimations,
-    currentAnimation,
     morphTargets,
     morphTargetDictionary,
     setMorphTargetData,
@@ -79,12 +77,12 @@ function App() {
     scaleModel,
     resetModel,
     toggleBackground,
-    selectAnimation,
     updateMorphTargetInfluence,
     resetAllMorphTargets,
     applyPresetExpression,
-    switchModel
-  } = useModelService();
+    switchHeadModel
+  } = useHeadService();
+  // --- 結束 --- 
   
   // 使用聊天服務
   const {
@@ -175,22 +173,6 @@ function App() {
     setShowModelAnalyzer(prev => !prev);
   }, []);
   
-  // 可用模型列表 (從設定檔導入)
-  // const availableModels = [
-  //   '/models/mixamowomanwithface.glb',
-  //   '/models/headonly.glb',
-  //   '/models/Armature_000A.glb',
-  //   '/models/Armature_000B.glb'
-  // ];
-
-  // 切換模型 (需要 useCallback 因為 handleModelSwitch 依賴 modelUrl)
-  const handleModelSwitch = useCallback(() => {
-    const models = AVAILABLE_MODELS; // <-- 使用導入的常數
-    const currentIndex = models.findIndex(model => modelUrl.includes(model));
-    const nextIndex = (currentIndex + 1) % models.length;
-    switchModel(models[nextIndex]);
-  }, [modelUrl, switchModel, AVAILABLE_MODELS]);
-
   // 處理發送消息 (Enter 鍵或點擊按鈕)
   const handleSendMessage = useCallback(() => {
     if (userInput.trim() && wsConnected) { // 確保已連接才發送
@@ -220,21 +202,19 @@ function App() {
     <ErrorBoundary>
       <div className="app-container">
         <SceneContainer 
-          modelUrl={modelUrl}
+          headModelUrl={headModelUrl}
           modelScale={modelScale[0] || 1.0}
           modelRotation={modelRotation}
           modelPosition={modelPosition}
-          currentAnimation={currentAnimation}
           showSpaceBackground={showSpaceBackground}
           morphTargetDictionary={morphTargetDictionary}
-          setMorphTargetData={setMorphTargetData}
         />
         
         {/* 調試面板 (保持在 App 層) */}
-        {debugMode && <ModelDebugger url={modelUrl} />}
+        {debugMode && <ModelDebugger url={headModelUrl} />}
         
         {/* 模型分析工具 (保持在 App 層) */}
-        {showModelAnalyzer && <ModelAnalyzerTool availableModels={AVAILABLE_MODELS} />}
+        {showModelAnalyzer && <div>模型分析工具 (模型列表待定)</div>}
 
         {/* 渲染新的浮動聊天視窗 */}
         <FloatingChatWindow 
@@ -258,10 +238,9 @@ function App() {
           isVisible={isSettingsPanelVisible}
           onClose={toggleSettingsPanel}
           // Pass model control props
-          isModelLoaded={modelLoaded}
+          isModelLoaded={headModelLoaded}
           modelScale={modelScale[0] || 1.0}
-          currentAnimation={currentAnimation}
-          availableAnimations={availableAnimations}
+          availableAnimations={[]}
           morphTargetDictionary={morphTargetDictionary}
           selectedMorphTarget={selectedMorphTarget}
           setSelectedMorphTarget={setSelectedMorphTarget}
@@ -271,7 +250,7 @@ function App() {
           scaleModel={scaleModel}
           resetModel={resetModel}
           toggleBackground={toggleBackground}
-          selectAnimation={selectAnimation}
+          selectAnimation={() => {}}
           applyPresetExpression={applyPresetExpression}
           showSpaceBackground={showSpaceBackground}
           // Pass emotion state for display (optional, but was in old panel)
@@ -280,28 +259,18 @@ function App() {
           // Pass Debug Control Props
           debugMode={debugMode}                 // Pass debugMode state
           showModelAnalyzer={showModelAnalyzer} // Pass modelAnalyzer state
-          modelUrl={modelUrl}                   // Pass modelUrl for display
+          modelUrl={headModelUrl}                   // Pass modelUrl for display
           toggleDebugMode={toggleDebugMode}       // Pass toggle function
           toggleModelAnalyzer={toggleModelAnalyzer} // Pass toggle function
-          handleModelSwitch={handleModelSwitch}   // Pass switch function
+          handleModelSwitch={() => { logger.warn('Model switching is temporarily disabled.', LogCategory.GENERAL); }} // 修改日誌類別
         />
         {/* <--- 結束 ---> */}
         
-        {/* 渲染 AppUI 組件，傳遞所有需要的 props */}
-        <AppUI
-          // WebSocket 連接狀態
-          wsConnected={wsConnected}
-          // 音頻控制相關 props (部分傳遞給 FloatingChatWindow)
-          // isRecording={isRecording} // No longer needed here
-          // isSpeaking={isSpeaking} // No longer needed here
-          // audioProcessing={audioProcessing} // No longer needed here
-          // micPermission={micPermission} // No longer needed here
-          // playAudio={playAudio} // If not needed, remove later
-          
-          // 傳遞 toggleChatWindow 給 AppUI 以便添加觸發按鈕
-          toggleChatWindow={toggleChatWindow}
-          // 傳遞 toggleSettingsPanel 給 AppUI 以便添加觸發按鈕
-          toggleSettingsPanel={toggleSettingsPanel}
+        {/* 渲染 AppUI (只傳遞必要 props) */}
+        <AppUI 
+          wsConnected={wsConnected} // <-- 從 Zustand 讀取
+          toggleChatWindow={toggleChatWindow} // <-- 從 Zustand action
+          toggleSettingsPanel={toggleSettingsPanel} // <-- 從 Zustand action
         />
         
         <ToastContainer />

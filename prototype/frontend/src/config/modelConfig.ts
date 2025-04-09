@@ -3,26 +3,35 @@
  */
 
 /**
- * The default model to load when the application starts.
+ * The URL for the head model.
  */
-export const DEFAULT_MODEL_URL = '/models/armature001_model.glb';
+export const HEAD_MODEL_URL = '/models/headonly.glb';
 
 /**
- * List of model URLs available for switching via the UI.
- * Ensure DEFAULT_MODEL_URL is included if it should be switchable.
+ * The URL for the body model.
  */
-export const AVAILABLE_MODELS: string[] = [
-  DEFAULT_MODEL_URL, // Add the default model here
-  '/models/mixamowomanwithface.glb',
-  '/models/headonly.glb',
-  '/models/Armature_000A.glb',
-  '/models/Armature_000B.glb'
-  // Add other switchable models here
-];
+export const BODY_MODEL_URL = '/models/armature001_model.glb';
+
+/**
+ * @deprecated The concept of a single default model is deprecated in favor of separate head/body.
+ */
+// export const DEFAULT_MODEL_URL = '/models/armature001_model.glb';
+
+/**
+ * @deprecated Model switching logic needs redesign for separate head/body.
+ */
+// export const AVAILABLE_MODELS: string[] = [
+//   DEFAULT_MODEL_URL, // Add the default model here
+//   '/models/mixamowomanwithface.glb',
+//   '/models/headonly.glb',
+//   '/models/Armature_000A.glb',
+//   '/models/Armature_000B.glb'
+//   // Add other switchable models here
+// ];
 
 /**
  * List of external animation file paths relative to the public directory.
- * These animations will be loaded and merged with the model's embedded animations.
+ * These will be used by the body model.
  */
 export const EXTERNAL_ANIMATION_PATHS: string[] = [
   '/animations/BaseballHit_animation.glb',

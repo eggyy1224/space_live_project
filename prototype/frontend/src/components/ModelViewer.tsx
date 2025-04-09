@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Stars, useProgress, Environment, Stats } from '@react-three/drei';
 import * as THREE from 'three';
-import { Model } from './Model';
+import { Model } from './HeadModel';
 
 // 加載進度組件
 function LoadingIndicator() {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import ModelService from './ModelService';
+import ModelService from './HeadService';
 import logger, { LogCategory } from '../utils/LogManager';
 import { useStore } from '../store';
 
@@ -350,9 +350,10 @@ class AudioService {
     if (this.playbackAnalysisFrameId !== null) {
       cancelAnimationFrame(this.playbackAnalysisFrameId);
       this.playbackAnalysisFrameId = null;
-      // 將嘴形重置為關閉狀態
-      useStore.getState().updateMorphTarget('jawOpen', 0);
-      logger.debug('Stopped playback audio analysis loop and reset jawOpen.', LogCategory.AUDIO);
+      // 將嘴形重置為關閉狀態 (使用新的 Action)
+      // useStore.getState().updateMorphTarget('jawOpen', 0);
+      useStore.getState().setAudioLipsyncTarget('jawOpen', 0); // <-- 使用新 Action
+      logger.debug('Stopped playback audio analysis loop and reset jawOpen via setAudioLipsyncTarget.', LogCategory.AUDIO);
     }
   }
   // --- 新增結束 ---
@@ -381,8 +382,9 @@ class AudioService {
         jawOpenValue = Math.min(1.0, rms * sensitivity); // 映射到 0-1 範圍
     }
 
-    // 更新 Zustand store
-    useStore.getState().updateMorphTarget('jawOpen', jawOpenValue);
+    // 更新 Zustand store (使用新的 Action)
+    // useStore.getState().updateMorphTarget('jawOpen', jawOpenValue);
+    useStore.getState().setAudioLipsyncTarget('jawOpen', jawOpenValue); // <-- 使用新 Action
     
     // 移除之前的調試日誌
     // logger.debug(`[AnalyseFrame] RMS: ${rms.toFixed(3)}, jawOpen: ${jawOpenValue.toFixed(3)}`, LogCategory.AUDIO);
