@@ -4,7 +4,7 @@ import { useGLTF } from '@react-three/drei';
 import WebSocketService from './WebSocketService';
 import logger, { LogCategory } from '../utils/LogManager';
 import { useStore } from '../store';
-import { getPresetExpression } from './api';
+import { getEmotionBaseWeights } from '../config/emotionMappings';
 
 // 後端API URL
 const API_BASE_URL = `http://${window.location.hostname}:8000`;
@@ -355,31 +355,24 @@ class ModelService {
     this.setCurrentAnimation(animation);
   }
 
-  // 應用預設表情
+  // 應用預設表情 (從前端映射讀取)
   public async applyPresetExpression(expression: string): Promise<boolean> {
-    logger.info(`應用表情預設: ${expression}`, LogCategory.MODEL);
+    logger.info(`應用表情預設 (前端): ${expression}`, LogCategory.MODEL);
     try {
-      const presetData = await getPresetExpression(expression);
-      // --- 確保 presetData.morphTargets 是 Record<string, number> --- 
-      if (presetData && presetData.morphTargets && typeof presetData.morphTargets === 'object') {
-        // 在處理前打印從 API 收到的數據
-        console.log('[ModelService] Received preset data:', JSON.stringify(presetData.morphTargets)); 
+      // Get weights directly from frontend mappings
+      const targetsToApply = getEmotionBaseWeights(expression); 
+      
+      // Check if weights were found (getEmotionBaseWeights returns neutral if not found)
+      if (targetsToApply) { 
+        console.log(`[ModelService] Applying preset from frontend mapping: ${expression}`, JSON.stringify(targetsToApply)); 
         
-        // 顯式轉換/斷言類型 (假設 API 返回的是正確的結構)
-        const targetsToApply: Record<string, number> = presetData.morphTargets as Record<string, number>;
-
-        // 檢查轉換後的類型是否符合預期 (可選，用於調試)
-        if (Object.values(targetsToApply).some(val => typeof val !== 'number')) {
-           logger.error('Preset data morphTargets contains non-number values after type assertion.', LogCategory.MODEL, targetsToApply);
-           return false; // 如果類型仍不對，則失敗
-        }
-
         // 直接設置 Zustand 的 morphTargets 狀態
         useStore.getState().setMorphTargets(targetsToApply);
-        logger.debug(`Applied preset expression '${expression}' directly to Zustand.`, LogCategory.MODEL);
+        logger.debug(`Applied preset expression '${expression}' directly to Zustand from frontend mapping.`, LogCategory.MODEL);
         return true;
       } else {
-        logger.error(`無法獲取、解析或類型不正確的預設表情數據: ${expression}`, LogCategory.MODEL, presetData);
+        // This case should technically not happen if getEmotionBaseWeights falls back to neutral
+        logger.error(`無法從前端映射獲取預設表情數據: ${expression}`, LogCategory.MODEL);
         return false;
       }
     } catch (error) {

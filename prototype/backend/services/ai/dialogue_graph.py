@@ -34,8 +34,17 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 # --- 新增 Keyframe 相關定義 ---
 
-# 允許的情緒標籤列表 (來自 TODO 文件)
-ALLOWED_EMOTION_TAGS = ["neutral", "happy", "sad", "angry", "surprised", "fearful", "disgusted", "thinking", "listening"]
+# 允許的情緒標籤列表 (與前端 emotionMappings.ts 同步)
+ALLOWED_EMOTION_TAGS = [
+    "neutral", "listening", "thinking", "happy", "joyful", "content", "amused", 
+    "excited", "interested", "affectionate", "proud", "relieved", "grateful", 
+    "hopeful", "serene", "playful", "triumphant", "sad", "gloomy", "disappointed", 
+    "worried", "angry", "irritated", "frustrated", "fearful", "nervous", 
+    "disgusted", "contemptuous", "pain", "embarrassed", "jealous", "regretful", 
+    "guilty", "ashamed", "despairing", "spiteful", "surprised", "confused", 
+    "skeptical", "bored", "sleepy", "scheming", "determined", "impatient", 
+    "shy", "bashful", "smug", "awe", "doubtful"
+]
 
 # 用於第二次 LLM 調用的 JSON Schema (期望 LLM 只返回 keyframes 列表)
 keyframes_schema = {

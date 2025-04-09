@@ -5,7 +5,6 @@ from starlette.responses import FileResponse
 from .base import create_app
 from .endpoints import websocket
 from .endpoints import speech
-from .endpoints import expressions
 from .endpoints import health
 from .middleware.cors import setup_cors
 import os
@@ -35,7 +34,6 @@ def init_app() -> FastAPI:
     
     # 註冊常規API路由
     app.include_router(speech.router, prefix="/api", tags=["speech"])
-    app.include_router(expressions.router, prefix="/api", tags=["expressions"])
     app.include_router(health.router, prefix="/api", tags=["system"])
     
     # 創建音頻目錄（如果不存在）

@@ -2,7 +2,11 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api import init_app
-from utils.logger import setup_logging
+from api.endpoints import health, speech, websocket
+from core.config import settings
+from utils.logger import setup_logging, logger
+from fastapi.staticfiles import StaticFiles
+import os
 
 # 設定日誌
 logger = setup_logging()
@@ -24,6 +28,12 @@ app.add_middleware(
     allow_headers=["*"], # 允許所有 HTTP 標頭
 )
 # --- CORS 配置結束 ---
+
+# 包含 API 路由
+app.include_router(health.router, prefix="/api", tags=["Health"])
+app.include_router(speech.router, prefix="/api", tags=["Speech"])
+
+# ... (Static files and startup event) ...
 
 if __name__ == "__main__":
     # 啟動服務器
