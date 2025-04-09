@@ -141,7 +141,7 @@ function App() {
           toast.error(`語音處理失敗: ${result.error || '未知錯誤'}`); 
         } else {
           logger.warn('[App] Audio processing returned unexpected result or no audio.', LogCategory.GENERAL);
-          toast.warn('無法處理您的語音，請再試一次。');
+          toast('無法處理您的語音，請再試一次。');
         }
       } catch (error) {
         logger.error('[App] Audio processing API call error:', LogCategory.GENERAL, error);

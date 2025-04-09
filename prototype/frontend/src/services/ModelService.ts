@@ -397,7 +397,9 @@ class ModelService {
 
   // 獲取模型URL (使用 Zustand)
   public getModelUrl(): string {
-    return useStore.getState().modelUrl;
+    // return useStore.getState().modelUrl; // 不再從 store 讀取初始值
+    // 直接返回新的預設模型路徑
+    return '/models/armature001_model.glb'; 
   }
 
   // 切換模型 (使用 Zustand)

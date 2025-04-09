@@ -42,7 +42,7 @@ export interface ModelSlice {
 // 創建 Model Slice
 export const createModelSlice: StateCreator<ModelSlice> = (set) => ({
   // 初始狀態
-  modelUrl: '/models/headonly.glb',
+  modelUrl: '/models/armature001_model.glb',
   modelScale: [1, 1, 1],
   modelRotation: [0, 0, 0],
   modelPosition: [0, -1, 0],

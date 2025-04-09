@@ -8,6 +8,13 @@ import ModelService from '../services/ModelService'; // <--- 引入 ModelService
 import { useStore } from '../store'; // 修正導入路徑
 import { useEmotionalSpeaking } from '../hooks/useEmotionalSpeaking'; // <-- 導入新的 Hook
 
+// --- 定義外部動畫路徑 ---
+const EXTERNAL_ANIMATION_PATHS = [
+  '/animations/BaseballHit_animation.glb',
+  '/animations/BodyBlock_animation.glb'
+];
+// --- 定義結束 ---
+
 // --- 新增：定義口型相關的 Morph Target Keys ---
 const MOUTH_MORPH_TARGET_KEYS = new Set([
   'jawForward', 'jawLeft', 'jawOpen', 'jawRight',
@@ -43,10 +50,49 @@ export const Model: React.FC<ModelProps> = ({
 }) => {
   const group = useRef<THREE.Group>(null);
   const meshRef = useRef<MeshWithMorphs | null>(null);
-  const { scene, animations } = useGLTF(url);
-  const { actions, mixer } = useAnimations(animations, group);
-  const modelService = ModelService.getInstance();
+  const modelService = ModelService.getInstance(); // <-- 將初始化移到前面
   
+  // --- 預加載外部動畫 ---
+  useEffect(() => {
+    EXTERNAL_ANIMATION_PATHS.forEach(path => useGLTF.preload(path));
+  }, []);
+  // --- 預加載結束 ---
+
+  // --- 加載主模型和外部動畫 ---
+  const { scene, animations: embeddedAnimations } = useGLTF(url);
+  // 加載所有外部動畫
+  const externalAnimationsData = EXTERNAL_ANIMATION_PATHS.map(path => useGLTF(path));
+
+  // 提取並合併所有動畫
+  const combinedAnimations = useRef<THREE.AnimationClip[]>([]);
+  useEffect(() => {
+    let allClips = [...embeddedAnimations];
+    externalAnimationsData.forEach((data, index) => {
+      if (data && data.animations) {
+        // 可以選擇性地為外部動畫名稱添加前綴以避免衝突
+        const prefix = EXTERNAL_ANIMATION_PATHS[index].split('/').pop()?.replace('_animation.glb', '') || `ext_${index}`;
+        const processedClips = data.animations.map(clip => {
+            const newClip = clip.clone(); // 克隆以避免修改原始緩存
+            newClip.name = `${prefix}|${clip.name}`; // 添加前綴到名稱
+            return newClip;
+        });
+        allClips = allClips.concat(processedClips);
+        logger.debug(`[Model] Loaded external animations from ${EXTERNAL_ANIMATION_PATHS[index]} with prefix ${prefix}`, LogCategory.ANIMATION);
+      }
+    });
+    combinedAnimations.current = allClips;
+    // Note: useAnimations 會在下一次渲染時使用更新後的 combinedAnimations.current
+    // 但為了確保 ModelService 獲取最新的列表，我們在此處直接觸發更新
+    const animationNames = allClips.map(clip => clip.name);
+    modelService.setAvailableAnimations(animationNames);
+    logger.info({ msg: 'Model: Combined and sent available animations', details: animationNames }, LogCategory.MODEL);
+
+  }, [embeddedAnimations, externalAnimationsData, modelService]); // 依賴項確保在數據加載後執行
+
+  // 使用合併後的動畫列表初始化 useAnimations
+  const { actions, mixer } = useAnimations(combinedAnimations.current, group);
+  // --- 加載和合併結束 ---
+
   const setModelLoaded = useStore((state) => state.setModelLoaded);
   
   const [localMorphTargetDictionary, setLocalMorphTargetDictionary] = useState<Record<string, number>>({});
@@ -70,51 +116,6 @@ export const Model: React.FC<ModelProps> = ({
   // --- Ref 傳遞結束 ---
 
   useEffect(() => {
-    const animationNames = Object.keys(actions);
-    modelService.setAvailableAnimations(animationNames);
-    logger.info({ msg: 'Model: Extracted and sent available animations', details: animationNames }, LogCategory.MODEL);
-    logger.debug({ msg: 'Model: Available actions', details: animationNames }, LogCategory.MODEL);
-  }, [actions, modelService]);
-
-  useEffect(() => {
-    const availableActionKeys = Object.keys(actions);
-    logger.debug({ msg: 'Model: Setting animation based on current state', details: { currentAnimation, availableActionKeys } }, LogCategory.MODEL);
-    Object.values(actions).forEach(action => {
-      if (action && action.isRunning()) {
-        action.stop();
-      }
-    });
-    let animationToPlay: THREE.AnimationAction | null = null;
-    let animationName: string | null = null;
-    if (currentAnimation && actions[currentAnimation]) {
-      animationToPlay = actions[currentAnimation];
-      animationName = currentAnimation;
-      logger.info(`Model: Playing selected animation: ${animationName}`, LogCategory.MODEL);
-    } else {
-      if (actions.Idle) {
-        animationToPlay = actions.Idle;
-        animationName = 'Idle';
-        logger.info('Model: Playing default animation: Idle', LogCategory.MODEL);
-      } else if (availableActionKeys.length > 0) {
-        animationName = availableActionKeys[0];
-        animationToPlay = actions[animationName];
-        logger.info(`Model: Playing first available animation as default: ${animationName}`, LogCategory.MODEL);
-      } else {
-        logger.warn('Model: No animation selected and no default/available animation found.', LogCategory.MODEL);
-      }
-    }
-    if (animationToPlay) {
-      animationToPlay.reset().fadeIn(0.5).play();
-    }
-    return () => {
-      if (animationToPlay && animationToPlay.isRunning()) {
-        logger.debug(`Model: Fading out animation: ${animationName || 'unknown'}`, LogCategory.MODEL);
-        animationToPlay.fadeOut(0.5);
-      }
-    };
-  }, [currentAnimation, actions, mixer]);
-
-  useEffect(() => {
     let foundMeshWithMorphs = false;
     meshRef.current = null;
     let finalDict: Record<string, number> | null = null;
@@ -133,15 +134,23 @@ export const Model: React.FC<ModelProps> = ({
           logger.info('Model: Initialized morphTargetInfluences to 0.', LogCategory.MODEL);
         }
       });
-    }
-
-    if (foundMeshWithMorphs) {
+      
+      // --- 修改點：只要 scene 存在，就設置 modelLoaded 為 true --- 
       setModelLoaded(true);
-      logger.info('Model: Set modelLoaded state to true in Zustand.', LogCategory.MODEL);
+      logger.info('Model: Scene loaded, setting modelLoaded state to true in Zustand.', LogCategory.MODEL);
+      // --- 修改結束 ---
+      
+      // 如果沒有找到 morphs，還是要記錄一下
+      if (!foundMeshWithMorphs) {
+        setLocalMorphTargetDictionary({}); // 清空本地字典
+        logger.warn('Model: No mesh with morph targets found, but scene loaded.', LogCategory.MODEL, `URL: ${url}`);
+      }
+      
     } else {
+      // 如果 scene 不存在 (加載失敗)
       setLocalMorphTargetDictionary({});
       setModelLoaded(false);
-      logger.warn('Model: No mesh with morph targets found.', LogCategory.MODEL, `URL: ${url}`);
+      logger.error('Model: Scene failed to load.', LogCategory.MODEL, `URL: ${url}`);
     }
   }, [url, scene, setModelLoaded]);
 
@@ -205,6 +214,48 @@ export const Model: React.FC<ModelProps> = ({
     });
     // --- Apply End ---
   });
+
+  // --- Simplified Animation Logic for Debugging ---
+  useEffect(() => {
+    // 重要：確保在 actions 更新後再執行此 effect
+    if (Object.keys(actions).length === 0 && combinedAnimations.current.length > 0) {
+        // 如果 actions 尚未根據 combinedAnimations 更新，則稍後再試
+        logger.debug('[Model Debug] Actions not yet populated, waiting...', LogCategory.ANIMATION);
+        return; 
+    }
+
+    const action = currentAnimation ? actions[currentAnimation] : null;
+    const animationNameToLog = currentAnimation || 'None';
+
+    if (action) {
+      logger.debug(`[Model Debug] Attempting to play: ${animationNameToLog}`, LogCategory.ANIMATION);
+      // Stop everything else first (less smooth, but for testing)
+      Object.values(actions).forEach(a => {
+          if (a && a !== action && a.isRunning()) {
+              a.stop();
+              logger.debug(`[Model Debug] Stopped other running action`, LogCategory.ANIMATION); // Log which action gets stopped
+          }
+      });
+      // Reset, fade in, and play the target action
+      action.reset().fadeIn(0.3).play();
+      logger.info(`[Model Debug] Played: ${animationNameToLog}`, LogCategory.ANIMATION);
+    } else {
+      // Stop all if no animation selected (currentAnimation is null or invalid)
+      logger.debug(`[Model Debug] No target animation, stopping all.`, LogCategory.ANIMATION);
+      let stoppedAny = false;
+      Object.values(actions).forEach(a => {
+          if (a && a.isRunning()) {
+              a.stop();
+              stoppedAny = true;
+          }
+      });
+      if (stoppedAny) {
+          logger.info(`[Model Debug] Stopped all running animations.`, LogCategory.ANIMATION);
+      }
+    }
+    // Note: No dependency on previousAnimation ref in this simplified version
+  }, [currentAnimation, actions]); // 保持依賴 actions
+  // --- End Simplified Logic ---
 
   return (
     <group ref={group} position={position} rotation={rotation}>
