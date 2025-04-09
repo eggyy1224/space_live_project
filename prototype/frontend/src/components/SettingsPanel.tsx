@@ -1,6 +1,9 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useStore } from '../store'; // Import Zustand store
-import { getPresetsList } from '../services/api'; // Import API function
+// Remove API import for presets
+// import { getPresetsList } from '../services/api'; 
+// Import available tags from mappings
+import { availableEmotionTags } from '../config/emotionMappings'; 
 import logger, { LogCategory } from '../utils/LogManager'; // Import logger
 import Draggable from 'react-draggable'; // Import Draggable
 
@@ -110,46 +113,21 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const setSpeaking = useStore((state) => state.setSpeaking); // 取得設置說話狀態的函數
   const setAudioStartTime = useStore((state) => state.setAudioStartTime); // 取得設置音頻開始時間的函數
 
-  // State for presets
-  const [presets, setPresets] = useState<string[]>([]);
-  const [loadingPresets, setLoadingPresets] = useState<boolean>(false);
+  // --- State for presets UI --- 
+  const [isPresetsCollapsed, setIsPresetsCollapsed] = useState(true); // Start collapsed
+  const [currentAppliedPreset, setCurrentAppliedPreset] = useState<string | null>('neutral'); // Track last applied preset
 
-  // Fetch presets on mount
-  useEffect(() => {
-    if (!isVisible) return; // Only fetch when visible?
-    const fetchPresets = async () => {
-      setLoadingPresets(true);
-      try {
-        const response = await getPresetsList();
-        if (response && response.presets) {
-          setPresets(response.presets);
-          logger.info(`[SettingsPanel] Fetched ${response.presets.length} presets`, LogCategory.MODEL);
-        }
-      } catch (error) {
-        logger.error('[SettingsPanel] Failed to fetch presets', LogCategory.MODEL, error);
-        setPresets(['happy', 'sad', 'angry', 'surprised', 'reset']); // Fallback
-      } finally {
-        setLoadingPresets(false);
-      }
-    };
-    fetchPresets();
-  }, [isVisible]); // Re-fetch if panel becomes visible again?
+  // --- Remove old preset state/logic (already done) --- 
 
   const handlePresetApply = useCallback(async (preset: string) => {
     logger.info(`[SettingsPanel] Applying preset: ${preset}`, LogCategory.MODEL);
-    await applyPresetExpression(preset);
+    const success = await applyPresetExpression(preset);
+    if (success) {
+      setCurrentAppliedPreset(preset); // Update current preset state on success
+    }
   }, [applyPresetExpression]);
 
-  const translatePreset = useCallback((preset: string): string => {
-    const translations: Record<string, string> = {
-      'happy': '快樂',
-      'sad': '悲傷',
-      'angry': '生氣',
-      'surprised': '驚訝',
-      'reset': '重置',
-    };
-    return translations[preset] || preset;
-  }, []);
+  // --- Remove preset translation (already done) --- 
 
   const handleMorphTargetChange = useCallback((name: string, value: number) => {
     // logger.info(`[SettingsPanel] Setting MorphTarget: ${name} = ${value}`, LogCategory.MODEL);
@@ -245,9 +223,9 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
     return null;
   }
 
-  // Helper function for button classes
+  // Helper function for button classes (updated to handle active state)
   const buttonClasses = (active = false, disabled = false) => 
-    `px-2 py-1 text-xs rounded ${active ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500'} ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`;
+    `px-2 py-1 text-xs rounded ${active ? 'bg-blue-600 text-white ring-2 ring-blue-400' : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500'} ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`;
 
   const controlButtonClasses = (disabled = false) =>
     `px-2 py-1 text-xs rounded bg-indigo-500 text-white hover:bg-indigo-600 ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`;
@@ -323,21 +301,45 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
             </div>
           )}
 
-          {/* --- Preset Expressions --- */}  
+          {/* --- Preset Expressions (Collapsible) --- */}
           <div className="space-y-2">
-            <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">預設表情</h3>
-            {loadingPresets ? (
-              <p className="text-xs text-gray-500 dark:text-gray-400">載入預設表情中...</p>
-            ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {presets.map((preset) => (
+            <div className="flex justify-between items-center">
+              <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">預設表情</h3>
+              <button 
+                onClick={() => setIsPresetsCollapsed(!isPresetsCollapsed)}
+                className="text-xs text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center"
+                aria-expanded={!isPresetsCollapsed}
+              >
+                {isPresetsCollapsed ? (
+                  <>
+                    <span className="mr-1 font-medium truncate max-w-[100px]">{currentAppliedPreset || '選擇表情'}</span>
+                    {/* Expand icon */}
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3 h-3">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    </svg>
+                  </>
+                ) : (
+                  <>
+                    <span>收合</span>
+                    {/* Collapse icon */}
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3 h-3 ml-1">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
+                    </svg>
+                  </>
+                )}
+              </button>
+            </div>
+            {!isPresetsCollapsed && ( // Conditionally render the list
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {availableEmotionTags.map((preset) => (
                   <button
                     key={preset}
                     onClick={() => handlePresetApply(preset)}
-                    className={buttonClasses(false, !isModelLoaded)}
+                    // Highlight the active preset button
+                    className={buttonClasses(currentAppliedPreset === preset, !isModelLoaded)}
                     disabled={!isModelLoaded}
                   >
-                    {translatePreset(preset)}
+                    {preset}
                   </button>
                 ))}
               </div>

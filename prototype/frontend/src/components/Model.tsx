@@ -51,15 +51,22 @@ export const Model: React.FC<ModelProps> = ({
   
   const [localMorphTargetDictionary, setLocalMorphTargetDictionary] = useState<Record<string, number>>({});
 
-  const { calculateFinalWeights } = useEmotionalSpeaking();
+  const { calculateCurrentTrajectoryWeights } = useEmotionalSpeaking();
 
-  // --- 正確讀取 Zustand 狀態並使用 Ref 傳遞 --- 
+  // --- 讀取 Zustand 狀態並使用 Ref 傳遞 --- 
   const manualOrPresetTargetsFromStore = useStore((state) => state.morphTargets);
   const manualOrPresetTargetsRef = useRef(manualOrPresetTargetsFromStore);
+  // Add isSpeaking state with ref
+  const isSpeakingFromStore = useStore((state) => state.isSpeaking);
+  const isSpeakingRef = useRef(isSpeakingFromStore);
 
   useEffect(() => {
     manualOrPresetTargetsRef.current = manualOrPresetTargetsFromStore;
   }, [manualOrPresetTargetsFromStore]);
+  // Update isSpeaking ref
+  useEffect(() => {
+    isSpeakingRef.current = isSpeakingFromStore;
+  }, [isSpeakingFromStore]);
   // --- Ref 傳遞結束 ---
 
   useEffect(() => {
@@ -150,41 +157,53 @@ export const Model: React.FC<ModelProps> = ({
     const influences = meshRef.current.morphTargetInfluences;
     const dictionary = localMorphTargetDictionary;
     
-    const autoTargetWeights = calculateFinalWeights(); // 自動權重 (情緒 + 基礎說話口型)
-    // --- 安全地從 Ref 讀取最新狀態 --- 
-    const currentManualTargets = manualOrPresetTargetsRef.current; // 手動/預設/唇型同步權重
+    // --- Weights Calculation (Corrected Logic) --- 
+    const trajectoryWeights = calculateCurrentTrajectoryWeights(); // 1. Trajectory emotion weights
+    const storeTargets = manualOrPresetTargetsRef.current; // 2. Contains presets OR audio mouth shapes
+    const isSpeaking = isSpeakingRef.current; // 3. Speaking state
+
+    // 4. Determine Base Emotion (Preset or Trajectory)
+    //    Check if storeTargets contains keys *other than* known audio-driven keys
+    const isPresetActive = Object.keys(storeTargets).some(key => key !== 'jawOpen'); // Simple check assuming only jawOpen is audio-driven
+    const baseEmotion = isPresetActive ? storeTargets : trajectoryWeights;
+
+    // 5. Determine Audio Mouth Shapes (only if speaking)
+    const audioMouthShapes: Record<string, number> = {};
+    if (isSpeaking) {
+        // Explicitly check for known audio-driven keys provided by AudioService
+        if (storeTargets.hasOwnProperty('jawOpen')) {
+            audioMouthShapes['jawOpen'] = storeTargets['jawOpen'];
+        }
+        // If more audio-driven keys are added later (e.g., mouthFunnel from frequency), add checks here
+    }
+
+    // 6. Merge: Start with base emotion, then overlay audio mouth shapes
+    //    Spread ensures non-mouth keys from baseEmotion are kept.
+    //    Audio keys (like jawOpen) will be overridden if present in audioMouthShapes.
+    const finalTargetWeights = {
+        ...baseEmotion,
+        ...audioMouthShapes
+    };
+
+    // logger.debug("[useFrame] Calculated final weights.", LogCategory.MODEL, finalTargetWeights);
+    // --- Weights Calculation End ---
     
-    // --- 恢復合併邏輯 --- 
-    // 1. 基礎權重來自情緒軌跡計算結果
-    const finalTargetWeights: Record<string, number> = { ...autoTargetWeights }; 
-    
-    // 2. 遍歷手動/唇型同步權重 (來自 Ref)
-    Object.entries(currentManualTargets).forEach(([key, value]) => {
-      // 3. 如果 key 是口型相關的，則用手動/唇型同步的值覆蓋基礎權重
-      if (MOUTH_MORPH_TARGET_KEYS.has(key)) {
-        finalTargetWeights[key] = value;
-      }
-    });
-    // --- 合併邏輯結束 ---
-    
-    // Apply the final weights with lerp (existing logic)
+    // --- Apply final weights with Lerp --- 
     Object.keys(dictionary).forEach(name => {
       const index = dictionary[name];
       if (index !== undefined && index < influences.length) {
-        // 使用合併後的 finalTargetWeights
-        const targetValue = finalTargetWeights[name] ?? 0; 
-        
+        const targetValue = finalTargetWeights[name] ?? 0; // Use the correctly calculated final weight
         const currentValue = influences[index];
         
-        // Existing lerp logic
         if (Math.abs(currentValue - targetValue) > 0.01) { 
-          const lerpFactor = Math.min(delta * 25, 1); // <-- 提高插值速度
+          const lerpFactor = Math.min(delta * 25, 1); 
           influences[index] = THREE.MathUtils.lerp(currentValue, targetValue, lerpFactor);
         } else if (currentValue !== targetValue) {
           influences[index] = targetValue;
         } 
       }
     });
+    // --- Apply End ---
   });
 
   return (

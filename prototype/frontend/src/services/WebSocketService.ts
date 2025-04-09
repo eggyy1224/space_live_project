@@ -179,10 +179,10 @@ class WebSocketService {
         // --- 日誌記錄結束 ---
         logger.debug('[WebSocketService] Detected emotionalTrajectory, updating lastJsonMessage.', LogCategory.WEBSOCKET);
         useStore.getState().setLastJsonMessage(data); // 更新軌跡數據
-        // --- 新增：清空手動/預設權重狀態 --- 
-        useStore.getState().setMorphTargets({}); // 重置 morphTargets，確保情緒軌跡優先
-        logger.debug('[WebSocketService] Reset morphTargets state to prioritize trajectory.', LogCategory.WEBSOCKET);
-        // --- 新增結束 ---
+        // --- 移除：不再清空手動/預設權重狀態 --- 
+        // useStore.getState().setMorphTargets({}); // REMOVE THIS LINE
+        // logger.debug('[WebSocketService] Reset morphTargets state to prioritize trajectory.', LogCategory.WEBSOCKET);
+        // --- 移除結束 ---
       } 
       // --- 新增結束 ---
       

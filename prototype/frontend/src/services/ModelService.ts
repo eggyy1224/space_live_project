@@ -359,19 +359,19 @@ class ModelService {
   public async applyPresetExpression(expression: string): Promise<boolean> {
     logger.info(`應用表情預設 (前端): ${expression}`, LogCategory.MODEL);
     try {
-      // Get weights directly from frontend mappings
       const targetsToApply = getEmotionBaseWeights(expression); 
       
-      // Check if weights were found (getEmotionBaseWeights returns neutral if not found)
       if (targetsToApply) { 
         console.log(`[ModelService] Applying preset from frontend mapping: ${expression}`, JSON.stringify(targetsToApply)); 
         
         // 直接設置 Zustand 的 morphTargets 狀態
         useStore.getState().setMorphTargets(targetsToApply);
-        logger.debug(`Applied preset expression '${expression}' directly to Zustand from frontend mapping.`, LogCategory.MODEL);
+        // --- 新增：清除情緒軌跡狀態 --- 
+        useStore.getState().setLastJsonMessage(null); 
+        logger.debug(`Applied preset '${expression}' and cleared lastJsonMessage.`, LogCategory.MODEL);
+        // --- 新增結束 ---
         return true;
       } else {
-        // This case should technically not happen if getEmotionBaseWeights falls back to neutral
         logger.error(`無法從前端映射獲取預設表情數據: ${expression}`, LogCategory.MODEL);
         return false;
       }
