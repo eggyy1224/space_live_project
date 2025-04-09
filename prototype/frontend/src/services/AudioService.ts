@@ -219,6 +219,23 @@ class AudioService {
       this.playbackAudio = new Audio(audioUrl);
       this.playbackAudio.crossOrigin = "anonymous"; // 允許跨域加載，如果需要的話
 
+      // --- 獲取精確時長 --- 
+      this.playbackAudio.onloadedmetadata = (event) => {
+        if (event.target instanceof HTMLAudioElement) {
+          const duration = event.target.duration;
+          if (isFinite(duration)) { // 確保 duration 是有效數字
+             logger.info(`Audio duration loaded: ${duration.toFixed(2)} seconds`, LogCategory.AUDIO);
+             // 將時長存儲到 Zustand (或其他狀態管理)
+             useStore.getState().setAudioDuration(duration); 
+             // 可以在這裡觸發其他需要時長的邏輯
+          } else {
+             logger.warn('Audio duration is infinite or invalid.', LogCategory.AUDIO);
+             useStore.getState().setAudioDuration(null); // 或者設置為 0 或 null
+          }
+        }
+      };
+      // --- 時長獲取結束 ---
+
       // --- 創建並連接 Web Audio 節點 --- 
       try {
         this.playbackSourceNode = this.audioContext.createMediaElementSource(this.playbackAudio);

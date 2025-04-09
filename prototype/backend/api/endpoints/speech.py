@@ -94,14 +94,15 @@ async def process_speech_file(request: Request):
                 tts_result = await tts_service.synthesize_speech(response)
                 
                 if tts_result:
-                    logger.info(f"成功生成語音回應，音頻長度：{len(tts_result['audio'])}，持續時間：{tts_result['duration']}秒")
-                    # 返回完整結果
+                    logger.info(f"成功生成語音回應 (OpenAI)，音頻 Base64 長度：{len(tts_result.get('audio',''))}")
+                    # 返回完整結果 (移除 duration)
                     return {
                         "text": transcribed_text,
                         "response": response,
-                        "audio_filename": tts_result.get("filename", ""),
-                        "duration": tts_result["duration"],
-                        "confidence": result.get("confidence", 0),
+                        # "audio_filename": tts_result.get("filename", ""), # 這個似乎也沒用了
+                        "audio": tts_result.get("audio", ""), # 確保返回 audio base64
+                        # "duration": tts_result["duration"],
+                        "confidence": result.get("confidence", None), # Whisper 不返回 confidence
                         "success": True
                     }
                 else:
@@ -196,8 +197,8 @@ async def process_speech_base64(request: SpeechToTextRequest):
                         "text": transcribed_text,
                         "response": response,
                         "audio": tts_result["audio"],
-                        "duration": tts_result["duration"],
-                        "confidence": result.get("confidence", 0),
+                        # "duration": tts_result["duration"],
+                        "confidence": result.get("confidence", None),
                         "success": True
                     }
                 else:

@@ -20,11 +20,15 @@ import {
 } from './services'
 
 // 引入 API 函數
-import { speechToText } from './services/api';
+import { speechToText, processSpeechAudio } from './services/api';
+
+// 引入 AudioService
+import AudioService from './services/AudioService';
 
 // 引入 Zustand Store
 import { useStore } from './store'
 import logger, { LogCategory } from './utils/LogManager'
+import { toast } from 'react-hot-toast'
 
 function App() {
   // === 添加 useWebSocket 調用 ===
@@ -112,32 +116,37 @@ function App() {
   // === 定義錄音結束後的回調 ===
   const handleStopRecording = useCallback(async (audioBlob: Blob | null) => {
     if (audioBlob && wsConnected) {
-      logger.info('[App] Recording finished. Audio blob received.', LogCategory.GENERAL);
-      
-      // 設置處理狀態
-      setProcessing(true); // <-- Use action from selector
-      logger.info('[App] Sending audio to STT service...', LogCategory.GENERAL);
+      logger.info('[App] Sending audio for processing...', LogCategory.GENERAL); // 更新日誌
       
       try {
-        // 將音頻發送到 STT 服務
-        const result = await speechToText(audioBlob);
+        // 將音頻發送到後端進行完整處理
+        const result = await processSpeechAudio(audioBlob); // 改為呼叫 processSpeechAudio
         
-        // 檢查 STT 結果
-        if (result && result.text) {
-          // 記錄識別的文本
-          logger.info(`[App] STT result: "${result.text}"`, LogCategory.GENERAL);
+        // 檢查處理結果
+        if (result && result.success && result.audio) {
+          // 記錄識別和回應文本
+          logger.info(`[App] STT: "${result.text}"`, LogCategory.GENERAL);
+          logger.info(`[App] Response: "${result.response}"`, LogCategory.GENERAL);
           
-          // 將文本發送給聊天服務
-          sendMessage(result.text);
+          // 播放返回的音頻 (假設 AudioService.playAudio 接受 Base64)
+          // 注意：playAudio 可能需要調整以接受 Base64 或轉換為 Blob URL
+          AudioService.getInstance().playAudio(`data:audio/mp3;base64,${result.audio}`);
+          
+          // 可選：將 AI 回應添加到聊天記錄 (如果需要顯示的話)
+          // addMessage({ sender: 'ai', text: result.response });
+          
+        } else if (result && !result.success) {
+          logger.error(`[App] Audio processing failed: ${result.error}`, LogCategory.GENERAL);
+          // 可選：顯示錯誤提示給用戶
+          toast.error(`語音處理失敗: ${result.error || '未知錯誤'}`); 
         } else {
-          logger.warn('[App] STT returned empty text.', LogCategory.GENERAL);
-          // 可選：顯示提示給用戶
-          // alert('無法識別您的語音，請再試一次。');
+          logger.warn('[App] Audio processing returned unexpected result or no audio.', LogCategory.GENERAL);
+          toast.warn('無法處理您的語音，請再試一次。');
         }
       } catch (error) {
-        logger.error('[App] STT processing error:', LogCategory.GENERAL, error);
+        logger.error('[App] Audio processing API call error:', LogCategory.GENERAL, error);
         // 可選：顯示錯誤提示給用戶
-        // alert('語音識別失敗，請再試一次。');
+        toast.error(`語音處理請求失敗: ${error instanceof Error ? error.message : '未知網絡錯誤'}`);
       } finally {
         // 無論成功與否，都重置處理狀態
         setProcessing(false); // <-- Use action from selector
@@ -149,7 +158,7 @@ function App() {
     } else if (!audioBlob) {
       logger.warn('[App] Recording finished, but audio blob is null.', LogCategory.GENERAL);
     }
-  }, [wsConnected, sendMessage, setProcessing]); // <-- Add setProcessing to dependency array
+  }, [wsConnected, setProcessing]); // <-- Add setProcessing to dependency array
   // === 回調定義結束 ===
 
   // 切換調試模式 

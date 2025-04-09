@@ -21,6 +21,7 @@ export interface AppSlice {
   currentAction: string | null;
   userInteracted: boolean;
   micPermission: 'prompt' | 'granted' | 'denied';
+  audioDuration: number | null;
   
   // 操作
   setActiveTab: (tab: string) => void;
@@ -35,6 +36,7 @@ export interface AppSlice {
   setCurrentAction: (action: string | null) => void;
   setUserInteracted: () => void;
   setMicPermission: (permission: 'prompt' | 'granted' | 'denied') => void;
+  setAudioDuration: (duration: number | null) => void;
 }
 
 // 創建 App Slice
@@ -50,6 +52,7 @@ export const createAppSlice: StateCreator<AppSlice> = (set) => ({
   currentAction: null,
   userInteracted: false,
   micPermission: 'prompt',
+  audioDuration: null,
   
   // 操作實現
   setActiveTab: (tab) => set({ activeTab: tab }),
@@ -81,4 +84,6 @@ export const createAppSlice: StateCreator<AppSlice> = (set) => ({
   setUserInteracted: () => set({ userInteracted: true }),
   
   setMicPermission: (permission) => set({ micPermission: permission }),
+  
+  setAudioDuration: (duration) => set({ audioDuration: duration }),
 }); 

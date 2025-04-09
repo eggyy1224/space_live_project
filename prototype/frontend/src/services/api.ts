@@ -143,6 +143,31 @@ export async function speechToText(audioBlob: Blob): Promise<{
 }
 
 /**
+ * 上傳音頻進行處理，獲取STT、AI回應和TTS音頻
+ * @param audioBlob 音頻Blob數據
+ * @returns 包含識別文本、AI回應、音頻Base64等的對象
+ */
+export async function processSpeechAudio(audioBlob: Blob): Promise<{
+  text: string;          // 語音識別出的文字
+  response: string;      // AI生成的回應文字
+  audio?: string;         // TTS生成的音頻 Base64 字串
+  confidence?: number;    // STT 置信度 (可能為 null)
+  success: boolean;        // 操作是否成功
+  error?: string;         // 錯誤訊息
+}> {
+  // 注意：端點名稱與 speechToText 相同，但期望的回應不同
+  return fetchApi('/api/speech-to-text', {
+    method: 'POST',
+    headers: {
+      // 確保 Content-Type 正確
+      'Content-Type': audioBlob.type || 'audio/webm; codecs=opus',
+      'Accept': 'application/json', // 確保接受 JSON
+    },
+    body: audioBlob,
+  });
+}
+
+/**
  * 健康檢查API
  * @returns 服務狀態
  */
@@ -216,6 +241,7 @@ const apiService = {
   analyzeText,
   generateSpeech,
   speechToText,
+  processSpeechAudio,
   checkHealth,
   getVoiceConfigs,
   setVoiceConfig,
