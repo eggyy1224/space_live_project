@@ -2,7 +2,6 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Request
 from services.speech_to_text import SpeechToTextService
 from services.text_to_speech import TextToSpeechService
 from services.ai import AIService
-from services.emotion import EmotionAnalyzer
 from core.models import SpeechToTextRequest
 import logging
 import base64
@@ -21,7 +20,6 @@ router = APIRouter()
 speech_service = SpeechToTextService()
 tts_service = TextToSpeechService()
 ai_service = AIService()
-emotion_analyzer = EmotionAnalyzer()
 
 # 創建調試目錄
 DEBUG_DIR = "debug_audio"
@@ -81,18 +79,14 @@ async def process_speech_file(request: Request):
         # 如果語音識別成功且有文字，則生成回應
         if result.get("success") and result.get("text"):
             transcribed_text = result["text"]
-            logger.info(f"識別到的文字: '{transcribed_text}'，開始分析情緒和生成回應...")
-            
-            # 分析情緒
-            detected_emotion, confidence = emotion_analyzer.analyze(transcribed_text)
-            logger.info(f"分析情緒結果: {detected_emotion}, 置信度: {confidence}")
+            logger.info(f"識別到的文字: '{transcribed_text}'，開始生成回應...")
             
             # 使用AI服務生成回應
             try:
-                response = await ai_service.generate_response(
-                    user_text=transcribed_text, 
-                    current_emotion=detected_emotion
+                response_dict = await ai_service.generate_response(
+                    user_text=transcribed_text 
                 )
+                response = response_dict.get("final_response", "嗯...我好像有點走神了。")
                 logger.info(f"AI回應: '{response}'")
                 
                 # 生成語音回應
@@ -108,8 +102,6 @@ async def process_speech_file(request: Request):
                         "audio_filename": tts_result.get("filename", ""),
                         "duration": tts_result["duration"],
                         "confidence": result.get("confidence", 0),
-                        "detected_emotion": detected_emotion,
-                        "emotion_confidence": confidence,
                         "success": True
                     }
                 else:
@@ -189,15 +181,12 @@ async def process_speech_base64(request: SpeechToTextRequest):
         if result["success"] and result["text"]:
             transcribed_text = result["text"]
             
-            # 分析情緒
-            detected_emotion, confidence = emotion_analyzer.analyze(transcribed_text)
-            
             # 使用AI服務生成回應
             try:
-                response = await ai_service.generate_response(
-                    user_text=transcribed_text, 
-                    current_emotion=detected_emotion
+                response_dict = await ai_service.generate_response(
+                    user_text=transcribed_text
                 )
+                response = response_dict.get("final_response", "嗯...我好像有點走神了。")
                 
                 # 生成語音回應
                 tts_result = await tts_service.synthesize_speech(response)
@@ -209,8 +198,6 @@ async def process_speech_base64(request: SpeechToTextRequest):
                         "audio": tts_result["audio"],
                         "duration": tts_result["duration"],
                         "confidence": result.get("confidence", 0),
-                        "detected_emotion": detected_emotion,
-                        "emotion_confidence": confidence,
                         "success": True
                     }
                 else:

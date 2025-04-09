@@ -6,14 +6,12 @@ import random
 import os
 import base64
 
-from services.emotion import EmotionAnalyzer
 from services.ai import AIService
 from services.text_to_speech import TextToSpeechService
 from core.config import settings
 from utils.logger import logger
 
 # 建立服務實例
-emotion_analyzer = EmotionAnalyzer()
 ai_service = AIService()
 tts_service = TextToSpeechService()
 
