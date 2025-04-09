@@ -162,8 +162,8 @@ class WebSocketService {
   private handleMessage(event: MessageEvent): void {
     try {
       const data = JSON.parse(event.data) as WebSocketMessage;
-      // --- 從高頻類型中移除 lipsync_update --- 
-      const highFrequencyTypes = ['morph_update', 'animation_update']; // Remove 'lipsync_update'
+      // --- 從高頻類型中移除 morph_update --- 
+      const highFrequencyTypes = ['animation_update']; // Remove 'morph_update'
 
       // Log received message (conditionally based on frequency)
       if (data.type && !highFrequencyTypes.includes(data.type)) {

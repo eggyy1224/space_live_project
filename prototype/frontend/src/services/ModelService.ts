@@ -64,28 +64,32 @@ class ModelService {
   
   // 設置WebSocket消息處理器
   private setupMessageHandlers(): void {
-    // 處理表情更新
-    this.wsService.registerHandler('morph_update', (data) => {
-      if (data.morphTargets) {
-        this.handleMorphUpdate(data);
-      }
-    });
+    // --- 移除 morph_update 處理器 --- 
+    // // 處理表情更新
+    // this.wsService.registerHandler('morph_update', (data) => {
+    //   if (data.morphTargets) {
+    //     this.handleMorphUpdate(data);
+    //   }
+    // });
+    // --- 移除結束 ---
   }
   
-  // 處理表情更新
-  public handleMorphUpdate(data: any): void {
-    if (!data || typeof data !== 'object') {
-      logger.warn('Received invalid morph target data', LogCategory.WEBSOCKET);
-      return;
-    }
-    // 迭代更新 Zustand store
-    Object.entries(data).forEach(([key, value]) => {
-      if (typeof value === 'number') {
-        useStore.getState().updateMorphTarget(key, value);
-      }
-    });
-    // logger.debug(`Morph update applied via Zustand: ${JSON.stringify(data)}`, LogCategory.MODEL);
-  }
+  // --- 移除 handleMorphUpdate 函數 --- 
+  // // 處理表情更新 (morph_update)
+  // public handleMorphUpdate(data: any): void {
+  //   if (!data || typeof data !== 'object') {
+  //     logger.warn('Received invalid morph target data', LogCategory.WEBSOCKET);
+  //     return;
+  //   }
+  //   // 迭代更新 Zustand store
+  //   Object.entries(data).forEach(([key, value]) => {
+  //     if (typeof value === 'number') {
+  //       useStore.getState().updateMorphTarget(key, value);
+  //     }
+  //   });
+  //   // logger.debug(`Morph update applied via Zustand: ${JSON.stringify(data)}`, LogCategory.MODEL);
+  // }
+  // --- 移除結束 ---
 
   // 預加載模型
   public preloadModel(modelUrl: string): void {
@@ -356,20 +360,26 @@ class ModelService {
     logger.info(`應用表情預設: ${expression}`, LogCategory.MODEL);
     try {
       const presetData = await getPresetExpression(expression);
-      if (presetData && presetData.morphTargets) {
+      // --- 確保 presetData.morphTargets 是 Record<string, number> --- 
+      if (presetData && presetData.morphTargets && typeof presetData.morphTargets === 'object') {
         // 在處理前打印從 API 收到的數據
         console.log('[ModelService] Received preset data:', JSON.stringify(presetData.morphTargets)); 
         
-        // 保存情緒信息（如果存在）
-        // if (presetData.emotion) {
-        //   useStore.getState().setEmotion(presetData.emotion, presetData.confidence || 0);
-        // }
-        
-        // 使用 handleMorphUpdate 處理 morph targets
-        this.handleMorphUpdate(presetData.morphTargets);
+        // 顯式轉換/斷言類型 (假設 API 返回的是正確的結構)
+        const targetsToApply: Record<string, number> = presetData.morphTargets as Record<string, number>;
+
+        // 檢查轉換後的類型是否符合預期 (可選，用於調試)
+        if (Object.values(targetsToApply).some(val => typeof val !== 'number')) {
+           logger.error('Preset data morphTargets contains non-number values after type assertion.', LogCategory.MODEL, targetsToApply);
+           return false; // 如果類型仍不對，則失敗
+        }
+
+        // 直接設置 Zustand 的 morphTargets 狀態
+        useStore.getState().setMorphTargets(targetsToApply);
+        logger.debug(`Applied preset expression '${expression}' directly to Zustand.`, LogCategory.MODEL);
         return true;
       } else {
-        logger.error(`無法獲取或解析預設表情數據: ${expression}`, LogCategory.MODEL);
+        logger.error(`無法獲取、解析或類型不正確的預設表情數據: ${expression}`, LogCategory.MODEL, presetData);
         return false;
       }
     } catch (error) {
