@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react'
 import './App.css'
 
 // 引入拆分出的組件
-import SceneContainer from './components/layout/SceneContainer'
+import SceneContainer from './components/SceneContainer'
 import AppUI from './components/layout/AppUI'
 import ModelDebugger from './components/ModelDebugger'
 import ModelAnalyzerTool from './components/ModelAnalyzerTool'
@@ -16,7 +16,8 @@ import {
   useWebSocket, 
   useAudioService, 
   useHeadService,
-  useChatService 
+  useChatService,
+  useBodyService
 } from './services'
 
 // 引入 API 函數
@@ -84,6 +85,14 @@ function App() {
   } = useHeadService();
   // --- 結束 --- 
   
+  // --- 使用身體服務 ---
+  const {
+    availableAnimations,
+    currentAnimation,
+    selectAnimation
+  } = useBodyService();
+  // --- 結束 ---
+  
   // 使用聊天服務
   const {
     messages,
@@ -95,9 +104,8 @@ function App() {
   const chatProcessing = useStore((state) => state.isProcessing);
   
   // 從 Zustand 直接獲取情緒狀態
-  const currentEmotionState = useStore((state) => state.currentEmotion);
-  const currentEmotion = currentEmotionState.emotion || 'neutral';
-  const emotionConfidence = currentEmotionState.confidence || 0;
+  const currentEmotion = useStore((state) => state.currentEmotion.emotion || 'neutral');
+  const emotionConfidence = useStore((state) => state.currentEmotion.confidence || 0);
   
   // 使用本地狀態管理用戶輸入
   const [userInput, setUserInput] = useState('');
@@ -172,7 +180,7 @@ function App() {
   const toggleModelAnalyzer = useCallback(() => {
     setShowModelAnalyzer(prev => !prev);
   }, []);
-  
+
   // 處理發送消息 (Enter 鍵或點擊按鈕)
   const handleSendMessage = useCallback(() => {
     if (userInput.trim() && wsConnected) { // 確保已連接才發送
@@ -203,11 +211,8 @@ function App() {
       <div className="app-container">
         <SceneContainer 
           headModelUrl={headModelUrl}
-          modelScale={modelScale[0] || 1.0}
-          modelRotation={modelRotation}
-          modelPosition={modelPosition}
+          isHeadModelLoaded={headModelLoaded}
           showSpaceBackground={showSpaceBackground}
-          morphTargetDictionary={morphTargetDictionary}
         />
         
         {/* 調試面板 (保持在 App 層) */}
@@ -237,10 +242,9 @@ function App() {
         <SettingsPanel
           isVisible={isSettingsPanelVisible}
           onClose={toggleSettingsPanel}
-          // Pass model control props
+          // Pass head model control props
           isModelLoaded={headModelLoaded}
           modelScale={modelScale[0] || 1.0}
-          availableAnimations={[]}
           morphTargetDictionary={morphTargetDictionary}
           selectedMorphTarget={selectedMorphTarget}
           setSelectedMorphTarget={setSelectedMorphTarget}
@@ -250,24 +254,27 @@ function App() {
           scaleModel={scaleModel}
           resetModel={resetModel}
           toggleBackground={toggleBackground}
-          selectAnimation={() => {}}
           applyPresetExpression={applyPresetExpression}
           showSpaceBackground={showSpaceBackground}
-          // Pass emotion state for display (optional, but was in old panel)
+          // Pass body animation props
+          availableAnimations={availableAnimations} 
+          currentAnimation={currentAnimation} 
+          selectAnimation={selectAnimation} 
+          // Pass emotion state for display
           currentEmotion={currentEmotion}
           emotionConfidence={emotionConfidence}
           // Pass Debug Control Props
-          debugMode={debugMode}                 // Pass debugMode state
-          showModelAnalyzer={showModelAnalyzer} // Pass modelAnalyzer state
-          modelUrl={headModelUrl}                   // Pass modelUrl for display
-          toggleDebugMode={toggleDebugMode}       // Pass toggle function
-          toggleModelAnalyzer={toggleModelAnalyzer} // Pass toggle function
-          handleModelSwitch={() => { logger.warn('Model switching is temporarily disabled.', LogCategory.GENERAL); }} // 修改日誌類別
+          debugMode={debugMode}
+          showModelAnalyzer={showModelAnalyzer}
+          modelUrl={headModelUrl} // Use headModelUrl here
+          toggleDebugMode={toggleDebugMode}
+          toggleModelAnalyzer={toggleModelAnalyzer}
+          handleModelSwitch={() => { logger.warn('Model switching is temporarily disabled.', LogCategory.GENERAL); }} // Placeholder
         />
         {/* <--- 結束 ---> */}
         
         {/* 渲染 AppUI (只傳遞必要 props) */}
-        <AppUI 
+        <AppUI
           wsConnected={wsConnected} // <-- 從 Zustand 讀取
           toggleChatWindow={toggleChatWindow} // <-- 從 Zustand action
           toggleSettingsPanel={toggleSettingsPanel} // <-- 從 Zustand action

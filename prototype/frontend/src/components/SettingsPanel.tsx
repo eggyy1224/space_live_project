@@ -92,7 +92,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   scaleModel,
   resetModel,
   toggleBackground,
-  // selectAnimation, // 移除
+  selectAnimation,
   applyPresetExpression,
   showSpaceBackground,
   // Emotion State Props
@@ -277,26 +277,34 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
           {/* --- Animation Controls --- */}  
           <div className="space-y-2">
-            <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">動畫控制 (已禁用)</h3>
-            <div className="flex flex-wrap gap-1.5">
-              {availableAnimations.map((anim) => (
+            <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">動畫控制</h3>
+            <div className="flex flex-wrap gap-2">
+              {availableAnimations.length > 0 ? (
+                availableAnimations.map((animName) => (
+                  <button
+                    key={animName}
+                    onClick={() => selectAnimation(animName)}
+                    className={buttonClasses(currentAnimation === animName, !isModelLoaded)}
+                    disabled={!isModelLoaded}
+                    title={`播放 ${animName}`}
+                  >
+                    {animName}
+                  </button>
+                ))
+              ) : (
+                <p className="text-xs text-gray-500 dark:text-gray-400 italic">未找到可用動畫</p>
+              )}
+              {availableAnimations.length > 0 && (
                 <button
-                  key={anim}
-                  onClick={() => {}} // 空操作
-                  disabled={true} // 強制禁用
-                  className={buttonClasses(false, true)} // 禁用樣式
-                  title={anim}
+                  key="stop-animation"
+                  onClick={() => selectAnimation('')}
+                  className={buttonClasses(!currentAnimation, !isModelLoaded)}
+                  disabled={!isModelLoaded}
+                  title="停止動畫"
                 >
-                  {anim}
+                  停止
                 </button>
-              ))}
-              <button 
-                onClick={() => {}} // 空操作
-                disabled={true} // 強制禁用
-                className={controlButtonClasses(true)} // 禁用樣式
-              >
-                停止
-              </button>
+              )}
             </div>
           </div>
 
