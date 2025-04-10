@@ -41,9 +41,17 @@ interface ChatMessagePayload {
   id?: string;
   role?: string;
   content?: string;
-  bodyAnimationName?: string | null; // Can be string or null
+  bodyAnimationName?: string | null; // 可能是字符串或 null
+  bodyAnimationSequence?: Array<{
+    name: string;
+    proportion: number;
+    transitionDuration?: number;
+    loop?: boolean;
+    weight?: number;
+  }>; // 新增：動畫序列
   timestamp?: any; // Keep as any for now
   audioUrl?: string | null;
+  audio_duration?: number; // 新增：音頻時長
 }
 
 interface BackendMessage {
@@ -147,6 +155,12 @@ function App() {
   const suggestedAnimationName = useStore((state) => state.suggestedAnimationName);
   const setSuggestedAnimationName = useStore((state) => state.setSuggestedAnimationName);
 
+  // --- 從 Zustand 獲取/設置動畫序列相關的狀態和操作 ---
+  const animationSequence = useStore((state) => state.animationSequence);
+  const setAnimationSequence = useStore((state) => state.setAnimationSequence);
+  const startSequencePlayback = useStore((state) => state.startSequencePlayback);
+  const stopSequencePlayback = useStore((state) => state.stopSequencePlayback);
+
   // 處理 WebSocket 訊息，提取並設置建議的動畫名稱到 Zustand
   useEffect(() => {
     // 使用 JSON.stringify 確保傳遞給 logger 的是字符串
@@ -159,8 +173,25 @@ function App() {
         logger.debug('[AppWS Parse Effect] Condition 1 passed: Message exists and type is chat-message.', LogCategory.WEBSOCKET);
         if (currentMessage.message && typeof currentMessage.message === 'object') {
             logger.debug('[AppWS Parse Effect] Condition 2 passed: Message payload exists and is object.', LogCategory.WEBSOCKET);
+            
             // message 負載現在符合 ChatMessagePayload 類型
             const messagePayload = currentMessage.message;
+            
+            // 處理 bodyAnimationSequence (新增)
+            if ('bodyAnimationSequence' in messagePayload && 
+                Array.isArray(messagePayload.bodyAnimationSequence) && 
+                messagePayload.bodyAnimationSequence.length > 0) {
+                
+                logger.info(`[AppWS] Received animation sequence with ${messagePayload.bodyAnimationSequence.length} keyframes.`, LogCategory.WEBSOCKET);
+                
+                // 儲存動畫序列到 Zustand
+                setAnimationSequence(messagePayload.bodyAnimationSequence);
+                
+                // 不再處理 bodyAnimationName，因為使用序列
+                return;
+            }
+            
+            // 如果沒有序列，則回退到處理單一動畫名稱
             if ('bodyAnimationName' in messagePayload) {
                 logger.debug('[AppWS Parse Effect] Condition 3 passed: bodyAnimationName key exists in payload.', LogCategory.WEBSOCKET);
                 const backendAnimationName = messagePayload.bodyAnimationName;
@@ -196,44 +227,102 @@ function App() {
          logger.debug('[AppWS Parse Effect] Condition 1 FAILED: Message is null or type is not chat-message.', LogCategory.WEBSOCKET);
     }
     // 可以添加對其他消息類型的處理
-  }, [lastJsonMessage, availableAnimations, setSuggestedAnimationName]); // 依賴項加入 setSuggestedAnimationName
+  }, [lastJsonMessage, availableAnimations, setSuggestedAnimationName, setAnimationSequence]); // 依賴項添加 setAnimationSequence
   // ------------------------------------
 
   // --- 同步身體動畫與語音狀態 ---
   const prevIsSpeaking = useRef<boolean>(isSpeaking);
+  const sequenceTimers = useRef<number[]>([]);  // 新增：存放定時器 ID 的數組
 
+  // 新增：清理所有動畫序列定時器的函數
+  const clearAllSequenceTimers = () => {
+    sequenceTimers.current.forEach(timerId => {
+      clearTimeout(timerId);
+    });
+    sequenceTimers.current = [];
+  };
+
+  // 第一部分: 監聽 isSpeaking 狀態變化，處理動畫序列/單一動畫播放
   useEffect(() => {
     // 監聽 isSpeaking 狀態變化
     const speakingStarted = !prevIsSpeaking.current && isSpeaking;
     const speakingStopped = prevIsSpeaking.current && !isSpeaking;
     
     // ---> Add logging here <--- 
-    logger.debug(`[AppSync Effect Check] isSpeaking: ${isSpeaking}, prevIsSpeaking: ${prevIsSpeaking.current}, suggestedAnimationName from store: ${suggestedAnimationName}`, LogCategory.ANIMATION);
+    logger.debug(`[AppSync Effect Check] isSpeaking: ${isSpeaking}, prevIsSpeaking: ${prevIsSpeaking.current}, suggestedAnimationName: ${suggestedAnimationName}, animationSequence length: ${animationSequence.length}`, LogCategory.ANIMATION);
     // ---> End logging <--- 
 
     if (speakingStarted) {
-      // 語音開始播放，觸發建議的動畫
-      // 使用從 Zustand 讀取的建議動畫名稱
-      const animToPlay = suggestedAnimationName || 'Idle'; // 如果 Zustand 中沒有建議，播放 Idle
-      logger.info(`[AppSync] Speech started. Playing animation: ${animToPlay}`, LogCategory.ANIMATION);
-      selectAnimation(animToPlay);
-    } else if (speakingStopped) {
-      // 語音停止播放，切換回 Idle 動畫
-      logger.info(`[AppSync] Speech stopped. Switching to Idle animation.`, LogCategory.ANIMATION);
-      // 確保 'Idle' 是可用動畫列表中的一個有效友好名稱
-      if (availableAnimations.includes('Idle')) {
-        selectAnimation('Idle');
+      // 清理任何先前的定時器
+      clearAllSequenceTimers();
+      
+      // 檢查是否有動畫序列
+      if (animationSequence.length > 0) {
+        // 獲取音頻時長 (從 Zustand store)
+        const audioDuration = useStore.getState().audioDuration;
+        
+        if (audioDuration && audioDuration > 0) {
+          logger.info(`[AppSync] Speech started. Playing animation sequence with ${animationSequence.length} keyframes over ${audioDuration.toFixed(2)} seconds.`, LogCategory.ANIMATION);
+          
+          // 設置動畫序列開始
+          startSequencePlayback(); // 這會立即播放第一個動畫
+          
+          // 為每個後續的動畫設置定時器
+          animationSequence.forEach((keyframe, index) => {
+            // 跳過第一個動畫，因為它已經在 startSequencePlayback 中開始播放
+            if (index === 0) return;
+            
+            // 計算該動畫的絕對開始時間（毫秒）
+            const startTimeMs = keyframe.proportion * audioDuration * 1000;
+            
+            // 設置定時器
+            const timerId = window.setTimeout(() => {
+              // 確保仍然在播放狀態和序列播放模式
+              if (useStore.getState().isSpeaking && useStore.getState().isPlayingSequence) {
+                logger.info(`[AppSync] Playing animation ${keyframe.name} at ${startTimeMs.toFixed(0)}ms (proportion: ${keyframe.proportion})`, LogCategory.ANIMATION);
+                useStore.getState().playNextInSequence(index);
+              }
+            }, startTimeMs);
+            
+            // 保存定時器 ID 以供後續清除
+            sequenceTimers.current.push(timerId);
+          });
+        } else {
+          logger.warn(`[AppSync] Cannot play animation sequence: audio duration is not available or invalid (${audioDuration})`, LogCategory.ANIMATION);
+          // 回退到只播放第一個動畫
+          if (animationSequence[0] && animationSequence[0].name) {
+            selectAnimation(animationSequence[0].name);
+          } else {
+            // 完全回退到單一動畫名稱處理
+            const animToPlay = suggestedAnimationName || 'Idle';
+            selectAnimation(animToPlay);
+          }
+        }
       } else {
-         logger.warn(`[AppSync] 'Idle' animation not found in available list. Cannot switch to Idle.`, LogCategory.ANIMATION);
-         // 可以選擇播放列表中的第一個動畫或其他備用動畫
-         // if (availableAnimations.length > 0) selectAnimation(availableAnimations[0]);
+        // 如果沒有序列，則使用單一動畫名稱（向後兼容）
+        const animToPlay = suggestedAnimationName || 'Idle'; // 如果 Zustand 中沒有建議，播放 Idle
+        logger.info(`[AppSync] Speech started. Playing single animation: ${animToPlay}`, LogCategory.ANIMATION);
+        selectAnimation(animToPlay);
       }
+    } else if (speakingStopped) {
+      // 語音停止播放，清理定時器並停止序列播放
+      clearAllSequenceTimers();
+      
+      // 停止序列播放（會切換回 Idle）
+      stopSequencePlayback();
+      
+      logger.info(`[AppSync] Speech stopped. Cleared all timers and reset to Idle animation.`, LogCategory.ANIMATION);
     }
 
     // 更新 previous state
     prevIsSpeaking.current = isSpeaking;
 
-  }, [isSpeaking, selectAnimation, suggestedAnimationName, availableAnimations]); // 依賴項更新為 Zustand 的 suggestedAnimationName
+    // 組件卸載時清理定時器
+    return () => {
+      clearAllSequenceTimers();
+    };
+
+  }, [isSpeaking, selectAnimation, suggestedAnimationName, availableAnimations, animationSequence, startSequencePlayback, stopSequencePlayback]); // 依賴項添加序列相關項
   // ----------------------------
 
   // === 定義錄音結束後的回調 ===

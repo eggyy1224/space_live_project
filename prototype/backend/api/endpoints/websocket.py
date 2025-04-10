@@ -105,9 +105,15 @@ async def websocket_endpoint(websocket: WebSocket):
                         # 提取結果
                         ai_response = ai_result.get("final_response", "抱歉，我好像有點短路了...")
                         emotional_keyframes = ai_result.get("emotional_keyframes") # 可能為 None
-                        # suggested_body_animation = ai_result.get("bodyAnimationName") # 可能為 None <-- 暫時註解掉
-                        # ---> 新增：測試用，固定返回 'SwingToLand' (修正拼寫)
-                        suggested_body_animation = "SwingToLand" #test data
+                        # suggested_body_animation = ai_result.get("bodyAnimationName") # 可能為 None <-- 移除舊邏輯
+                        # suggested_body_animation = "SwingToLand" # <-- 移除測試數據
+                        
+                        # ---> 新增：定義 Mock 的身體動畫序列 (比例格式)
+                        mock_body_animation_sequence = [
+                            { "name": "Idle", "proportion": 0.0 }, 
+                            { "name": "SwingToLand", "proportion": 0.3 }, 
+                            { "name": "SneakWalk", "proportion": 0.7 }
+                        ]
                         # <--- 結束
 
                         logger.info(f"AI 回應: {ai_response}")
@@ -115,10 +121,11 @@ async def websocket_endpoint(websocket: WebSocket):
                             logger.info(f"生成的情緒 Keyframes: {emotional_keyframes}")
                         else:
                              logger.warning("AI Service 未返回有效的 emotional_keyframes")
-                        if suggested_body_animation:
-                            logger.info(f"建議的身體動畫: {suggested_body_animation}")
-                        else:
-                            logger.warning("AI Service 未返回有效的 bodyAnimationName")
+                        # 移除 suggested_body_animation 的日誌
+                        # if suggested_body_animation:
+                        #     logger.info(f"建議的身體動畫: {suggested_body_animation}")
+                        # else:
+                        #     logger.warning("AI Service 未返回有效的 bodyAnimationName")
 
 
                         # --- 後續處理：TTS, Lipsync, 發送訊息 ---
@@ -134,7 +141,10 @@ async def websocket_endpoint(websocket: WebSocket):
                             "id": f"bot-{int(asyncio.get_event_loop().time() * 1000)}",
                             "role": "bot",
                             "content": ai_response,
-                            "bodyAnimationName": suggested_body_animation,
+                            # "bodyAnimationName": suggested_body_animation, # <-- 移除舊欄位
+                            # ---> 修改：使用定義好的 Mock 序列
+                            "bodyAnimationSequence": mock_body_animation_sequence,
+                            # <--- 結束
                             "timestamp": None,
                             "audioUrl": None # 稍後填充
                         }
