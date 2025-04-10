@@ -3,15 +3,9 @@ import { StateCreator } from 'zustand';
 // --- 引入模型設定 ---
 import { BODY_MODEL_URL } from '../../config/modelConfig';
 // --- 引入結束 ---
-
-// 定義動畫關鍵幀類型
-export interface AnimationKeyframe {
-  name: string;           // 必需，動畫友好名稱
-  proportion: number;     // 必需，範圍 0.0 到 1.0，表示此動畫開始播放的時間點相對於總語音時長的比例
-  transitionDuration?: number; // 可選，與上一個動畫混合的過渡時間，默認 0.5 秒
-  loop?: boolean;         // 可選，是否循環播放此動畫直到下一個 keyframe 開始，默認 false
-  weight?: number;        // 可選，動畫混合權重，範圍 0-1，默認 1
-}
+// --- 引入動畫類型 ---
+import { AnimationKeyframe, PlaybackState } from '../../types/animation';
+// --- 引入結束 ---
 
 // BodySlice 狀態與操作定義
 export interface BodySlice {
@@ -20,21 +14,29 @@ export interface BodySlice {
   availableAnimations: string[];
   currentAnimation: string | null;
   suggestedAnimationName: string | null;
-  animationSequence: AnimationKeyframe[]; // 新增：動畫序列
-  isPlayingSequence: boolean;            // 新增：當前是否在播放序列
-  currentSequenceIndex: number;          // 新增：當前播放的序列索引
+  animationSequence: AnimationKeyframe[]; // 動畫序列
+  isPlayingSequence: boolean;            // 當前是否在播放序列
+  currentSequenceIndex: number;          // 當前播放的序列索引
+  playbackState: PlaybackState;          // 新增：播放狀態
+  loopCount: number;                     // 新增：當前動畫已循環次數
+  maxLoopCount: number | null;           // 新增：當前動畫最大循環次數 (null 表示無限)
   setBodyModelUrl: (url: string) => void;
   setBodyModelLoaded: (loaded: boolean) => void;
   setAvailableAnimations: (animations: string[]) => void;
   setCurrentAnimation: (animation: string | null) => void;
   setSuggestedAnimationName: (name: string | null) => void;
-  setAnimationSequence: (sequence: AnimationKeyframe[]) => void; // 新增：設置動畫序列
-  startSequencePlayback: () => void;                            // 新增：開始播放序列
-  stopSequencePlayback: () => void;                             // 新增：停止播放序列
-  playNextInSequence: (index?: number) => void;                 // 新增：播放序列中的下一個動畫
+  setAnimationSequence: (sequence: AnimationKeyframe[]) => void;
+  startSequencePlayback: () => void;
+  stopSequencePlayback: () => void;
+  pauseSequencePlayback: () => void;     // 新增：暫停序列播放
+  resumeSequencePlayback: () => void;    // 新增：恢復序列播放
+  playNextInSequence: (index?: number) => void;
+  incrementLoopCount: () => void;        // 新增：增加循環計數
+  resetLoopCount: (maxCount?: number | null) => void; // 新增：重置循環計數
+  hasReachedMaxLoops: () => boolean;     // 新增：檢查是否達到最大循環次數
 }
 
-// 創建 Body Slice (簡化類型)
+// 創建 Body Slice
 export const createBodySlice: StateCreator<BodySlice> = (set, get) => ({
   // 初始狀態
   bodyModelUrl: BODY_MODEL_URL,
@@ -42,9 +44,12 @@ export const createBodySlice: StateCreator<BodySlice> = (set, get) => ({
   availableAnimations: [],
   currentAnimation: null,
   suggestedAnimationName: null,
-  animationSequence: [],           // 新增：初始化為空數組
-  isPlayingSequence: false,        // 新增：初始化為 false
-  currentSequenceIndex: -1,        // 新增：初始化為 -1 (表示未開始)
+  animationSequence: [],
+  isPlayingSequence: false,
+  currentSequenceIndex: -1,
+  playbackState: PlaybackState.STOPPED,   // 新增：初始為停止狀態
+  loopCount: 0,                           // 新增：循環計數初始為 0
+  maxLoopCount: null,                     // 新增：默認為無限循環
 
   // 操作實現
   setBodyModelUrl: (url: string) => set({
@@ -53,43 +58,65 @@ export const createBodySlice: StateCreator<BodySlice> = (set, get) => ({
     currentAnimation: null,
     bodyModelLoaded: false,
     suggestedAnimationName: null,
-    animationSequence: [],         // 新增：重置動畫序列
-    isPlayingSequence: false,      // 新增：重置播放狀態
-    currentSequenceIndex: -1,      // 新增：重置序列索引
+    animationSequence: [],
+    isPlayingSequence: false,
+    currentSequenceIndex: -1,
+    playbackState: PlaybackState.STOPPED, // 重置播放狀態
+    loopCount: 0,                         // 重置循環計數
+    maxLoopCount: null,                   // 重置最大循環次數
   }),
 
   setBodyModelLoaded: (loaded: boolean) => set({ bodyModelLoaded: loaded }),
 
-  setAvailableAnimations: (animations: string[]) => set((state: BodySlice) => ({ // <-- 為 state 添加類型
+  setAvailableAnimations: (animations: string[]) => set((state: BodySlice) => ({
     availableAnimations: animations,
     currentAnimation: state.currentAnimation === null && animations.includes('Idle') ? 'Idle' : (state.currentAnimation === null && animations.length > 0 ? animations[0] : state.currentAnimation)
   })),
 
-  setCurrentAnimation: (animation: string | null) => set({ currentAnimation: animation }),
+  setCurrentAnimation: (animation: string | null) => set((state) => ({
+    currentAnimation: animation,
+    // 如果是手動切換動畫，停止序列播放
+    isPlayingSequence: animation === null ? false : state.isPlayingSequence,
+    // 重置循環計數
+    loopCount: 0,
+    // 如果當前在序列中，獲取對應的最大循環次數
+    maxLoopCount: state.isPlayingSequence && state.currentSequenceIndex >= 0 && state.currentSequenceIndex < state.animationSequence.length 
+      ? (state.animationSequence[state.currentSequenceIndex].loopCount || null)
+      : null
+  })),
 
   setSuggestedAnimationName: (name: string | null) => set({ suggestedAnimationName: name }),
   
-  // 新增：設置動畫序列
+  // 設置動畫序列
   setAnimationSequence: (sequence: AnimationKeyframe[]) => set({
     animationSequence: sequence,
-    currentSequenceIndex: -1, // 重置序列索引
-    isPlayingSequence: false  // 重置播放狀態
+    currentSequenceIndex: -1,
+    isPlayingSequence: false,
+    playbackState: PlaybackState.STOPPED,
+    loopCount: 0,
+    maxLoopCount: null
   }),
 
-  // 新增：開始播放序列
+  // 開始播放序列
   startSequencePlayback: () => set((state) => {
     if (state.animationSequence.length === 0) {
       return state; // 如果序列為空，不做任何改變
     }
     
+    // 獲取第一個動畫的最大循環次數
+    const maxLoops = state.animationSequence[0].loopCount || null;
+    
     return {
       isPlayingSequence: true,
-      currentSequenceIndex: 0, // 從第一個動畫開始
-      currentAnimation: state.animationSequence[0].name // 設置當前動畫為序列中的第一個
+      currentSequenceIndex: 0,
+      currentAnimation: state.animationSequence[0].name,
+      playbackState: PlaybackState.PLAYING,
+      loopCount: 0,         // 重置循環計數
+      maxLoopCount: maxLoops // 設置最大循環次數
     };
   }),
 
-  // 新增：停止播放序列
+  // 停止播放序列
   stopSequencePlayback: () => set((state) => {
     // 如果當前有可用的 Idle 動畫，切換回 Idle
     const idleAnimation = state.availableAnimations.includes('Idle') ? 'Idle' : null;
@@ -97,11 +124,36 @@ export const createBodySlice: StateCreator<BodySlice> = (set, get) => ({
     return {
       isPlayingSequence: false,
       currentSequenceIndex: -1,
-      currentAnimation: idleAnimation // 切換回 Idle 或 null
+      currentAnimation: idleAnimation,
+      playbackState: PlaybackState.STOPPED,
+      loopCount: 0,
+      maxLoopCount: null
+    };
+  }),
+  
+  // 新增：暫停序列播放
+  pauseSequencePlayback: () => set((state) => {
+    if (!state.isPlayingSequence || state.playbackState !== PlaybackState.PLAYING) {
+      return state; // 如果沒有播放序列或已經暫停，不做任何改變
+    }
+    
+    return {
+      playbackState: PlaybackState.PAUSED
+    };
+  }),
+  
+  // 新增：恢復序列播放
+  resumeSequencePlayback: () => set((state) => {
+    if (!state.isPlayingSequence || state.playbackState !== PlaybackState.PAUSED) {
+      return state; // 如果沒有播放序列或沒有暫停，不做任何改變
+    }
+    
+    return {
+      playbackState: PlaybackState.PLAYING
     };
   }),
 
-  // 新增：播放序列中的下一個動畫
+  // 播放序列中的下一個動畫
   playNextInSequence: (index?: number) => set((state) => {
     // 如果沒有提供索引，使用當前索引 + 1
     const nextIndex = index !== undefined ? index : state.currentSequenceIndex + 1;
@@ -112,14 +164,39 @@ export const createBodySlice: StateCreator<BodySlice> = (set, get) => ({
       return {
         isPlayingSequence: false,
         currentSequenceIndex: -1,
-        currentAnimation: state.availableAnimations.includes('Idle') ? 'Idle' : state.currentAnimation
+        currentAnimation: state.availableAnimations.includes('Idle') ? 'Idle' : state.currentAnimation,
+        playbackState: PlaybackState.STOPPED,
+        loopCount: 0,
+        maxLoopCount: null
       };
     }
+    
+    // 獲取下一個動畫的最大循環次數
+    const maxLoops = state.animationSequence[nextIndex].loopCount || null;
     
     // 播放下一個動畫
     return {
       currentSequenceIndex: nextIndex,
-      currentAnimation: state.animationSequence[nextIndex].name
+      currentAnimation: state.animationSequence[nextIndex].name,
+      loopCount: 0,         // 重置循環計數
+      maxLoopCount: maxLoops // 設置最大循環次數
     };
-  })
+  }),
+  
+  // 新增：增加循環計數
+  incrementLoopCount: () => set((state) => ({
+    loopCount: state.loopCount + 1
+  })),
+  
+  // 新增：重置循環計數
+  resetLoopCount: (maxCount?: number | null) => set({
+    loopCount: 0,
+    maxLoopCount: maxCount !== undefined ? maxCount : null
+  }),
+  
+  // 新增：檢查是否達到最大循環次數
+  hasReachedMaxLoops: () => {
+    const state = get();
+    return state.maxLoopCount !== null && state.loopCount >= state.maxLoopCount;
+  }
 }); 

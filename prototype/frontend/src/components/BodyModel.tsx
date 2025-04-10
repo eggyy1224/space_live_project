@@ -128,6 +128,58 @@ export function BodyModel() {
   }, [friendlyAnimationNames, animationClipsPerFile, mixer, group.current]); 
   // --------------------------------
 
+  // --- 動畫完成事件處理 ---
+  useEffect(() => {
+    if (!mixer) return;
+    
+    // 創建動畫完成事件監聽器
+    const onLoopComplete = (e: any) => {
+      const action = e.action as THREE.AnimationAction;
+      const clipName = action.getClip().name;
+      
+      // 查找這個動畫對應的友好名稱
+      let friendlyName = null;
+      friendlyToActionMap.forEach((mapAction, name) => {
+        if (mapAction === action) {
+          friendlyName = name;
+        }
+      });
+      
+      if (friendlyName) {
+        logger.debug(`[BodyModel] Animation loop complete: ${friendlyName} (Clip: ${clipName})`, LogCategory.ANIMATION);
+        
+        // 增加循環計數
+        const state = useStore.getState();
+        const currentAnimName = state.currentAnimation;
+        
+        // 確保這是當前播放的動畫
+        if (currentAnimName === friendlyName) {
+          // 增加循環計數
+          useStore.getState().incrementLoopCount();
+          
+          // 檢查是否達到最大循環次數
+          if (useStore.getState().hasReachedMaxLoops()) {
+            logger.info(`[BodyModel] Animation ${friendlyName} reached max loop count, playing next in sequence`, LogCategory.ANIMATION);
+            
+            // 如果在序列中，自動播放下一個
+            if (state.isPlayingSequence) {
+              useStore.getState().playNextInSequence();
+            }
+          }
+        }
+      }
+    };
+    
+    // 添加事件監聽器
+    mixer.addEventListener('loop', onLoopComplete);
+    
+    // 清理函數
+    return () => {
+      mixer.removeEventListener('loop', onLoopComplete);
+    };
+  }, [mixer, friendlyToActionMap]);
+  // --- 動畫完成事件處理結束 ---
+
   // 初始加載處理
   useEffect(() => {
     // 使用 friendlyAnimationNames (已經是友好名稱)
@@ -159,42 +211,118 @@ export function BodyModel() {
     // 1. 獲取目標 Action
     let targetAction: THREE.AnimationAction | undefined | null = null;
     if (currentAnimation) { 
+        // 從 Zustand 獲取動畫配置資訊
+        const animationState = useStore.getState();
+        const animSequence = animationState.animationSequence;
+        const currentIndex = animationState.currentSequenceIndex;
+        
+        // 獲取過渡時間配置，如果有的話
+        let transitionDuration = 0.5; // 默認過渡時間為 0.5 秒
+        
+        if (animSequence.length > 0 && currentIndex >= 0 && currentIndex < animSequence.length) {
+            // 從序列中獲取當前動畫配置
+            const currentKeyframe = animSequence[currentIndex];
+            // 使用配置的過渡時間，如果有的話
+            if (currentKeyframe.transitionDuration !== undefined) {
+                transitionDuration = currentKeyframe.transitionDuration;
+            }
+        }
+        
         targetAction = friendlyToActionMap.get(currentAnimation);
         if (!targetAction) {
             logger.error(`[BodyModel] Animation effect: Cannot find Action in precise map for friendly name: ${currentAnimation}`, LogCategory.ANIMATION);
         }
+        
+        // 2. 獲取正在播放的 action (仍然需要遍歷 map 中的 actions)
+        let previousAnimation: THREE.AnimationAction | null = null;
+        for (const action of friendlyToActionMap.values()) {
+            if (action?.isRunning()) {
+                previousAnimation = action;
+                break;
+            }
+        }
+        
+        // 3. 如果之前有動畫，並且目標動畫不同，則使用更高級的過渡
+        if (previousAnimation && previousAnimation !== targetAction && targetAction) {
+            // 使用混合器的 crossFadeTo 進行更高品質的過渡
+            logger.debug(`[BodyModel] CrossFade from ${previousAnimation.getClip().name} to ${targetAction.getClip().name} over ${transitionDuration}s`, LogCategory.ANIMATION);
+            
+            try {
+                // 確保目標動畫已經正確設置
+                targetAction
+                    .reset()
+                    .setEffectiveTimeScale(1)
+                    .setEffectiveWeight(0); // 初始權重為 0，由 crossFadeTo 漸變到 1
+                
+                // 啟用循環播放標誌檢查
+                const isLoop = animSequence.length > 0 && 
+                               currentIndex >= 0 && 
+                               currentIndex < animSequence.length && 
+                               animSequence[currentIndex].loop === true;
+                
+                // 設置目標動畫循環模式
+                targetAction.loop = isLoop ? THREE.LoopRepeat : THREE.LoopOnce;
+                
+                // 若為非循環，確保完成後不停止
+                if (!isLoop) {
+                    targetAction.clampWhenFinished = true;
+                }
+                
+                // 執行交叉淡入，這將自動開始播放 targetAction
+                previousAnimation.crossFadeTo(targetAction, transitionDuration, true);
+                
+                // 記錄日誌
+                logger.debug(`[BodyModel] CrossFade configured with loop=${isLoop ? 'LoopRepeat' : 'LoopOnce'} and clampWhenFinished=${!isLoop}`, LogCategory.ANIMATION);
+                
+            } catch (error) {
+                // 如果 crossFadeTo 失敗，回退到基本方法
+                logger.warn(`[BodyModel] CrossFadeTo failed, falling back to basic fade: ${error instanceof Error ? error.message : String(error)}`, LogCategory.ANIMATION);
+                previousAnimation.fadeOut(transitionDuration);
+                if (targetAction) {
+                    targetAction
+                      .reset()
+                      .setEffectiveTimeScale(1)
+                      .setEffectiveWeight(1)
+                      .fadeIn(transitionDuration)
+                      .play();
+                }
+            }
+        } else if (targetAction && !previousAnimation) {
+            // 無需過渡，直接播放
+            logger.debug(`[BodyModel] Direct play for friendly name: ${currentAnimation} (Clip: ${targetAction.getClip().name})`, LogCategory.ANIMATION);
+            
+            // 檢查循環配置
+            const isLoop = animSequence.length > 0 && 
+                           currentIndex >= 0 && 
+                           currentIndex < animSequence.length && 
+                           animSequence[currentIndex].loop === true;
+            
+            // 設置循環模式
+            targetAction.loop = isLoop ? THREE.LoopRepeat : THREE.LoopOnce;
+            
+            // 若為非循環，確保完成後不停止
+            if (!isLoop) {
+                targetAction.clampWhenFinished = true;
+            }
+            
+            // 直接播放
+            targetAction
+              .reset()
+              .setEffectiveTimeScale(1)
+              .setEffectiveWeight(1)
+              .play();
+        } else if (!targetAction && currentAnimation) {
+            logger.warn(`[BodyModel] Could not play animation: targetAction not found in precise map for friendly name ${currentAnimation}`, LogCategory.ANIMATION);
+        }
     } else {
         logger.debug('[BodyModel] Animation effect: currentAnimation is null/empty, stopping.', LogCategory.ANIMATION);
-    }
-
-    // 2. 獲取正在播放的 action (仍然需要遍歷 map 中的 actions)
-    let previousAnimation: THREE.AnimationAction | null = null;
-    for (const action of friendlyToActionMap.values()) {
-        if (action?.isRunning()) {
-            previousAnimation = action;
-            break;
+        
+        // 停止所有當前運行的動畫
+        for (const action of friendlyToActionMap.values()) {
+            if (action?.isRunning()) {
+                action.fadeOut(0.5);
+            }
         }
-    }
-    // const previousAnimation = Object.values(actions).find(action => action?.isRunning()); // 不再可靠
-
-    // 3. 執行淡入淡出
-    if (previousAnimation && previousAnimation !== targetAction) {
-        logger.debug(`[BodyModel] Fading out: ${previousAnimation.getClip().name}`, LogCategory.ANIMATION);
-        previousAnimation.fadeOut(0.5);
-    }
-
-    if (targetAction) {
-        logger.debug(`[BodyModel] Fading in Precise Action for friendly name: ${currentAnimation} (Clip: ${targetAction.getClip().name})`, LogCategory.ANIMATION);
-        targetAction
-          .reset()
-          .setEffectiveTimeScale(1)
-          .setEffectiveWeight(1)
-          .fadeIn(0.5)
-          .play();
-    } else if (previousAnimation && !currentAnimation) {
-        logger.debug(`[BodyModel] Stopping previous animation: ${previousAnimation.getClip().name}`, LogCategory.ANIMATION);
-    } else if (!targetAction && currentAnimation) {
-         logger.warn(`[BodyModel] Could not play animation: targetAction not found in precise map for friendly name ${currentAnimation}`, LogCategory.ANIMATION);
     }
 
   // 依賴項包含 currentAnimation (友好名稱) 和 精確的 map
