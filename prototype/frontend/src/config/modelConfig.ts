@@ -30,12 +30,11 @@ export const BODY_MODEL_URL = '/models/armature001_model.glb';
 // ];
 
 /**
- * List of external animation file paths relative to the public directory.
- * These will be used by the body model.
+ * @deprecated List of external animation file paths is now managed in animationConfig.ts
  */
-export const EXTERNAL_ANIMATION_PATHS: string[] = [
-  '/animations/SwingToLand_animation.glb',
-  '/animations/SneakWalk_animation.glb',
-  '/animations/Idle_animation.glb'
-  // Add other external animation paths here
-]; 
+// export const EXTERNAL_ANIMATION_PATHS: string[] = [
+//   '/animations/SwingToLand_animation.glb',
+//   '/animations/SneakWalk_animation.glb',
+//   '/animations/Idle_animation.glb'
+//   // Add other external animation paths here
+// ]; 

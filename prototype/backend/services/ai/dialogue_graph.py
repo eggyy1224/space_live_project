@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import asyncio
 import json
+import os # 新增：導入 os 模塊
 from typing import Dict, List, Any, TypedDict, Optional, Tuple
 
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
@@ -32,7 +33,51 @@ from .tools.space_tools import get_iss_info, get_moon_phase
 # 配置基本日誌
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# --- 新增 Keyframe 相關定義 ---
+# --- 動態加載動畫配置 --- 
+ALLOWED_ANIMATION_NAMES = []
+ANIMATION_DESCRIPTIONS = {}
+DEFAULT_ANIMATIONS = ["Idle"] # 最小化安全回退列表
+
+try:
+    # 計算共享配置文件的絕對路徑 (假設 dialogue_graph.py 在 services/ai/ 下)
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    # 根據你的項目結構調整路徑層級: 從 services/ai/ 到 prototype/shared/config/
+    shared_config_path = os.path.abspath(os.path.join(current_dir, '../../../shared/config/animations.json'))
+
+    logging.info(f"嘗試從以下路徑加載動畫配置: {shared_config_path}")
+
+    if os.path.exists(shared_config_path):
+        with open(shared_config_path, 'r', encoding='utf-8') as f:
+            animations_config = json.load(f)
+        ALLOWED_ANIMATION_NAMES = list(animations_config.keys())
+        # 加載描述，提供默認值
+        ANIMATION_DESCRIPTIONS = {name: data.get('description', f'Animation: {name}')
+                                  for name, data in animations_config.items()}
+        logging.info(f"✅ 成功從 JSON 加載動畫配置。名稱: {ALLOWED_ANIMATION_NAMES}")
+
+        # 確保列表非空且包含 Idle (如果原始文件有)
+        if not ALLOWED_ANIMATION_NAMES:
+             logging.warning("警告：加載的動畫列表為空！回退到默認值。")
+             ALLOWED_ANIMATION_NAMES = DEFAULT_ANIMATIONS
+             ANIMATION_DESCRIPTIONS["Idle"] = "Default Idle animation" # 確保描述也回退
+        elif "Idle" not in ALLOWED_ANIMATION_NAMES:
+             logging.warning("警告：加載的動畫名稱中不包含 'Idle'。回退到默認值。")
+             # 如果 Idle 不存在，可能整個配置都有問題，回退到僅含 Idle 更安全
+             ALLOWED_ANIMATION_NAMES = DEFAULT_ANIMATIONS
+             ANIMATION_DESCRIPTIONS = {"Idle": "Default Idle animation"}
+
+    else:
+        logging.warning(f"❌ 動畫配置文件未找到: {shared_config_path}。使用默認回退值: {DEFAULT_ANIMATIONS}")
+        ALLOWED_ANIMATION_NAMES = DEFAULT_ANIMATIONS
+        ANIMATION_DESCRIPTIONS["Idle"] = "Default Idle animation"
+
+except Exception as e:
+    logging.error(f"❌ 加載動畫配置文件時出錯: {e}。使用默認回退值: {DEFAULT_ANIMATIONS}", exc_info=True)
+    ALLOWED_ANIMATION_NAMES = DEFAULT_ANIMATIONS
+    ANIMATION_DESCRIPTIONS["Idle"] = "Default Idle animation"
+# --- 動態加載結束 ---
+
+# --- Keyframe 相關定義 ---
 
 # 允許的情緒標籤列表 (與前端 emotionMappings.ts 同步)
 ALLOWED_EMOTION_TAGS = [
@@ -46,10 +91,10 @@ ALLOWED_EMOTION_TAGS = [
     "shy", "bashful", "smug", "awe", "doubtful"
 ]
 
-# 允許的動作名稱列表
-ALLOWED_ANIMATION_NAMES = ["Idle", "SwingToLand", "SneakWalk"]
+# 移除舊的硬編碼列表
+# ALLOWED_ANIMATION_NAMES = ["Idle", "SwingToLand", "SneakWalk"]
 
-# 默認動畫序列
+# 默認動畫序列 (仍然使用 "Idle")
 DEFAULT_ANIMATION_SEQUENCE = [
     {"name": "Idle", "proportion": 0.0},
     {"name": "Idle", "proportion": 1.0}
@@ -77,7 +122,7 @@ keyframes_schema = {
     }
 }
 
-# 身體動畫序列的 JSON Schema
+# 身體動畫序列的 JSON Schema (使用動態加載的名稱)
 animation_sequence_schema = {
     "type": "array",
     "items": {
@@ -85,7 +130,7 @@ animation_sequence_schema = {
         "properties": {
             "name": {
                 "type": "string",
-                "enum": ALLOWED_ANIMATION_NAMES, # 限制動作名稱
+                "enum": ALLOWED_ANIMATION_NAMES, # 使用動態加載的列表
                 "description": "預設動作名稱"
             },
             "proportion": {
@@ -168,12 +213,16 @@ def validate_and_fix_keyframes(raw_keyframes: Optional[List[Dict]]) -> List[Dict
     logging.info(f"Keyframes 驗證和修正完成，共 {len(valid_keyframes)} 幀。")
     return valid_keyframes
 
-# 添加動畫序列驗證函數
+# 添加動畫序列驗證函數 (檢查名稱是否在動態列表中)
 def validate_and_fix_animation_sequence(raw_sequence: Optional[List[Dict]]) -> List[Dict]:
     """
     驗證、排序並修正從 LLM 獲取的身體動畫序列。
     確保格式正確、名稱有效、比例在範圍內，並包含首尾幀。
+    同時確保至少有兩個不同的動作。
     """
+    # 使用全局的 ALLOWED_ANIMATION_NAMES
+    global ALLOWED_ANIMATION_NAMES, DEFAULT_ANIMATION_SEQUENCE
+
     if not isinstance(raw_sequence, list) or not raw_sequence:
         logging.warning("收到的動畫序列不是列表或為空，返回默認值。")
         return DEFAULT_ANIMATION_SEQUENCE.copy()
@@ -189,10 +238,16 @@ def validate_and_fix_animation_sequence(raw_sequence: Optional[List[Dict]]) -> L
         name = anim.get("name")
         proportion = anim.get("proportion")
 
-        # 驗證類型和內容
+        # 驗證類型和內容 (使用動態加載的 ALLOWED_ANIMATION_NAMES)
         if not isinstance(name, str) or name not in ALLOWED_ANIMATION_NAMES:
-            logging.warning(f"無效或不允許的動作名稱: {name}，已跳過動畫關鍵幀: {anim}")
-            continue
+            # 如果名稱無效，嘗試回退到 Idle，如果 Idle 可用
+            if "Idle" in ALLOWED_ANIMATION_NAMES:
+                 logging.warning(f"無效或不允許的動作名稱: {name}。嘗試回退到 'Idle'。原始關鍵幀: {anim}")
+                 name = "Idle"
+            else:
+                 logging.warning(f"無效或不允許的動作名稱: {name}，且 'Idle' 不可用。已跳過動畫關鍵幀: {anim}")
+                 continue # 跳過這個無效的幀
+        
         if not isinstance(proportion, (int, float)) or not (0.0 <= proportion <= 1.0):
             logging.warning(f"無效的時間比例: {proportion}，必須在 0.0 到 1.0 之間。已跳過動畫關鍵幀: {anim}")
             continue
@@ -212,21 +267,56 @@ def validate_and_fix_animation_sequence(raw_sequence: Optional[List[Dict]]) -> L
     # 按 proportion 排序
     valid_sequence.sort(key=lambda x: x["proportion"])
 
-    # 確保首幀 proportion 為 0.0
+    # 確保首幀 proportion 為 0.0 (優先使用 Idle)
+    idle_name = "Idle" if "Idle" in ALLOWED_ANIMATION_NAMES else (ALLOWED_ANIMATION_NAMES[0] if ALLOWED_ANIMATION_NAMES else None)
+    if not idle_name:
+        logging.error("無法確定用於填充首尾幀的動畫名稱！")
+        return DEFAULT_ANIMATION_SEQUENCE.copy() # 或者拋出錯誤
+        
     if valid_sequence[0]["proportion"] != 0.0:
-        logging.info("動畫序列缺少 0.0 比例的幀，自動添加 Idle 首幀。")
-        valid_sequence.insert(0, {"name": "Idle", "proportion": 0.0})
+        logging.info(f"動畫序列缺少 0.0 比例的幀，自動添加 {idle_name} 首幀。")
+        valid_sequence.insert(0, {"name": idle_name, "proportion": 0.0})
 
-    # 確保尾幀 proportion 為 1.0
+    # 確保尾幀 proportion 為 1.0 (優先使用 Idle)
     if valid_sequence[-1]["proportion"] < 1.0:
-        logging.info("動畫序列缺少 1.0 比例的幀，自動添加 Idle 尾幀。")
-        valid_sequence.append({"name": "Idle", "proportion": 1.0})
+        logging.info(f"動畫序列缺少 1.0 比例的幀，自動添加 {idle_name} 尾幀。")
+        # 如果最後一幀是 Idle，可以稍微智能一點，避免連續兩個 Idle
+        last_valid_name = valid_sequence[-1]["name"]
+        name_to_append = idle_name if last_valid_name != idle_name else last_valid_name
+        valid_sequence.append({"name": name_to_append, "proportion": 1.0})
     elif valid_sequence[-1]["proportion"] > 1.0:
         logging.warning("最後一個動畫關鍵幀的 proportion 超過 1.0，強制設為 1.0。")
         valid_sequence[-1]["proportion"] = 1.0
 
-    logging.info(f"動畫序列驗證和修正完成，共 {len(valid_sequence)} 幀。")
+    # 檢查是否至少有兩個不同的動作
+    unique_animations = set(frame["name"] for frame in valid_sequence)
+    
+    if len(unique_animations) < 2:
+        logging.info("動畫序列只包含一種動作，添加另一種動作...")
+        
+        # 獲取當前唯一的動作名稱
+        current_animation = next(iter(unique_animations))
+        
+        # 從允許的動畫中選擇一個不同的動作
+        alternative_animations = [name for name in ALLOWED_ANIMATION_NAMES if name != current_animation]
+        
+        if alternative_animations:
+            # 選擇第一個可用的替代動畫
+            alt_animation = alternative_animations[0]
+            
+            # 中間位置 (proportion = 0.5)
+            valid_sequence.append({"name": alt_animation, "proportion": 0.5})
+            
+            # 重新排序
+            valid_sequence.sort(key=lambda x: x["proportion"])
+            
+            logging.info(f"已添加 {alt_animation} 作為中間動畫幀，確保至少有兩種不同動作")
+        else:
+            logging.warning("沒有可用的替代動畫名稱，無法添加第二種動作")
+
+    logging.info(f"動畫序列驗證和修正完成，共 {len(valid_sequence)} 幀，包含 {len(set(frame['name'] for frame in valid_sequence))} 種不同動作。")
     return valid_sequence
+
 
 # --- 重新添加/確保 Keyframe 分析節點定義在頂層 ---
 
@@ -234,6 +324,9 @@ async def analyze_keyframes_node(state: DialogueState) -> Dict[str, Any]:
     """
     分析 LLM 生成的純文本回應，調用第二次 LLM (使用 JSON 模式) 來提取情緒關鍵幀和身體動畫序列。
     """
+    # 使用全局的 ALLOWED_ANIMATION_NAMES 和 ANIMATION_DESCRIPTIONS
+    global ALLOWED_ANIMATION_NAMES, ANIMATION_DESCRIPTIONS, keyframes_schema, animation_sequence_schema
+    
     llm_response_raw = state.get("llm_response_raw", "")
     llm = state.get("_context", {}).get("llm")
 
@@ -250,6 +343,10 @@ async def analyze_keyframes_node(state: DialogueState) -> Dict[str, Any]:
             "body_animation_sequence": DEFAULT_ANIMATION_SEQUENCE.copy()
         }
 
+    # 使用動態加載的動畫名稱和描述更新 Prompt
+    available_actions_desc = ', '.join([f"{name}({ANIMATION_DESCRIPTIONS.get(name, '')})" 
+                                        for name in ALLOWED_ANIMATION_NAMES])
+
     analysis_prompt = f"""
 請分析以下這段文本，同時完成兩個任務：
 
@@ -259,12 +356,14 @@ async def analyze_keyframes_node(state: DialogueState) -> Dict[str, Any]:
 
 2. 選擇適合文本內容的身體動畫序列 (body_animation_sequence)。
 每個動畫關鍵幀包含 'name' (動作名稱) 和 'proportion' (相對時間比例 0.0 到 1.0)。
-可用的動作僅限於: "Idle" (閒置/靜止), "SwingToLand" (輕盈降落), "SneakWalk" (悄悄行走)。
+可用的動作僅限於 (名稱(描述)): {available_actions_desc}。
 
 選擇動畫時，請考慮：
 - 文本的語義內容和表達的活動
 - 情緒變化與身體動作的協調
 - 自然的過渡順序
+- 必須使用至少兩種不同的動作 (非常重要)
+- 為不同的情緒變化選擇不同的動畫類型
 
 文本內容：
 "{llm_response_raw}"
@@ -280,8 +379,9 @@ async def analyze_keyframes_node(state: DialogueState) -> Dict[str, Any]:
 
 確保：
 1. 兩個序列的第一個關鍵幀 proportion 都為 0.0
-2. 動畫選擇符合文本的內容邏輯
+2. 動畫選擇符合文本的內容邏輯，且名稱在可用動作列表中。
 3. 結果僅包含指定的 JSON 格式
+4. body_animation_sequence 必須包含至少兩種不同的動作名稱 (強制要求)
 """
 
     generation_config = GenerationConfig(

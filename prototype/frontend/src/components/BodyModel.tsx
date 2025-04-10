@@ -5,7 +5,10 @@ import * as THREE from 'three';
 import { useBodyService } from '../services/BodyService';
 import { useStore } from '../store';
 import logger, { LogCategory } from '../utils/LogManager';
-import { EXTERNAL_ANIMATION_PATHS } from '../config/modelConfig';
+// 移除舊的導入
+// import { EXTERNAL_ANIMATION_PATHS } from '../config/modelConfig';
+// 恢復標準 ES 模塊導入
+import { ANIMATION_PATHS, ANIMATION_NAMES } from '../config/animationConfig';
 import { getFriendlyAnimationName } from '../utils/animationUtils';
 
 // --- 輔助 Hook 加載多個 GLTF 動畫 ---
@@ -39,11 +42,13 @@ export function BodyModel() {
   } = useBodyService();
   const group = useRef<Group>(null);
 
-  // --- 生成友好名稱列表 ---
-  const friendlyAnimationNames = useMemo(() => 
-    EXTERNAL_ANIMATION_PATHS.map(getFriendlyAnimationName),
-    [] // 只計算一次，因為 EXTERNAL_ANIMATION_PATHS 是常量
-  );
+  // --- 使用新的配置生成友好名稱列表 --- 
+  // 注意：ANIMATION_NAMES 已經是友好名稱列表了，不再需要 map
+  const friendlyAnimationNames = useMemo(() => ANIMATION_NAMES, []);
+  // const friendlyAnimationNames = useMemo(() => 
+  //   EXTERNAL_ANIMATION_PATHS.map(getFriendlyAnimationName),
+  //   [] // 只計算一次，因為 EXTERNAL_ANIMATION_PATHS 是常量
+  // );
   // ----------------------
 
   useEffect(() => {
@@ -69,10 +74,10 @@ export function BodyModel() {
   const { scene } = useGLTF(bodyModelUrl);
   logger.info(`[BodyModel] Body scene loaded from ${bodyModelUrl}`, LogCategory.MODEL);
 
-  // 2. 加載所有外部動畫 (獲取合併結果和原始結果)
+  // 2. 加載所有外部動畫 (使用新的 ANIMATION_PATHS)
   const { combinedAnimations: externalAnimations, animationClipsPerFile } = 
-    useExternalAnimations(EXTERNAL_ANIMATION_PATHS);
-  logger.info(`[BodyModel] Loaded ${externalAnimations.length} external animations from ${EXTERNAL_ANIMATION_PATHS.length} files.`, LogCategory.ANIMATION);
+    useExternalAnimations(ANIMATION_PATHS);
+  logger.info(`[BodyModel] Loaded ${externalAnimations.length} external animations from ${ANIMATION_PATHS.length} files.`, LogCategory.ANIMATION);
   
   // 3. 使用合併後的外部動畫獲取 mixer
   const { mixer } = useAnimations(externalAnimations, group); 
@@ -89,7 +94,7 @@ export function BodyModel() {
     const currentGroup = group.current; // 確保在 useMemo 內部引用的是當前值
     
     if (friendlyAnimationNames.length === animationClipsPerFile.length) {
-      friendlyAnimationNames.forEach((friendlyName, index) => {
+      friendlyAnimationNames.forEach((friendlyName: string, index: number) => {
         const clips = animationClipsPerFile[index];
         if (clips && clips.length > 0) {
             const clip = clips[0]; 
@@ -125,9 +130,10 @@ export function BodyModel() {
 
   // 初始加載處理
   useEffect(() => {
+    // 使用 friendlyAnimationNames (已經是友好名稱)
     logger.info(`[BodyModel] Load Success & Effect running. Model: ${bodyModelUrl}, Setting available FRIENDLY animations: ${friendlyAnimationNames.join(', ') || 'None'}`, LogCategory.MODEL);
-    setAvailableAnimations(friendlyAnimationNames); 
-    setBodyModelLoaded(true);     
+    setAvailableAnimations(friendlyAnimationNames);
+    setBodyModelLoaded(true);
     
     return () => {
       logger.info(`[BodyModel] Effect cleanup for ${bodyModelUrl}. Resetting loaded state and animations.`, LogCategory.MODEL);
@@ -201,7 +207,7 @@ export function BodyModel() {
   return <primitive ref={group} object={scene} dispose={null} />;
 }
 
-// --- 預加載邏輯更新 ---
+// --- 預加載邏輯更新 (使用新的 ANIMATION_PATHS) ---
 try {
   const initialBodyUrl = useStore.getState().bodyModelUrl;
   if (initialBodyUrl) {
@@ -210,8 +216,8 @@ try {
   } else {
     logger.warn('[BodyModel] Preload skipped (body): initial bodyModelUrl is empty.', LogCategory.MODEL);
   }
-  // 預加載所有外部動畫
-  EXTERNAL_ANIMATION_PATHS.forEach(path => {
+  // 預加載所有外部動畫 (使用新的 ANIMATION_PATHS)
+  ANIMATION_PATHS.forEach((path: string) => {
     logger.info(`[BodyModel] Preloading animation: ${path}`, LogCategory.ANIMATION);
     useGLTF.preload(path);
   });

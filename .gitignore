@@ -100,3 +100,11 @@ prototype/frontend/*.sln
 # Backend (prototype/backend) Specific
 prototype/backend/debug_audio/
 prototype/backend/audio/
+
+# Build Artifacts
+/build
+/dist
+*.local
+
+# Animation Config (Generated)
+/prototype/shared/config/animations.json

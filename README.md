@@ -125,4 +125,25 @@
 
 ---
 
-**讓我們一起創造更有趣、更生動的 AI 互動體驗吧！** 
+**讓我們一起創造更有趣、更生動的 AI 互動體驗吧！**
+
+---
+
+## 🎬 動畫文件更新指南
+
+如果您需要添加新的動畫文件到專案，請按照以下步驟操作：
+
+1. 將 `.glb` 格式的動畫文件放入 `prototype/frontend/public/animations` 目錄中。
+2. 運行動畫同步腳本，自動更新動畫配置文件：
+   ```bash
+   # 在專案根目錄執行
+   node scripts/sync_animations.js
+   ```
+3. 腳本會掃描動畫目錄中的所有 `.glb` 文件，並生成 `prototype/shared/config/animations.json` 配置文件。
+4. 每個動畫會根據文件名自動生成友好名稱：
+   - 移除 `_animation.glb` 或 `.glb` 後綴
+   - 例如：`Idle_animation.glb` 變為 `Idle`
+
+> 注意：如果您需要自定義動畫的描述，可以在腳本執行後手動編輯 `animations.json` 文件。
+
+新增的動畫將自動可用於前端使用，無需額外的配置步驟。 
