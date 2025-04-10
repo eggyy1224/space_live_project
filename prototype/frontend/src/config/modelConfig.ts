@@ -34,7 +34,8 @@ export const BODY_MODEL_URL = '/models/armature001_model.glb';
  * These will be used by the body model.
  */
 export const EXTERNAL_ANIMATION_PATHS: string[] = [
-  'animations/SwingToLand_animation.glb',
-  'animations/SneakWalk_animation.glb'
+  '/animations/SwingToLand_animation.glb',
+  '/animations/SneakWalk_animation.glb',
+  '/animations/Idle_animation.glb'
   // Add other external animation paths here
 ]; 

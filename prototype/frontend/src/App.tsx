@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback, useEffect, useRef } from 'react'
 import './App.css'
 
 // 引入拆分出的組件
@@ -122,6 +122,41 @@ function App() {
   // --- Zustand State and Actions ---
   const setProcessing = useStore((state) => state.setProcessing); // <-- Get action via selector
   // --- End Zustand --- 
+
+  // --- 模擬從後端獲取的建議動畫名稱 (後續從 Zustand 讀取) ---
+  const [suggestedAnimationName, setSuggestedAnimationName] = useState<string | null>(null);
+  // 設置一個簡單的初始值，例如第一個可用動畫
+  useEffect(() => {
+      if (availableAnimations.length > 0 && !suggestedAnimationName) {
+          setSuggestedAnimationName(availableAnimations[0]);
+      }
+  }, [availableAnimations, suggestedAnimationName]);
+  // ----------------------------------------------------------
+
+  // --- 同步身體動畫與語音狀態 --- 
+  const prevIsSpeaking = useRef<boolean>(isSpeaking);
+
+  useEffect(() => {
+    // 監聽 isSpeaking 狀態變化
+    const speakingStarted = !prevIsSpeaking.current && isSpeaking;
+    const speakingStopped = prevIsSpeaking.current && !isSpeaking;
+
+    if (speakingStarted) {
+      // 語音開始播放，觸發建議的動畫
+      const animToPlay = suggestedAnimationName || 'Idle'; // 如果沒有建議，播放 Idle
+      logger.info(`[AppSync] Speech started. Playing animation: ${animToPlay}`, LogCategory.ANIMATION);
+      selectAnimation(animToPlay);
+    } else if (speakingStopped) {
+      // 語音停止播放，切換回 Idle 動畫
+      logger.info(`[AppSync] Speech stopped. Switching to Idle animation.`, LogCategory.ANIMATION);
+      selectAnimation('Idle'); // 確保 'Idle' 是正確的友好名稱
+    }
+
+    // 更新 previous state
+    prevIsSpeaking.current = isSpeaking;
+
+  }, [isSpeaking, selectAnimation, suggestedAnimationName]); // 依賴項
+  // ----------------------------
 
   // === 定義錄音結束後的回調 ===
   const handleStopRecording = useCallback(async (audioBlob: Blob | null) => {
