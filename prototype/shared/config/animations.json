@@ -1,7 +1,59 @@
 {
+  "AdministeringCpr": {
+    "path": "/animations/AdministeringCpr_animation.glb",
+    "description": "進行心肺復甦術的動作，角色跪姿為他人急救"
+  },
+  "AerialEvade": {
+    "path": "/animations/AerialEvade_animation.glb",
+    "description": "空中閃避動作，角色懸空迴避攻擊"
+  },
+  "Au": {
+    "path": "/animations/Au_animation.glb",
+    "description": "卡波耶拉武術中的側翻動作，雙手支撐地面"
+  },
   "BaseballHit": {
     "path": "/animations/BaseballHit_animation.glb",
     "description": "棒球揮擊動作，展現角色揮棒擊球的姿態"
+  },
+  "BodyBlock": {
+    "path": "/animations/BodyBlock_animation.glb",
+    "description": "身體阻擋動作，用軀幹擋住來襲物體或人"
+  },
+  "Breakdance1990": {
+    "path": "/animations/Breakdance1990_animation.glb",
+    "description": "霹靂舞1990動作，角色以頭部為支點旋轉"
+  },
+  "BreakdanceFootwork2": {
+    "path": "/animations/BreakdanceFootwork2_animation.glb",
+    "description": "霹靂舞地板步法，展現複雜的腳步移動技巧"
+  },
+  "BrutalAssassination": {
+    "path": "/animations/BrutalAssassination_animation.glb",
+    "description": "兇狠暗殺動作，角色展現致命的突襲"
+  },
+  "ButterflyTwirl": {
+    "path": "/animations/ButterflyTwirl_animation.glb",
+    "description": "蝴蝶旋轉舞步，輕盈旋轉如蝴蝶飛舞"
+  },
+  "CanCan": {
+    "path": "/animations/CanCan_animation.glb",
+    "description": "康康舞蹈動作，特色是高抬腿和裙擺飛揚"
+  },
+  "ChapaGiratoria2": {
+    "path": "/animations/ChapaGiratoria2_animation.glb",
+    "description": "卡波耶拉武術旋轉踢腿動作，強而有力"
+  },
+  "Cheering": {
+    "path": "/animations/Cheering_animation.glb",
+    "description": "歡呼動作，角色雙手舉高表達喜悅和慶祝"
+  },
+  "ClimbingDown": {
+    "path": "/animations/ClimbingDown_animation.glb",
+    "description": "向下攀爬動作，角色小心翼翼地往下移動"
+  },
+  "Cow Milking": {
+    "path": "/animations/Cow Milking_animation.glb",
+    "description": "擠牛奶動作，角色雙手有節奏地擠壓"
   },
   "Crawling": {
     "path": "/animations/Crawling_animation.glb",
@@ -10,6 +62,26 @@
   "Crying": {
     "path": "/animations/Crying_animation.glb",
     "description": "哭泣表情，角色表現出悲傷和淚水的情緒"
+  },
+  "DancingTwerk": {
+    "path": "/animations/DancingTwerk_animation.glb",
+    "description": "扭臀舞動作，角色快速抖動臀部展現節奏感"
+  },
+  "DescendingStairs": {
+    "path": "/animations/DescendingStairs_animation.glb",
+    "description": "下樓梯動作，角色逐步向下移動"
+  },
+  "DigAndPlantSeeds": {
+    "path": "/animations/DigAndPlantSeeds_animation.glb",
+    "description": "挖土種植動作，角色彎腰進行農耕活動"
+  },
+  "DiveRoll": {
+    "path": "/animations/DiveRoll_animation.glb",
+    "description": "俯衝翻滾動作，角色向前躍起後翻滾著地"
+  },
+  "DoubleLegTakedownVictim": {
+    "path": "/animations/DoubleLegTakedownVictim_animation.glb",
+    "description": "雙腿被摔倒的受害者動作，表現被擊倒狀態"
   },
   "DrunkIdle": {
     "path": "/animations/DrunkIdle_animation.glb",
@@ -43,13 +115,65 @@
     "path": "/animations/FemaleSittingPose_animation.glb",
     "description": "女性坐姿，端莊且舒適的坐下姿態"
   },
+  "FemaleStandingPose": {
+    "path": "/animations/FemaleStandingPose_animation.glb",
+    "description": "女性站姿，優雅且挺拔的直立姿態"
+  },
+  "Fishing Cast": {
+    "path": "/animations/Fishing Cast_animation.glb",
+    "description": "垂釣拋竿動作，角色熟練地投擲釣魚線"
+  },
+  "Flair": {
+    "path": "/animations/Flair_animation.glb",
+    "description": "花式動作，角色展現特技般的表演姿態"
+  },
+  "FlyingKneePunchCombo": {
+    "path": "/animations/FlyingKneePunchCombo_animation.glb",
+    "description": "飛膝加拳擊組合技，角色連續進行快速攻擊"
+  },
   "FreehangClimb": {
     "path": "/animations/FreehangClimb_animation.glb",
     "description": "自由攀爬動作，角色以手臂力量懸掛攀爬"
   },
+  "GingaSidewaysToAu": {
+    "path": "/animations/GingaSidewaysToAu_animation.glb",
+    "description": "卡波耶拉武術基本步轉側翻動作的組合"
+  },
+  "GoalkeeperBodyBlock": {
+    "path": "/animations/GoalkeeperBodyBlock_animation.glb",
+    "description": "守門員身體阻擋動作，用全身擋住射門"
+  },
+  "GoalkeeperCatch": {
+    "path": "/animations/GoalkeeperCatch_animation.glb",
+    "description": "守門員接球動作，穩穩接住飛來的足球"
+  },
+  "GolfPrePutt": {
+    "path": "/animations/GolfPrePutt_animation.glb",
+    "description": "高爾夫推桿前準備動作，專注瞄準"
+  },
+  "GuitarPlaying": {
+    "path": "/animations/GuitarPlaying_animation.glb",
+    "description": "彈吉他動作，角色手指靈活撥弦"
+  },
   "Happy": {
     "path": "/animations/Happy_animation.glb",
     "description": "開心表情，角色展現出喜悅和愉快的情緒"
+  },
+  "HeadspinEnd": {
+    "path": "/animations/HeadspinEnd_animation.glb",
+    "description": "頭旋結束動作，從頭部旋轉回到站立姿勢"
+  },
+  "HipHopDancin": {
+    "path": "/animations/HipHopDancin_animation.glb",
+    "description": "嘻哈舞蹈動作，充滿街舞風格的律動"
+  },
+  "HitToSideOfBody": {
+    "path": "/animations/HitToSideOfBody_animation.glb",
+    "description": "身體側面受擊動作，角色因側面打擊而反應"
+  },
+  "Hook": {
+    "path": "/animations/Hook_animation.glb",
+    "description": "勾拳動作，角色揮出側面彎曲的拳擊"
   },
   "Idle": {
     "path": "/animations/Idle_animation.glb",
@@ -59,29 +183,113 @@
     "path": "/animations/InjuredWalk_animation.glb",
     "description": "受傷行走動作，角色帶傷緩慢艱難地移動"
   },
+  "JazzDancing": {
+    "path": "/animations/JazzDancing_animation.glb",
+    "description": "爵士舞動作，角色展現活潑輕快的舞步"
+  },
+  "JoggingWithBox": {
+    "path": "/animations/JoggingWithBox_animation.glb",
+    "description": "攜帶箱子慢跑動作，同時平衡和移動"
+  },
+  "Jogging": {
+    "path": "/animations/Jogging_animation.glb",
+    "description": "慢跑動作，角色以輕鬆節奏向前跑動"
+  },
+  "JumpAttack": {
+    "path": "/animations/JumpAttack_animation.glb",
+    "description": "跳躍攻擊動作，角色躍起同時發動攻擊"
+  },
+  "Jumping": {
+    "path": "/animations/Jumping_animation.glb",
+    "description": "跳躍動作，角色向上彈跳離開地面"
+  },
+  "KickSoccerball": {
+    "path": "/animations/KickSoccerball_animation.glb",
+    "description": "踢足球動作，角色用腳部力量踢出球"
+  },
+  "KickToTheGroin": {
+    "path": "/animations/KickToTheGroin_animation.glb",
+    "description": "襠部踢擊動作，角色向對手下身發起攻擊"
+  },
+  "Kiss": {
+    "path": "/animations/Kiss_animation.glb",
+    "description": "親吻動作，角色表達親密或愛意"
+  },
   "KneelingDown": {
     "path": "/animations/KneelingDown_animation.glb",
     "description": "跪下動作，角色單膝或雙膝著地的姿態"
+  },
+  "KneelingIdle": {
+    "path": "/animations/KneelingIdle_animation.glb",
+    "description": "跪姿待機動作，角色保持跪姿的靜態"
+  },
+  "KnockedOut": {
+    "path": "/animations/KnockedOut_animation.glb",
+    "description": "被擊倒動作，角色失去意識倒地"
   },
   "LayingIdle": {
     "path": "/animations/LayingIdle_animation.glb",
     "description": "躺臥待機動作，角色平躺時的微小動作"
   },
+  "LeadJab": {
+    "path": "/animations/LeadJab_animation.glb",
+    "description": "前手直拳動作，快速精準的拳擊技術"
+  },
+  "LeftTurn": {
+    "path": "/animations/LeftTurn_animation.glb",
+    "description": "左轉動作，角色身體向左側旋轉"
+  },
   "LookAround": {
     "path": "/animations/LookAround_animation.glb",
     "description": "環顧四周動作，角色轉頭觀察周圍環境"
+  },
+  "MacacoSide": {
+    "path": "/animations/MacacoSide_animation.glb",
+    "description": "卡波耶拉猴子側翻動作，展現敏捷性"
+  },
+  "MaleDynamicPose": {
+    "path": "/animations/MaleDynamicPose_animation.glb",
+    "description": "男性動態姿勢，充滿力量感的運動姿態"
+  },
+  "MaleLayingPose": {
+    "path": "/animations/MaleLayingPose_animation.glb",
+    "description": "男性躺臥姿勢，自然放鬆的臥姿"
+  },
+  "MaleSittingPose": {
+    "path": "/animations/MaleSittingPose_animation.glb",
+    "description": "男性坐姿，展現穩重與自信的坐下姿態"
+  },
+  "MmaKick": {
+    "path": "/animations/MmaKick_animation.glb",
+    "description": "綜合格鬥踢腿動作，強而有力的腿部攻擊"
   },
   "Moonwalk": {
     "path": "/animations/Moonwalk_animation.glb",
     "description": "太空漫步舞步，向後滑行的特殊舞蹈動作"
   },
+  "PainGesture": {
+    "path": "/animations/PainGesture_animation.glb",
+    "description": "痛苦表情，角色展現遭受疼痛的反應"
+  },
   "Patting": {
     "path": "/animations/Patting_animation.glb",
     "description": "輕拍動作，角色以手輕拍物體或他人"
   },
+  "PistolRun": {
+    "path": "/animations/PistolRun_animation.glb",
+    "description": "持槍奔跑動作，角色手持武器快速移動"
+  },
   "Plank": {
     "path": "/animations/Plank_animation.glb",
     "description": "平板支撐動作，展現核心力量的健身姿勢"
+  },
+  "PointingGesture": {
+    "path": "/animations/PointingGesture_animation.glb",
+    "description": "指向手勢，角色用手指向特定方向或物體"
+  },
+  "ProneLeftTurn": {
+    "path": "/animations/ProneLeftTurn_animation.glb",
+    "description": "俯臥左轉動作，角色趴著向左側滾動"
   },
   "PushUp": {
     "path": "/animations/PushUp_animation.glb",
@@ -91,6 +299,58 @@
     "path": "/animations/Pushing_animation.glb",
     "description": "推動動作，角色用力推動物體前進"
   },
+  "ReachingOut": {
+    "path": "/animations/ReachingOut_animation.glb",
+    "description": "伸手觸及動作，角色伸展手臂嘗試接觸"
+  },
+  "Roar": {
+    "path": "/animations/Roar_animation.glb",
+    "description": "怒吼動作，角色張口發出強烈聲音"
+  },
+  "RunToRolling": {
+    "path": "/animations/RunToRolling_animation.glb",
+    "description": "奔跑轉翻滾動作，從跑動轉為前滾翻"
+  },
+  "RunningArc": {
+    "path": "/animations/RunningArc_animation.glb",
+    "description": "弧形奔跑動作，角色沿曲線路徑跑動"
+  },
+  "RunningBackward": {
+    "path": "/animations/RunningBackward_animation.glb",
+    "description": "向後奔跑動作，角色背對前進方向快速移動"
+  },
+  "SalsaDancing": {
+    "path": "/animations/SalsaDancing_animation.glb",
+    "description": "莎莎舞動作，熱情奔放的拉丁舞步"
+  },
+  "ScaryClownWalk": {
+    "path": "/animations/ScaryClownWalk_animation.glb",
+    "description": "恐怖小丑行走動作，詭異且不規則的步伐"
+  },
+  "SittingAngry": {
+    "path": "/animations/SittingAngry_animation.glb",
+    "description": "坐姿生氣動作，角色坐著表現憤怒情緒"
+  },
+  "SittingIdle": {
+    "path": "/animations/SittingIdle_animation.glb",
+    "description": "坐姿待機動作，角色坐著時的輕微動作"
+  },
+  "SittingThumbsUp": {
+    "path": "/animations/SittingThumbsUp_animation.glb",
+    "description": "坐姿豎起大拇指動作，表示讚許或同意"
+  },
+  "SittingYell": {
+    "path": "/animations/SittingYell_animation.glb",
+    "description": "坐姿大喊動作，角色坐著發出喊叫"
+  },
+  "Situps": {
+    "path": "/animations/Situps_animation.glb",
+    "description": "仰臥起坐動作，腹部肌肉訓練的上下擺動"
+  },
+  "Skateboarding": {
+    "path": "/animations/Skateboarding_animation.glb",
+    "description": "滑板動作，角色站在滑板上移動或表演"
+  },
   "Smoking": {
     "path": "/animations/Smoking_animation.glb",
     "description": "吸菸動作，角色手持香菸並吸入吐出煙霧"
@@ -99,21 +359,89 @@
     "path": "/animations/SneakWalk_animation.glb",
     "description": "悄悄行走的動作"
   },
+  "SpatInFace": {
+    "path": "/animations/SpatInFace_animation.glb",
+    "description": "臉上被吐口水的反應，表現厭惡或被侮辱"
+  },
   "Spin In Place": {
     "path": "/animations/Spin In Place_animation.glb",
     "description": "原地旋轉動作，角色在固定位置快速轉身"
+  },
+  "StandingClap": {
+    "path": "/animations/StandingClap_animation.glb",
+    "description": "站立鼓掌動作，角色直立時表達讚賞"
+  },
+  "StandingReactLargeFromLeft": {
+    "path": "/animations/StandingReactLargeFromLeft_animation.glb",
+    "description": "站立時對左側強烈刺激的反應，身體明顯後仰"
+  },
+  "StartClimbingLadder": {
+    "path": "/animations/StartClimbingLadder_animation.glb",
+    "description": "開始爬梯動作，角色準備攀爬梯子"
+  },
+  "SumoHighPull": {
+    "path": "/animations/SumoHighPull_animation.glb",
+    "description": "相撲高拉動作，展現力量的上提運動"
   },
   "SwingToLand": {
     "path": "/animations/SwingToLand_animation.glb",
     "description": "輕盈降落的動作"
   },
+  "TakingPunch": {
+    "path": "/animations/TakingPunch_animation.glb",
+    "description": "承受拳擊動作，角色被擊中後的反應"
+  },
+  "TalkingPhonePacing": {
+    "path": "/animations/TalkingPhonePacing_animation.glb",
+    "description": "打電話踱步動作，角色通話時來回走動"
+  },
   "Thinking": {
     "path": "/animations/Thinking_animation.glb",
     "description": "思考動作，角色展現出沉思和冥想的姿態"
   },
+  "Transition": {
+    "path": "/animations/Transition_animation.glb",
+    "description": "過渡動作，從一個姿勢流暢轉換到另一個"
+  },
+  "TurnToKnockedUnconscious": {
+    "path": "/animations/TurnToKnockedUnconscious_animation.glb",
+    "description": "轉身被擊昏動作，角色旋轉後失去意識"
+  },
+  "WalkInCircle": {
+    "path": "/animations/WalkInCircle_animation.glb",
+    "description": "繞圈行走動作，角色沿圓形路徑移動"
+  },
+  "WalkingArcLeft": {
+    "path": "/animations/WalkingArcLeft_animation.glb",
+    "description": "左弧形行走動作，角色向左側弧線移動"
+  },
+  "Walking": {
+    "path": "/animations/Walking_animation.glb",
+    "description": "行走動作，角色正常速度向前移動"
+  },
+  "YellingWhileStanding": {
+    "path": "/animations/YellingWhileStanding_animation.glb",
+    "description": "站立大喊動作，角色直立時發出喊叫"
+  },
   "ZombieCrawl": {
     "path": "/animations/ZombieCrawl_animation.glb",
     "description": "喪屍爬行，模仿喪屍風格的緩慢詭異爬行"
+  },
+  "breaking": {
+    "path": "/animations/breaking_animation.glb",
+    "description": "霹靂舞動作，角色展現街舞中的技巧性動作"
+  },
+  "clap": {
+    "path": "/animations/clap_animation.glb",
+    "description": "鼓掌動作，角色雙手拍擊表達贊許"
+  },
+  "hiphopdance": {
+    "path": "/animations/hiphopdance_animation.glb",
+    "description": "嘻哈舞蹈，展現街舞風格的流暢動作"
+  },
+  "illegalpunch": {
+    "path": "/animations/illegalpunch_animation.glb",
+    "description": "非法拳擊動作，違反規則的攻擊方式"
   },
   "injuredjump": {
     "path": "/animations/injuredjump_animation.glb",
@@ -122,5 +450,13 @@
   "jump": {
     "path": "/animations/jump_animation.glb",
     "description": "跳躍動作，角色雙腳用力躍起離開地面"
+  },
+  "salute": {
+    "path": "/animations/salute_animation.glb",
+    "description": "敬禮動作，角色以軍事禮節表達敬意"
+  },
+  "twistdance": {
+    "path": "/animations/twistdance_animation.glb",
+    "description": "扭擺舞蹈，角色身體旋轉扭動的舞步"
   }
 }
