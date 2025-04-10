@@ -106,5 +106,3 @@ prototype/backend/audio/
 /dist
 *.local
 
-# Animation Config (Generated)
-/prototype/shared/config/animations.json

@@ -1,0 +1,126 @@
+{
+  "BaseballHit": {
+    "path": "/animations/BaseballHit_animation.glb",
+    "description": "棒球揮擊動作，展現角色揮棒擊球的姿態"
+  },
+  "Crawling": {
+    "path": "/animations/Crawling_animation.glb",
+    "description": "爬行動作，角色用四肢在地面上緩慢移動"
+  },
+  "Crying": {
+    "path": "/animations/Crying_animation.glb",
+    "description": "哭泣表情，角色表現出悲傷和淚水的情緒"
+  },
+  "DrunkIdle": {
+    "path": "/animations/DrunkIdle_animation.glb",
+    "description": "醉酒狀態的站立動作，搖搖晃晃不穩"
+  },
+  "Dying": {
+    "path": "/animations/Dying_animation.glb",
+    "description": "瀕死動作，角色倒下並表現出生命垂危的狀態"
+  },
+  "FemaleActionPose": {
+    "path": "/animations/FemaleActionPose_animation.glb",
+    "description": "女性動作姿勢，展現活力與行動力的站姿"
+  },
+  "FemaleCrouchPose": {
+    "path": "/animations/FemaleCrouchPose_animation.glb",
+    "description": "女性蹲姿，展現平衡和靈活性的低姿態"
+  },
+  "FemaleDancePose": {
+    "path": "/animations/FemaleDancePose_animation.glb",
+    "description": "女性舞蹈姿勢，優雅且富有節奏感的舞姿"
+  },
+  "FemaleDynamicPose": {
+    "path": "/animations/FemaleDynamicPose_animation.glb",
+    "description": "女性動態姿勢，充滿活力且流暢的身體動作"
+  },
+  "FemaleLayingPose": {
+    "path": "/animations/FemaleLayingPose_animation.glb",
+    "description": "女性躺臥姿勢，放鬆且自然的平躺姿態"
+  },
+  "FemaleSittingPose": {
+    "path": "/animations/FemaleSittingPose_animation.glb",
+    "description": "女性坐姿，端莊且舒適的坐下姿態"
+  },
+  "FreehangClimb": {
+    "path": "/animations/FreehangClimb_animation.glb",
+    "description": "自由攀爬動作，角色以手臂力量懸掛攀爬"
+  },
+  "Happy": {
+    "path": "/animations/Happy_animation.glb",
+    "description": "開心表情，角色展現出喜悅和愉快的情緒"
+  },
+  "Idle": {
+    "path": "/animations/Idle_animation.glb",
+    "description": "角色的自然待機動作"
+  },
+  "InjuredWalk": {
+    "path": "/animations/InjuredWalk_animation.glb",
+    "description": "受傷行走動作，角色帶傷緩慢艱難地移動"
+  },
+  "KneelingDown": {
+    "path": "/animations/KneelingDown_animation.glb",
+    "description": "跪下動作，角色單膝或雙膝著地的姿態"
+  },
+  "LayingIdle": {
+    "path": "/animations/LayingIdle_animation.glb",
+    "description": "躺臥待機動作，角色平躺時的微小動作"
+  },
+  "LookAround": {
+    "path": "/animations/LookAround_animation.glb",
+    "description": "環顧四周動作，角色轉頭觀察周圍環境"
+  },
+  "Moonwalk": {
+    "path": "/animations/Moonwalk_animation.glb",
+    "description": "太空漫步舞步，向後滑行的特殊舞蹈動作"
+  },
+  "Patting": {
+    "path": "/animations/Patting_animation.glb",
+    "description": "輕拍動作，角色以手輕拍物體或他人"
+  },
+  "Plank": {
+    "path": "/animations/Plank_animation.glb",
+    "description": "平板支撐動作，展現核心力量的健身姿勢"
+  },
+  "PushUp": {
+    "path": "/animations/PushUp_animation.glb",
+    "description": "俯臥撐動作，角色進行上下起伏的肌力訓練"
+  },
+  "Pushing": {
+    "path": "/animations/Pushing_animation.glb",
+    "description": "推動動作，角色用力推動物體前進"
+  },
+  "Smoking": {
+    "path": "/animations/Smoking_animation.glb",
+    "description": "吸菸動作，角色手持香菸並吸入吐出煙霧"
+  },
+  "SneakWalk": {
+    "path": "/animations/SneakWalk_animation.glb",
+    "description": "悄悄行走的動作"
+  },
+  "Spin In Place": {
+    "path": "/animations/Spin In Place_animation.glb",
+    "description": "原地旋轉動作，角色在固定位置快速轉身"
+  },
+  "SwingToLand": {
+    "path": "/animations/SwingToLand_animation.glb",
+    "description": "輕盈降落的動作"
+  },
+  "Thinking": {
+    "path": "/animations/Thinking_animation.glb",
+    "description": "思考動作，角色展現出沉思和冥想的姿態"
+  },
+  "ZombieCrawl": {
+    "path": "/animations/ZombieCrawl_animation.glb",
+    "description": "喪屍爬行，模仿喪屍風格的緩慢詭異爬行"
+  },
+  "injuredjump": {
+    "path": "/animations/injuredjump_animation.glb",
+    "description": "受傷跳躍，角色帶傷艱難地執行跳躍動作"
+  },
+  "jump": {
+    "path": "/animations/jump_animation.glb",
+    "description": "跳躍動作，角色雙腳用力躍起離開地面"
+  }
+}
