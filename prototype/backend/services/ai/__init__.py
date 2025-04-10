@@ -11,7 +11,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmb
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 
 from .memory_system import MemorySystem
-from .dialogue_graph import DialogueGraph, DEFAULT_NEUTRAL_KEYFRAMES
+from .dialogue_graph import DialogueGraph, DEFAULT_NEUTRAL_KEYFRAMES, DEFAULT_ANIMATION_SEQUENCE
 
 # 配置基本日誌
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -66,7 +66,7 @@ class AIService:
             current_emotion: 當前檢測到的情緒 (已棄用，保留參數兼容)
             
         Returns:
-            包含 'final_response' 和 'emotional_keyframes' 的字典
+            包含 'final_response'，'emotional_keyframes' 和 'body_animation_sequence' 的字典
         """
         try:
             messages = self.messages.copy()
@@ -86,11 +86,13 @@ class AIService:
             # 提取需要的返回內容
             final_response = graph_result.get("final_response", "嗯...我好像有點走神了。")
             emotional_keyframes = graph_result.get("emotional_keyframes")  # 可能為 None
+            body_animation_sequence = graph_result.get("body_animation_sequence") # 新增：獲取身體動畫序列
             
             # 返回包含回應和 keyframes 的字典
             return {
                 "final_response": final_response,
-                "emotional_keyframes": emotional_keyframes
+                "emotional_keyframes": emotional_keyframes,
+                "body_animation_sequence": body_animation_sequence # 新增：返回身體動畫序列
             }
             
         except Exception as e:
@@ -99,6 +101,7 @@ class AIService:
             return {
                 "final_response": "哎呀，我的系統出了點小問題。太空干擾有時候真的很煩人，你能再說一次嗎？",
                 "emotional_keyframes": DEFAULT_NEUTRAL_KEYFRAMES.copy(),  # 使用 dialogue_graph 中的定義
+                "body_animation_sequence": DEFAULT_ANIMATION_SEQUENCE.copy(), # 新增：使用默認的動畫序列
                 "error": str(e)
             }
             

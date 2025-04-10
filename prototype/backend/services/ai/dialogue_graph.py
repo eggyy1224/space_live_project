@@ -46,6 +46,15 @@ ALLOWED_EMOTION_TAGS = [
     "shy", "bashful", "smug", "awe", "doubtful"
 ]
 
+# 允許的動作名稱列表
+ALLOWED_ANIMATION_NAMES = ["Idle", "SwingToLand", "SneakWalk"]
+
+# 默認動畫序列
+DEFAULT_ANIMATION_SEQUENCE = [
+    {"name": "Idle", "proportion": 0.0},
+    {"name": "Idle", "proportion": 1.0}
+]
+
 # 用於第二次 LLM 調用的 JSON Schema (期望 LLM 只返回 keyframes 列表)
 keyframes_schema = {
     "type": "array",
@@ -65,6 +74,28 @@ keyframes_schema = {
             }
         },
         "required": ["tag", "proportion"]
+    }
+}
+
+# 身體動畫序列的 JSON Schema
+animation_sequence_schema = {
+    "type": "array",
+    "items": {
+        "type": "object",
+        "properties": {
+            "name": {
+                "type": "string",
+                "enum": ALLOWED_ANIMATION_NAMES, # 限制動作名稱
+                "description": "預設動作名稱"
+            },
+            "proportion": {
+                "type": "number",
+                "minimum": 0.0,
+                "maximum": 1.0,
+                "description": "動作發生的相對時間比例 (0.0 到 1.0)"
+            }
+        },
+        "required": ["name", "proportion"]
     }
 }
 
@@ -137,33 +168,120 @@ def validate_and_fix_keyframes(raw_keyframes: Optional[List[Dict]]) -> List[Dict
     logging.info(f"Keyframes 驗證和修正完成，共 {len(valid_keyframes)} 幀。")
     return valid_keyframes
 
+# 添加動畫序列驗證函數
+def validate_and_fix_animation_sequence(raw_sequence: Optional[List[Dict]]) -> List[Dict]:
+    """
+    驗證、排序並修正從 LLM 獲取的身體動畫序列。
+    確保格式正確、名稱有效、比例在範圍內，並包含首尾幀。
+    """
+    if not isinstance(raw_sequence, list) or not raw_sequence:
+        logging.warning("收到的動畫序列不是列表或為空，返回默認值。")
+        return DEFAULT_ANIMATION_SEQUENCE.copy()
+
+    valid_sequence = []
+    seen_proportions = set()
+
+    for anim in raw_sequence:
+        if not isinstance(anim, dict):
+            logging.warning(f"動畫關鍵幀不是字典格式: {anim}，已跳過。")
+            continue
+
+        name = anim.get("name")
+        proportion = anim.get("proportion")
+
+        # 驗證類型和內容
+        if not isinstance(name, str) or name not in ALLOWED_ANIMATION_NAMES:
+            logging.warning(f"無效或不允許的動作名稱: {name}，已跳過動畫關鍵幀: {anim}")
+            continue
+        if not isinstance(proportion, (int, float)) or not (0.0 <= proportion <= 1.0):
+            logging.warning(f"無效的時間比例: {proportion}，必須在 0.0 到 1.0 之間。已跳過動畫關鍵幀: {anim}")
+            continue
+        
+        # 避免重複的 proportion
+        if proportion in seen_proportions:
+            logging.warning(f"發現重複的時間比例: {proportion}，已跳過動畫關鍵幀: {anim}")
+            continue
+            
+        valid_sequence.append({"name": name, "proportion": proportion})
+        seen_proportions.add(proportion)
+
+    if not valid_sequence:
+        logging.warning("沒有有效的動畫關鍵幀被解析，返回默認值。")
+        return DEFAULT_ANIMATION_SEQUENCE.copy()
+
+    # 按 proportion 排序
+    valid_sequence.sort(key=lambda x: x["proportion"])
+
+    # 確保首幀 proportion 為 0.0
+    if valid_sequence[0]["proportion"] != 0.0:
+        logging.info("動畫序列缺少 0.0 比例的幀，自動添加 Idle 首幀。")
+        valid_sequence.insert(0, {"name": "Idle", "proportion": 0.0})
+
+    # 確保尾幀 proportion 為 1.0
+    if valid_sequence[-1]["proportion"] < 1.0:
+        logging.info("動畫序列缺少 1.0 比例的幀，自動添加 Idle 尾幀。")
+        valid_sequence.append({"name": "Idle", "proportion": 1.0})
+    elif valid_sequence[-1]["proportion"] > 1.0:
+        logging.warning("最後一個動畫關鍵幀的 proportion 超過 1.0，強制設為 1.0。")
+        valid_sequence[-1]["proportion"] = 1.0
+
+    logging.info(f"動畫序列驗證和修正完成，共 {len(valid_sequence)} 幀。")
+    return valid_sequence
+
 # --- 重新添加/確保 Keyframe 分析節點定義在頂層 ---
 
 async def analyze_keyframes_node(state: DialogueState) -> Dict[str, Any]:
     """
-    分析 LLM 生成的純文本回應，調用第二次 LLM (使用 JSON 模式) 來提取情緒關鍵幀。
+    分析 LLM 生成的純文本回應，調用第二次 LLM (使用 JSON 模式) 來提取情緒關鍵幀和身體動畫序列。
     """
     llm_response_raw = state.get("llm_response_raw", "")
     llm = state.get("_context", {}).get("llm")
 
     if not llm_response_raw:
         logging.warning("analyze_keyframes_node: 原始回應為空，無法分析 keyframes。返回默認值。")
-        return {"emotional_keyframes": DEFAULT_NEUTRAL_KEYFRAMES.copy()}
+        return {
+            "emotional_keyframes": DEFAULT_NEUTRAL_KEYFRAMES.copy(),
+            "body_animation_sequence": DEFAULT_ANIMATION_SEQUENCE.copy()
+        }
     if not llm:
         logging.error("analyze_keyframes_node: LLM 實例未在上下文中提供。返回默認值。")
-        return {"emotional_keyframes": DEFAULT_NEUTRAL_KEYFRAMES.copy()}
+        return {
+            "emotional_keyframes": DEFAULT_NEUTRAL_KEYFRAMES.copy(),
+            "body_animation_sequence": DEFAULT_ANIMATION_SEQUENCE.copy()
+        }
 
     analysis_prompt = f"""
-請仔細分析以下這段文本，識別其中表達的情感變化，並生成一個情緒關鍵幀列表 (keyframes)。
-每個關鍵幀應包含 'tag' (情緒標籤) 和 'proportion' (相對時間比例 0.0 到 1.0)。
-請確保第一個關鍵幀的 proportion 為 0.0，最後一個為 1.0。
+請分析以下這段文本，同時完成兩個任務：
+
+1. 識別文本中表達的情感變化，並生成情緒關鍵幀列表 (emotional_keyframes)。
+每個情緒關鍵幀包含 'tag' (情緒標籤) 和 'proportion' (相對時間比例 0.0 到 1.0)。
 允許的情緒標籤為: {', '.join(ALLOWED_EMOTION_TAGS)}。
+
+2. 選擇適合文本內容的身體動畫序列 (body_animation_sequence)。
+每個動畫關鍵幀包含 'name' (動作名稱) 和 'proportion' (相對時間比例 0.0 到 1.0)。
+可用的動作僅限於: "Idle" (閒置/靜止), "SwingToLand" (輕盈降落), "SneakWalk" (悄悄行走)。
+
+選擇動畫時，請考慮：
+- 文本的語義內容和表達的活動
+- 情緒變化與身體動作的協調
+- 自然的過渡順序
 
 文本內容：
 "{llm_response_raw}"
 
-請嚴格按照以下 JSON Schema 格式輸出結果 (僅輸出 JSON 陣列本身)：
-{json.dumps(keyframes_schema, indent=2)}
+請嚴格按照以下 JSON 格式輸出結果：
+{{
+  "emotional_keyframes": [...情緒關鍵幀陣列...],
+  "body_animation_sequence": [...身體動畫序列陣列...]
+}}
+
+情緒關鍵幀格式：{json.dumps(keyframes_schema, indent=2)}
+身體動畫序列格式：{json.dumps(animation_sequence_schema, indent=2)}
+
+確保：
+1. 兩個序列的第一個關鍵幀 proportion 都為 0.0
+2. 動畫選擇符合文本的內容邏輯
+3. 結果僅包含指定的 JSON 格式
 """
 
     generation_config = GenerationConfig(
@@ -171,18 +289,18 @@ async def analyze_keyframes_node(state: DialogueState) -> Dict[str, Any]:
     )
 
     try:
-        logging.info("analyze_keyframes_node: 開始調用 LLM 進行 keyframe 分析...")
+        logging.info("analyze_keyframes_node: 開始調用 LLM 進行情緒關鍵幀和動畫序列分析...")
         analysis_response = await llm.ainvoke(
             analysis_prompt,
             config={"generation_config": generation_config}
         )
 
-        raw_keyframes_data = analysis_response.content
-        parsed_keyframes = None
+        raw_analysis_data = analysis_response.content
+        parsed_data = None
 
-        if isinstance(raw_keyframes_data, str):
+        if isinstance(raw_analysis_data, str):
             # --- 新增：清理 Markdown 標記 ---
-            cleaned_data = raw_keyframes_data.strip()
+            cleaned_data = raw_analysis_data.strip()
             if cleaned_data.startswith("```json"):
                 cleaned_data = cleaned_data[7:] # 移除 ```json
             if cleaned_data.endswith("```"):
@@ -191,28 +309,48 @@ async def analyze_keyframes_node(state: DialogueState) -> Dict[str, Any]:
             # --- 清理結束 ---
             try:
                 # 使用清理後的數據進行解析
-                parsed_keyframes = json.loads(cleaned_data) 
+                parsed_data = json.loads(cleaned_data) 
                 logging.info(f"analyze_keyframes_node: LLM 返回 JSON 字符串，已成功解析。")
             except json.JSONDecodeError as e:
                 # 記錄原始數據和清理後的數據以供調試
-                logging.error(f"analyze_keyframes_node: 無法解析 LLM 返回的 JSON 字符串: {e}\n原始字符串: '{raw_keyframes_data}'\n清理後: '{cleaned_data}'")
-        elif isinstance(raw_keyframes_data, list):
-             parsed_keyframes = raw_keyframes_data
-             logging.info(f"analyze_keyframes_node: LLM 直接返回了 keyframes 列表。")
+                logging.error(f"analyze_keyframes_node: 無法解析 LLM 返回的 JSON 字符串: {e}\n原始字符串: '{raw_analysis_data}'\n清理後: '{cleaned_data}'")
+        elif isinstance(raw_analysis_data, dict):
+            parsed_data = raw_analysis_data
+            logging.info(f"analyze_keyframes_node: LLM 直接返回字典對象。")
         else:
-            logging.warning(f"analyze_keyframes_node: LLM 未按預期返回 JSON 字符串或列表，收到類型 {type(raw_keyframes_data)}。 內容: {raw_keyframes_data}")
-
-        if parsed_keyframes is not None and isinstance(parsed_keyframes, list):
-            validated_keyframes = validate_and_fix_keyframes(parsed_keyframes)
-            logging.info(f"analyze_keyframes_node: Keyframes 驗證完成，數量: {len(validated_keyframes)}")
-            return {"emotional_keyframes": validated_keyframes}
+            logging.error(f"analyze_keyframes_node: LLM 返回了非預期類型: {type(raw_analysis_data)}")
+        
+        # 提取並驗證數據
+        result = {}
+        
+        # 提取情緒關鍵幀
+        if parsed_data and "emotional_keyframes" in parsed_data:
+            raw_keyframes = parsed_data["emotional_keyframes"]
+            validated_keyframes = validate_and_fix_keyframes(raw_keyframes)
+            result["emotional_keyframes"] = validated_keyframes
+            logging.info(f"提取到有效的情緒關鍵幀：{len(validated_keyframes)} 幀")
         else:
-            logging.error("analyze_keyframes_node: 無法從 LLM 獲取有效的 keyframes 列表。返回默認值。")
-            return {"emotional_keyframes": DEFAULT_NEUTRAL_KEYFRAMES.copy()}
-
+            logging.warning("未找到有效的 emotional_keyframes，使用默認值")
+            result["emotional_keyframes"] = DEFAULT_NEUTRAL_KEYFRAMES.copy()
+            
+        # 提取身體動畫序列
+        if parsed_data and "body_animation_sequence" in parsed_data:
+            raw_animation_sequence = parsed_data["body_animation_sequence"]
+            validated_animation_sequence = validate_and_fix_animation_sequence(raw_animation_sequence)
+            result["body_animation_sequence"] = validated_animation_sequence
+            logging.info(f"提取到有效的身體動畫序列：{len(validated_animation_sequence)} 幀")
+        else:
+            logging.warning("未找到有效的 body_animation_sequence，使用默認值")
+            result["body_animation_sequence"] = DEFAULT_ANIMATION_SEQUENCE.copy()
+            
+        return result
+        
     except Exception as e:
-        logging.error(f"analyze_keyframes_node: LLM 調用或處理失敗: {e}", exc_info=True)
-        return {"emotional_keyframes": DEFAULT_NEUTRAL_KEYFRAMES.copy()}
+        logging.error(f"analyze_keyframes_node 發生錯誤: {e}", exc_info=True)
+        return {
+            "emotional_keyframes": DEFAULT_NEUTRAL_KEYFRAMES.copy(),
+            "body_animation_sequence": DEFAULT_ANIMATION_SEQUENCE.copy()
+        }
 
 # --- 添加結束 ---
 
@@ -257,7 +395,8 @@ class DialogueState(TypedDict):
     
     # --- 回應與狀態 ---
     llm_response_raw: str         # LLM原始回應 (純文本)
-    emotional_keyframes: Optional[List[Dict]] = None # <--- 新增：用於存儲分析出的情緒關鍵幀
+    emotional_keyframes: Optional[List[Dict]] = None # 用於存儲分析出的情緒關鍵幀
+    body_animation_sequence: Optional[List[Dict]] = None # 新增：用於存儲分析出的身體動畫序列
     final_response: str           # 最終處理後的回應
     error_count: int              # 連續錯誤計數
     system_alert: Optional[str]   # 系統內部的警告或標註 (e.g., 'high_repetition_detected')
@@ -528,6 +667,7 @@ class DialogueGraph:
             # 回應與錯誤處理 (將在流程中填充)
             "llm_response_raw": "",
             "emotional_keyframes": None,
+            "body_animation_sequence": None,
             "final_response": "",
             "error_count": 0,
             "system_alert": None,
@@ -552,14 +692,16 @@ class DialogueGraph:
             # 從最終狀態提取回應和 keyframes
             final_response = final_state.get("final_response", "對不起，我好像遇到了一些技術問題。")
             emotional_keyframes = final_state.get("emotional_keyframes") # 可能為 None
+            body_animation_sequence = final_state.get("body_animation_sequence") # 可能為 None
             updated_messages = final_state.get("messages", messages) # 返回更新後的消息歷史
             
-            logging.info(f"Dialogue graph execution successful. Final response: '{final_response}', Keyframes: {emotional_keyframes is not None}")
+            logging.info(f"Dialogue graph execution successful. Final response: '{final_response}', Keyframes: {emotional_keyframes is not None}, Body Animation Sequence: {body_animation_sequence is not None}")
             
             # 返回包含回應和 keyframes 的字典
             return {
                 "final_response": final_response,
                 "emotional_keyframes": emotional_keyframes,
+                "body_animation_sequence": body_animation_sequence,
                 "updated_messages": updated_messages # 同時返回更新後的消息歷史
             }
 
@@ -569,6 +711,7 @@ class DialogueGraph:
             return {
                 "final_response": "糟糕，我的思緒好像打結了，能再說一次嗎？",
                 "emotional_keyframes": DEFAULT_NEUTRAL_KEYFRAMES.copy(), # 返回默認值
+                "body_animation_sequence": DEFAULT_ANIMATION_SEQUENCE.copy(), # 返回默認值
                 "updated_messages": messages, # 返回原始消息
                 "error": str(e) # 可選：添加錯誤訊息
             }
