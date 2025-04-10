@@ -10,10 +10,12 @@ export interface BodySlice {
   bodyModelLoaded: boolean;
   availableAnimations: string[];
   currentAnimation: string | null;
+  suggestedAnimationName: string | null;
   setBodyModelUrl: (url: string) => void;
   setBodyModelLoaded: (loaded: boolean) => void;
   setAvailableAnimations: (animations: string[]) => void;
   setCurrentAnimation: (animation: string | null) => void;
+  setSuggestedAnimationName: (name: string | null) => void;
 }
 
 // 創建 Body Slice (簡化類型)
@@ -23,6 +25,7 @@ export const createBodySlice: StateCreator<BodySlice> = (set) => ({
   bodyModelLoaded: false,
   availableAnimations: [],
   currentAnimation: null,
+  suggestedAnimationName: null,
 
   // 操作實現
   setBodyModelUrl: (url: string) => set({
@@ -30,14 +33,17 @@ export const createBodySlice: StateCreator<BodySlice> = (set) => ({
     availableAnimations: [],
     currentAnimation: null,
     bodyModelLoaded: false,
+    suggestedAnimationName: null,
   }),
 
   setBodyModelLoaded: (loaded: boolean) => set({ bodyModelLoaded: loaded }),
 
   setAvailableAnimations: (animations: string[]) => set((state: BodySlice) => ({ // <-- 為 state 添加類型
     availableAnimations: animations,
-    currentAnimation: state.currentAnimation === null && animations.length > 0 ? animations[0] : state.currentAnimation
+    currentAnimation: state.currentAnimation === null && animations.includes('Idle') ? 'Idle' : (state.currentAnimation === null && animations.length > 0 ? animations[0] : state.currentAnimation)
   })),
 
   setCurrentAnimation: (animation: string | null) => set({ currentAnimation: animation }),
+
+  setSuggestedAnimationName: (name: string | null) => set({ suggestedAnimationName: name }),
 }); 

@@ -105,12 +105,20 @@ async def websocket_endpoint(websocket: WebSocket):
                         # 提取結果
                         ai_response = ai_result.get("final_response", "抱歉，我好像有點短路了...")
                         emotional_keyframes = ai_result.get("emotional_keyframes") # 可能為 None
+                        # suggested_body_animation = ai_result.get("bodyAnimationName") # 可能為 None <-- 暫時註解掉
+                        # ---> 新增：測試用，固定返回 'SwingToLand' (修正拼寫)
+                        suggested_body_animation = "SwingToLand" #test data
+                        # <--- 結束
 
                         logger.info(f"AI 回應: {ai_response}")
                         if emotional_keyframes:
                             logger.info(f"生成的情緒 Keyframes: {emotional_keyframes}")
                         else:
                              logger.warning("AI Service 未返回有效的 emotional_keyframes")
+                        if suggested_body_animation:
+                            logger.info(f"建議的身體動畫: {suggested_body_animation}")
+                        else:
+                            logger.warning("AI Service 未返回有效的 bodyAnimationName")
 
 
                         # --- 後續處理：TTS, Lipsync, 發送訊息 ---
@@ -126,6 +134,7 @@ async def websocket_endpoint(websocket: WebSocket):
                             "id": f"bot-{int(asyncio.get_event_loop().time() * 1000)}",
                             "role": "bot",
                             "content": ai_response,
+                            "bodyAnimationName": suggested_body_animation,
                             "timestamp": None,
                             "audioUrl": None # 稍後填充
                         }

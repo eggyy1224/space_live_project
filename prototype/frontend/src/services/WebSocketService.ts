@@ -172,21 +172,18 @@ class WebSocketService {
         logger.debug(`收到WebSocket消息: ${data.type}`, LogCategory.WEBSOCKET, data.type);
       }
       
-      // --- 新增：直接處理 emotionalTrajectory 消息 --- 
+      // !!!!! 重要：將收到的所有消息都設置到 Zustand 狀態 !!!!!
+      logger.debug(`[WebSocketService] Calling setLastJsonMessage with data (type: ${data.type})`, LogCategory.WEBSOCKET);
+      useStore.getState().setLastJsonMessage(data); // <--- 無論類型如何，先更新狀態
+
+      // --- 後續處理：根據類型分發給特定 handlers 或高頻處理 ---
+      
       if (data.type === 'emotionalTrajectory') {
         // --- 添加日誌記錄 ---
         console.log('[WebSocketService] Received Emotional Trajectory:', JSON.stringify(data.payload, null, 2));
         // --- 日誌記錄結束 ---
-        logger.debug('[WebSocketService] Detected emotionalTrajectory, updating lastJsonMessage.', LogCategory.WEBSOCKET);
-        useStore.getState().setLastJsonMessage(data); // 更新軌跡數據
-        // --- 移除：不再清空手動/預設權重狀態 --- 
-        // useStore.getState().setMorphTargets({}); // REMOVE THIS LINE
-        // logger.debug('[WebSocketService] Reset morphTargets state to prioritize trajectory.', LogCategory.WEBSOCKET);
-        // --- 移除結束 ---
+        // (可以保留特定處理邏輯，但狀態已更新)
       } 
-      // --- 新增結束 ---
-      
-      // --- 原有邏輯：處理高頻消息和註冊的 handlers --- 
       else if (data.type && highFrequencyTypes.includes(data.type)) {
         this._handleHighFrequencyMessage(data.type, data);
       } else {
@@ -212,7 +209,7 @@ class WebSocketService {
           });
         }
       }
-      // --- 原有邏輯結束 ---
+      // --- 後續處理結束 ---
 
     } catch (error) {
       logger.error('解析WebSocket消息錯誤', LogCategory.WEBSOCKET, error);

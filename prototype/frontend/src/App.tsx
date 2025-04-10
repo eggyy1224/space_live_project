@@ -35,6 +35,24 @@ import { toast } from 'react-hot-toast'
 // import { AVAILABLE_MODELS } from './config/modelConfig';
 // --- 引入結束 ---
 
+// Define a more comprehensive type for expected WebSocket messages
+// Especially focusing on the structure we parse for animation name
+interface ChatMessagePayload {
+  id?: string;
+  role?: string;
+  content?: string;
+  bodyAnimationName?: string | null; // Can be string or null
+  timestamp?: any; // Keep as any for now
+  audioUrl?: string | null;
+}
+
+interface BackendMessage {
+  type?: string; // Message type identifier (e.g., 'chat-message', 'emotionalTrajectory')
+  message?: ChatMessagePayload; // Payload for chat messages
+  payload?: any; // Payload for other message types like emotionalTrajectory
+  // ... other potential top-level fields from different message types
+}
+
 function App() {
   // === 添加 useWebSocket 調用 ===
   useWebSocket(); // 調用 hook 以建立 WebSocket 連接
@@ -42,6 +60,8 @@ function App() {
 
   // 從 Zustand Store 獲取 WebSocket 連接狀態
   const wsConnected = useStore((state) => state.isConnected);
+  // 從 Zustand Store 獲取最後的 WebSocket 訊息
+  const lastJsonMessage = useStore((state) => state.lastJsonMessage) as BackendMessage | null; // Add type assertion
   
   // 從 Zustand Store 獲取聊天視窗狀態和操作
   const isChatWindowVisible = useStore((state) => state.isChatWindowVisible);
@@ -123,39 +143,97 @@ function App() {
   const setProcessing = useStore((state) => state.setProcessing); // <-- Get action via selector
   // --- End Zustand --- 
 
-  // --- 模擬從後端獲取的建議動畫名稱 (後續從 Zustand 讀取) ---
-  const [suggestedAnimationName, setSuggestedAnimationName] = useState<string | null>(null);
-  // 設置一個簡單的初始值，例如第一個可用動畫
-  useEffect(() => {
-      if (availableAnimations.length > 0 && !suggestedAnimationName) {
-          setSuggestedAnimationName(availableAnimations[0]);
-      }
-  }, [availableAnimations, suggestedAnimationName]);
-  // ----------------------------------------------------------
+  // --- 從 Zustand 獲取/設置建議的動畫名稱 ---
+  const suggestedAnimationName = useStore((state) => state.suggestedAnimationName);
+  const setSuggestedAnimationName = useStore((state) => state.setSuggestedAnimationName);
 
-  // --- 同步身體動畫與語音狀態 --- 
+  // 處理 WebSocket 訊息，提取並設置建議的動畫名稱到 Zustand
+  useEffect(() => {
+    // 使用 JSON.stringify 確保傳遞給 logger 的是字符串
+    logger.debug(`[AppWS Parse Effect] Running. lastJsonMessage: ${JSON.stringify(lastJsonMessage)}`, LogCategory.WEBSOCKET);
+    // Assert lastJsonMessage to our more comprehensive type
+    const currentMessage = lastJsonMessage as BackendMessage | null;
+
+    // 檢查是否是 chat-message 類型並且包含 message 負載
+    if (currentMessage && currentMessage.type === 'chat-message') {
+        logger.debug('[AppWS Parse Effect] Condition 1 passed: Message exists and type is chat-message.', LogCategory.WEBSOCKET);
+        if (currentMessage.message && typeof currentMessage.message === 'object') {
+            logger.debug('[AppWS Parse Effect] Condition 2 passed: Message payload exists and is object.', LogCategory.WEBSOCKET);
+            // message 負載現在符合 ChatMessagePayload 類型
+            const messagePayload = currentMessage.message;
+            if ('bodyAnimationName' in messagePayload) {
+                logger.debug('[AppWS Parse Effect] Condition 3 passed: bodyAnimationName key exists in payload.', LogCategory.WEBSOCKET);
+                const backendAnimationName = messagePayload.bodyAnimationName;
+                logger.debug(`[AppWS Parse Effect] Extracted bodyAnimationName: ${backendAnimationName}`, LogCategory.WEBSOCKET);
+                
+                // 檢查提取到的名稱是否為字符串 (可能為 null)
+                if (typeof backendAnimationName === 'string' && backendAnimationName.trim() !== '') {
+                  logger.debug('[AppWS Parse Effect] Condition 4 passed: Animation name is a non-empty string.', LogCategory.WEBSOCKET);
+                  // 驗證是否在可用動畫列表中 (可選但建議)
+                  if (availableAnimations.includes(backendAnimationName)) {
+                      logger.info(`[AppWS] Received suggested animation: ${backendAnimationName} from chat-message. Storing to Zustand...`, LogCategory.WEBSOCKET);
+                      // 存儲到 Zustand
+                      setSuggestedAnimationName(backendAnimationName);
+                  } else {
+                       logger.warn(`[AppWS] Received suggested animation "${backendAnimationName}" not in available list. Ignoring. Available: ${availableAnimations.join(', ')}`, LogCategory.WEBSOCKET);
+                       // setSuggestedAnimationName(null);
+                  }
+                } else if (backendAnimationName === null || backendAnimationName === '') {
+                   // 如果後端明確發送 null 或空字符串
+                   logger.info(`[AppWS] Received null/empty suggested animation. Setting to null.`, LogCategory.WEBSOCKET);
+                   // 設置為 null
+                   setSuggestedAnimationName(null);
+                } else {
+                   logger.warn(`[AppWS] Received bodyAnimationName but it's not a valid string or null: ${backendAnimationName}`, LogCategory.WEBSOCKET);
+                }
+             } else {
+                 logger.debug('[AppWS Parse Effect] Condition 3 FAILED: bodyAnimationName key NOT in payload.', LogCategory.WEBSOCKET);
+             }
+        } else {
+             logger.debug('[AppWS Parse Effect] Condition 2 FAILED: Message payload does not exist or is not an object.', LogCategory.WEBSOCKET);
+        }
+    } else {
+         logger.debug('[AppWS Parse Effect] Condition 1 FAILED: Message is null or type is not chat-message.', LogCategory.WEBSOCKET);
+    }
+    // 可以添加對其他消息類型的處理
+  }, [lastJsonMessage, availableAnimations, setSuggestedAnimationName]); // 依賴項加入 setSuggestedAnimationName
+  // ------------------------------------
+
+  // --- 同步身體動畫與語音狀態 ---
   const prevIsSpeaking = useRef<boolean>(isSpeaking);
 
   useEffect(() => {
     // 監聽 isSpeaking 狀態變化
     const speakingStarted = !prevIsSpeaking.current && isSpeaking;
     const speakingStopped = prevIsSpeaking.current && !isSpeaking;
+    
+    // ---> Add logging here <--- 
+    logger.debug(`[AppSync Effect Check] isSpeaking: ${isSpeaking}, prevIsSpeaking: ${prevIsSpeaking.current}, suggestedAnimationName from store: ${suggestedAnimationName}`, LogCategory.ANIMATION);
+    // ---> End logging <--- 
 
     if (speakingStarted) {
       // 語音開始播放，觸發建議的動畫
-      const animToPlay = suggestedAnimationName || 'Idle'; // 如果沒有建議，播放 Idle
+      // 使用從 Zustand 讀取的建議動畫名稱
+      const animToPlay = suggestedAnimationName || 'Idle'; // 如果 Zustand 中沒有建議，播放 Idle
       logger.info(`[AppSync] Speech started. Playing animation: ${animToPlay}`, LogCategory.ANIMATION);
       selectAnimation(animToPlay);
     } else if (speakingStopped) {
       // 語音停止播放，切換回 Idle 動畫
       logger.info(`[AppSync] Speech stopped. Switching to Idle animation.`, LogCategory.ANIMATION);
-      selectAnimation('Idle'); // 確保 'Idle' 是正確的友好名稱
+      // 確保 'Idle' 是可用動畫列表中的一個有效友好名稱
+      if (availableAnimations.includes('Idle')) {
+        selectAnimation('Idle');
+      } else {
+         logger.warn(`[AppSync] 'Idle' animation not found in available list. Cannot switch to Idle.`, LogCategory.ANIMATION);
+         // 可以選擇播放列表中的第一個動畫或其他備用動畫
+         // if (availableAnimations.length > 0) selectAnimation(availableAnimations[0]);
+      }
     }
 
     // 更新 previous state
     prevIsSpeaking.current = isSpeaking;
 
-  }, [isSpeaking, selectAnimation, suggestedAnimationName]); // 依賴項
+  }, [isSpeaking, selectAnimation, suggestedAnimationName, availableAnimations]); // 依賴項更新為 Zustand 的 suggestedAnimationName
   // ----------------------------
 
   // === 定義錄音結束後的回調 ===
