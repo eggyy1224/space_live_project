@@ -69,8 +69,9 @@ class LogManager {
     });
     
     // 為高頻類別設置更嚴格的級別
-    this.categorySettings.set(LogCategory.ANIMATION, LogLevel.WARN);
+    this.categorySettings.set(LogCategory.ANIMATION, LogLevel.ERROR);
     this.categorySettings.set(LogCategory.MORPH, LogLevel.WARN);
+    this.categorySettings.set(LogCategory.MODEL, LogLevel.ERROR);
   }
   
   // 設置全局日誌級別

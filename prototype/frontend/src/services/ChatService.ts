@@ -4,6 +4,9 @@ import AudioService from './AudioService';
 import logger, { LogCategory } from '../utils/LogManager';
 import { useStore } from '../store';
 
+// ---> 添加一個全局變數來存儲開始時間 <---
+let messageSendTimestamp: number | null = null;
+
 // 消息類型定義
 export interface MessageType {
   id: string;
@@ -22,6 +25,8 @@ class ChatService {
   private static instance: ChatService;
   private websocket: WebSocketService;
   private audioService: AudioService;
+  // ---> 添加一個映射來存儲每個請求的開始時間 <---
+  private messageTimestamps: Map<string, number> = new Map();
   
   // 單例模式
   public static getInstance(): ChatService {
@@ -46,7 +51,18 @@ class ChatService {
     // 註冊處理聊天消息的回調
     this.websocket.registerHandler('chat-message', (data: any) => {
       logger.info('收到聊天消息', LogCategory.CHAT, data);
-      
+      // ---> 計算並記錄響應時間 <---
+      const receiveTime = performance.now();
+      // 嘗試從 message data 中獲取 user message id (如果後端能夠回傳的話)
+      // 假設 message.id 是機器人回覆的 ID，我們需要某種方式關聯到用戶發送的消息
+      // 暫時我們先使用全局變數的方式，但這在併發請求下不準確
+      if (messageSendTimestamp) {
+          const duration = receiveTime - messageSendTimestamp;
+          logger.info(`[Performance] Frontend E2E response time: ${duration.toFixed(2)} ms`, LogCategory.PERFORMANCE); // 使用新的 LogCategory
+          messageSendTimestamp = null; // 重置時間戳
+      }
+      // <--- 計時結束 --- >
+
       if (!data || !data.message) {
         logger.warn('收到的聊天消息格式無效', LogCategory.CHAT);
         return;
@@ -120,6 +136,10 @@ class ChatService {
     }
     
     logger.info(`發送消息: ${text}`, LogCategory.CHAT);
+    
+    // ---> 記錄發送時間戳 <---
+    messageSendTimestamp = performance.now();
+    // <--- 時間戳記錄結束 --- >
     
     // 創建消息對象
     const message: MessageType = {
@@ -214,6 +234,7 @@ class ChatService {
 export function useChatService() {
   // 獲取 Zustand 狀態
   const messages = useStore((state) => state.messages);
+  const addMessage = useStore((state) => state.addMessage); // <-- 獲取 addMessage
   
   // 獲取服務實例
   const chatService = useRef<ChatService>(ChatService.getInstance());
@@ -225,6 +246,16 @@ export function useChatService() {
   
   // 封裝方法
   const sendMessage = (text: string) => {
+    // 將用戶消息添加到 store (UI 會立即顯示)
+    const userMessage: MessageType = {
+        id: `user-${Date.now()}`,
+        role: 'user',
+        content: text,
+        timestamp: new Date().toISOString()
+    };
+    addMessage(userMessage); // <-- 在發送前添加到 store
+
+    // 調用服務發送消息到後端
     chatService.current.sendMessage(text);
   };
   

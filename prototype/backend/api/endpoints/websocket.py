@@ -5,6 +5,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 import random
 import os
 import base64
+import time
 
 from services.ai import AIService
 from services.text_to_speech import TextToSpeechService
@@ -96,11 +97,22 @@ async def websocket_endpoint(websocket: WebSocket):
                     logger.info(f"收到聊天訊息: {message}")
                     user_text = message["message"]
 
+                    # --- 添加計時開始 ---
+                    T_recv = time.monotonic() # 記錄接收時間
+                    logger.info(f"[Perf] T_recv: {T_recv:.4f}", extra={"log_category": "PERFORMANCE"})
+                    # --- 計時結束 ---
+
                     # --- 調用 AI Service 生成回應和 Keyframes ---
                     try:
-                        # 調用 generate_response，預期返回包含 final_response 和 emotional_keyframes 的字典
-                        # 注意：這裡暫時不傳遞初步分析的情緒，讓 DialogueGraph 決定
+                        # --- 添加計時開始 ---
+                        T_ai_start = time.monotonic()
+                        logger.info(f"[Perf] T_ai_start: {T_ai_start:.4f}", extra={"log_category": "PERFORMANCE"})
+                        # --- 計時結束 ---
                         ai_result = await ai_service.generate_response(user_text) # 移除 current_emotion
+                        # --- 添加計時開始 ---
+                        T_ai_end = time.monotonic()
+                        logger.info(f"[Perf] T_ai_end: {T_ai_end:.4f} (Duration: {(T_ai_end - T_ai_start)*1000:.2f} ms)", extra={"log_category": "PERFORMANCE"})
+                        # --- 計時結束 ---
 
                         # 提取結果
                         ai_response = ai_result.get("final_response", "抱歉，我好像有點短路了...")
@@ -135,7 +147,15 @@ async def websocket_endpoint(websocket: WebSocket):
                         # --- 後續處理：TTS, Lipsync, 發送訊息 ---
 
                         # 轉換回復為語音
+                        # --- 添加計時開始 ---
+                        T_tts_start = time.monotonic()
+                        logger.info(f"[Perf] T_tts_start: {T_tts_start:.4f}", extra={"log_category": "PERFORMANCE"})
+                        # --- 計時結束 ---
                         tts_result = await tts_service.synthesize_speech(ai_response)
+                        # --- 添加計時開始 ---
+                        T_tts_end = time.monotonic()
+                        logger.info(f"[Perf] T_tts_end: {T_tts_end:.4f} (Duration: {(T_tts_end - T_tts_start)*1000:.2f} ms)", extra={"log_category": "PERFORMANCE"})
+                        # --- 計時結束 ---
                         audio_base64 = tts_result.get("audio") if tts_result else None
                         # 修正：如果 tts_result 為 None 或不含 duration，則估算時間
                         audio_duration = tts_result.get("duration") if tts_result and "duration" in tts_result else len(ai_response) * 0.15 # 調整估算時間並添加檢查
@@ -163,6 +183,10 @@ async def websocket_endpoint(websocket: WebSocket):
                             os.makedirs(audio_dir, exist_ok=True) # 確保目錄存在
                             audio_filepath = os.path.join(audio_dir, audio_filename)
 
+                            # --- 添加計時開始 ---
+                            T_save_start = time.monotonic()
+                            logger.info(f"[Perf] T_save_start: {T_save_start:.4f}", extra={"log_category": "PERFORMANCE"})
+                            # --- 計時結束 ---
                             # 解碼並保存音頻
                             try:
                                 if isinstance(audio_base64, str):
@@ -180,6 +204,10 @@ async def websocket_endpoint(websocket: WebSocket):
                                     if os.path.exists(audio_filepath) and os.path.getsize(audio_filepath) > 0:
                                         bot_message["audioUrl"] = f"/audio-file/{audio_filename}"
                                         logger.info(f"保存音頻文件成功: {audio_filepath}, 大小: {os.path.getsize(audio_filepath)} 字節")
+                                        # --- 添加計時開始 ---
+                                        T_save_end = time.monotonic()
+                                        logger.info(f"[Perf] T_save_end: {T_save_end:.4f} (Duration: {(T_save_end - T_save_start)*1000:.2f} ms)", extra={"log_category": "PERFORMANCE"})
+                                        # --- 計時結束 ---
                                     else:
                                         logger.error(f"保存音頻文件失敗: 文件不存在或大小為0 {audio_filepath}")
                                 else:
@@ -191,11 +219,20 @@ async def websocket_endpoint(websocket: WebSocket):
 
 
                         # 發送聊天文字回覆
+                        # --- 添加計時開始 ---
+                        T_send_start = time.monotonic()
+                        logger.info(f"[Perf] T_send_start (chat-message): {T_send_start:.4f}", extra={"log_category": "PERFORMANCE"})
+                        # --- 計時結束 ---
                         await websocket.send_json({
                             "type": "chat-message",
                             "message": bot_message
                         })
                         logger.info("已發送聊天文字回覆")
+                        # --- 添加計時開始 ---
+                        T_send_end = time.monotonic()
+                        logger.info(f"[Perf] T_send_end (chat-message): {T_send_end:.4f} (Duration: {(T_send_end - T_send_start)*1000:.2f} ms)", extra={"log_category": "PERFORMANCE"})
+                        logger.info(f"[Perf] Total Backend Processing Time: {(T_send_end - T_recv)*1000:.2f} ms", extra={"log_category": "PERFORMANCE"})
+                        # --- 計時結束 ---
 
                         # --- 發送 Emotional Trajectory ---
                         if emotional_keyframes:

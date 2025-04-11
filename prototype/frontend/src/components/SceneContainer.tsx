@@ -15,7 +15,7 @@ const SceneContainer: React.FC<SceneContainerProps> = ({
   isHeadModelLoaded, 
   showSpaceBackground,
 }) => {
-  console.log('[SceneContainer] Rendering...');
+  // console.log('[SceneContainer] Rendering...');
   return (
     <Canvas 
       shadows 
@@ -33,7 +33,7 @@ const SceneContainer: React.FC<SceneContainerProps> = ({
       />
       <Suspense fallback={null}>
         {(() => {
-          console.log('[SceneContainer] Inside Suspense - Rendering HeadModel group...');
+          // console.log('[SceneContainer] Inside Suspense - Rendering HeadModel group...');
           return (
             <group scale={10} position={[-22, -5, 0]}> 
               <HeadModel headModelUrl={headModelUrl} />
@@ -41,7 +41,7 @@ const SceneContainer: React.FC<SceneContainerProps> = ({
           );
         })()}
         {(() => {
-          console.log('[SceneContainer] Inside Suspense - Rendering BodyModel...');
+          // console.log('[SceneContainer] Inside Suspense - Rendering BodyModel...');
           return (
             <group scale={5}> 
               <BodyModel />

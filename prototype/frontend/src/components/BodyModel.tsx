@@ -72,12 +72,12 @@ export function BodyModel() {
 
   // 1. 加載身體模型場景 (忽略其動畫)
   const { scene } = useGLTF(bodyModelUrl);
-  logger.info(`[BodyModel] Body scene loaded from ${bodyModelUrl}`, LogCategory.MODEL);
+  // logger.info(`[BodyModel] Body scene loaded from ${bodyModelUrl}`, LogCategory.MODEL); // 註釋掉
 
   // 2. 加載所有外部動畫 (使用新的 ANIMATION_PATHS)
   const { combinedAnimations: externalAnimations, animationClipsPerFile } = 
     useExternalAnimations(ANIMATION_PATHS);
-  logger.info(`[BodyModel] Loaded ${externalAnimations.length} external animations from ${ANIMATION_PATHS.length} files.`, LogCategory.ANIMATION);
+  // logger.info(`[BodyModel] Loaded ${externalAnimations.length} external animations from ${ANIMATION_PATHS.length} files.`, LogCategory.ANIMATION); // 註釋掉
   
   // 3. 使用合併後的外部動畫獲取 mixer
   const { mixer } = useAnimations(externalAnimations, group); 
@@ -118,7 +118,8 @@ export function BodyModel() {
       map.forEach((action, friendlyName) => {
         mapLog[friendlyName] = action?.getClip().name || 'undefined';
       });
-      logger.info(`[BodyModel] Created precise friendlyName-to-Action map: ${JSON.stringify(mapLog)}`, LogCategory.ANIMATION);
+      // Store the precise map for debugging or potential future use
+      // logger.info(`[BodyModel] Created precise friendlyName-to-Action map: ${JSON.stringify(mapLog)}`, LogCategory.ANIMATION);
 
     } else {
       logger.error(`[BodyModel] Mismatch between friendly names (${friendlyAnimationNames.length}) and animation files (${animationClipsPerFile.length}). Cannot create accurate map.`, LogCategory.ANIMATION);
@@ -331,7 +332,7 @@ export function BodyModel() {
 
   // scene 應該總是存在，因為 useGLTF 會 suspend 直到加載完成或錯誤
   // 如果 useGLTF 拋出錯誤，會被 Suspense fallback 捕獲，不會執行到這裡
-  logger.info(`[BodyModel] Rendering primitive for ${bodyModelUrl}...`, LogCategory.MODEL);
+  // logger.info(`[BodyModel] Rendering primitive for ${bodyModelUrl}...`, LogCategory.MODEL); // 註釋掉
   return <primitive ref={group} object={scene} dispose={null} />;
 }
 
