@@ -11,6 +11,7 @@ export interface ChatMessage {
   timestamp?: string; // 可選：消息時間戳
   audioUrl?: string; // 可選：音頻URL (如果有)
   bodyAnimationSequence?: any[]; // 可選：身體動畫序列
+  speechDuration?: number; // 可選：語音持續時間（秒）
 }
 
 // 情緒狀態類型定義

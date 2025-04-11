@@ -91,12 +91,27 @@ const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
       const currentIndex = typingStates[message.id] || 0;
       
       if (currentIndex < fullContent.length) {
+        // 根據語音長度計算打字速度
+        // 如果消息中有 speechDuration 屬性，使用它來計算打字速度
+        // 否則回退到默認速度 (30ms 每字符)
+        let typingInterval = 30; // 默認值
+        
+        if (message.speechDuration) {
+          // 將語音時長(秒)分配給所有字符，稍微保留一些時間給最後幾個字符
+          // 因為語音在一開始可能有較長的停頓
+          const totalDuration = message.speechDuration * 1000; // 轉換為毫秒
+          const charsLeft = fullContent.length - currentIndex;
+          // 根據剩余字符數來計算每個字符的打字間隔
+          // 這裡我們保留一個平滑系數：使內容在語音期間的約90%時間內完成
+          typingInterval = Math.max(20, (totalDuration * 0.9) / fullContent.length);
+        }
+        
         const timer = setTimeout(() => {
           setTypingStates(prev => ({
             ...prev,
             [message.id]: currentIndex + 1
           }));
-        }, 30); // 每30ms打一個字符
+        }, typingInterval);
         
         timers.push(timer);
       }
@@ -192,21 +207,25 @@ const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
               {isProcessing && (
                 <div className="flex flex-col space-y-2">
                   <div className="flex justify-start">
-                    <div className="max-w-[80%] px-3 py-1.5 rounded-lg bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200">
-                      <div className="typing-indicator flex space-x-1 items-center h-5">
-                        <span className="block w-1.5 h-1.5 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce-1"></span>
-                        <span className="block w-1.5 h-1.5 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce-2"></span>
-                        <span className="block w-1.5 h-1.5 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce-3"></span>
+                    <div className="max-w-[80%] px-3 py-2.5 rounded-lg bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200">
+                      {/* 思考泡泡框 */}
+                      <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 bg-gray-300 dark:bg-gray-500 rounded-full flex items-center justify-center">
+                          <span role="img" aria-label="thinking" className="text-lg animate-pulse">💭</span>
+                        </div>
+                        <div>
+                          <div className="typing-indicator flex space-x-1 items-center h-5">
+                            <span className="block w-1.5 h-1.5 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce-1"></span>
+                            <span className="block w-1.5 h-1.5 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce-2"></span>
+                            <span className="block w-1.5 h-1.5 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce-3"></span>
+                          </div>
+                          <div className="text-xs mt-1 text-gray-500 dark:text-gray-400">
+                            {processingStage === 0 && "正在思考..."}
+                            {processingStage === 1 && "正在組織語言..."}
+                            {processingStage === 2 && "正在生成語音..."}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                  
-                  {/* 處理階段指示器 */}
-                  <div className="flex justify-center">
-                    <div className="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-full">
-                      {processingStage === 0 && "正在思考..."}
-                      {processingStage === 1 && "正在組織語言..."}
-                      {processingStage === 2 && "正在生成語音..."}
                     </div>
                   </div>
                 </div>

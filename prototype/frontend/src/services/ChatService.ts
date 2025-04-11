@@ -17,6 +17,7 @@ export interface MessageType {
   isError?: boolean;
   isTyping?: boolean;
   fullContent?: string;
+  speechDuration?: number;
 }
 
 // 後端API URL
@@ -82,6 +83,18 @@ class ChatService {
         message.isTyping = true;
         message.fullContent = content;
         message.content = ''; // 初始設為空
+        
+        // 從消息中提取語音持續時間（如果有）
+        if (data.speechDuration) {
+          message.speechDuration = data.speechDuration;
+          logger.info(`語音持續時間: ${data.speechDuration}秒`, LogCategory.CHAT);
+        } else if (message.audioUrl) {
+          // 如果沒有明確提供持續時間但有音頻，使用估算值
+          // 假設平均每個字符約0.2秒（可以根據實際情況調整）
+          const estimatedDuration = content.length * 0.2;
+          message.speechDuration = estimatedDuration;
+          logger.info(`估算語音持續時間: ${estimatedDuration}秒`, LogCategory.CHAT);
+        }
       }
       
       this.addMessage(message);
