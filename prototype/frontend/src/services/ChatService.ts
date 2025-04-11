@@ -67,6 +67,10 @@ class ChatService {
       }
       // <--- 計時結束 --- >
       
+      // ---> 收到回覆後，設置 isProcessing 為 false <---
+      useStore.getState().setProcessing(false);
+      // <--- 狀態更新結束 --- >
+      
       if (!data || !data.message) {
         logger.warn('收到的聊天消息格式無效', LogCategory.CHAT);
         return;
@@ -145,6 +149,10 @@ class ChatService {
     this.websocket.registerHandler('error', (data: any) => {
       logger.error('收到錯誤消息', LogCategory.CHAT, data);
       
+      // ---> 收到錯誤後，也設置 isProcessing 為 false <---
+      useStore.getState().setProcessing(false);
+      // <--- 狀態更新結束 --- >
+      
       if (!data || !data.message) {
         logger.warn('收到的錯誤消息格式無效', LogCategory.CHAT);
         return;
@@ -164,20 +172,13 @@ class ChatService {
     
     logger.info(`發送消息: ${text}`, LogCategory.CHAT);
     
+    // ---> 發送前，設置 isProcessing 為 true <---
+    useStore.getState().setProcessing(true);
+    // <--- 狀態更新結束 --- >
+    
     // ---> 記錄發送時間戳 <---
     messageSendTimestamp = performance.now();
     // <--- 時間戳記錄結束 --- >
-    
-    // 創建消息對象
-    const message: MessageType = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: text,
-      timestamp: new Date().toISOString()
-    };
-    
-    // 添加到聊天歷史
-    this.addMessage(message);
     
     // 如果WebSocket已連接，通過WebSocket發送
     if (this.websocket.isConnected()) {
@@ -187,11 +188,17 @@ class ChatService {
       // 如果發送失敗，提示用戶
       if (!success) {
         logger.error('消息發送失敗', LogCategory.CHAT);
+        // ---> 發送失敗後，設置 isProcessing 為 false <---
+        useStore.getState().setProcessing(false);
+        // <--- 狀態更新結束 --- >
         this.showErrorMessage('消息發送失敗，請檢查網絡連接');
       }
     } else {
       // WebSocket未連接，顯示錯誤
       logger.error('WebSocket未連接，無法發送消息', LogCategory.CHAT);
+      // ---> 連接失敗後，設置 isProcessing 為 false <---
+      useStore.getState().setProcessing(false);
+      // <--- 狀態更新結束 --- >
       this.showErrorMessage('網絡連接失敗，請檢查您的網絡連接並重試');
       
       // 嘗試重新連接
@@ -273,7 +280,7 @@ export function useChatService() {
   
   // 封裝方法
   const sendMessage = (text: string) => {
-    // 將用戶消息添加到 store (UI 會立即顯示)
+    // ---> 將用戶消息添加到 store (UI 會立即顯示) <---
     const userMessage: MessageType = {
         id: `user-${Date.now()}`,
         role: 'user',
@@ -281,7 +288,8 @@ export function useChatService() {
         timestamp: new Date().toISOString()
     };
     addMessage(userMessage); // <-- 在發送前添加到 store
-
+    // ---> 添加結束 <---
+    
     // 調用服務發送消息到後端
     chatService.current.sendMessage(text);
   };
