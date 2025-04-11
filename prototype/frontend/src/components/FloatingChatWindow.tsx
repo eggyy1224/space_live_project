@@ -194,18 +194,25 @@ const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
                   開始對話吧！
                 </div>
               )}
-              {messages.map((msg) => (
-                <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[80%] px-3 py-1.5 rounded-lg ${msg.role === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200'}`}>
-                    <p className="text-sm whitespace-pre-wrap inline">
-                      {getMessageContent(msg)}
-                      {msg.isTyping && typingStates[msg.id] < (msg.fullContent?.length || 0) && (
-                        <span className="typing-cursor inline-block h-4 w-0.5 bg-current animate-pulse ml-0.5 align-text-bottom"></span>
-                      )}
-                    </p>
+              {messages.map((msg) => {
+                // 判斷是否正在打字中 (用於光暈效果)
+                const isCurrentlyTyping = msg.isTyping && typingStates[msg.id] < (msg.fullContent?.length || 0);
+                
+                return (
+                  <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    {/* 添加光暈效果 class */}
+                    <div className={`max-w-[80%] px-3 py-1.5 rounded-lg ${msg.role === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200'} ${isCurrentlyTyping ? 'typing-glow' : ''}`}>
+                      <p className="text-sm whitespace-pre-wrap inline">
+                        {getMessageContent(msg)}
+                        {/* 使用新的閃爍游標 class */}
+                        {isCurrentlyTyping && (
+                          <span className="typing-cursor-blink"></span>
+                        )}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {isProcessing && (
                 <div className="flex flex-col space-y-2">
                   <div className="flex justify-start">
@@ -326,4 +333,37 @@ styleSheet.insertRule(`
 `, styleSheet.cssRules.length);
 styleSheet.insertRule(`
 .animate-bounce-3 { animation: bounce-3 1s infinite; animation-delay: 0.2s; }
+`, styleSheet.cssRules.length);
+
+// 閃爍游標動畫
+styleSheet.insertRule(`
+@keyframes blink-caret {
+  from, to { border-color: transparent; }
+  50% { border-color: currentColor; } 
+}
+`, styleSheet.cssRules.length);
+styleSheet.insertRule(`
+.typing-cursor-blink {
+  display: inline-block;
+  width: 1px; 
+  height: 1em; 
+  border-right: 2px solid currentColor;
+  animation: blink-caret 0.75s step-end infinite;
+  margin-left: 2px; /* 稍微增加左邊距 */
+  vertical-align: bottom; 
+}
+`, styleSheet.cssRules.length);
+
+// 文字泡泡光暈動畫
+styleSheet.insertRule(`
+@keyframes subtle-glow {
+  0% { box-shadow: 0 0 3px 0px rgba(255, 255, 255, 0.2); }
+  50% { box-shadow: 0 0 8px 2px rgba(255, 255, 255, 0.4); }
+  100% { box-shadow: 0 0 3px 0px rgba(255, 255, 255, 0.2); }
+}
+`, styleSheet.cssRules.length);
+styleSheet.insertRule(`
+.typing-glow {
+  animation: subtle-glow 1.8s ease-in-out infinite;
+}
 `, styleSheet.cssRules.length); 
