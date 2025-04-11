@@ -15,11 +15,21 @@ from typing import Dict, Any, List, Tuple, Optional
 from langchain_core.messages import AIMessage, SystemMessage 
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+# ---> 新增導入 <----
+from langchain_google_genai import ChatGoogleGenerativeAI
+from core.config import settings # 假設您的 API Key 在 settings 中
+# ---> 導入結束 <----
 
 # 配置基本日誌
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# --- 輔助函數：格式化工具描述給 LLM ---
+# ---> 註解掉不再使用的關鍵字定義 <----
+# TOOL_KEYWORDS = {
+#    ...
+# }
+# ---> 註解結束 <----
+
+# --- 輔助函數：格式化工具描述給 LLM (現在又需要了) ---
 def _format_tool_descriptions(available_tools: Dict[str, Dict]) -> str:
     descriptions = []
     for name, info in available_tools.items():
@@ -30,36 +40,44 @@ def _format_tool_descriptions(available_tools: Dict[str, Dict]) -> str:
 
 async def detect_tool_intent(state: Dict[str, Any]) -> Dict[str, Any]:
     """
-    檢測用戶輸入是否有執行工具的意圖 - 使用 LLM 判斷。
-    
-    檢測邏輯:
-    1. 分析用戶輸入中是否包含明確的工具請求模式
-    2. 檢查用戶意圖分類中是否指向工具使用
-    3. 與已註冊的工具功能比較，找出最匹配的工具
-    
-    返回:
-    更新後的狀態，包含 has_tool_intent 和 potential_tool 字段
+    檢測用戶輸入是否有執行工具的意圖 - **使用小型 LLM (Gemini 1.5 Flash 8B)**。
     """
     processed_input = state["processed_user_input"]
     messages = state.get("messages", [])
-    # 從 context 獲取依賴
     available_tools = state.get("_context", {}).get("available_tools", {})
-    llm = state.get("_context", {}).get("llm")
+    # llm = state.get("_context", {}).get("llm") # <-- 不再使用主 LLM
 
     # 初始化默認值
     has_tool_intent = False
     potential_tool = None
     tool_confidence = 0.0
 
-    if not llm or not available_tools:
-        logging.warning("detect_tool_intent: LLM 或可用工具列表未提供，跳過工具檢測")
+    # ---> 初始化小型 LLM <----
+    try:
+        small_llm = ChatGoogleGenerativeAI(
+            model="gemini-1.5-flash-8b", # 使用指定的小型模型
+            temperature=0.1, # 意圖檢測任務通常需要較低的溫度以獲得更確定的輸出
+            google_api_key=settings.GOOGLE_API_KEY
+        )
+    except Exception as e:
+        logging.error(f"初始化 Gemini 1.5 Flash 8B 模型失敗: {e}", exc_info=True)
+        # 如果模型初始化失敗，回退到不使用工具
+        return {
+            "has_tool_intent": False,
+            "potential_tool": None,
+            "tool_confidence": 0.0
+        }
+    # ---> 初始化結束 <----
+
+    if not available_tools:
+        logging.warning("detect_tool_intent: 可用工具列表未提供，跳過工具檢測")
         return {
             "has_tool_intent": False,
             "potential_tool": None,
             "tool_confidence": 0.0
         }
 
-    # 獲取格式化的工具描述
+    # ---> 恢復使用 LLM 的邏輯 <----
     tool_descriptions = _format_tool_descriptions(available_tools)
 
     # 構建提示讓 LLM 判斷
@@ -74,35 +92,35 @@ async def detect_tool_intent(state: Dict[str, Any]) -> Dict[str, Any]:
         "如果需要工具，請只回答該工具的名稱 (例如 'search_wikipedia')。"
     )
 
-    # 準備對話歷史摘要 (可選，取最近幾輪)
-    history_str = "\n".join([f"{msg.type}: {msg.content}" for msg in messages[-4:]]) # 取最近4條
+    history_str = "\n".join([f"{msg.type}: {msg.content}" for msg in messages[-4:]])
 
-    chain = prompt_template | llm | StrOutputParser()
+    # ---> 使用 small_llm <----
+    chain = prompt_template | small_llm | StrOutputParser()
 
     try:
-        logging.info("調用 LLM 進行工具意圖檢測...")
+        logging.info(f"調用小型 LLM (gemini-1.5-flash-8b) 進行工具意圖檢測...")
         llm_decision = await chain.ainvoke({
             "tool_descriptions": tool_descriptions,
             "conversation_history": history_str,
             "user_input": processed_input
         })
         llm_decision = llm_decision.strip().lower()
-        logging.info(f"LLM 工具意圖判斷結果: {llm_decision}")
+        logging.info(f"小型 LLM 工具意圖判斷結果: {llm_decision}")
 
         if llm_decision != 'none' and llm_decision in available_tools:
             has_tool_intent = True
             potential_tool = llm_decision
-            tool_confidence = 0.9 # 假設 LLM 判斷的可信度較高
-            logging.info(f"LLM 建議使用工具: {potential_tool}")
+            tool_confidence = 0.85 # 可以根據模型調整置信度
+            logging.info(f"小型 LLM 建議使用工具: {potential_tool}")
         else:
-            logging.info("LLM 判斷無需使用工具或選擇了無效工具。")
+            logging.info("小型 LLM 判斷無需使用工具或選擇了無效工具。")
 
     except Exception as e:
-        logging.error(f"LLM 工具意圖檢測失敗: {e}", exc_info=True)
-        # 出錯時，保守起見不使用工具
+        logging.error(f"小型 LLM 工具意圖檢測失敗: {e}", exc_info=True)
         has_tool_intent = False
         potential_tool = None
         tool_confidence = 0.0
+    # ---> LLM 邏輯結束 <----
 
     return {
         "has_tool_intent": has_tool_intent,
@@ -112,13 +130,7 @@ async def detect_tool_intent(state: Dict[str, Any]) -> Dict[str, Any]:
 
 async def parse_tool_parameters(state: Dict[str, Any]) -> Dict[str, Any]:
     """
-    從用戶輸入中解析工具參數 - 使用 LLM 提取。
-    
-    根據識別的工具類型，嘗試從用戶輸入中提取所需參數。
-    例如，如果是太空物體查詢工具，會嘗試提取物體名稱或類型。
-    
-    返回:
-    更新後的狀態，包含工具參數字典
+    從用戶輸入中解析工具參數 - **使用小型 LLM (Gemini 1.5 Flash 8B)** 提取。
     """
     if not state.get("has_tool_intent", False) or not state.get("potential_tool"):
         return {"tool_parameters": {}}
@@ -126,15 +138,25 @@ async def parse_tool_parameters(state: Dict[str, Any]) -> Dict[str, Any]:
     processed_input = state["processed_user_input"]
     potential_tool = state["potential_tool"]
     messages = state.get("messages", [])
-    # 從 context 獲取依賴
     available_tools = state.get("_context", {}).get("available_tools", {})
-    llm = state.get("_context", {}).get("llm")
+    # llm = state.get("_context", {}).get("llm") # <-- 不再使用主 LLM
 
     tool_parameters = {}
 
-    if not llm or potential_tool not in available_tools:
-        logging.warning("parse_tool_parameters: LLM 或工具信息缺失，無法解析參數")
-        # 返回空參數，讓 execute_tool 處理缺少參數的情況
+    # ---> 初始化小型 LLM <----
+    try:
+        small_llm = ChatGoogleGenerativeAI(
+            model="gemini-1.5-flash-8b",
+            temperature=0.1, # 參數提取也需要較低溫度
+            google_api_key=settings.GOOGLE_API_KEY
+        )
+    except Exception as e:
+        logging.error(f"初始化 Gemini 1.5 Flash 8B 模型失敗: {e}", exc_info=True)
+        return {"tool_parameters": {}} # 初始化失敗則無法解析
+    # ---> 初始化結束 <----
+
+    if potential_tool not in available_tools:
+        logging.warning("parse_tool_parameters: 工具信息缺失，無法解析參數")
         return {"tool_parameters": {}}
 
     tool_info = available_tools[potential_tool]
@@ -142,9 +164,9 @@ async def parse_tool_parameters(state: Dict[str, Any]) -> Dict[str, Any]:
 
     if not parameter_definitions:
         logging.info(f"工具 '{potential_tool}' 無需參數。")
-        return {"tool_parameters": {}} # 無需參數，直接返回
+        return {"tool_parameters": {}}
 
-    # 構建提示讓 LLM 提取參數
+    # ---> 修改：所有 chain 都使用 small_llm <----
     if potential_tool == 'search_wikipedia':
         param_name = 'query'
         param_description = next((p["description"] for p in parameter_definitions if p["name"] == param_name), "查詢的主題")
@@ -160,10 +182,10 @@ async def parse_tool_parameters(state: Dict[str, Any]) -> Dict[str, Any]:
         )
 
         history_str = "\n".join([f"{msg.type}: {msg.content}" for msg in messages[-4:]])
-        chain = prompt_template | llm | StrOutputParser()
+        chain = prompt_template | small_llm | StrOutputParser()
 
         try:
-            logging.info(f"調用 LLM 提取工具 '{potential_tool}' 的參數 '{param_name}'...")
+            logging.info(f"調用小型 LLM 提取工具 '{potential_tool}' 的參數 '{param_name}'...")
             extracted_value = await chain.ainvoke({
                 "tool_name": potential_tool,
                 "param_name": param_name,
@@ -172,20 +194,19 @@ async def parse_tool_parameters(state: Dict[str, Any]) -> Dict[str, Any]:
                 "user_input": processed_input
             })
             extracted_value = extracted_value.strip()
-            logging.info(f"LLM 提取到的參數值: {extracted_value}")
+            logging.info(f"小型 LLM 提取到的參數值: {extracted_value}")
 
             if extracted_value and extracted_value.lower() != '無法確定':
                 tool_parameters[param_name] = extracted_value
             else:
-                logging.warning(f"LLM 未能提取工具 '{potential_tool}' 的參數 '{param_name}'")
+                logging.warning(f"小型 LLM 未能提取工具 '{potential_tool}' 的參數 '{param_name}'")
                 # 可以在這裡觸發澄清流程，或者讓 execute_tool 處理缺少參數
 
         except Exception as e:
-            logging.error(f"LLM 參數提取失敗: {e}", exc_info=True)
+            logging.error(f"小型 LLM 參數提取失敗: {e}", exc_info=True)
             # 提取失敗，返回空參數
             tool_parameters = {}
     
-    # --- 新增：處理 get_moon_phase 的 date_str 參數 ---
     elif potential_tool == 'get_moon_phase':
         param_name = 'date_str'
         param_info = next((p for p in parameter_definitions if p["name"] == param_name), None)
@@ -204,10 +225,10 @@ async def parse_tool_parameters(state: Dict[str, Any]) -> Dict[str, Any]:
             )
             
             history_str = "\n".join([f"{msg.type}: {msg.content}" for msg in messages[-4:]])
-            chain = prompt_template | llm | StrOutputParser()
+            chain = prompt_template | small_llm | StrOutputParser()
             
             try:
-                logging.info(f"調用 LLM 提取工具 '{potential_tool}' 的可選參數 '{param_name}'...")
+                logging.info(f"調用小型 LLM 提取工具 '{potential_tool}' 的可選參數 '{param_name}'...")
                 extracted_value = await chain.ainvoke({
                     "tool_name": potential_tool,
                     "param_name": param_name,
@@ -216,22 +237,19 @@ async def parse_tool_parameters(state: Dict[str, Any]) -> Dict[str, Any]:
                     "user_input": processed_input
                 })
                 extracted_value = extracted_value.strip()
-                logging.info(f"LLM 提取到的日期參數值: '{extracted_value}'")
+                logging.info(f"小型 LLM 提取到的日期參數值: '{extracted_value}'")
                 
                 # 只有當 LLM 返回了非'未指定'的值時才設置參數
                 if extracted_value and extracted_value.lower() not in ['未指定', '']:
                     tool_parameters[param_name] = extracted_value
                 else:
-                    logging.info(f"LLM 未提取到明確的日期參數或用戶未指定，將使用默認日期（今天）。")
+                    logging.info(f"小型 LLM 未提取到明確的日期參數或用戶未指定，將使用默認日期（今天）。")
                     # 不設置參數，讓工具函數使用默認值
             
             except Exception as e:
-                logging.error(f"LLM 日期參數提取失敗: {e}", exc_info=True)
+                logging.error(f"小型 LLM 日期參數提取失敗: {e}", exc_info=True)
                 # 提取失敗，不設置參數，讓工具函數使用默認值
                 tool_parameters = {}
-    # --- 結束新增 ---
-    
-    # --- 新增：處理 search_space_news 的多個參數 ---
     elif potential_tool == 'search_space_news':
         # 準備對話歷史供 LLM 參考
         history_str = "\n".join([f"{msg.type}: {msg.content}" for msg in messages[-4:]])
@@ -274,12 +292,12 @@ async def parse_tool_parameters(state: Dict[str, Any]) -> Dict[str, Any]:
             "請只返回時間範圍或'未指定'，不要添加任何解釋、引號或附加信息。"
         )
         
-        keywords_chain = keywords_prompt | llm | StrOutputParser()
-        time_period_chain = time_period_prompt | llm | StrOutputParser()
+        keywords_chain = keywords_prompt | small_llm | StrOutputParser()
+        time_period_chain = time_period_prompt | small_llm | StrOutputParser()
         
         try:
             # 並行執行參數提取任務
-            logging.info(f"調用 LLM 提取工具 '{potential_tool}' 的參數...")
+            logging.info(f"調用小型 LLM 提取工具 '{potential_tool}' 的參數...")
             keywords_task = keywords_chain.ainvoke({
                 "conversation_history": history_str,
                 "user_input": processed_input
@@ -299,8 +317,8 @@ async def parse_tool_parameters(state: Dict[str, Any]) -> Dict[str, Any]:
             keywords = keywords_result.strip()
             time_period = time_period_result.strip()
             
-            logging.info(f"LLM 提取到的關鍵詞: '{keywords}'")
-            logging.info(f"LLM 提取到的時間範圍: '{time_period}'")
+            logging.info(f"小型 LLM 提取到的關鍵詞: '{keywords}'")
+            logging.info(f"小型 LLM 提取到的時間範圍: '{time_period}'")
             
             # 將有效參數添加到參數字典
             if keywords and keywords.lower() != '未指定':
@@ -313,13 +331,10 @@ async def parse_tool_parameters(state: Dict[str, Any]) -> Dict[str, Any]:
             tool_parameters['limit'] = 3  # 默認返回3條新聞
             
         except Exception as e:
-            logging.error(f"LLM 參數提取失敗: {e}", exc_info=True)
+            logging.error(f"小型 LLM 參數提取失敗: {e}", exc_info=True)
             # 提取失敗時，使用默認參數
             tool_parameters = {'limit': 3}
-    # --- 結束新增 ---
-    
-    # else: # 在這裡添加其他工具的參數提取邏輯
-    #    pass 
+    # ---> 修改結束 <----
 
     logging.info(f"解析出的工具參數: {tool_parameters}")
     return {"tool_parameters": tool_parameters}
