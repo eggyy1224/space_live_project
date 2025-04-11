@@ -15,6 +15,8 @@ export interface MessageType {
   timestamp: string;
   audioUrl?: string;
   isError?: boolean;
+  isTyping?: boolean;
+  fullContent?: string;
 }
 
 // 後端API URL
@@ -51,6 +53,7 @@ class ChatService {
     // 註冊處理聊天消息的回調
     this.websocket.registerHandler('chat-message', (data: any) => {
       logger.info('收到聊天消息', LogCategory.CHAT, data);
+      
       // ---> 計算並記錄響應時間 <---
       const receiveTime = performance.now();
       // 嘗試從 message data 中獲取 user message id (如果後端能夠回傳的話)
@@ -62,7 +65,7 @@ class ChatService {
           messageSendTimestamp = null; // 重置時間戳
       }
       // <--- 計時結束 --- >
-
+      
       if (!data || !data.message) {
         logger.warn('收到的聊天消息格式無效', LogCategory.CHAT);
         return;
@@ -70,6 +73,17 @@ class ChatService {
       
       // 將收到的消息添加到聊天歷史
       const message = data.message;
+      
+      // 如果是機器人消息並且不是錯誤消息，添加打字機效果
+      if (message.role === 'bot' && !message.isError) {
+        const content = message.content;
+        
+        // 添加打字機效果屬性
+        message.isTyping = true;
+        message.fullContent = content;
+        message.content = ''; // 初始設為空
+      }
+      
       this.addMessage(message);
       
       // 如果消息包含音頻URL且不是用戶發送的消息，播放語音

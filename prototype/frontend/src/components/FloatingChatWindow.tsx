@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import Draggable from 'react-draggable';
 import { ResizableBox } from 'react-resizable';
 import 'react-resizable/css/styles.css'; // Import default styles for resizable
@@ -44,11 +44,82 @@ const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
   
   // State for size (needed for ResizableBox)
   const [size, setSize] = useState({ width: 320, height: 480 }); 
+  // 增加打字機效果索引狀態，追蹤對每條消息的處理進度
+  const [typingStates, setTypingStates] = useState<Record<string, number>>({});
+  // 當前處理階段狀態 (思考中 -> 組織語言 -> 生成語音)
+  const [processingStage, setProcessingStage] = useState<number>(0);
+
+  // 如果 isProcessing 變成 true，啟動階段轉變定時器
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    
+    if (isProcessing) {
+      setProcessingStage(0); // 重置為「正在思考」
+      
+      // 2秒後轉為「組織語言」
+      timer = setTimeout(() => {
+        setProcessingStage(1);
+        
+        // 再過2秒轉為「生成語音」
+        timer = setTimeout(() => {
+          setProcessingStage(2);
+        }, 2000);
+      }, 2000);
+    } else {
+      setProcessingStage(0); // 重置
+    }
+    
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [isProcessing]);
+
+  // 處理打字機效果
+  useEffect(() => {
+    // 尋找需要打字機效果的消息
+    const typingMessages = messages.filter(msg => msg.isTyping && msg.fullContent);
+    
+    if (typingMessages.length === 0) return;
+    
+    // 為每條需要打字機效果的消息設置一個打字定時器
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    
+    typingMessages.forEach(message => {
+      if (!message.id || !message.fullContent) return;
+      
+      const fullContent = message.fullContent;
+      const currentIndex = typingStates[message.id] || 0;
+      
+      if (currentIndex < fullContent.length) {
+        const timer = setTimeout(() => {
+          setTypingStates(prev => ({
+            ...prev,
+            [message.id]: currentIndex + 1
+          }));
+        }, 30); // 每30ms打一個字符
+        
+        timers.push(timer);
+      }
+    });
+    
+    return () => {
+      timers.forEach(timer => clearTimeout(timer));
+    };
+  }, [messages, typingStates]);
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, typingStates]); // 增加 typingStates 依賴，確保打字過程中也滾動
+
+  // 獲取消息顯示內容的輔助函數
+  const getMessageContent = useCallback((message: ChatMessage) => {
+    if (message.isTyping && message.fullContent) {
+      const contentIndex = typingStates[message.id] || 0;
+      return message.fullContent.substring(0, contentIndex);
+    }
+    return message.content;
+  }, [typingStates]);
 
   if (!isVisible) {
     return null;
@@ -111,17 +182,31 @@ const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
               {messages.map((msg) => (
                 <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[80%] px-3 py-1.5 rounded-lg ${msg.role === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200'}`}>
-                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                    <p className="text-sm whitespace-pre-wrap">{getMessageContent(msg)}</p>
+                    {msg.isTyping && typingStates[msg.id] < (msg.fullContent?.length || 0) && (
+                      <span className="typing-cursor inline-block h-4 w-0.5 bg-current animate-pulse ml-0.5"></span>
+                    )}
                   </div>
                 </div>
               ))}
               {isProcessing && (
-                <div className="flex justify-start">
-                  <div className="max-w-[80%] px-3 py-1.5 rounded-lg bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200">
-                    <div className="typing-indicator flex space-x-1 items-center h-5">
-                      <span className="block w-1.5 h-1.5 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce-1"></span>
-                      <span className="block w-1.5 h-1.5 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce-2"></span>
-                      <span className="block w-1.5 h-1.5 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce-3"></span>
+                <div className="flex flex-col space-y-2">
+                  <div className="flex justify-start">
+                    <div className="max-w-[80%] px-3 py-1.5 rounded-lg bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200">
+                      <div className="typing-indicator flex space-x-1 items-center h-5">
+                        <span className="block w-1.5 h-1.5 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce-1"></span>
+                        <span className="block w-1.5 h-1.5 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce-2"></span>
+                        <span className="block w-1.5 h-1.5 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce-3"></span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* 處理階段指示器 */}
+                  <div className="flex justify-center">
+                    <div className="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-full">
+                      {processingStage === 0 && "正在思考..."}
+                      {processingStage === 1 && "正在組織語言..."}
+                      {processingStage === 2 && "正在生成語音..."}
                     </div>
                   </div>
                 </div>

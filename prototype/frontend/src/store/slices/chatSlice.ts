@@ -6,6 +6,11 @@ export interface ChatMessage {
   id: string;
   role: 'user' | 'bot';
   content: string;
+  isTyping?: boolean; // 是否顯示打字機效果
+  fullContent?: string; // 完整內容 (用於打字機效果)
+  timestamp?: string; // 可選：消息時間戳
+  audioUrl?: string; // 可選：音頻URL (如果有)
+  bodyAnimationSequence?: any[]; // 可選：身體動畫序列
 }
 
 // 情緒狀態類型定義
