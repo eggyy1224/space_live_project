@@ -33,6 +33,169 @@
 
 ---
 
+## 🏗️ 系統架構
+
+本專案採用前後端分離架構，結合多種服務提供完整的交互體驗。
+
+### 後端架構
+
+後端採用 **FastAPI** 框架實作，分為路由、控制器、服務和資料模型四層：
+
+```mermaid
+flowchart LR
+    subgraph 使用者
+        User[前端使用者<br/>（瀏覽器客戶端）]
+    end
+    subgraph 後端 FastAPI 應用
+        direction TB
+        RouteAPI[REST API 路由<br/>`/api/*`]
+        RouteWS[WebSocket 路由<br/>`/ws`]
+        ControllerAPI[API 控制器函式<br/>（在 endpoints 定義）]
+        ControllerWS[WebSocket 處理函式<br/>（在 endpoints 定義）]
+        RouteAPI --> ControllerAPI
+        RouteWS --> ControllerWS
+        subgraph Service 層
+            STT[SpeechToTextService<br/>語音轉文字服務]
+            TTS[TextToSpeechService<br/>文字轉語音服務]
+            AI[AIService<br/>對話與記憶服務]
+            Emotion[情緒分析元件]
+        end
+        ControllerAPI --> STT
+        ControllerAPI --> AI
+        ControllerAPI --> TTS
+        ControllerWS --> Emotion
+        ControllerWS --> AI
+        ControllerWS --> TTS
+        subgraph AI 子系統
+            DG[DialogueGraph<br/>對話流程圖]
+            Mem[MemorySystem<br/>記憶系統]
+        end
+        AI --> DG
+        AI --> Mem
+    end
+    User -- 上傳語音/文字訊息 --> RouteAPI
+    User -- 雙向通訊 --> RouteWS
+    ControllerAPI -- 回傳文字與語音結果 --> User
+    ControllerWS -- 推送對話回應與角色狀態 --> User
+```
+
+* **路由層 (Routes)**: 處理 HTTP 和 WebSocket 請求的入口點
+* **控制器層 (Controllers)**: 協調請求處理流程，將任務分配給服務
+* **服務層 (Services)**: 封裝核心業務邏輯，如語音轉文字、AI 對話生成、文字轉語音
+* **AI 子系統**: 包含對話流程管理與記憶系統，提供角色人格與對話連貫性
+
+後端服務透過 REST API 和 WebSocket 雙管道與前端通訊，確保即時互動體驗。
+
+### 前端架構
+
+前端建構在 React 與 Three.js 之上，採用 Zustand 進行狀態管理：
+
+```mermaid
+flowchart TB
+    subgraph 使用者界面
+        UI[使用者界面]
+        AppUI[AppUI 布局元件]
+        UI --> AppUI
+        
+        subgraph 主要視圖區域
+            LiveRoom["LiveRoom (模型視圖)"]
+            ChatRoom["ChatRoom (聊天視圖)"]
+            AppUI --> LiveRoom
+            AppUI --> ChatRoom
+        end
+        
+        subgraph 模型相關元件
+            BodyModel["BodyModel<br>身體模型"]
+            HeadModel["HeadModel<br>頭部模型"]
+            MorphTargetControls["MorphTargetControls<br>表情控制"]
+            LiveRoom --> BodyModel
+            LiveRoom --> HeadModel
+            LiveRoom --> MorphTargetControls
+        end
+        
+        subgraph 聊天相關元件
+            FloatingChatWindow["FloatingChatWindow<br>聊天視窗"]
+            ChatRoom --> FloatingChatWindow
+        end
+    end
+    
+    subgraph Hooks層
+        CustomHooks[Custom Hooks]
+        useChatService["useChatService()"]
+        useHeadService["useHeadService()"]
+        useBodyService["useBodyService()"]
+        useAudioService["useAudioService()"]
+        useWebSocket["useWebSocket()"]
+        useEmotionalSpeaking["useEmotionalSpeaking()"]
+    end
+    
+    subgraph 服務層
+        Services[Services 服務層]
+        ChatService["ChatService<br>聊天服務"]
+        HeadService["HeadService<br>頭部模型服務"]
+        BodyService["BodyService<br>身體模型服務"]
+        AudioService["AudioService<br>音訊服務"]
+        WebSocketService["WebSocketService<br>WebSocket服務"]
+    end
+    
+    subgraph 狀態管理
+        Zustand["Zustand Store"]
+        AppSlice["AppSlice<br>應用狀態"]
+        ChatSlice["ChatSlice<br>聊天狀態"]
+        HeadSlice["HeadSlice<br>頭部模型狀態"]
+        BodySlice["BodySlice<br>身體模型狀態"]
+        WebSocketSlice["WebSocketSlice<br>WebSocket狀態"]
+    end
+    
+    subgraph 外部通訊
+        Backend["後端 API/WebSocket"]
+    end
+    
+    UI -- 使用 --> CustomHooks
+    CustomHooks -- 使用 --> Services
+    Services -- 更新 --> Zustand
+    Services -- 通訊 --> Backend
+    Zustand -- 提供狀態 --> UI
+```
+
+* **使用者界面層**: 包含主要視圖區域和各功能元件
+* **Hooks 層**: 自定義 Hooks 封裝業務邏輯，連接元件與服務
+* **服務層**: 處理與後端通訊、3D 模型控制和音訊處理等功能
+* **狀態管理層**: 使用 Zustand 以 slice 組織全域狀態
+* **外部通訊**: 透過 API 和 WebSocket 與後端交互
+
+前端採用單向資料流，資料從後端進入，透過服務層更新 Zustand 全域狀態，最終由 UI 元件消費並呈現。
+
+### 資料流設計
+
+系統整體資料流如下：
+
+1. **使用者輸入**:
+   * 文字輸入透過聊天界面發送到後端
+   * 語音輸入透過麥克風錄製，經 WebSocket 或 REST API 上傳到後端
+
+2. **後端處理**:
+   * 語音轉文字服務 (STT) 將語音轉為文字
+   * AI 服務利用對話流程圖和記憶系統生成回應
+   * 情緒分析服務判斷回應的情緒狀態
+   * 文字轉語音服務 (TTS) 將回應轉為語音
+
+3. **前端呈現**:
+   * WebSocket 接收回應文字、語音和情緒資料
+   * 聊天視窗顯示對話文字
+   * 3D 模型根據情緒資料顯示相應表情
+   * 語音播放與口型同步模組實現自然說話效果
+
+4. **狀態更新**:
+   * 全域狀態存儲對話歷史、情緒狀態等
+   * 模型狀態根據回應更新表情和動作
+
+這種設計確保了互動的流暢性和一致性，為使用者提供沉浸式體驗。
+
+更詳細的架構文檔可參考 `docs/前端相關/前端架構概述.md` 和 `docs/後端相關/後端架構概述.md`。
+
+---
+
 ## 🛠️ 快速上手
 
 你需要準備以下環境：
@@ -65,9 +228,9 @@
         ```
     *   配置環境變數:
         *   在 `prototype/backend` 目錄下創建 `.env` 文件。
-        *   填入必要的 API Keys，例如 Google API Key:
+        *   填入必要的 API Keys，例如 OpenAI API Key:
             ```dotenv
-            GOOGLE_API_KEY="YOUR_GOOGLE_API_KEY_HERE"
+            OPENAI_API_KEY="YOUR_OPENAI_API_KEY_HERE"
             # 如果需要，還可以配置其他後端選項，如向量數據庫路徑
             # VECTOR_DB_PATH="./data/chroma_db"
             ```
@@ -106,10 +269,24 @@
 ```
 /space_live_project/
 ├── docs/                 # 設計文檔、研究記錄等
-├── glbs/                 # 存放 3D 模型文件 (.glb)
+│   ├── 前端相關/          # 前端架構與技術文檔
+│   ├── 後端相關/          # 後端架構與API文檔
 ├── prototype/            # 主要的應用程式代碼
 │   ├── backend/          # 後端 FastAPI 應用
+│   │   ├── api/          # API 路由與控制器
+│   │   ├── core/         # 核心配置與資料模型
+│   │   ├── dtos/         # 資料傳輸物件定義
+│   │   ├── services/     # 服務層模組
+│   │   └── utils/        # 工具與共用功能
 │   └── frontend/         # 前端 React + Three.js 應用
+│       ├── src/
+│       │   ├── components/  # React 元件
+│       │   ├── hooks/       # 自定義React Hooks
+│       │   ├── services/    # 服務層模組
+│       │   ├── store/       # Zustand 狀態管理
+│       │   ├── utils/       # 工具函數
+│       │   └── config/      # 配置檔案
+├── scripts/              # 工具腳本
 ├── venv/                 # Python 虛擬環境 (建議)
 ├── .gitignore            # Git 忽略配置
 └── README.md             # 就是你正在看的這個文件
