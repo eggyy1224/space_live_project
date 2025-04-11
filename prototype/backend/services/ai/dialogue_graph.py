@@ -10,6 +10,7 @@ import logging
 import asyncio
 import json
 import os # 新增：導入 os 模塊
+import time # <--- 導入 time 模組
 from typing import Dict, List, Any, TypedDict, Optional, Tuple
 
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
@@ -648,76 +649,114 @@ class DialogueGraph:
     # 節點包裝器 - 負責將依賴注入到節點的 state 中
     async def _preprocess_input_node_wrapper(self, state: DialogueState) -> Dict[str, Any]:
         """包裝輸入預處理節點，注入上下文"""
-        # 將類的實例依賴注入 state 的 _context 中
+        start_time = time.monotonic()
         if "_context" not in state:
             state["_context"] = {}
-        return await preprocess_input_node(state)
+        result_state = await preprocess_input_node(state)
+        end_time = time.monotonic()
+        duration = (end_time - start_time) * 1000
+        logging.info(f"[Perf][DialogueGraph] Node preprocess_input duration: {duration:.2f} ms", extra={"log_category": "PERFORMANCE"})
+        return result_state
     
     async def _retrieve_memory_node_wrapper(self, state: DialogueState) -> Dict[str, Any]:
         """包裝記憶檢索節點，注入記憶系統"""
+        start_time = time.monotonic()
         if "_context" not in state:
             state["_context"] = {}
         state["_context"]["memory_system"] = self.memory_system
-        return await retrieve_memory_node(state)
+        result_state = await retrieve_memory_node(state)
+        end_time = time.monotonic()
+        duration = (end_time - start_time) * 1000
+        logging.info(f"[Perf][DialogueGraph] Node retrieve_memory duration: {duration:.2f} ms", extra={"log_category": "PERFORMANCE"})
+        return result_state
     
     async def _detect_tool_intent_wrapper(self, state: DialogueState) -> Dict[str, Any]:
         """包裝工具意圖檢測節點，注入可用工具列表"""
+        start_time = time.monotonic()
         if "_context" not in state:
             state["_context"] = {}
         state["_context"]["available_tools"] = self.available_tools
         state["_context"]["llm"] = self.llm
-        return await detect_tool_intent(state)
+        result_state = await detect_tool_intent(state)
+        end_time = time.monotonic()
+        duration = (end_time - start_time) * 1000
+        logging.info(f"[Perf][DialogueGraph] Node detect_tool_intent duration: {duration:.2f} ms", extra={"log_category": "PERFORMANCE"})
+        return result_state
     
     async def _parse_tool_parameters_wrapper(self, state: DialogueState) -> Dict[str, Any]:
         """包裝工具參數解析節點，注入可用工具列表"""
+        start_time = time.monotonic()
         if "_context" not in state:
             state["_context"] = {}
         state["_context"]["available_tools"] = self.available_tools
         state["_context"]["llm"] = self.llm
-        return await parse_tool_parameters(state)
+        result_state = await parse_tool_parameters(state)
+        end_time = time.monotonic()
+        duration = (end_time - start_time) * 1000
+        logging.info(f"[Perf][DialogueGraph] Node parse_tool_parameters duration: {duration:.2f} ms", extra={"log_category": "PERFORMANCE"})
+        return result_state
     
     async def _execute_tool_wrapper(self, state: DialogueState) -> Dict[str, Any]:
         """包裝工具執行節點，注入可用工具列表"""
+        start_time = time.monotonic()
         if "_context" not in state:
             state["_context"] = {}
         state["_context"]["available_tools"] = self.available_tools
-        return await execute_tool(state)
+        result_state = await execute_tool(state)
+        end_time = time.monotonic()
+        duration = (end_time - start_time) * 1000
+        logging.info(f"[Perf][DialogueGraph] Node execute_tool duration: {duration:.2f} ms (Tool: {state.get('potential_tool')})", extra={"log_category": "PERFORMANCE"})
+        return result_state
     
     def _build_prompt_node_wrapper(self, state: DialogueState) -> Dict[str, Any]:
         """包裝提示構建節點，注入角色名稱"""
+        start_time = time.monotonic()
         if "_context" not in state:
             state["_context"] = {}
         state["_context"]["persona_name"] = self.persona_name
-        return build_prompt_node(state)
+        result_state = build_prompt_node(state)
+        end_time = time.monotonic()
+        duration = (end_time - start_time) * 1000
+        logging.info(f"[Perf][DialogueGraph] Node build_prompt duration: {duration:.2f} ms", extra={"log_category": "PERFORMANCE"})
+        return result_state
     
     async def _call_llm_node_wrapper(self, state: DialogueState) -> Dict[str, Any]:
         """包裝 LLM 調用節點，注入 LLM 和提示模板"""
+        start_time = time.monotonic()
         if "_context" not in state:
             state["_context"] = {}
         state["_context"]["llm"] = self.llm
         state["_context"]["prompt_templates"] = self.prompt_templates
-        return await call_llm_node(state)
+        result_state = await call_llm_node(state)
+        end_time = time.monotonic()
+        duration = (end_time - start_time) * 1000
+        logging.info(f"[Perf][DialogueGraph] Node call_llm duration: {duration:.2f} ms", extra={"log_category": "PERFORMANCE"})
+        return result_state
     
     async def _analyze_keyframes_node_wrapper(self, state: DialogueState) -> Dict[str, Any]:
         """包裝 Keyframe 分析節點，注入 LLM 實例"""
+        start_time = time.monotonic()
         if "_context" not in state:
             state["_context"] = {}
-        # 確保 LLM 實例在上下文中 (通常 call_llm_node_wrapper 已注入)
         if "llm" not in state["_context"]:
             state["_context"]["llm"] = self.llm
-        # 移除冗余的檢查，因為上面已經檢查過
-        # if "llm" not in state["_context"]:
-        #      logging.error("_analyze_keyframes_node_wrapper: LLM not found in context!")
-        #      # 返回一個包含錯誤或默認值的狀態更新
-        #      return {"emotional_keyframes": DEFAULT_NEUTRAL_KEYFRAMES.copy(), "system_alert": "LLM context missing for keyframe analysis"}
-        return await analyze_keyframes_node(state)
+        result_state = await analyze_keyframes_node(state)
+        end_time = time.monotonic()
+        duration = (end_time - start_time) * 1000
+        logging.info(f"[Perf][DialogueGraph] Node analyze_keyframes duration: {duration:.2f} ms", extra={"log_category": "PERFORMANCE"})
+        return result_state
     
     async def _store_memory_node_wrapper(self, state: DialogueState) -> Dict[str, Any]:
         """包裝記憶儲存節點，注入記憶系統"""
+        start_time = time.monotonic()
         if "_context" not in state:
             state["_context"] = {}
         state["_context"]["memory_system"] = self.memory_system
-        return await store_memory_node(state)
+        result_state = await store_memory_node(state)
+        end_time = time.monotonic()
+        duration = (end_time - start_time) * 1000
+        logging.info(f"[Perf][DialogueGraph] Node store_memory duration: {duration:.2f} ms", extra={"log_category": "PERFORMANCE"})
+        return result_state
     
     async def generate_response(self, user_text: str, messages: List[BaseMessage], 
                                 character_state: Dict[str, Any], current_task: Optional[str] = None,
