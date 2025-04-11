@@ -1,4 +1,42 @@
-# 角色主動互動功能實現任務清單
+# 角色主動性 (Agentic Capability - Murmur) 開發待辦事項
+
+本文件追蹤為實現角色主動發起「內心 murmur」功能所需的後端開發任務。目標是在不修改前端 API 的前提下，利用現有 WebSocket 通道實現此功能。
+
+## 後端修改
+
+1.  **`websocket.py` - 加入閒置偵測邏輯：**
+    *   [ ] 在 `websocket_endpoint` 函式中，為每個 WebSocket 連線增加閒置計時器。
+    *   [ ] 記錄每個連線的 `last_activity_timestamp`。
+    *   [ ] 建立一個背景協程 (`idle_checker`) 定期檢查閒置時間是否超過閾值 (例如 30 秒)。
+    *   [ ] 確保在收到前端訊息或後端主動發送訊息後，重置 `last_activity_timestamp`。
+
+2.  **`websocket.py` - 觸發 Murmur 生成與處理：**
+    *   [ ] 當閒置超時，調用 `ai_service.generate_response`。
+    *   [ ] 傳遞 `user_input=None` 以及一個特定的 `system_prompt` (例如："生成一句內心獨白") 給 `ai_service`。
+    *   [ ] 接收 `ai_service` 返回的 murmur 文字 (包含由 LLM 分析的情緒)。
+    *   [ ] 使用 `tts_service.synthesize_speech` 將 murmur 文字轉換為語音。
+
+3.  **`websocket.py` - 推送 Murmur 訊息至前端：**
+    *   [ ] 將生成的 murmur 文字、情緒、語音 (base64)、時長、角色狀態等打包成 JSON。
+    *   [ ] **重要：** 使用前端已知的訊息類型，例如 `"type": "response"`。
+    *   [ ] 使用 `websocket.send_json()` 將打包好的訊息推送給前端。
+
+4.  **`services/ai/` (`AIService` 或相關模組) - 支援 Murmur 生成模式：**
+    *   [ ] 確保 `generate_response` 方法或其內部的 `DialogueGraph` 能夠處理 `user_input=None` 且僅依賴 `system_prompt` 的情況。
+    *   [ ] 調整提示詞工程或對話圖邏輯，以生成符合情境的「內心 murmur」。
+
+## 前端修改
+
+*   [x] 無需修改 (目標是重用現有 WebSocket 接收和處理邏輯)。
+
+## 測試
+
+*   [ ] 測試閒置超時是否能正確觸發 murmur 生成。
+*   [ ] 測試生成的 murmur 內容、情緒、語音是否符合預期。
+*   [ ] 確認前端能像接收一般回應一樣，正確顯示 murmur 文字、播放語音、更新表情。
+*   [ ] 測試連續閒置時，murmur 不會過於頻繁地觸發。
+
+## 角色主動互動功能實現任務清單
 
 本文件列出了為 Space Live Project 實現虛擬主播主動互動能力所需完成的任務。此功能將使虛擬角色在使用者長時間未輸入時，能夠主動發起對話以保持互動流暢性，並展現出具有個性化的角色特點和自然的行為模式。
 

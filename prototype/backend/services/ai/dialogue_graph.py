@@ -758,52 +758,84 @@ class DialogueGraph:
         logging.info(f"[Perf][DialogueGraph] Node store_memory duration: {duration:.2f} ms", extra={"log_category": "PERFORMANCE"})
         return result_state
     
-    async def generate_response(self, user_text: str, messages: List[BaseMessage], 
-                                character_state: Dict[str, Any], current_task: Optional[str] = None,
-                                tasks_history: Optional[List[Dict]] = None,
-                                current_intent: Optional[str] = None) -> Dict[str, Any]:
-        """執行對話圖並返回最終回應和情緒關鍵幀"""
-        
-        # 準備初始狀態
+    async def generate_response(
+        self,
+        messages: List[BaseMessage],
+        character_state: Dict[str, Any],
+        user_text: Optional[str] = None,
+        system_prompt: Optional[str] = None,
+        current_task: Optional[str] = None,
+        tasks_history: Optional[List[Dict]] = None,
+        current_intent: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        異步生成回應 - 調用 LangGraph 圖。
+        接收 user_text 或 system_prompt 其中之一作為輸入。
+
+        Args:
+            messages: 當前的對話歷史。
+            character_state: 當前的角色狀態。
+            user_text: 使用者輸入文本。
+            system_prompt: 系統觸發的提示 (例如用於 murmur)。
+            current_task: 當前任務。
+            tasks_history: 任務歷史。
+            current_intent: (可選) 外部傳入的意圖。
+
+        Returns:
+            包含回應和狀態更新的字典。
+        """
+        if user_text is not None and system_prompt is not None:
+            logging.error("DialogueGraph.generate_response 不能同時接收 user_text 和 system_prompt")
+            return {
+                "error": "不能同時提供 user_text 和 system_prompt",
+                "final_response": "內部處理錯誤，請稍後再試。",
+                "emotion": "confused",
+                "emotional_keyframes": DEFAULT_NEUTRAL_KEYFRAMES.copy(),
+                "body_animation_sequence": DEFAULT_ANIMATION_SEQUENCE.copy(),
+                "updated_messages": messages
+            }
+        if user_text is None and system_prompt is None:
+             logging.error("DialogueGraph.generate_response 需要提供 user_text 或 system_prompt")
+             return {
+                "error": "缺少 user_text 或 system_prompt",
+                "final_response": "內部系統似乎沒有收到任何指令。",
+                "emotion": "confused",
+                "emotional_keyframes": DEFAULT_NEUTRAL_KEYFRAMES.copy(),
+                "body_animation_sequence": DEFAULT_ANIMATION_SEQUENCE.copy(),
+                "updated_messages": messages
+             }
+
+        start_time = time.time()
+        logging.info(f"DialogueGraph: 開始處理輸入。 User Text: '{user_text}', System Prompt: '{system_prompt}'")
+
+        graph_input_text = user_text if user_text is not None else system_prompt
+
         initial_state: DialogueState = {
-            # 輸入
-            "raw_user_input": user_text,
-            "processed_user_input": user_text,  # 將在流程中處理
-            "input_classification": {},  # 將在流程中填充
-            "messages": messages + [HumanMessage(content=user_text)],  # 添加當前用戶輸入
-            
-            # 記憶 (將在流程中填充)
+            "raw_user_input": graph_input_text,
+            "processed_user_input": "",
+            "input_classification": {},
+            "messages": messages,
             "retrieved_memories": [],
             "filtered_memories": "",
             "persona_info": "",
-            
-            # 意圖與任務
             "current_intent": current_intent,
             "current_task": current_task,
             "tasks_history": tasks_history if tasks_history is not None else [],
-            
-            # 工具呼叫 (將在流程中填充，並確保關鍵鍵存在)
-            "has_tool_intent": False,
+            "has_tool_intent": None,
             "potential_tool": None,
-            "tool_confidence": 0.0,
-            "tool_parameters": {},
-            "tool_execution_result": "",
-            "tool_execution_status": "not_started",
+            "tool_confidence": None,
+            "tool_parameters": None,
+            "tool_execution_result": None,
+            "tool_execution_status": None,
             "tool_used": None,
-            "formatted_tool_result": None, # 初始為 None
-            "tool_result": None,           # 初始為 None
-            "tool_error": None,            # 初始為 None
-            
-            # 生成控制 (將在流程中填充)
+            "formatted_tool_result": None,
+            "tool_result": None,
+            "tool_error": None,
             "prompt_template_key": "standard",
             "prompt_inputs": {},
-            "dialogue_style": "",
+            "dialogue_style": "standard",
             "character_state_prompt": "",
-            
-            # 角色狀態
-            "character_state": character_state.copy(),
-            
-            # 回應與錯誤處理 (將在流程中填充)
+            "character_state": character_state,
             "llm_response_raw": "",
             "emotional_keyframes": None,
             "body_animation_sequence": None,
@@ -811,52 +843,50 @@ class DialogueGraph:
             "error_count": 0,
             "system_alert": None,
             "should_store_memory": True,
-            
-            # 上下文和依賴
             "_context": {
                 "memory_system": self.memory_system,
                 "llm": self.llm,
-                "prompt_templates": self.prompt_templates,
                 "persona_name": self.persona_name,
-                "available_tools": self.available_tools
+                "available_tools": self.available_tools,
+                "keyframes_schema": keyframes_schema,
+                "animation_sequence_schema": animation_sequence_schema,
+                "dialogue_styles": DIALOGUE_STYLES,
+                "prompt_templates": PROMPT_TEMPLATES
             }
         }
 
-        # 格式化角色狀態並添加到初始狀態
-        initial_state["character_state_prompt"] = format_character_state(initial_state["character_state"])
-
         try:
-            final_state = await self.app.ainvoke(initial_state)
-            
-            # 從最終狀態提取回應和 keyframes
-            final_response = final_state.get("final_response", "對不起，我好像遇到了一些技術問題。")
-            emotional_keyframes = final_state.get("emotional_keyframes") # 可能為 None
-            body_animation_sequence = final_state.get("body_animation_sequence") # 可能為 None
-            updated_messages = final_state.get("messages", messages) # 返回更新後的消息歷史
-            
-            logging.info(f"Dialogue graph execution successful. Final response: '{final_response}', Keyframes: {emotional_keyframes is not None}, Body Animation Sequence: {body_animation_sequence is not None}")
-            
-            # 返回包含回應和 keyframes 的字典
+            final_state = await self.app.ainvoke(
+                initial_state,
+                config={"recursion_limit": 15}
+            )
+
+            end_time = time.time()
+            processing_time = (end_time - start_time) * 1000
+            logging.info(f"DialogueGraph: 處理完成。總耗時: {processing_time:.2f} ms")
+
             return {
-                "final_response": final_response,
-                "emotional_keyframes": emotional_keyframes,
-                "body_animation_sequence": body_animation_sequence,
-                "updated_messages": updated_messages # 同時返回更新後的消息歷史
+                "final_response": final_state.get("final_response", "出了點問題，我不知道該說什麼。"),
+                "emotion": final_state.get("character_state", {}).get("current_emotion", "neutral"),
+                "emotional_keyframes": final_state.get("emotional_keyframes"),
+                "body_animation_sequence": final_state.get("body_animation_sequence"),
+                "updated_messages": final_state.get("messages", messages)
             }
 
         except Exception as e:
-            logging.error(f"對話圖執行失敗: {e}", exc_info=True)
-            # 返回包含錯誤訊息和預設值的字典，避免 Attribute Error
+            end_time = time.time()
+            processing_time = (end_time - start_time) * 1000
+            logging.error(f"DialogueGraph: 調用圖時發生錯誤: {e}。耗時: {processing_time:.2f} ms", exc_info=True)
             return {
-                "final_response": "糟糕，我的思緒好像打結了，能再說一次嗎？",
-                "emotional_keyframes": DEFAULT_NEUTRAL_KEYFRAMES.copy(), # 返回默認值
-                "body_animation_sequence": DEFAULT_ANIMATION_SEQUENCE.copy(), # 返回默認值
-                "updated_messages": messages, # 返回原始消息
-                "error": str(e) # 可選：添加錯誤訊息
+                "error": str(e),
+                "final_response": "哎呀，處理你的請求時我的內部線路好像纏繞在一起了！",
+                "emotion": "confused",
+                "emotional_keyframes": DEFAULT_NEUTRAL_KEYFRAMES.copy(),
+                "body_animation_sequence": DEFAULT_ANIMATION_SEQUENCE.copy(),
+                "updated_messages": messages
             }
-    
+
     def update_character_state(self, character_state: Dict[str, Any], updates: Dict[str, Any]) -> Dict[str, Any]:
-        """更新角色狀態，支持增量更新，返回更新後的新狀態"""
         updated_state = character_state.copy()
         changed = False
         
@@ -865,7 +895,6 @@ class DialogueGraph:
                 old_value = updated_state[key]
                 current_value = old_value
                 try:
-                    # 嘗試增量更新 (例如 'mood': '+5' 或 'energy': '-10')
                     if isinstance(value, str) and value.startswith(('+', '-')):
                         delta = int(value)
                         if isinstance(current_value, (int, float)):
@@ -874,21 +903,16 @@ class DialogueGraph:
                             logging.warning(f"無法對非數值狀態 '{key}' 進行增量更新: {value}")
                             continue
                     else:
-                        # 嘗試直接設置數值或字串
                         try:
-                            # 嘗試轉換為數值類型
                             num_value = int(value) if isinstance(updated_state[key], int) else float(value)
                             current_value = num_value
                         except (ValueError, TypeError):
-                            # 直接賦值 (非數值狀態)
                             current_value = value
                     
-                    # 只有當值確實改變時才更新
                     if current_value != old_value:
                         updated_state[key] = current_value
                         changed = True
                         
-                        # 確保數值在合理範圍內
                         if isinstance(current_value, (int, float)) and key in ["health", "mood", "energy"]:
                             updated_state[key] = max(0, min(100, current_value))
                         
@@ -897,7 +921,6 @@ class DialogueGraph:
                 except Exception as e:
                     logging.warning(f"處理狀態更新時出錯: {key}={value}, 錯誤: {e}")
         
-        # 記錄更新後的狀態
         if changed:
             state_text = format_character_state(updated_state)
             logging.info(f"更新後角色狀態: {state_text}")
@@ -905,5 +928,4 @@ class DialogueGraph:
         return updated_state
     
     def reset(self) -> Dict[str, Any]:
-        """重置角色狀態為初始值"""
         return self.initial_character_state.copy() 
