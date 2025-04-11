@@ -78,11 +78,9 @@ def post_process_node(state: TypedDict) -> Dict[str, Any]:
     input_classification = state["input_classification"]
     prompt_template_key = state["prompt_template_key"]
     
-    processed_response, was_heavily_modified = post_process_response(
+    processed_response, was_heavily_modified = post_process_response_simplified(
         llm_response_raw, 
-        input_classification, 
-        prompt_template_key,
-        state.get("_context", {}).get("persona_name", "星際小可愛")
+        template_key=prompt_template_key
     )
     
     logging.info(f"後處理完成: 從 {len(llm_response_raw)} 到 {len(processed_response)} 字符")
@@ -91,10 +89,11 @@ def post_process_node(state: TypedDict) -> Dict[str, Any]:
     should_store_memory = True
     system_alert = state.get("system_alert")
     
-    # 如果回應被大幅修改或輸入有問題，不儲存到記憶
-    if was_heavily_modified or input_classification["type"] in ["gibberish", "highly_repetitive"]:
+    # 如果是工具回應或輸入有問題，不儲存到記憶
+    if prompt_template_key in ["tool_response", "tool_error_response", "error"] or \
+       input_classification["type"] in ["gibberish", "highly_repetitive"]:
         should_store_memory = False
-        system_alert = system_alert or "response_heavily_modified"
+        system_alert = system_alert or "response_processing_skipped"
     
     return {
         "final_response": processed_response,
@@ -102,79 +101,16 @@ def post_process_node(state: TypedDict) -> Dict[str, Any]:
         "system_alert": system_alert
     }
 
-def post_process_response(response: str, input_classification: Dict[str, Any], template_key: str, persona_name: str = "星際小可愛") -> Tuple[str, bool]:
+def post_process_response_simplified(response: str, template_key: str) -> Tuple[str, bool]:
     """
-    後處理回應，移除固定模式和 Emoji (邏輯放寬版 - 特別處理錯誤模板)。
-    返回: (處理後的回應, 是否大幅修改)
+    極簡化的後處理回應函數。
+    只進行基本的清理 (strip)。
+    返回: (處理後的回應, 是否大幅修改 - 始終為 False)
     """
-    original_response_stripped = response.strip()
-    original_length = len(original_response_stripped)
-    processed_response = original_response_stripped
-    was_heavily_modified = False
-
-    # *** 如果是工具回應或錯誤模板，幾乎不處理，保留原始內容 ***
-    if template_key == "tool_response" or template_key == "tool_error_response" or template_key == "error":
-        logging.info(f"檢測到工具回應或錯誤模板 ('{template_key}')，跳過大部分後處理以保留完整信息。")
-        # 對於工具回應，我們希望保留盡可能多的原始內容，只做最小程度清理
-        return processed_response.strip(), False # 認為工具回應不算大幅修改
-
-    # --- 僅對非工具回應和非錯誤模板執行以下處理 --- 
-
-    # 1. 移除可能的固定開場白
-    fixed_intros = [
-        f"嗨，我是{persona_name}",
-        f"你好，我是{persona_name}",
-        f"哈囉，我是{persona_name}",
-        f"我是{persona_name}"
-    ]
-    processed_response = processed_response.lstrip("!！ ")
-    for intro in fixed_intros:
-        normalized_response_start = processed_response.lstrip(",，.。:：!！ ")
-        if normalized_response_start.lower().startswith(intro.lower()):
-            processed_response = normalized_response_start[len(intro):].lstrip(",，.。:：!！ ")
-            break
-
-    # 2. 移除常見的 Emoji 字符
-    emoji_pattern = re.compile("["
-                           u"\U0001F600-\U0001F64F"  # emoticons
-                           u"\U0001F300-\U0001F5FF"  # symbols & pictographs
-                           u"\U0001F680-\U0001F6FF"  # transport & map symbols
-                           u"\U0001F700-\U0001F77F"  # alchemical symbols
-                           u"\U0001F780-\U0001F7FF"  # Geometric Shapes Extended
-                           u"\U0001F800-\U0001F8FF"  # Supplemental Arrows-C
-                           u"\U0001F900-\U0001F9FF"  # Supplemental Symbols and Pictographs
-                           u"\U0001FA70-\U0001FAFF"  # Symbols and Pictographs Extended-A
-                           u"\U00002702-\U000027B0"  # Dingbats
-                           u"\U000024C2-\U0001F251"
-                           "]+", flags=re.UNICODE)
-    processed_response = emoji_pattern.sub(r'', processed_response).strip()
-
-    # 3. 處理特定奇怪詞彙
-    weird_terms = ["DevOps", "j8 dl4", "AI", "dl4", "GPS"]
-    if processed_response.strip() == "AI" and template_key not in ["error", "random_reply"]:
-        processed_response = "啊，我好像分心了一下，你剛才說什麼？"
-        was_heavily_modified = True # 這種情況仍然標記為大幅修改
-
-    if template_key in ["clarification", "random_reply"]:
-        user_input_for_check = input_classification.get("raw_user_input", "")
-        for term in weird_terms:
-            if term in processed_response and term in user_input_for_check:
-                processed_response = processed_response.replace(term, "[...]")
-
-    # 4. 確保回應不為空或過短 - **邏輯放寬**
-    final_processed_length = len(processed_response.strip())
-    if final_processed_length < 3:
-        # 如果處理後回應太短
-        if original_length >= 5:
-            # 只有當原始回應較長時，才恢復並標記
-            logging.warning(f"後處理將較長回應 (長度 {original_length}) 縮短至少於 3 個字符，恢復原始回應")
-            processed_response = original_response_stripped
-            was_heavily_modified = True
-        else: # 如果原始回應本身就很短，接受處理結果，且不標記為大幅修改
-            logging.info(f"後處理後回應過短 (長度 {final_processed_length})，但原始回應也很短 (長度 {original_length})，接受處理結果")
-            # 不再設置 was_heavily_modified = True
-
-    # 5. **完全移除** 根據長度百分比判斷是否大幅修改的規則，允許任何長度的處理結果
-    # 相對長度檢查已徹底移除
-
-    return processed_response, was_heavily_modified 
+    processed_response = response.strip()
+    
+    # 可選：如果需要，可以保留非常特定的清理邏輯，例如移除特定開頭/結尾符號
+    # processed_response = processed_response.strip('" \n')
+    
+    # 始終返回 False，表示未進行可能改變語義的大幅修改
+    return processed_response, False 
