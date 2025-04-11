@@ -197,10 +197,12 @@ const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
               {messages.map((msg) => (
                 <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[80%] px-3 py-1.5 rounded-lg ${msg.role === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200'}`}>
-                    <p className="text-sm whitespace-pre-wrap">{getMessageContent(msg)}</p>
-                    {msg.isTyping && typingStates[msg.id] < (msg.fullContent?.length || 0) && (
-                      <span className="typing-cursor inline-block h-4 w-0.5 bg-current animate-pulse ml-0.5"></span>
-                    )}
+                    <p className="text-sm whitespace-pre-wrap inline">
+                      {getMessageContent(msg)}
+                      {msg.isTyping && typingStates[msg.id] < (msg.fullContent?.length || 0) && (
+                        <span className="typing-cursor inline-block h-4 w-0.5 bg-current animate-pulse ml-0.5 align-text-bottom"></span>
+                      )}
+                    </p>
                   </div>
                 </div>
               ))}
