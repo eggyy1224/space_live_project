@@ -64,17 +64,23 @@ async def websocket_endpoint(websocket: WebSocket):
     conversation_history: List[Dict[str, any]] = []
     # --- 結束新增 ---
 
-    # 記錄當前表情狀態，用於實現平滑過渡
+    # 初始化連接狀態
+    logger.info(f"Client connected: {websocket.client}")
+    conversation_history = []
+    last_activity_timestamp = datetime.utcnow()
+    last_murmur_timestamp = None
+    last_speaking_reset_timestamp = None  # 新增：追蹤最後一次重置說話狀態的時間
+    recent_murmurs = set()  # 使用集合以避免重複
     current_emotion = "neutral"
+    is_speaking = False  # 指示當前是否有語音在播放
+    user_responded = False
+
+    # 記錄當前表情狀態，用於實現平滑過渡
     # emotion_confidence = 0.0  # 情緒置信度 - 不再需要，由 AIService 決定
-    last_activity_timestamp = datetime.utcnow() # <--- 新增：記錄最後活動時間
     idle_check_task = None # <--- 新增：閒置檢查任務
 
     # --- 添加 murmur 狀態追蹤 ---
-    last_murmur_timestamp = None # 最後一次 murmur 的時間
     # murmur_count = 0 # <--- 移除：不再需要計數
-    recent_murmurs = set() # 記錄最近發送的 murmur 內容，避免重複
-    user_responded = True # 用戶是否已回應過 murmur (初始為 True 以允許第一次 murmur)
     # --- 結束添加 ---
 
     async def add_to_history(role: str, content: str, is_murmur: bool = False):
@@ -88,9 +94,24 @@ async def websocket_endpoint(websocket: WebSocket):
         if len(conversation_history) > MAX_HISTORY_LENGTH * 2:
             conversation_history = conversation_history[-(MAX_HISTORY_LENGTH * 2):]
 
+    async def reset_speaking_after_duration(duration_seconds: float):
+        """在指定的秒數後重置語音播放狀態。"""
+        nonlocal is_speaking, last_activity_timestamp, last_murmur_timestamp, last_speaking_reset_timestamp
+        await asyncio.sleep(duration_seconds)
+        # 記錄重置前的狀態以便調試
+        speaking_before_reset = is_speaking
+        is_speaking = False
+        # 更新最後活動時間戳，以確保在語音結束後計時器從新開始計時
+        last_activity_timestamp = datetime.utcnow() 
+        last_speaking_reset_timestamp = datetime.utcnow()
+        # 如果是murmur導致的語音，也更新murmur時間戳
+        if last_murmur_timestamp is not None:
+            last_murmur_timestamp = datetime.utcnow()
+        logger.info(f"Reset is_speaking from {speaking_before_reset} to False after {duration_seconds:.2f} seconds and updated timestamps")
+
     async def idle_checker():
         """背景任務，定期檢查閒置狀態並觸發 murmur。"""
-        nonlocal last_activity_timestamp, current_emotion, last_murmur_timestamp, recent_murmurs, user_responded
+        nonlocal last_activity_timestamp, current_emotion, last_murmur_timestamp, recent_murmurs, user_responded, is_speaking
         while True:
             await asyncio.sleep(IDLE_CHECK_INTERVAL_SECONDS)
             try:
@@ -100,11 +121,25 @@ async def websocket_endpoint(websocket: WebSocket):
                 # --- 檢查是否應該觸發 murmur ---
                 # 1. 必須達到閒置閾值
                 # 2. 距離上次 murmur 必須超過最小間隔
-                if idle_duration > timedelta(seconds=IDLE_TIMEOUT_SECONDS) and (
-                   last_murmur_timestamp is None or 
-                   current_time - last_murmur_timestamp > timedelta(seconds=MURMUR_MIN_INTERVAL_SECONDS)
-                ):
+                # 3. 當前不能有其他語音在播放
+                # 4. 如果最後的語音重置時間很近，也應該等待
+                current_speaking_state = is_speaking  # 記錄當前狀態用於日誌
+                should_wait_after_speaking = False
+                
+                if last_speaking_reset_timestamp:
+                    time_since_last_reset = current_time - last_speaking_reset_timestamp
+                    should_wait_after_speaking = time_since_last_reset < timedelta(seconds=3)  # 至少等待3秒再觸發新的murmur
+                
+                if (idle_duration > timedelta(seconds=IDLE_TIMEOUT_SECONDS) and
+                   (last_murmur_timestamp is None or 
+                   current_time - last_murmur_timestamp > timedelta(seconds=MURMUR_MIN_INTERVAL_SECONDS)) and
+                   not is_speaking and
+                   not should_wait_after_speaking):
                     
+                    time_since_reset = "N/A" if not last_speaking_reset_timestamp else f"{(current_time - last_speaking_reset_timestamp).total_seconds():.2f}s"
+                    logger.info(f"Checking murmur conditions - idle: {idle_duration.total_seconds():.2f}s, " +
+                                f"speaking: {current_speaking_state}, time since last reset: {time_since_reset}")
+
                     # --- 嘗試獲取鎖，如果鎖已被持有（表示正在處理用戶消息），則等待 ---                   
                     async with ai_processing_lock:
                         # 再次檢查閒置時間，避免在等待鎖的過程中用戶剛好發送了消息
@@ -145,6 +180,21 @@ async def websocket_endpoint(websocket: WebSocket):
 
                             ai_murmur_text = ai_result.get("final_response")
                             
+                            # 更嚴格的重複檢查 - 不僅檢查完全匹配，還檢查高度相似
+                            skip_due_to_similarity = False
+                            for existing_murmur in recent_murmurs:
+                                # 簡單的相似度檢測 - 如果包含或被包含，認為太相似
+                                if (ai_murmur_text in existing_murmur or 
+                                    existing_murmur in ai_murmur_text or
+                                    len(ai_murmur_text) > 0 and existing_murmur and 
+                                    (len(set(ai_murmur_text.lower()) & set(existing_murmur.lower())) / len(set(ai_murmur_text.lower() + existing_murmur.lower())) > 0.7)):
+                                    logger.warning(f"Generated murmur is too similar to existing: New: '{ai_murmur_text}', Existing: '{existing_murmur}', skipping...")
+                                    skip_due_to_similarity = True
+                                    break
+                            
+                            if skip_due_to_similarity:
+                                continue
+                                
                             if ai_murmur_text in recent_murmurs:
                                 logger.warning(f"Generated murmur is a duplicate: '{ai_murmur_text}', skipping...")
                                 continue
@@ -169,12 +219,20 @@ async def websocket_endpoint(websocket: WebSocket):
                         tts_result = None
                         audio_base64 = None
                         audio_duration = len(ai_murmur_text) * 0.15 # 預設估算值
+                        logger.info(f"Estimated initial audio duration for murmur: {audio_duration:.2f}s (based on text length)")
                         try:
                             if ai_murmur_text:
+                                tts_start_time = time.monotonic()
                                 tts_result = await tts_service.synthesize_speech(ai_murmur_text)
+                                tts_end_time = time.monotonic()
+                                logger.info(f"TTS processing time for murmur: {(tts_end_time - tts_start_time)*1000:.2f}ms")
+                                
                                 if tts_result:
                                     audio_base64 = tts_result.get("audio")
                                     audio_duration = tts_result.get("duration", audio_duration)
+                                    logger.info(f"TTS succeeded for murmur, actual duration: {audio_duration:.2f}s")
+                                else:
+                                    logger.warning("TTS returned empty result for murmur")
                         except Exception as tts_err:
                             logger.error(f"Error synthesizing speech for murmur: {tts_err}", exc_info=True)
                             # 即使 TTS 失敗，還是可以發送文字 murmur
@@ -222,6 +280,7 @@ async def websocket_endpoint(websocket: WebSocket):
                                 logger.error(f"Error saving murmur audio file: {e}", exc_info=True)
 
                         # 發送 chat-message 格式的 murmur
+                        is_speaking = True
                         await websocket.send_json({
                             "type": "chat-message",
                             "message": bot_message
@@ -239,14 +298,26 @@ async def websocket_endpoint(websocket: WebSocket):
                                 "type": "emotionalTrajectory",
                                 "payload": trajectory_payload
                             })
-                            logger.info(f"Sent Emotional Trajectory for murmur, duration: {audio_duration:.2f}s")
+                            logger.info(f"已發送 Emotional Trajectory，時長: {audio_duration:.2f}s")
 
-                        # 4. 更新 murmur 狀態
-                        now = datetime.utcnow()
-                        last_murmur_timestamp = now
-                        last_activity_timestamp = now
-                        user_responded = False
-                        logger.info(f"Updated timestamps after sending murmur: last_murmur={last_murmur_timestamp}, last_activity={last_activity_timestamp}")
+                        # 告知客戶端語音播放完成，這將重置播放狀態
+                        if audio_duration > 0 and audio_base64:
+                            # 根據語音時長安排一個任務，在語音播放結束後重置 is_speaking
+                            # 添加一些額外時間作為緩衝，隨著音頻時長增加，緩衝也適度增加
+                            buffer_time = min(1.0, 0.5 + audio_duration * 0.05)  # 最小0.5秒，隨著音頻長度增加但不超過1秒
+                            total_wait_time = audio_duration + buffer_time
+                            reset_task = asyncio.create_task(reset_speaking_after_duration(total_wait_time))
+                            logger.info(f"Scheduled reset_speaking_after_duration in {total_wait_time:.2f}s (audio: {audio_duration:.2f}s + buffer: {buffer_time:.2f}s)")
+                            
+                            # 額外安全措施：更新murmur時間戳
+                            last_murmur_timestamp = datetime.utcnow()
+                        else:
+                            # 如果沒有音頻，立即重置說話狀態
+                            is_speaking = False
+                            logger.info("No audio for murmur, immediately reset is_speaking to False")
+
+                        # 重置活動時間戳，因為我們剛剛處理了一個消息
+                        last_activity_timestamp = datetime.utcnow()
 
             except WebSocketDisconnect:
                 logger.info(f"Idle checker detected disconnection for {websocket.client}. Stopping checker.")
@@ -348,6 +419,14 @@ async def websocket_endpoint(websocket: WebSocket):
                         audio_base64 = None
                         audio_duration = 0
 
+                        # <--- 修改：收到用戶消息，表示用戶已回應 --->
+                        # 設置播放狀態為 False，因為我們將開始一個新的回應
+                        prev_speaking = is_speaking
+                        is_speaking = False  # 重置語音播放狀態
+                        logger.info(f"Received user message, reset is_speaking from {prev_speaking} to False")
+                        user_responded = True
+                        # <--- 修改結束 --->
+
                         try:
                             T_ai_start = time.monotonic()
                             logger.info(f"[Perf] T_ai_start: {T_ai_start:.4f}", extra={"log_category": "PERFORMANCE"})
@@ -362,21 +441,11 @@ async def websocket_endpoint(websocket: WebSocket):
                                 emotional_keyframes = ai_result.get("emotional_keyframes")
                                 body_animation_sequence = ai_result.get("body_animation_sequence")
                                 logger.info(f"AI 回應: {ai_response}, Emotion: {current_emotion}") # <--- 添加情緒日誌
-                                # ... (省略日誌和後續處理，邏輯保持不變) ...
-
-                                T_tts_start = time.monotonic()
-                                logger.info(f"[Perf] T_tts_start: {T_tts_start:.4f}", extra={"log_category": "PERFORMANCE"})
-                                tts_result = await tts_service.synthesize_speech(ai_response)
-                                T_tts_end = time.monotonic()
-                                logger.info(f"[Perf] T_tts_end: {T_tts_end:.4f} (Duration: {(T_tts_end - T_tts_start)*1000:.2f} ms)", extra={"log_category": "PERFORMANCE"})
-                                if tts_result:
-                                    audio_base64 = tts_result.get("audio")
-                                    audio_duration = tts_result.get("duration", len(ai_response) * 0.15)
-
                             else:
                                 logger.error("AIService returned None for chat-message")
                                 ai_response = "看來我的迴路有點問題..."
 
+                            # TTS處理 - 只調用一次
                             if ai_response:
                                 T_tts_start = time.monotonic()
                                 logger.info(f"[Perf] T_tts_start: {T_tts_start:.4f}", extra={"log_category": "PERFORMANCE"})
@@ -386,6 +455,11 @@ async def websocket_endpoint(websocket: WebSocket):
                                 if tts_result:
                                     audio_base64 = tts_result.get("audio")
                                     audio_duration = tts_result.get("duration", len(ai_response) * 0.15)
+                                    # 設置語音正在播放標誌
+                                    is_speaking = True
+                                    logger.info(f"TTS generated successfully, duration: {audio_duration:.2f}s, is_speaking set to True")
+                                else:
+                                    logger.warning("TTS returned no result, no audio will be played")
 
                         except Exception as e:
                             logger.error(f"Error during AI or TTS for chat-message: {e}", exc_info=True)
@@ -450,6 +524,24 @@ async def websocket_endpoint(websocket: WebSocket):
                                 "payload": trajectory_payload
                             })
                             logger.info(f"已發送 Emotional Trajectory，時長: {audio_duration:.2f}s")
+                        else:
+                            logger.info("No emotional keyframes available for this response")
+
+                        # 告知客戶端語音播放完成，這將重置播放狀態
+                        if audio_duration > 0 and audio_base64:
+                            # 根據語音時長安排一個任務，在語音播放結束後重置 is_speaking
+                            # 添加一些額外時間作為緩衝，隨著音頻時長增加，緩衝也適度增加
+                            buffer_time = min(1.0, 0.5 + audio_duration * 0.05)  # 最小0.5秒，隨著音頻長度增加但不超過1秒
+                            total_wait_time = audio_duration + buffer_time
+                            reset_task = asyncio.create_task(reset_speaking_after_duration(total_wait_time))
+                            logger.info(f"Scheduled reset_speaking_after_duration in {total_wait_time:.2f}s (audio: {audio_duration:.2f}s + buffer: {buffer_time:.2f}s)")
+                        else:
+                            # 如果沒有音頻，立即重置說話狀態
+                            is_speaking = False
+                            logger.info("No audio for response, immediately reset is_speaking to False")
+
+                        # 重置活動時間戳，因為我們剛剛處理了一個消息
+                        last_activity_timestamp = datetime.utcnow()
 
                     else:
                         logger.warning(f"Received unknown message type: {message_type}")
