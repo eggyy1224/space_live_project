@@ -45,7 +45,7 @@ interface SettingsPanelProps {
   onClose: () => void;
   // Model Control Props (migrated from ControlPanel)
   isModelLoaded: boolean;
-  modelScale: number;
+  modelScale: [number, number, number];
   currentAnimation?: string | null;
   availableAnimations: string[];
   morphTargetDictionary: Record<string, number> | null;
@@ -112,6 +112,10 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const isSpeaking = useStore((state) => state.isSpeaking); // 取得當前說話狀態
   const setSpeaking = useStore((state) => state.setSpeaking); // 取得設置說話狀態的函數
   const setAudioStartTime = useStore((state) => state.setAudioStartTime); // 取得設置音頻開始時間的函數
+  
+  // 從 Zustand 獲取模型縮放值和設置方法
+  const currentModelScale = useStore((state) => state.modelScale[0]); // 假設三個軸的縮放值相同，取第一個值
+  const setUniformScale = useStore((state) => state.setUniformScale); // 獲取設置統一縮放的方法
 
   // --- State for presets UI --- 
   const [isPresetsCollapsed, setIsPresetsCollapsed] = useState(true); // Start collapsed
@@ -259,6 +263,23 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
           {/* --- Model Transform Controls --- */}  
           <div className="space-y-2">
             <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">模型變換</h3>
+            
+            {/* --- 新增：頭部大小控制滑動條 --- */}
+            <div className="flex items-center space-x-2 mb-2">
+              <label className="text-xs text-gray-700 dark:text-gray-300 w-20">頭部大小</label>
+              <input 
+                type="range" 
+                min="0.3" 
+                max="10" 
+                step="0.1" 
+                value={currentModelScale}
+                onChange={(e) => setUniformScale(parseFloat(e.target.value))} 
+                disabled={!isModelLoaded}
+                className="flex-grow h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full appearance-none cursor-pointer accent-blue-500 dark:accent-blue-400"
+              />
+              <span className="text-xs text-gray-600 dark:text-gray-400 w-8 text-right">{currentModelScale.toFixed(1)}</span>
+            </div>
+            
             <div className="grid grid-cols-3 gap-2">
               <button onClick={() => rotateModel('left')} disabled={!isModelLoaded} className={buttonClasses(false, !isModelLoaded)}>左旋</button>
               <button onClick={() => rotateModel('right')} disabled={!isModelLoaded} className={buttonClasses(false, !isModelLoaded)}>右旋</button>
@@ -268,7 +289,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               <button onClick={toggleBackground} className={buttonClasses(showSpaceBackground)}> {showSpaceBackground ? '顯示背景' : '隱藏背景'} </button>
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400">
-              縮放: {typeof modelScale === 'number' ? modelScale.toFixed(2) : 'N/A'} | 狀態: {isModelLoaded ? '已載入' : '載入中...'}
+              縮放: {typeof currentModelScale === 'number' ? currentModelScale.toFixed(2) : 'N/A'} | 狀態: {isModelLoaded ? '已載入' : '載入中...'}
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400">
                當前情緒: {currentEmotion} ({(emotionConfidence * 100).toFixed(1)}%)

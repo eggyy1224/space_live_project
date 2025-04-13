@@ -30,6 +30,9 @@ export interface HeadSlice {
     position?: [number, number, number]
   ) => void;
   
+  // 新增：設置統一縮放 (方便UI滑動條使用)
+  setUniformScale: (scale: number) => void;
+  
   // 操作：模型 Morph Targets（手動/預設）
   setMorphTargets: (targets: Record<string, number>) => void;
   updateMorphTarget: (key: string, value: number) => void;
@@ -92,6 +95,11 @@ export const createHeadSlice: StateCreator<HeadSlice> = (set) => ({
     
     return newState;
   }),
+  
+  // 新增：設置統一縮放 (所有軸使用相同縮放值)
+  setUniformScale: (scale) => set((state) => ({
+    modelScale: [scale, scale, scale]
+  })),
   
   // 整體設置 morphTargets
   setMorphTargets: (targets) => set({ morphTargets: targets }),

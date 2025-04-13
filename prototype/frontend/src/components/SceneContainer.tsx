@@ -8,12 +8,14 @@ interface SceneContainerProps {
   headModelUrl: string;
   isHeadModelLoaded: boolean;
   showSpaceBackground: boolean;
+  modelScale: [number, number, number];
 }
 
 const SceneContainer: React.FC<SceneContainerProps> = ({ 
   headModelUrl, 
   isHeadModelLoaded, 
   showSpaceBackground,
+  modelScale,
 }) => {
   // console.log('[SceneContainer] Rendering...');
   return (
@@ -33,15 +35,20 @@ const SceneContainer: React.FC<SceneContainerProps> = ({
       />
       <Suspense fallback={null}>
         {(() => {
-          // console.log('[SceneContainer] Inside Suspense - Rendering HeadModel group...');
+          // 只使用基礎縮放值和位置
+          const baseScale = 10;
+          const basePosition: [number, number, number] = [-22, -5, 0];
+          
           return (
-            <group scale={10} position={[-22, -5, 0]}> 
-              <HeadModel headModelUrl={headModelUrl} />
+            <group position={basePosition} scale={baseScale}>
+              <HeadModel 
+                headModelUrl={headModelUrl}
+                scale={modelScale}
+              />
             </group>
           );
         })()}
         {(() => {
-          // console.log('[SceneContainer] Inside Suspense - Rendering BodyModel...');
           return (
             <group scale={5}> 
               <BodyModel />

@@ -139,7 +139,7 @@ class HeadService {
   // 設置模型縮放 (保持不變，操作通用狀態)
   public setModelScale(scale: number): void {
     const store = useStore.getState();
-    store.setModelTransform([scale, scale, scale]);
+    store.setUniformScale(scale); // 使用新的setUniformScale方法
   }
 
   // 獲取模型縮放 (保持不變)

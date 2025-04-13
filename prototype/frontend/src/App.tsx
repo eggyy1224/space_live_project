@@ -415,6 +415,7 @@ function App() {
           headModelUrl={headModelUrl}
           isHeadModelLoaded={headModelLoaded}
           showSpaceBackground={showSpaceBackground}
+          modelScale={modelScale}
         />
         
         {/* 調試面板 (保持在 App 層) */}
@@ -446,7 +447,7 @@ function App() {
           onClose={toggleSettingsPanel}
           // Pass head model control props
           isModelLoaded={headModelLoaded}
-          modelScale={modelScale[0] || 1.0}
+          modelScale={modelScale}
           morphTargetDictionary={morphTargetDictionary}
           selectedMorphTarget={selectedMorphTarget}
           setSelectedMorphTarget={setSelectedMorphTarget}

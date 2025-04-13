@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { useGLTF } from '@react-three/drei';
+import { useGLTF, Center } from '@react-three/drei';
 import * as THREE from 'three';
 import logger, { LogCategory } from '../utils/LogManager'; // Import logger
 import { Mesh } from 'three'; // Import Mesh type
@@ -218,8 +218,13 @@ export const HeadModel: React.FC<HeadModelProps> = ({
   // 更新返回的 JSX
   return (
     <group ref={group} position={position} rotation={rotation}>
-      {/* 更新 key 為 headModelUrl */}
-      <primitive object={scene} scale={scale} key={headModelUrl} />
+      {/* 使用drei的Center組件包裹scene，讓模型以視覺中心點進行縮放 */}
+      <Center scale={scale} position={[0, 0, 0]}>
+        <primitive 
+          object={scene} 
+          key={headModelUrl} 
+        />
+      </Center>
     </group>
   );
 };
