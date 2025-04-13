@@ -1,0 +1,42 @@
+/* 向現有CSS文件追加murmur特效相關樣式 */
+
+/* murmur消息樣式 */
+.murmur-message {
+  background-color: rgba(79, 70, 229, 0.1); /* 淡色背景 */
+  border-left: 4px solid rgba(79, 70, 229, 0.5); /* 左側邊框 */
+  font-style: italic; /* 斜體字 */
+  opacity: 0.9; /* 略微透明 */
+}
+
+.murmur-message-dark {
+  background-color: rgba(79, 70, 229, 0.2); /* 深色主題的淡色背景 */
+  border-left: 4px solid rgba(129, 140, 248, 0.6); /* 左側邊框 */
+}
+
+/* murmur指示器動畫 */
+@keyframes thoughtBlink {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+.murmur-indicator {
+  display: inline-block;
+  color: rgba(79, 70, 229, 0.8);
+  animation: thoughtBlink 2s ease infinite;
+}
+
+/* 打字機效果增強 */
+.typing-cursor-blink {
+  display: inline-block;
+  width: 0.5em;
+  height: 1.2em;
+  background-color: currentColor;
+  margin-left: 0.15em;
+  vertical-align: text-bottom;
+  animation: cursor-blink 0.8s step-end infinite;
+}
+
+@keyframes cursor-blink {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+} 

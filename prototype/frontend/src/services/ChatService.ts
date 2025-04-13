@@ -77,7 +77,7 @@ class ChatService {
       }
       
       // 將收到的消息添加到聊天歷史
-      const message = data.message;
+      let message = data.message;
       
       // 如果是機器人消息並且不是錯誤消息，添加打字機效果
       if (message.role === 'bot' && !message.isError) {
@@ -100,6 +100,9 @@ class ChatService {
           logger.info(`估算語音持續時間: ${estimatedDuration}秒`, LogCategory.CHAT);
         }
       }
+      
+      // 更新最近消息（用於顯示情緒等）
+      useStore.getState().setLastJsonMessage(data);
       
       this.addMessage(message);
       

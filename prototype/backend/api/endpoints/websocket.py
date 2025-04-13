@@ -7,6 +7,7 @@ import os
 import base64
 import time
 from datetime import datetime, timedelta
+import re
 
 from services.ai import AIService
 from services.text_to_speech import TextToSpeechService
@@ -14,9 +15,9 @@ from core.config import settings
 from utils.logger import logger
 
 # --- 閒置設定 ---
-IDLE_TIMEOUT_SECONDS = 30  # 閒置多少秒後觸發 murmur
-IDLE_CHECK_INTERVAL_SECONDS = 5 # 每隔多少秒檢查一次閒置狀態
-MURMUR_MIN_INTERVAL_SECONDS = 45  # <--- 修改：縮短兩次 murmur 之間的最小間隔（例如 45 秒）
+IDLE_TIMEOUT_SECONDS = 15  # 閒置多少秒後觸發 murmur
+IDLE_CHECK_INTERVAL_SECONDS = 3 # 每隔多少秒檢查一次閒置狀態
+MURMUR_MIN_INTERVAL_SECONDS = 25  # 兩次 murmur 之間的最小間隔
 # MURMUR_MAX_COUNT = 3  # <--- 移除：不再限制連續 murmur 次數
 MAX_HISTORY_LENGTH = 20 # 保存的最大對話歷史輪數（用戶+機器人算一輪）
 # --- 結束 ---
@@ -50,6 +51,32 @@ class ConnectionManager:
             await connection.send_text(message)
 
 manager = ConnectionManager()
+
+# --- 特殊值處理，讓自言自語更頻繁 ---
+MURMUR_SIMILARITY_THRESHOLD = 0.6  # 降低相似度閾值，允許更多變化 (原為0.7)
+MURMUR_BUFFER_MAX = 0.6  # 最大緩衝時間（秒）
+
+# --- 新增：清理輕聲自語前綴的函數 ---
+def clean_murmur_prefix(text: str) -> str:
+    """清理文本中的輕聲自語前綴"""
+    patterns = [
+        r"^\s*\(輕聲自語\)\s*",
+        r"^\s*（輕聲自語）\s*",
+        r"^\s*\(自言自語\)\s*",
+        r"^\s*（自言自語）\s*",
+        r"^\s*\(喃喃自語\)\s*", 
+        r"^\s*（喃喃自語）\s*",
+        r"^\s*\(murmur\)\s*",
+        r"^\s*（murmur）\s*",
+        r"^\s*\(murmuring\)\s*",
+        r"^\s*（murmuring）\s*"
+    ]
+    
+    for pattern in patterns:
+        text = re.sub(pattern, "", text, flags=re.IGNORECASE)
+    
+    return text
+# --- 結束添加 ---
 
 # WebSocket端點
 async def websocket_endpoint(websocket: WebSocket):
@@ -97,17 +124,28 @@ async def websocket_endpoint(websocket: WebSocket):
     async def reset_speaking_after_duration(duration_seconds: float):
         """在指定的秒數後重置語音播放狀態。"""
         nonlocal is_speaking, last_activity_timestamp, last_murmur_timestamp, last_speaking_reset_timestamp
+        
+        # 記錄相關資訊以便調試
+        previous_speaking_state = is_speaking
+        logger.info(f"Starting reset_speaking_after_duration timer for {duration_seconds:.2f} seconds. Current is_speaking: {previous_speaking_state}")
+        
+        # 等待指定時間
         await asyncio.sleep(duration_seconds)
-        # 記錄重置前的狀態以便調試
-        speaking_before_reset = is_speaking
+        
+        # 重置語音狀態
         is_speaking = False
-        # 更新最後活動時間戳，以確保在語音結束後計時器從新開始計時
-        last_activity_timestamp = datetime.utcnow() 
-        last_speaking_reset_timestamp = datetime.utcnow()
-        # 如果是murmur導致的語音，也更新murmur時間戳
+        
+        # 更新所有相關時間戳，確保後續操作基於正確的時間
+        current_time = datetime.utcnow()
+        last_activity_timestamp = current_time
+        last_speaking_reset_timestamp = current_time
+        
+        # 如果是 murmur 導致的語音，同時更新 murmur 時間戳
+        # 這樣可以避免 murmur 結束後立即觸發下一個 murmur
         if last_murmur_timestamp is not None:
-            last_murmur_timestamp = datetime.utcnow()
-        logger.info(f"Reset is_speaking from {speaking_before_reset} to False after {duration_seconds:.2f} seconds and updated timestamps")
+            last_murmur_timestamp = current_time
+            
+        logger.info(f"Reset is_speaking from {previous_speaking_state} to False after {duration_seconds:.2f} seconds and updated all timestamps to current time")
 
     async def idle_checker():
         """背景任務，定期檢查閒置狀態並觸發 murmur。"""
@@ -119,66 +157,93 @@ async def websocket_endpoint(websocket: WebSocket):
                 idle_duration = current_time - last_activity_timestamp
 
                 # --- 檢查是否應該觸發 murmur ---
+                # 詳細記錄當前的狀態以便診斷
+                current_speaking_state = is_speaking
+                time_since_last_murmur = "N/A" if last_murmur_timestamp is None else f"{(current_time - last_murmur_timestamp).total_seconds():.2f}s"
+                time_since_last_reset = "N/A" if not last_speaking_reset_timestamp else f"{(current_time - last_speaking_reset_timestamp).total_seconds():.2f}s"
+                
+                # 檢查在語音剛結束後是否需要額外等待
+                should_wait_after_speaking = False
+                if last_speaking_reset_timestamp:
+                    time_since_last_reset_seconds = (current_time - last_speaking_reset_timestamp).total_seconds()
+                    should_wait_after_speaking = time_since_last_reset_seconds < 1.0  # 語音結束後等待1秒
+                
+                # 完整的 murmur 觸發條件檢查：
                 # 1. 必須達到閒置閾值
                 # 2. 距離上次 murmur 必須超過最小間隔
                 # 3. 當前不能有其他語音在播放
-                # 4. 如果最後的語音重置時間很近，也應該等待
-                current_speaking_state = is_speaking  # 記錄當前狀態用於日誌
-                should_wait_after_speaking = False
+                # 4. 語音結束後需要短暫等待
+                murmur_condition_met = (
+                    idle_duration > timedelta(seconds=IDLE_TIMEOUT_SECONDS) and
+                    (last_murmur_timestamp is None or 
+                     current_time - last_murmur_timestamp > timedelta(seconds=MURMUR_MIN_INTERVAL_SECONDS)) and
+                    not is_speaking and
+                    not should_wait_after_speaking
+                )
                 
-                if last_speaking_reset_timestamp:
-                    time_since_last_reset = current_time - last_speaking_reset_timestamp
-                    should_wait_after_speaking = time_since_last_reset < timedelta(seconds=3)  # 至少等待3秒再觸發新的murmur
+                # 記錄詳細的狀態和決策
+                logger.info(
+                    f"Murmur conditions check - idle: {idle_duration.total_seconds():.2f}s, "
+                    f"speaking: {current_speaking_state}, "
+                    f"time since last murmur: {time_since_last_murmur}, "
+                    f"time since last reset: {time_since_last_reset}, "
+                    f"should_wait_after_speaking: {should_wait_after_speaking}, "
+                    f"condition met: {murmur_condition_met}"
+                )
                 
-                if (idle_duration > timedelta(seconds=IDLE_TIMEOUT_SECONDS) and
-                   (last_murmur_timestamp is None or 
-                   current_time - last_murmur_timestamp > timedelta(seconds=MURMUR_MIN_INTERVAL_SECONDS)) and
-                   not is_speaking and
-                   not should_wait_after_speaking):
-                    
-                    time_since_reset = "N/A" if not last_speaking_reset_timestamp else f"{(current_time - last_speaking_reset_timestamp).total_seconds():.2f}s"
-                    logger.info(f"Checking murmur conditions - idle: {idle_duration.total_seconds():.2f}s, " +
-                                f"speaking: {current_speaking_state}, time since last reset: {time_since_reset}")
-
+                # 如果滿足所有條件，嘗試觸發 murmur
+                if murmur_condition_met:
                     # --- 嘗試獲取鎖，如果鎖已被持有（表示正在處理用戶消息），則等待 ---                   
                     async with ai_processing_lock:
                         # 再次檢查閒置時間，避免在等待鎖的過程中用戶剛好發送了消息
                         if datetime.utcnow() - last_activity_timestamp <= timedelta(seconds=IDLE_TIMEOUT_SECONDS):
                             logger.info(f"User became active while waiting for lock in idle_checker. Skipping murmur.")
                             continue # 用户在等待锁期间变得活跃，跳过此次 murmur
+                        
+                        # 再次檢查 is_speaking 狀態，確保在獲取鎖的過程中沒有其他語音開始播放
+                        if is_speaking:
+                            logger.info(f"Speaking state changed to {is_speaking} while waiting for lock. Skipping murmur.")
+                            continue # 語音狀態在等待鎖期間改變，跳過此次 murmur
 
-                        # <--- 移除基於 murmur_count 重置計數器的邏輯 --->
-                        # if murmur_count >= MURMUR_MAX_COUNT and user_responded:\n                        #    murmur_count = 0\n                        #    user_responded = False\n                        #    recent_murmurs.clear()\n                        \n                        # logger.info(f\"Client {websocket.client} idle timeout reached. Generating murmur... (Count: {murmur_count+1})\") # <-- 移除 Count 顯示\n                        logger.info(f"Client {websocket.client} idle timeout reached. Generating murmur...")\n
+                        logger.info(f"Client {websocket.client} idle timeout reached. Generating murmur...")
 
                         # 1. 觸發 Murmur 生成
                         context_prompt = ""
                         if recent_murmurs:
                             context_prompt = f"最近的幾句自言自語: {', '.join(list(recent_murmurs)[-3:])}\n避免重複，但可以適度延續之前的想法或開啟新話題。"
                         
-                        # <-- 修改 Prompt，明確要求參考歷史 -->
+                        # <-- 保持原有的 Prompt 邏輯 -->
                         murmur_prompt = f"""請生成一句角色的內心獨白或自言自語 (murmur)。符合以下條件：
 1. 作為太空站的虛擬主播「星際小可愛」，反映當前情境和心境。
 2. 參考提供的對話歷史(`history`)，特別是最近的互動或你自己的思考。
-3. 內容應自然、簡短（約50字內），像是腦海中閃過的念頭。
-4. **盡量有變化，可以延續之前的自言自語思路，或者開啟一個全新的、符合角色當前狀態的隨機想法。也可以是對最近用戶發言的無聲回味或思考。**
-5. 目標是讓角色聽起來像是在持續思考，而不是機械重複。
+3. 內容應自然、簡短（約30-40字內），像是腦海中閃過的念頭。
+4. **增加變化，不要重複相似的想法。可以是全新的隨機念頭、對周圍環境的觀察、太空相關的想像、未來科技的思考，或是對最近交流的反思。**
+5. 目標是讓角色聽起來像是一個有自主思考的虛擬助手，時常有自己的小想法。
+6. 嘗試表達不同情緒和語氣，包括好奇、驚訝、思考、期待等，增加角色的立體感。
 {context_prompt}
 """
 
+                        # 生成 murmur 並處理結果
+                        # 保持原有的處理邏輯
                         ai_result = None
                         ai_murmur_text = None
                         try:
                             # --- 傳遞歷史給 AI ---                           
-                            ai_result = await ai_service.generate_response(\
-                                system_prompt=murmur_prompt,\
-                                history=conversation_history # <--- 傳遞歷史\
+                            ai_result = await ai_service.generate_response(
+                                system_prompt=murmur_prompt,
+                                history=conversation_history
                             )
-                            # --- 結束 ---                           
+                            # --- 結束 ---
+
+                            # 以下保持原有邏輯
                             if not ai_result or "final_response" not in ai_result:
-                                 logger.error("AIService failed to generate murmur or returned invalid format.")
-                                 continue # 跳過此次 murmur
+                                logger.error("AIService failed to generate murmur or returned invalid format.")
+                                continue # 跳過此次 murmur
 
                             ai_murmur_text = ai_result.get("final_response")
+                            
+                            # 清理可能的前綴
+                            ai_murmur_text = clean_murmur_prefix(ai_murmur_text)
                             
                             # 更嚴格的重複檢查 - 不僅檢查完全匹配，還檢查高度相似
                             skip_due_to_similarity = False
@@ -187,7 +252,7 @@ async def websocket_endpoint(websocket: WebSocket):
                                 if (ai_murmur_text in existing_murmur or 
                                     existing_murmur in ai_murmur_text or
                                     len(ai_murmur_text) > 0 and existing_murmur and 
-                                    (len(set(ai_murmur_text.lower()) & set(existing_murmur.lower())) / len(set(ai_murmur_text.lower() + existing_murmur.lower())) > 0.7)):
+                                    (len(set(ai_murmur_text.lower()) & set(existing_murmur.lower())) / len(set(ai_murmur_text.lower() + existing_murmur.lower())) > MURMUR_SIMILARITY_THRESHOLD)):
                                     logger.warning(f"Generated murmur is too similar to existing: New: '{ai_murmur_text}', Existing: '{existing_murmur}', skipping...")
                                     skip_due_to_similarity = True
                                     break
@@ -304,19 +369,26 @@ async def websocket_endpoint(websocket: WebSocket):
                         if audio_duration > 0 and audio_base64:
                             # 根據語音時長安排一個任務，在語音播放結束後重置 is_speaking
                             # 添加一些額外時間作為緩衝，隨著音頻時長增加，緩衝也適度增加
-                            buffer_time = min(1.0, 0.5 + audio_duration * 0.05)  # 最小0.5秒，隨著音頻長度增加但不超過1秒
+                            buffer_time = min(MURMUR_BUFFER_MAX, 0.3 + audio_duration * 0.03)  # 調整緩衝時間
                             total_wait_time = audio_duration + buffer_time
-                            reset_task = asyncio.create_task(reset_speaking_after_duration(total_wait_time))
-                            logger.info(f"Scheduled reset_speaking_after_duration in {total_wait_time:.2f}s (audio: {audio_duration:.2f}s + buffer: {buffer_time:.2f}s)")
                             
-                            # 額外安全措施：更新murmur時間戳
+                            # 創建任務前記錄當前狀態
+                            logger.info(f"Creating reset_speaking_after_duration task: audio_duration={audio_duration:.2f}s, "
+                                       f"buffer_time={buffer_time:.2f}s, total_wait_time={total_wait_time:.2f}s, "
+                                       f"current is_speaking={is_speaking}")
+                            
+                            # 創建異步任務重置語音狀態
+                            reset_task = asyncio.create_task(reset_speaking_after_duration(total_wait_time))
+                            
+                            # 更新時間戳
                             last_murmur_timestamp = datetime.utcnow()
                         else:
                             # 如果沒有音頻，立即重置說話狀態
                             is_speaking = False
-                            logger.info("No audio for murmur, immediately reset is_speaking to False")
+                            logger.info(f"No audio for response, immediately reset is_speaking to False")
 
-                        # 重置活動時間戳，因為我們剛剛處理了一個消息
+                        # 調整活動時間戳，在聊天訊息處理後同步更新
+                        # 確保與音頻播放結束後的重置操作協調一致
                         last_activity_timestamp = datetime.utcnow()
 
             except WebSocketDisconnect:
@@ -383,17 +455,26 @@ async def websocket_endpoint(websocket: WebSocket):
                             logger.error(f"Error generating response from AIService: {ai_err}", exc_info=True)
                             ai_response = "糟糕，我的思緒有點混亂。"
 
+                        # 提取回應文本和情緒
+                        bot_response_text = ai_result.get("final_response", "抱歉，我沒有理解您的意思")
+                        
+                        # 清理可能的前綴
+                        bot_response_text = clean_murmur_prefix(bot_response_text)
+                        
+                        # 提取emotion和keyframes
+                        response_emotion = ai_result.get("emotion", current_emotion)
+                        emotional_keyframes = ai_result.get("emotional_keyframes")
+
                         # 轉換回復為語音
-                        tts_result = await tts_service.synthesize_speech(ai_response)
+                        tts_result = await tts_service.synthesize_speech(bot_response_text)
                         audio_base64 = tts_result.get("audio") if tts_result else None
-                        audio_duration = tts_result.get("duration") if tts_result and "duration" in tts_result else len(ai_response) * 0.15
+                        audio_duration = tts_result.get("duration") if tts_result and "duration" in tts_result else len(bot_response_text) * 0.15
 
                         # 發送回覆
                         await websocket.send_json({
                             "type": "response",
-                            "content": ai_response,
-                            "emotion": current_emotion, # <--- 使用 AI 返回或更新後的情緒
-                            # "confidence": emotion_confidence, # <-- 移除
+                            "content": bot_response_text,
+                            "emotion": response_emotion,
                             "audio": audio_base64,
                             "hasSpeech": audio_base64 is not None,
                             "speechDuration": audio_duration,
@@ -422,9 +503,15 @@ async def websocket_endpoint(websocket: WebSocket):
                         # <--- 修改：收到用戶消息，表示用戶已回應 --->
                         # 設置播放狀態為 False，因為我們將開始一個新的回應
                         prev_speaking = is_speaking
-                        is_speaking = False  # 重置語音播放狀態
-                        logger.info(f"Received user message, reset is_speaking from {prev_speaking} to False")
+                        if is_speaking:
+                            logger.info(f"Received user message while is_speaking={prev_speaking}, forcefully reset to False")
+                            is_speaking = False
+                        else:
+                            logger.info(f"Received user message, is_speaking already False")
+                        
+                        # 記錄用戶已回應，並更新時間戳
                         user_responded = True
+                        last_activity_timestamp = datetime.utcnow()
                         # <--- 修改結束 --->
 
                         try:
@@ -468,6 +555,56 @@ async def websocket_endpoint(websocket: WebSocket):
                             audio_base64 = None
                             emotional_keyframes = None
                             body_animation_sequence = None
+
+                        # 提取回應文本和情緒
+                        bot_response_text = ai_result.get("final_response", "抱歉，我沒有理解您的意思")
+                        
+                        # 清理可能的前綴
+                        bot_response_text = clean_murmur_prefix(bot_response_text)
+                        
+                        # 提取emotion和keyframes
+                        response_emotion = ai_result.get("emotion", current_emotion)
+                        emotional_keyframes = ai_result.get("emotional_keyframes")
+
+                        # 處理murmur類型的回應
+                        if message_type == "murmur":
+                            if not ai_service:
+                                logger.error("AI服務未初始化")
+                                await websocket.send_json({"status": "error", "message": "AI服務未初始化"})
+                                continue
+
+                            text = message.get("content").strip()
+                            ai_response = await ai_service.get_murmur_response(text, system_lang, ws_session_id)
+                            
+                            # 清理回應中的前綴
+                            cleaned_response = clean_murmur_prefix(ai_response)
+                            logger.info(f"Murmur清理前: {ai_response}")
+                            logger.info(f"Murmur清理後: {cleaned_response}")
+                            
+                            # 使用清理後的文本進行TTS
+                            audio_data, sample_rate = await tts_service.synthesize_speech(cleaned_response, system_lang)
+                            audio_duration = len(audio_data) / sample_rate
+                            
+                            # 發送回應
+                            response_data = {
+                                "type": "bot_response",
+                                "content": ai_response,  # 保留原始回應以供顯示
+                                "audio": audio_data.tobytes().hex(),
+                                "sample_rate": sample_rate
+                            }
+                            await websocket.send_json(response_data)
+                            
+                            # 更新murmur時間戳和speaking狀態
+                            logger.info(f"Audio duration: {audio_duration}s")
+                            last_murmur_timestamp = datetime.now()
+                            user_sessions[ws_session_id]['is_speaking'] = True
+                            
+                            # 安排定時器在音頻播放結束後重置speaking狀態
+                            buffer_time = 0.2  # 緩衝時間
+                            reset_time = audio_duration + buffer_time
+                            asyncio.create_task(reset_speaking_after(ws_session_id, reset_time))
+                            
+                            continue
 
                         # 準備消息體
                         bot_message = {
@@ -531,16 +668,26 @@ async def websocket_endpoint(websocket: WebSocket):
                         if audio_duration > 0 and audio_base64:
                             # 根據語音時長安排一個任務，在語音播放結束後重置 is_speaking
                             # 添加一些額外時間作為緩衝，隨著音頻時長增加，緩衝也適度增加
-                            buffer_time = min(1.0, 0.5 + audio_duration * 0.05)  # 最小0.5秒，隨著音頻長度增加但不超過1秒
+                            buffer_time = min(MURMUR_BUFFER_MAX, 0.3 + audio_duration * 0.03)  # 調整緩衝時間
                             total_wait_time = audio_duration + buffer_time
+                            
+                            # 創建任務前記錄當前狀態
+                            logger.info(f"Creating reset_speaking_after_duration task: audio_duration={audio_duration:.2f}s, "
+                                       f"buffer_time={buffer_time:.2f}s, total_wait_time={total_wait_time:.2f}s, "
+                                       f"current is_speaking={is_speaking}")
+                            
+                            # 創建異步任務重置語音狀態
                             reset_task = asyncio.create_task(reset_speaking_after_duration(total_wait_time))
-                            logger.info(f"Scheduled reset_speaking_after_duration in {total_wait_time:.2f}s (audio: {audio_duration:.2f}s + buffer: {buffer_time:.2f}s)")
+                            
+                            # 更新時間戳
+                            last_murmur_timestamp = datetime.utcnow()
                         else:
                             # 如果沒有音頻，立即重置說話狀態
                             is_speaking = False
-                            logger.info("No audio for response, immediately reset is_speaking to False")
+                            logger.info(f"No audio for response, immediately reset is_speaking to False")
 
-                        # 重置活動時間戳，因為我們剛剛處理了一個消息
+                        # 調整活動時間戳，在聊天訊息處理後同步更新
+                        # 確保與音頻播放結束後的重置操作協調一致
                         last_activity_timestamp = datetime.utcnow()
 
                     else:

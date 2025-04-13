@@ -24,6 +24,11 @@ interface FloatingChatWindowProps {
   stopRecording: () => void;
 }
 
+// 擴展ChatMessage類型以支持isMurmur屬性
+interface ExtendedChatMessage extends ChatMessage {
+  isMurmur?: boolean;
+}
+
 const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
   isVisible,
   onClose,
@@ -128,7 +133,7 @@ const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
   }, [messages, typingStates]); // 增加 typingStates 依賴，確保打字過程中也滾動
 
   // 獲取消息顯示內容的輔助函數
-  const getMessageContent = useCallback((message: ChatMessage) => {
+  const getMessageContent = useCallback((message: ExtendedChatMessage) => {
     if (message.isTyping && message.fullContent) {
       const contentIndex = typingStates[message.id] || 0;
       return message.fullContent.substring(0, contentIndex);
@@ -195,15 +200,38 @@ const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
                 </div>
               )}
               {messages.map((msg) => {
+                // 將消息轉換為擴展類型
+                const extendedMsg = msg as ExtendedChatMessage;
                 // 判斷是否正在打字中 (用於光暈效果)
                 const isCurrentlyTyping = msg.isTyping && typingStates[msg.id] < (msg.fullContent?.length || 0);
+                // 判斷是否為murmur消息
+                const isMurmurMessage = extendedMsg.isMurmur === true;
                 
                 return (
                   <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    {/* 添加光暈效果 class */}
-                    <div className={`max-w-[80%] px-3 py-1.5 rounded-lg ${msg.role === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200'} ${isCurrentlyTyping ? 'typing-glow' : ''}`}>
-                      <p className="text-sm whitespace-pre-wrap inline">
-                        {getMessageContent(msg)}
+                    {/* 為murmur消息添加特殊樣式 */}
+                    <div 
+                      className={`max-w-[80%] px-3 py-1.5 rounded-lg 
+                        ${msg.role === 'user' 
+                          ? 'bg-blue-500 text-white' 
+                          : isMurmurMessage
+                            ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 italic border-l-4 border-indigo-400 dark:border-indigo-600' 
+                            : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200'
+                        } 
+                        ${isCurrentlyTyping ? 'typing-glow' : ''}
+                        ${isMurmurMessage ? 'opacity-80' : 'opacity-100'}
+                      `}
+                    >
+                      {/* 添加murmur視覺指示符 */}
+                      {isMurmurMessage && (
+                        <div className="flex items-center mb-1 text-xs text-indigo-600 dark:text-indigo-400">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 mr-1">
+                            <path fillRule="evenodd" d="M13 9a1 1 0 001-1V6.5a.5.5 0 01.5-.5h1a.5.5 0 01.5.5v1a1 1 0 001 1h1a1 1 0 001-1v-.5a.5.5 0 01.5-.5h1a.5.5 0 01.5.5v1a1 1 0 001 1V9a1 1 0 00-1 1v1a2 2 0 01-2 2h-.5a.5.5 0 01-.5-.5v-1a1 1 0 00-1-1H13a1 1 0 00-1 1v1a2 2 0 01-2 2h-1a.5.5 0 01-.5-.5 1 1 0 00-1-1H6a1 1 0 00-1 1 2 2 0 01-2 2H2a1 1 0 01-1-1V8a2 2 0 012-2h1a1 1 0 001-1 2 2 0 012-2h6a2 2 0 012 2v1a1 1 0 001 1h1z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+                      <p className={`text-sm whitespace-pre-wrap inline ${isMurmurMessage ? 'italic' : ''}`}>
+                        {getMessageContent(extendedMsg)}
                         {/* 使用新的閃爍游標 class */}
                         {isCurrentlyTyping && (
                           <span className="typing-cursor-blink"></span>

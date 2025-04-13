@@ -12,6 +12,7 @@ export interface ChatMessage {
   audioUrl?: string; // 可選：音頻URL (如果有)
   bodyAnimationSequence?: any[]; // 可選：身體動畫序列
   speechDuration?: number; // 可選：語音持續時間（秒）
+  isMurmur?: boolean; // 可選：標記是否為自言自語
 }
 
 // 情緒狀態類型定義
