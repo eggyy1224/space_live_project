@@ -140,16 +140,15 @@ async def websocket_endpoint(websocket: WebSocket):
         last_activity_timestamp = current_time
         last_speaking_reset_timestamp = current_time
         
-        # 如果是 murmur 導致的語音，同時更新 murmur 時間戳
-        # 這樣可以避免 murmur 結束後立即觸發下一個 murmur
-        if last_murmur_timestamp is not None:
-            last_murmur_timestamp = current_time
+        # 無論是什麼類型的語音(murmur或正常回覆)都更新last_murmur_timestamp
+        # 這樣可以避免murmur結束後立即觸發下一個murmur
+        last_murmur_timestamp = current_time
             
         logger.info(f"Reset is_speaking from {previous_speaking_state} to False after {duration_seconds:.2f} seconds and updated all timestamps to current time")
 
     async def idle_checker():
         """背景任務，定期檢查閒置狀態並觸發 murmur。"""
-        nonlocal last_activity_timestamp, current_emotion, last_murmur_timestamp, recent_murmurs, user_responded, is_speaking
+        nonlocal last_activity_timestamp, current_emotion, last_murmur_timestamp, recent_murmurs, user_responded, is_speaking, last_speaking_reset_timestamp
         while True:
             await asyncio.sleep(IDLE_CHECK_INTERVAL_SECONDS)
             try:
@@ -166,7 +165,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 should_wait_after_speaking = False
                 if last_speaking_reset_timestamp:
                     time_since_last_reset_seconds = (current_time - last_speaking_reset_timestamp).total_seconds()
-                    should_wait_after_speaking = time_since_last_reset_seconds < 1.0  # 語音結束後等待1秒
+                    should_wait_after_speaking = time_since_last_reset_seconds < 2.0  # 語音結束後等待2秒
                 
                 # 完整的 murmur 觸發條件檢查：
                 # 1. 必須達到閒置閾值
@@ -204,8 +203,18 @@ async def websocket_endpoint(websocket: WebSocket):
                         if is_speaking:
                             logger.info(f"Speaking state changed to {is_speaking} while waiting for lock. Skipping murmur.")
                             continue # 語音狀態在等待鎖期間改變，跳過此次 murmur
+                        
+                        # 再次檢查是否已超過最小murmur間隔
+                        current_time = datetime.utcnow()
+                        if last_murmur_timestamp is not None and current_time - last_murmur_timestamp <= timedelta(seconds=MURMUR_MIN_INTERVAL_SECONDS):
+                            logger.info(f"Time since last murmur became less than minimum interval while waiting for lock. Skipping murmur.")
+                            continue
 
                         logger.info(f"Client {websocket.client} idle timeout reached. Generating murmur...")
+
+                        # 在生成murmur前先標記is_speaking為True，避免多個murmur同時生成
+                        is_speaking = True
+                        logger.info(f"Set is_speaking to True before generating murmur to prevent overlap")
 
                         # 1. 觸發 Murmur 生成
                         context_prompt = ""
@@ -345,7 +354,6 @@ async def websocket_endpoint(websocket: WebSocket):
                                 logger.error(f"Error saving murmur audio file: {e}", exc_info=True)
 
                         # 發送 chat-message 格式的 murmur
-                        is_speaking = True
                         await websocket.send_json({
                             "type": "chat-message",
                             "message": bot_message
@@ -365,6 +373,10 @@ async def websocket_endpoint(websocket: WebSocket):
                             })
                             logger.info(f"已發送 Emotional Trajectory，時長: {audio_duration:.2f}s")
 
+                        # 更新最後一次murmur的時間戳，確保不會立即再次觸發murmur
+                        last_murmur_timestamp = datetime.utcnow()
+                        logger.info(f"Updated last_murmur_timestamp before scheduling reset task")
+
                         # 告知客戶端語音播放完成，這將重置播放狀態
                         if audio_duration > 0 and audio_base64:
                             # 根據語音時長安排一個任務，在語音播放結束後重置 is_speaking
@@ -380,12 +392,19 @@ async def websocket_endpoint(websocket: WebSocket):
                             # 創建異步任務重置語音狀態
                             reset_task = asyncio.create_task(reset_speaking_after_duration(total_wait_time))
                             
-                            # 更新時間戳
-                            last_murmur_timestamp = datetime.utcnow()
+                            # 不要在這裡更新last_murmur_timestamp，將在reset_speaking_after_duration函數中更新
+                            # last_murmur_timestamp = datetime.utcnow()
                         else:
                             # 如果沒有音頻，立即重置說話狀態
                             is_speaking = False
-                            logger.info(f"No audio for response, immediately reset is_speaking to False")
+                            
+                            # 即使沒有音頻，也應該更新所有相關時間戳
+                            current_time = datetime.utcnow()
+                            last_activity_timestamp = current_time
+                            last_speaking_reset_timestamp = current_time
+                            last_murmur_timestamp = current_time
+                            
+                            logger.info(f"No audio for response, immediately reset is_speaking to False and updated all timestamps")
 
                         # 調整活動時間戳，在聊天訊息處理後同步更新
                         # 確保與音頻播放結束後的重置操作協調一致
@@ -679,12 +698,19 @@ async def websocket_endpoint(websocket: WebSocket):
                             # 創建異步任務重置語音狀態
                             reset_task = asyncio.create_task(reset_speaking_after_duration(total_wait_time))
                             
-                            # 更新時間戳
-                            last_murmur_timestamp = datetime.utcnow()
+                            # 不要在這裡更新last_murmur_timestamp，將在reset_speaking_after_duration函數中更新
+                            # last_murmur_timestamp = datetime.utcnow()
                         else:
                             # 如果沒有音頻，立即重置說話狀態
                             is_speaking = False
-                            logger.info(f"No audio for response, immediately reset is_speaking to False")
+                            
+                            # 即使沒有音頻，也應該更新所有相關時間戳
+                            current_time = datetime.utcnow()
+                            last_activity_timestamp = current_time
+                            last_speaking_reset_timestamp = current_time
+                            last_murmur_timestamp = current_time
+                            
+                            logger.info(f"No audio for response, immediately reset is_speaking to False and updated all timestamps")
 
                         # 調整活動時間戳，在聊天訊息處理後同步更新
                         # 確保與音頻播放結束後的重置操作協調一致
