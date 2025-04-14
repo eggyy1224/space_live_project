@@ -1,0 +1,124 @@
+apiVersion: zeabur.com/v1
+kind: Template
+metadata:
+    name: SpaceLiveAssistant
+spec:
+    description: 虛擬太空人助理專案，提供即時語音與文字互動功能
+    icon: https://raw.githubusercontent.com/your-repo/your-project/main/logo.png  # 替換為您的專案 logo URL
+    coverImage: https://your-repo-url/cover-image.png  # 替換為您的封面圖片 URL
+    readme: |-
+        # 虛擬太空人助理專案
+
+        這是一個結合了語音識別、AI 對話和 3D 模型的互動式虛擬太空人助理專案。使用者可以通過語音或文字與虛擬太空人進行對話，虛擬太空人會透過文字和語音回應，並展示相應的表情變化。
+
+        ## 主要功能
+        
+        - 語音識別與文字轉語音
+        - AI 對話系統
+        - 3D 太空人模型與表情動畫
+        - 實時 WebSocket 通訊
+        - 向量資料庫支援
+
+        ## 技術架構
+        
+        - 前端：React + TypeScript + Three.js
+        - 後端：Python + FastAPI
+        - 資料庫：ChromaDB (向量資料庫)
+    tags:
+        - AI
+        - 3D
+        - Interactive
+        - Virtual Assistant
+    variables:
+        - key: OPENAI_API_KEY
+          type: STRING
+          name: OpenAI API Key
+          description: 您的 OpenAI API 金鑰，用於語音識別和生成回應
+        - key: FRONTEND_DOMAIN
+          type: DOMAIN
+          name: 前端網域
+          description: 設定前端服務的網域名稱 (例如輸入 myapp 將得到 myapp.zeabur.app)
+        - key: BACKEND_DOMAIN
+          type: DOMAIN
+          name: 後端網域
+          description: 設定後端服務的網域名稱 (例如輸入 myapi 將得到 myapi.zeabur.app)
+    services:
+        - name: space-backend
+          icon: https://raw.githubusercontent.com/zeabur/service-icons/main/logos/fastapi.svg
+          template: PREBUILT
+          spec:
+            source:
+                context: "."
+                dockerfile: backend.Dockerfile
+            ports:
+                - id: web
+                  port: 8000
+                  type: HTTP
+            env:
+                OPENAI_API_KEY:
+                    default: ${OPENAI_API_KEY}
+                    readonly: true
+                CHROMADB_HOST:
+                    default: chromadb.zeabur.internal
+                CHROMADB_PORT:
+                    default: "8000"
+                DEBUG_MODE:
+                    default: "false"
+                LOG_LEVEL:
+                    default: "info"
+            instructions:
+                - type: TEXT
+                  title: 後端 API URL
+                  content: ${SERVICE_DOMAIN}
+                  category: API 端點
+                - type: TEXT
+                  title: WebSocket URL
+                  content: wss://${SERVICE_DOMAIN}/ws
+                  category: API 端點
+                - type: TEXT
+                  title: 健康檢查 URL
+                  content: https://${SERVICE_DOMAIN}/api/health
+                  category: 監控
+            
+        - name: space-frontend
+          icon: https://raw.githubusercontent.com/zeabur/service-icons/main/logos/react.svg
+          template: PREBUILT
+          spec:
+            source:
+                context: "."
+                dockerfile: frontend.Dockerfile
+            ports:
+                - id: web
+                  port: 80
+                  type: HTTP
+            env:
+                VITE_API_BASE_URL:
+                    default: "https://${BACKEND_DOMAIN}"
+                VITE_WS_URL:
+                    default: "wss://${BACKEND_DOMAIN}/ws"
+                VITE_DEBUG_MODE:
+                    default: "false"
+            instructions:
+                - type: DOMAIN
+                  title: 前端網站
+                  content: https://${SERVICE_DOMAIN}
+                  category: 網站
+        
+        - name: chromadb
+          icon: https://raw.githubusercontent.com/zeabur/service-icons/main/marketplace/database.svg
+          template: PREBUILT
+          spec:
+            source:
+                image: chromadb/chroma:latest
+            ports:
+                - id: chroma-api
+                  port: 8000
+                  type: HTTP
+            volumes:
+                - id: chroma-data
+                  dir: /chroma/.chroma/index
+            instructions:
+                - type: TEXT
+                  title: ChromaDB 內部連接地址
+                  content: chromadb.zeabur.internal:8000
+                  category: 資料庫 
