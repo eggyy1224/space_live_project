@@ -168,6 +168,8 @@ class SoundEffectService {
         return false;
       }
       
+      logger.info(`[SoundEffectService] Attempting to play synth sound type: ${type}`, LogCategory.AUDIO);
+      
       switch (type) {
         case 'beep': {
           // 簡單的嗶聲
@@ -414,6 +416,11 @@ class SoundEffectService {
     try {
       logger.info(`[SoundEffectService] Processing synth sequence with ${effects.length} effects`, LogCategory.AUDIO);
       
+      // 顯示每個音效的詳細資訊
+      effects.forEach((effect, index) => {
+        logger.info(`[SoundEffectService] Effect #${index}: ${JSON.stringify(effect)}`, LogCategory.AUDIO);
+      });
+      
       const now = Tone.now();
       
       effects.forEach((effect, index) => {
@@ -429,9 +436,18 @@ class SoundEffectService {
         
         try {
           // 安排在指定時間播放
-          Tone.Transport.schedule((time) => {
+          logger.info(`[SoundEffectService] Scheduling synth effect #${index}: ${type} at +${startTime}ms`, LogCategory.AUDIO);
+          
+          // 直接播放而不使用 Transport.schedule，避免相關問題
+          if (startTime <= 0) {
+            // 立即播放
             this.playSynthSound(type, options);
-          }, playTime);
+          } else {
+            // 延遲播放
+            setTimeout(() => {
+              this.playSynthSound(type, options);
+            }, startTime);
+          }
           
           logger.info(`[SoundEffectService] Scheduled synth effect #${index}: ${type} at ${startTime}ms`, LogCategory.AUDIO);
         } catch (error) {

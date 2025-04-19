@@ -135,15 +135,17 @@ const SoundEffectPanel: React.FC<SoundEffectPanelProps> = ({ isVisible, onClose 
       const commandObj = JSON.parse(synthJsonInput);
       logger.info('[SoundEffectPanel] Parsed synth JSON command:', LogCategory.AUDIO, commandObj);
       
-      // 檢查是否符合預期格式
-      if (commandObj.effects && Array.isArray(commandObj.effects)) {
-        logger.info(`[SoundEffectPanel] Executing synth command with ${commandObj.effects.length} effects`, LogCategory.AUDIO);
+      // 檢查是否符合預期格式（支持兩種格式：直接effects數組或包含在payload中）
+      const effects = commandObj.effects || (commandObj.payload && commandObj.payload.effects);
+      
+      if (effects && Array.isArray(effects)) {
+        logger.info(`[SoundEffectPanel] Executing synth command with ${effects.length} effects`, LogCategory.AUDIO);
         
         // 解鎖音頻上下文（如果尚未完成）
         unlockAudioContext().then(success => {
           if (success) {
             // 執行合成音效序列
-            const result = playSynthSequence(commandObj.effects);
+            const result = playSynthSequence(effects);
             
             if (!result) {
               logger.warn('[SoundEffectPanel] Failed to execute synth command', LogCategory.AUDIO);
@@ -533,4 +535,4 @@ const SoundEffectPanel: React.FC<SoundEffectPanelProps> = ({ isVisible, onClose 
   );
 };
 
-export default SoundEffectPanel; 
+export default SoundEffectPanel;
