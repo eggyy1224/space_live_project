@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useSoundEffects } from '../hooks';
+import useFreesoundAPI from '../hooks/useFreesoundAPI';
+import { FreesoundSearchResult } from '../services/FreesoundService';
 import { soundEffectCategories, soundEffectInfo } from '../config/soundEffectsConfig';
 import logger, { LogCategory } from '../utils/LogManager';
 
@@ -296,10 +298,17 @@ const SoundEffectPanel: React.FC<SoundEffectPanelProps> = ({ isVisible, onClose 
   const [synthJsonInput, setSynthJsonInput] = useState('');
   // 添加當前標籤狀態
   const [activeTab, setActiveTab] = useState('samples');
+  // 添加Freesound搜索關鍵詞狀態
+  const [searchQuery, setSearchQuery] = useState('');
+  // 添加當前播放音效ID
+  const [playingPreviewId, setPlayingPreviewId] = useState<number | null>(null);
+  // 添加音效預覽音頻元素
+  const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
   
   // 標籤引用
   const samplesTabRef = useRef<HTMLInputElement>(null);
   const synthTabRef = useRef<HTMLInputElement>(null);
+  const freesoundTabRef = useRef<HTMLInputElement>(null);
   
   // 使用音效hook
   const {
@@ -316,6 +325,35 @@ const SoundEffectPanel: React.FC<SoundEffectPanelProps> = ({ isVisible, onClose 
     setGlobalVolume,
     stopAllSounds
   } = useSoundEffects();
+
+  // 使用Freesound API hook
+  const {
+    isLoading: isSearchLoading,
+    error: searchError,
+    searchResults,
+    totalResults,
+    currentPage,
+    hasNextPage,
+    search,
+    loadMore,
+    cachedSounds,
+    cacheSound,
+    getPreviewUrl
+  } = useFreesoundAPI();
+
+  // 使用useMemo優化，避免不必要的重渲染
+  const categorizedTags = useMemo(() => {
+    const tags: Record<string, string[]> = {
+      '綜藝': ['applause', 'laugh', 'crowd', 'comedy', 'funny', 'drum', 'fail', 'success'],
+      '科幻': ['laser', 'space', 'futuristic', 'robot', 'sci-fi', 'technology', 'machine'],
+      '環境': ['nature', 'water', 'wind', 'rain', 'city', 'ambient', 'forest', 'birds'],
+      '音樂': ['music', 'piano', 'guitar', 'drum', 'bass', 'electronic', 'orchestra', 'beat'],
+      '動物': ['animal', 'dog', 'cat', 'bird', 'roar', 'howl', 'bark', 'meow'],
+      '人聲': ['voice', 'speech', 'shout', 'scream', 'whisper', 'talk', 'human'],
+      '物體': ['door', 'explosion', 'crash', 'impact', 'glass', 'metal', 'wooden', 'plastic']
+    };
+    return tags;
+  }, []);
 
   // 首次載入時解鎖音頻上下文並初始化
   useEffect(() => {
@@ -450,6 +488,62 @@ const SoundEffectPanel: React.FC<SoundEffectPanelProps> = ({ isVisible, onClose 
     setGlobalVolume(normalizedVolume);
   };
 
+  // 執行搜索
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      search({ query: searchQuery, page: 1 });
+    }
+  };
+
+  // 按標籤搜索
+  const handleTagSearch = (tag: string) => {
+    setSearchQuery(tag);
+    search({ query: `tag:${tag}`, page: 1 });
+  };
+
+  // 播放音效預覽
+  const handlePlayPreview = (sound: FreesoundSearchResult) => {
+    if (audioPreviewRef.current) {
+      // 停止當前播放
+      audioPreviewRef.current.pause();
+      
+      // 獲取預覽URL
+      const previewUrl = getPreviewUrl(sound);
+      
+      // 設置新音源
+      audioPreviewRef.current.src = previewUrl;
+      audioPreviewRef.current.volume = globalVolume;
+      
+      // 播放
+      audioPreviewRef.current.play()
+        .then(() => {
+          setPlayingPreviewId(sound.id);
+          logger.info(`[SoundEffectPanel] 預覽播放: ${sound.name}`, LogCategory.AUDIO);
+        })
+        .catch(error => {
+          logger.error(`[SoundEffectPanel] 預覽播放失敗: ${error.message}`, LogCategory.AUDIO);
+        });
+    }
+  };
+
+  // 停止預覽
+  const handleStopPreview = () => {
+    if (audioPreviewRef.current) {
+      audioPreviewRef.current.pause();
+      setPlayingPreviewId(null);
+    }
+  };
+
+  // 收藏音效
+  const handleSaveSound = async (sound: FreesoundSearchResult) => {
+    try {
+      await cacheSound(sound);
+      logger.info(`[SoundEffectPanel] 音效已收藏: ${sound.name}`, LogCategory.AUDIO);
+    } catch (error) {
+      logger.error(`[SoundEffectPanel] 收藏音效失敗`, LogCategory.AUDIO, error);
+    }
+  };
+
   // 如果面板不可見，則不渲染
   if (!isVisible) {
     return null;
@@ -500,11 +594,19 @@ const SoundEffectPanel: React.FC<SoundEffectPanelProps> = ({ isVisible, onClose 
               合成音效
             </button>
           </li>
+          <li className="mr-2">
+            <button 
+              onClick={() => handleTabChange('freesound')}
+              className={`inline-block px-4 py-2 border-b-2 ${activeTab === 'freesound' ? 'border-blue-500 text-blue-500' : 'border-transparent hover:text-gray-300'}`}
+            >
+              Freesound
+            </button>
+          </li>
         </ul>
       </div>
 
       {/* 標籤內容區域 */}
-      <div className="tabs-content">
+      <div className="tabs-content overflow-y-auto" style={{ maxHeight: '400px' }}>
         {/* 預設音效標籤 */}
         <div className={activeTab === 'samples' ? 'block' : 'hidden'}>
           {/* 綜藝音效 */}
@@ -770,6 +872,215 @@ const SoundEffectPanel: React.FC<SoundEffectPanelProps> = ({ isVisible, onClose 
             </p>
           </div>
         </div>
+
+        {/* Freesound庫標籤 */}
+        <div className={activeTab === 'freesound' ? 'block' : 'hidden'}>
+          {/* 搜索區域 */}
+          <div className="mb-4">
+            <div className="flex space-x-2 mb-2">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="搜索音效..."
+                className="flex-1 px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              />
+              <button
+                onClick={handleSearch}
+                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm"
+                disabled={isSearchLoading}
+              >
+                {isSearchLoading ? '搜索中...' : '搜索'}
+              </button>
+            </div>
+            
+            {/* 熱門標籤 */}
+            <div className="mb-2">
+              <p className="text-xs text-gray-400 mb-1">熱門標籤:</p>
+              <div className="flex flex-wrap gap-1">
+                {Object.entries(categorizedTags).flatMap(([category, tags]) => (
+                  tags.slice(0, 3).map(tag => (
+                    <button
+                      key={tag}
+                      onClick={() => handleTagSearch(tag)}
+                      className="px-2 py-0.5 text-xs bg-gray-700 hover:bg-gray-600 rounded-full text-gray-200"
+                    >
+                      {tag}
+                    </button>
+                  ))
+                ))}
+              </div>
+            </div>
+            
+            {/* 分類標籤 */}
+            <div className="mb-2">
+              <details className="text-xs">
+                <summary className="text-gray-400 cursor-pointer">所有分類</summary>
+                <div className="mt-1 pl-2">
+                  {Object.entries(categorizedTags).map(([category, tags]) => (
+                    <div key={category} className="mb-2">
+                      <p className="text-gray-400 mb-1">{category}:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {tags.map(tag => (
+                          <button
+                            key={tag}
+                            onClick={() => handleTagSearch(tag)}
+                            className="px-2 py-0.5 text-xs bg-gray-700 hover:bg-gray-600 rounded-full text-gray-200"
+                          >
+                            {tag}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            </div>
+          </div>
+          
+          {/* 搜索結果 */}
+          <div className="mb-4">
+            {searchError && (
+              <p className="text-red-400 text-sm">{searchError}</p>
+            )}
+            
+            {searchResults.length > 0 ? (
+              <>
+                <p className="text-xs text-gray-400 mb-2">找到 {totalResults} 個結果:</p>
+                
+                <div className="space-y-2">
+                  {searchResults.map(sound => (
+                    <div 
+                      key={sound.id} 
+                      className="p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors"
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        <h4 className="text-sm font-semibold truncate" title={sound.name}>
+                          {sound.name}
+                        </h4>
+                        <span className="text-xs text-gray-400">
+                          {sound.duration.toFixed(1)}s
+                        </span>
+                      </div>
+                      
+                      {/* 波形圖 */}
+                      {sound.images?.waveform_m && (
+                        <div className="mb-1">
+                          <img 
+                            src={sound.images.waveform_m} 
+                            alt="波形圖" 
+                            className="w-full h-12 object-cover rounded"
+                          />
+                        </div>
+                      )}
+                      
+                      <div className="flex flex-wrap gap-1 mb-1">
+                        {sound.tags.slice(0, 3).map(tag => (
+                          <span key={tag} className="px-1.5 py-0.5 bg-gray-800 rounded-full text-gray-300 text-xs">
+                            {tag}
+                          </span>
+                        ))}
+                        {sound.tags.length > 3 && (
+                          <span className="px-1.5 py-0.5 bg-gray-800 rounded-full text-gray-400 text-xs">
+                            +{sound.tags.length - 3}
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="flex text-xs text-gray-400 justify-between">
+                        <span title="上傳者">{sound.username}</span>
+                        <span title="許可證">{sound.license}</span>
+                      </div>
+                      
+                      {/* 操作按鈕 */}
+                      <div className="flex justify-between mt-2">
+                        <button
+                          onClick={() => playingPreviewId === sound.id 
+                            ? handleStopPreview() 
+                            : handlePlayPreview(sound)
+                          }
+                          className={`px-2 py-1 text-xs rounded ${
+                            playingPreviewId === sound.id 
+                              ? 'bg-red-600 hover:bg-red-700' 
+                              : 'bg-green-600 hover:bg-green-700'
+                          } text-white`}
+                        >
+                          {playingPreviewId === sound.id ? '停止' : '預覽'}
+                        </button>
+                        
+                        <button
+                          onClick={() => handleSaveSound(sound)}
+                          className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 rounded text-white"
+                          title="收藏音效"
+                        >
+                          收藏
+                        </button>
+                        
+                        <a
+                          href={sound.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2 py-1 text-xs bg-gray-600 hover:bg-gray-500 rounded text-white"
+                          title="查看詳情"
+                        >
+                          詳情
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* 加載更多按鈕 */}
+                {hasNextPage && (
+                  <button
+                    onClick={loadMore}
+                    disabled={isSearchLoading}
+                    className="w-full mt-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-200"
+                  >
+                    {isSearchLoading ? '加載中...' : '加載更多'}
+                  </button>
+                )}
+              </>
+            ) : searchQuery ? (
+              <p className="text-sm text-gray-400">未找到結果</p>
+            ) : (
+              <p className="text-sm text-gray-400">輸入關鍵詞開始搜索</p>
+            )}
+          </div>
+          
+          {/* 收藏的音效 */}
+          {cachedSounds.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-700">
+              <h3 className="text-lg font-semibold mb-2">我的收藏</h3>
+              
+              <div className="space-y-2">
+                {cachedSounds.map(sound => (
+                  <div 
+                    key={sound.id} 
+                    className="p-2 bg-gray-700 rounded"
+                  >
+                    <div className="flex justify-between">
+                      <h4 className="text-sm truncate" title={sound.name}>
+                        {sound.name}
+                      </h4>
+                      
+                      <button
+                        onClick={() => sound.previews && handlePlayPreview(sound as FreesoundSearchResult)}
+                        className="px-2 text-xs bg-green-600 hover:bg-green-700 rounded text-white"
+                      >
+                        播放
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {/* 音頻預覽元素 */}
+          <audio ref={audioPreviewRef} className="hidden" />
+        </div>
       </div>
 
       {/* 控制區域 */}
@@ -805,9 +1116,10 @@ const SoundEffectPanel: React.FC<SoundEffectPanelProps> = ({ isVisible, onClose 
         已載入預設音效: {loadedSounds.length}
       </div>
 
-      {/* 測試用的隱藏標籤，但現在使用React狀態控制不需要 */}
+      {/* 測試用的隱藏標籤，添加freesound標籤 */}
       <input ref={samplesTabRef} type="radio" id="tab-samples" name="tabs" className="hidden" defaultChecked />
       <input ref={synthTabRef} type="radio" id="tab-synth" name="tabs" className="hidden" />
+      <input ref={freesoundTabRef} type="radio" id="tab-freesound" name="tabs" className="hidden" />
     </div>
   );
 };
