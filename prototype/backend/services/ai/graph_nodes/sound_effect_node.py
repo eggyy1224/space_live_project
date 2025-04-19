@@ -51,7 +51,14 @@ class SoundEffectNode:
                 "tech": re.compile(r'(技術|科技|系統|程序|代碼|軟件|硬件|數據|信息|網絡|設備|編程|電腦|AI|人工智能|機器學習)', re.IGNORECASE),
                 
                 # 太空相關模式
-                "space": re.compile(r'(太空|宇宙|星球|衛星|行星|火箭|飛船|星際|銀河|宇航員|太陽系|月球|軌道|星雲)', re.IGNORECASE)
+                "space": re.compile(r'(太空|宇宙|星球|衛星|行星|火箭|飛船|星際|銀河|宇航員|太陽系|月球|軌道|星雲)', re.IGNORECASE),
+                
+                # --- 新增綜藝模式 ---
+                "funny": re.compile(r'(哈哈|XD|笑死|有趣|好笑|幽默|梗|滑稽|噗嗤|逗)', re.IGNORECASE),
+                "fail": re.compile(r'(失敗|搞砸了|完蛋|糟糕|錯誤|不行|壞了|GG|糗)', re.IGNORECASE),
+                "surprise": re.compile(r'(哇塞|竟然|居然|沒想到|什麼|真的假的|我的天)', re.IGNORECASE),
+                # 增加感嘆號的匹配，用於提升強度
+                "exclamation": re.compile(r'[!！]+')
             }
             
             # 記錄每個模式的樣例
@@ -156,6 +163,19 @@ class SoundEffectNode:
                 
             logger.info(f"【音效節點】開始分析文本: {text[:50]}{'...' if len(text) > 50 else ''}")
                 
+            # 新增：強度計算
+            intensity = 1.0
+            # 需要先檢查 self._patterns 是否存在以及 'exclamation' key 是否存在
+            exclamation_pattern = self._patterns.get("exclamation")
+            if exclamation_pattern:
+                exclamation_matches = exclamation_pattern.findall(text)
+                if exclamation_matches:
+                     # 每個感嘆號增加一點強度，但有上限
+                     intensity = min(1.5, 1.0 + len(exclamation_matches) * 0.1)
+                     logger.debug(f"【音效節點】檢測到感嘆號，強度提升至: {intensity:.2f}")
+            else:
+                logger.warning("【音效節點】無法找到 'exclamation' 正則表達式模式")
+            
             # 分析文本並確定音效特徵
             sound_profile = self._analyze_text_for_sound_profile(text)
             logger.info(f"【音效節點】分析結果: pattern={sound_profile['pattern']}, base_frequency={sound_profile['base_frequency']}")
@@ -227,58 +247,76 @@ class SoundEffectNode:
             
             logger.info(f"【音效節點】匹配到的模式: {matched_patterns}")
             
+            # --- 模式選擇邏輯 (優先級 & 結合情緒) ---
+            final_pattern = 'neutral' # 預設模式
+            # 修正：從 dialogue_result 中獲取 AI 情緒
+            ai_emotion = dialogue_result.get("response", {}).get("emotion", "neutral") 
+            logger.debug(f"【音效節點】獲取到 AI 情緒: {ai_emotion}")
+
+            # 最高優先級：明確的綜藝反應
+            if 'fail' in matched_patterns: final_pattern = 'fail'
+            elif 'surprise' in matched_patterns: final_pattern = 'surprise'
+            elif 'success' in matched_patterns: final_pattern = 'success'
+            elif 'funny' in matched_patterns: final_pattern = 'funny'
+            
+            # 次級優先級：疑問、重要性、思考
+            elif 'question' in matched_patterns: final_pattern = 'question'
+            elif 'important' in matched_patterns: 
+                final_pattern = 'important'
+                intensity = max(intensity, 1.2) # 重要信息強度至少1.2
+            elif 'thinking' in matched_patterns: final_pattern = 'thinking'
+            
+            # 情緒/語氣相關模式
+            elif 'high_pitch' in matched_patterns or ai_emotion in ['joyful', 'excited']: 
+                final_pattern = 'excited'
+                intensity = max(intensity, 1.1) # 興奮情緒也增加一點強度
+            elif 'low_pitch' in matched_patterns or ai_emotion in ['sad', 'worried']:
+                final_pattern = 'serious'
+                intensity = max(0.8, intensity * 0.9) # 悲傷/擔憂情緒稍微降低強度
+
+            # 內容主題相關模式
+            elif 'tech' in matched_patterns: final_pattern = 'tech'
+            elif 'space' in matched_patterns: final_pattern = 'space'
+
+            # 如果 AI 情緒強烈但無匹配模式，也賦予一個基礎模式
+            elif ai_emotion in ['joyful', 'excited'] and final_pattern == 'neutral': 
+                final_pattern = 'excited'
+                intensity = max(intensity, 1.1)
+            elif ai_emotion in ['sad', 'worried', 'angry'] and final_pattern == 'neutral': 
+                final_pattern = 'serious'
+                intensity = max(0.8, intensity * 0.9)
+            
+            profile['pattern'] = final_pattern
+            profile['intensity'] = intensity # 將計算出的強度存入 profile
+            logger.info(f"【音效節點】最終模式選擇: {final_pattern}, 強度: {intensity:.2f}")
+
+            # --- 舊的模式調整邏輯 (保留部分影響基礎參數) ---
             # 根據匹配的模式調整音效特徵
             if 'high_pitch' in matched_patterns:
                 profile['base_frequency'] = 520  # 較高的基礎頻率
                 profile['volume'] = 0.6
-                logger.debug("【音效節點】應用高音調配置")
+                # logger.debug("【音效節點】應用高音調基礎參數") # 日誌已在上面記錄最終模式
                 
             if 'low_pitch' in matched_patterns:
                 profile['base_frequency'] = 380  # 較低的基礎頻率
-                profile['duration'] = 0.15
-                logger.debug("【音效節點】應用低音調配置")
+                profile['duration'] = 0.15 # 這個 duration 可能會被 intensity 覆蓋
+                # logger.debug("【音效節點】應用低音調基礎參數")
                 
-            # 決定最終模式
-            if 'question' in matched_patterns:
-                profile['pattern'] = 'question'
-                profile['base_frequency'] = 460
-                logger.debug("【音效節點】應用問題音效配置")
-                
-            elif 'thinking' in matched_patterns:
-                profile['pattern'] = 'thinking'
-                profile['volume'] = 0.4
-                logger.debug("【音效節點】應用思考音效配置")
-                
-            elif 'success' in matched_patterns:
-                profile['pattern'] = 'success'
-                profile['volume'] = 0.6
-                logger.debug("【音效節點】應用成功音效配置")
-                
-            elif 'important' in matched_patterns:
-                profile['pattern'] = 'important'
-                profile['volume'] = 0.7
-                logger.debug("【音效節點】應用重要信息音效配置")
-                
-            elif 'tech' in matched_patterns:
-                profile['pattern'] = 'tech'
-                profile['base_frequency'] = 480
-                logger.debug("【音效節點】應用科技音效配置")
-                
-            elif 'space' in matched_patterns:
-                profile['pattern'] = 'space'
-                profile['wave_type'] = 'sine'
-                profile['base_frequency'] = 420
-                logger.debug("【音效節點】應用太空音效配置")
-            else:
-                logger.debug("【音效節點】未匹配到特定模式，使用中性音效配置")
-                
+            # 根據最終模式微調基礎參數 (可選, 但要小心不要覆蓋 intensity 的效果)
+            if final_pattern == 'question': profile['base_frequency'] = 460
+            elif final_pattern == 'thinking': profile['volume'] = min(profile['volume'], 0.4) # 思考音量通常較低
+            elif final_pattern == 'important': profile['volume'] = max(profile['volume'], 0.7) # 重要音量通常較高
+            elif final_pattern == 'tech': profile['base_frequency'] = 480
+            elif final_pattern == 'space': profile['base_frequency'] = 420; profile['wave_type'] = 'sine'
+            
             # 計算文本長度，調整持續時間
             text_length = len(text)
             if text_length > 100:
-                profile['duration'] = 0.3
-                logger.debug(f"【音效節點】文本較長({text_length}字)，增加持續時間")
+                # profile['duration'] = 0.3 # 不再直接修改 duration，讓 intensity 控制
+                profile['complexity'] = max(profile['complexity'], 2) # 長文本增加複雜度
+                logger.debug(f"【音效節點】文本較長({text_length}字)，增加複雜度") # 修改日誌消息
             
-            logger.info(f"【音效節點】最終音效配置: pattern={profile['pattern']}, frequency={profile['base_frequency']}, volume={profile['volume']}")
+            logger.info(f"【音效節點】最終音效配置: pattern={profile['pattern']}, freq={profile['base_frequency']}, vol={profile['volume']:.2f}, complex={profile['complexity']}, intensity={profile['intensity']:.2f}")
             return profile
             
         except Exception as e:
@@ -302,7 +340,9 @@ class SoundEffectNode:
         volume = sound_profile['volume']
         complexity = sound_profile['complexity']
         
-        logger.info(f"【音效節點】使用SoundEffectService.create_tone_sequence生成音效: pattern={pattern}, complexity={complexity}")
+        intensity = sound_profile.get('intensity', 1.0) # 獲取強度
+        
+        logger.info(f"【音效節點】使用SoundEffectService.create_tone_sequence生成音效: pattern={pattern}, complexity={complexity}, intensity={intensity:.2f}")
         
         # 使用SoundEffectService的create_tone_sequence方法
         try:
@@ -310,7 +350,8 @@ class SoundEffectNode:
                 base_frequency=base_frequency,
                 pattern=pattern,
                 volume=volume,
-                complexity=complexity
+                complexity=complexity,
+                intensity=intensity # 傳遞強度參數
             )
             logger.info("【音效節點】SoundEffectService.create_tone_sequence成功返回結果")
             
