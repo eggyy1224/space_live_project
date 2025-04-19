@@ -5,13 +5,22 @@
 ## 1. 前端：音效控制面板 (優先開發)
 
 ### 1.1. 建立音效控制面板元件 (用於調試與手動觸發)
--   [ ] **建立 `SoundEffectPanel.tsx`** (或 `.vue`):
+-   [ ] **建立 `SoundEffectPanel.tsx`**: 
     -   UI 設計：
+        -   建立一個**彈出式 (pop-up)** 的音效控制面板，定位在畫面右下角附近。
         -   **主要功能**: 提供按鈕列表，每個按鈕對應一個預設的綜藝/科幻音效 (如 登場、Whoosh、掌聲、雷射、轉場)。點擊按鈕可立即播放對應音效。
         -   (進階) 顯示總音量控制滑桿 (連接到 `useSoundEffects().setGlobalVolume`)。
         -   (進階) 狀態指示燈 (顯示 `isReady`, `isLoading`)。
         -   (未來擴充) 提供一個輸入框，允許貼上 JSON 指令，模擬後端發送 Combo 指令進行測試。
--   [ ] **將 `SoundEffectPanel` 整合到現有 UI 佈局中** (例如，放在 `SettingsPanel` 內或作為獨立的開發者工具面板)。
+        -   包含關閉面板的按鈕或機制。
+-   [ ] **在佈局元件 (如 `AppUI.tsx`) 中加入觸發圖標**: 
+    -   在右下角控制區域 (與聊天/設定圖標一起) 新增一個音效圖標 (例如 🎵 或 🔊)。
+    -   綁定點擊事件到該圖標，用於觸發面板的顯示/隱藏。
+-   [ ] **在 `appSlice.ts` 中新增狀態管理**: 
+    -   加入 `isSoundEffectPanelVisible: boolean` 狀態。
+    -   加入 `toggleSoundEffectPanel` action 來切換此狀態。
+-   [ ] **在佈局元件中實現條件渲染**: 
+    -   根據 `isSoundEffectPanelVisible` 狀態決定是否渲染 `<SoundEffectPanel />`。
 
 ### 1.2. 新增核心音效服務與 Hook (支撐面板功能)
 -   [ ] **建立 `SoundEffectService.ts`**:
