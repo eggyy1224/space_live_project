@@ -9,6 +9,285 @@ interface SoundEffectPanelProps {
   onClose: () => void;
 }
 
+// 定義多種合成音效範例
+const synthExamples = {
+  // 基本範例
+  basic: {
+    effects: [
+      {
+        type: "beep",
+        options: { 
+          frequency: 880,
+          duration: 0.2,
+          volume: 0.8
+        },
+        startTime: 0
+      },
+      {
+        type: "laser",
+        options: {
+          volume: 0.7
+        },
+        startTime: 500
+      },
+      {
+        type: "powerUp",
+        options: {
+          duration: 1,
+          volume: 0.6
+        },
+        startTime: 1000
+      }
+    ]
+  },
+  
+  // 綜藝感鼓聲系列
+  variety: {
+    effects: [
+      {
+        type: "beep",
+        options: { 
+          frequency: 440,
+          duration: 0.1,
+          volume: 0.6,
+          wavetype: "triangle"
+        },
+        startTime: 0
+      },
+      {
+        type: "noise",
+        options: {
+          noiseType: "white",
+          duration: 0.15,
+          volume: 0.7,
+          filter: {
+            type: "lowpass",
+            frequency: 500
+          }
+        },
+        startTime: 100
+      },
+      {
+        type: "noise",
+        options: {
+          noiseType: "white",
+          duration: 0.2,
+          volume: 0.9,
+          filter: {
+            type: "lowpass",
+            frequency: 300
+          }
+        },
+        startTime: 300
+      },
+      {
+        type: "beep",
+        options: { 
+          frequency: 880,
+          duration: 0.05,
+          volume: 0.8
+        },
+        startTime: 800
+      },
+      {
+        type: "noise",
+        options: {
+          noiseType: "white",
+          duration: 0.3,
+          volume: 1.0,
+          filter: {
+            type: "lowpass",
+            frequency: 200
+          }
+        },
+        startTime: 1200
+      },
+      {
+        type: "powerUp",
+        options: {
+          duration: 1.5,
+          volume: 0.7
+        },
+        startTime: 2000
+      }
+    ]
+  },
+  
+  // 科幻系列
+  scifi: {
+    effects: [
+      {
+        type: "sweep",
+        options: {
+          startFreq: 2000,
+          endFreq: 500,
+          duration: 0.3,
+          volume: 0.6,
+          wavetype: "sawtooth"
+        },
+        startTime: 0
+      },
+      {
+        type: "laser",
+        options: {
+          volume: 0.7
+        },
+        startTime: 500
+      },
+      {
+        type: "beep",
+        options: {
+          frequency: 1200,
+          duration: 0.05,
+          volume: 0.5,
+          wavetype: "sine"
+        },
+        startTime: 1000
+      },
+      {
+        type: "beep",
+        options: {
+          frequency: 1500,
+          duration: 0.05,
+          volume: 0.5,
+          wavetype: "sine"
+        },
+        startTime: 1100
+      },
+      {
+        type: "beep",
+        options: {
+          frequency: 1800,
+          duration: 0.05,
+          volume: 0.5,
+          wavetype: "sine"
+        },
+        startTime: 1200
+      },
+      {
+        type: "explosion",
+        options: {
+          duration: 1,
+          volume: 0.8
+        },
+        startTime: 1500
+      }
+    ]
+  },
+  
+  // 鼓聲節奏
+  drums: {
+    effects: [
+      // 主要鼓聲
+      {
+        type: "noise",
+        options: {
+          noiseType: "white",
+          duration: 0.1,
+          volume: 0.8,
+          filter: {
+            type: "lowpass",
+            frequency: 300
+          }
+        },
+        startTime: 0
+      },
+      {
+        type: "noise",
+        options: {
+          noiseType: "white",
+          duration: 0.05,
+          volume: 0.6,
+          filter: {
+            type: "highpass",
+            frequency: 3000
+          }
+        },
+        startTime: 250
+      },
+      {
+        type: "noise",
+        options: {
+          noiseType: "white",
+          duration: 0.1,
+          volume: 0.8,
+          filter: {
+            type: "lowpass",
+            frequency: 300
+          }
+        },
+        startTime: 500
+      },
+      {
+        type: "noise",
+        options: {
+          noiseType: "white",
+          duration: 0.05,
+          volume: 0.6,
+          filter: {
+            type: "highpass",
+            frequency: 3000
+          }
+        },
+        startTime: 750
+      },
+      // 重複模式
+      {
+        type: "noise",
+        options: {
+          noiseType: "white",
+          duration: 0.1,
+          volume: 0.8,
+          filter: {
+            type: "lowpass",
+            frequency: 300
+          }
+        },
+        startTime: 1000
+      },
+      {
+        type: "noise",
+        options: {
+          noiseType: "white",
+          duration: 0.05,
+          volume: 0.6,
+          filter: {
+            type: "highpass",
+            frequency: 3000
+          }
+        },
+        startTime: 1250
+      },
+      {
+        type: "noise",
+        options: {
+          noiseType: "white",
+          duration: 0.1,
+          volume: 0.8,
+          filter: {
+            type: "lowpass",
+            frequency: 300
+          }
+        },
+        startTime: 1500
+      },
+      {
+        type: "noise",
+        options: {
+          noiseType: "white",
+          duration: 0.3,
+          volume: 1.0,
+          filter: {
+            type: "lowpass",
+            frequency: 200
+          }
+        },
+        startTime: 1750
+      }
+    ]
+  }
+};
+
 // 修改為接受 props 的形式
 const SoundEffectPanel: React.FC<SoundEffectPanelProps> = ({ isVisible, onClose }) => {
   // 添加JSON指令輸入狀態
@@ -445,51 +724,49 @@ const SoundEffectPanel: React.FC<SoundEffectPanelProps> = ({ isVisible, onClose 
                 value={synthJsonInput}
                 onChange={(e) => setSynthJsonInput(e.target.value)}
               />
-              <div className="flex space-x-2">
+              <div className="flex space-x-2 mb-2">
                 <button
                   onClick={handleExecuteSynthCommand}
                   className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded"
                 >
                   執行合成序列
                 </button>
+              </div>
+              
+              {/* 範例選擇區 */}
+              <div className="grid grid-cols-2 gap-2 mb-2">
                 <button
-                  onClick={() => setSynthJsonInput(JSON.stringify({
-                    effects: [
-                      {
-                        type: "beep",
-                        options: { 
-                          frequency: 880,
-                          duration: 0.2,
-                          volume: 0.8
-                        },
-                        startTime: 0
-                      },
-                      {
-                        type: "laser",
-                        options: {
-                          volume: 0.7
-                        },
-                        startTime: 500
-                      },
-                      {
-                        type: "powerUp",
-                        options: {
-                          duration: 1,
-                          volume: 0.6
-                        },
-                        startTime: 1000
-                      }
-                    ]
-                  }, null, 2))}
-                  className="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded"
-                  title="載入預設範例"
+                  onClick={() => setSynthJsonInput(JSON.stringify(synthExamples.basic, null, 2))}
+                  className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded"
+                  title="基本音效組合"
                 >
-                  範例
+                  基本範例
+                </button>
+                <button
+                  onClick={() => setSynthJsonInput(JSON.stringify(synthExamples.variety, null, 2))}
+                  className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded"
+                  title="帶有綜藝節目風格的音效序列"
+                >
+                  綜藝鼓聲
+                </button>
+                <button
+                  onClick={() => setSynthJsonInput(JSON.stringify(synthExamples.scifi, null, 2))}
+                  className="px-3 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded"
+                  title="科幻風格音效"
+                >
+                  科幻系列
+                </button>
+                <button
+                  onClick={() => setSynthJsonInput(JSON.stringify(synthExamples.drums, null, 2))}
+                  className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded"
+                  title="鼓聲節奏模式"
+                >
+                  鼓聲節奏
                 </button>
               </div>
             </div>
             <p className="text-xs text-gray-400 mt-2">
-              測試直接通過Tone.js生成的合成音效和音效序列。
+              測試直接通過Tone.js生成的合成音效和音效序列。點擊範例後再點擊"執行合成序列"。
             </p>
           </div>
         </div>
