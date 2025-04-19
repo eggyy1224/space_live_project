@@ -16,6 +16,7 @@ export interface AppSlice {
   isCameraFar: boolean;
   toasts: Toast[];
   isSettingsPanelVisible: boolean;
+  isSoundEffectPanelVisible: boolean;
   isLoading: boolean;
   errorMessage: string | null;
   currentAction: string | null;
@@ -31,6 +32,7 @@ export interface AppSlice {
   removeToast: (id: string) => void;
   clearToasts: () => void;
   toggleSettingsPanel: () => void;
+  toggleSoundEffectPanel: () => void;
   setLoading: (loading: boolean) => void;
   setError: (message: string | null) => void;
   setCurrentAction: (action: string | null) => void;
@@ -47,6 +49,7 @@ export const createAppSlice: StateCreator<AppSlice> = (set) => ({
   isCameraFar: true,
   toasts: [],
   isSettingsPanelVisible: false,
+  isSoundEffectPanelVisible: false,
   isLoading: false,
   errorMessage: null,
   currentAction: null,
@@ -74,6 +77,8 @@ export const createAppSlice: StateCreator<AppSlice> = (set) => ({
   clearToasts: () => set({ toasts: [] }),
   
   toggleSettingsPanel: () => set((state) => ({ isSettingsPanelVisible: !state.isSettingsPanelVisible })),
+  
+  toggleSoundEffectPanel: () => set((state) => ({ isSoundEffectPanelVisible: !state.isSoundEffectPanelVisible })),
   
   setLoading: (loading) => set({ isLoading: loading }),
   

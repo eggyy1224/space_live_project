@@ -1,4 +1,5 @@
 import React from 'react';
+import { useStore } from '../../store'; // 確保引入 useStore
 // import ChatInterface from '../ChatInterface'; // <-- Remove import
 // import ControlPanel from '../ControlPanel'; // <-- Remove import
 // import AudioControls from '../AudioControls'; // <-- Remove import
@@ -67,6 +68,9 @@ const AppUI: React.FC<AppUIProps> = ({
   // 設定面板控制
   toggleSettingsPanel,
 }) => {
+  // 使用 Zustand store 來管理音效面板狀態
+  const toggleSoundEffectPanel = useStore(state => state.toggleSoundEffectPanel);
+  
   // // REMOVED micPermission logic
   // const micPermissionBool: boolean | null = ...
 
@@ -118,6 +122,17 @@ const AppUI: React.FC<AppUIProps> = ({
           aria-label="開啟/關閉設定面板"
         >
           ⚙️
+        </button>
+        
+        {/* Trigger Sound Effect Panel Button */}
+        <button
+          onClick={toggleSoundEffectPanel}
+          // Apply Tailwind classes
+          className="w-12 h-12 rounded-full bg-purple-600 hover:bg-purple-700 text-white text-2xl shadow-md flex items-center justify-center cursor-pointer transition-colors duration-200"
+          title="開啟/關閉音效面板"
+          aria-label="開啟/關閉音效面板"
+        >
+          🎵
         </button>
       </div>
     </>

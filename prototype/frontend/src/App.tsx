@@ -10,6 +10,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import { ToastContainer } from './components/Toast'
 import FloatingChatWindow from './components/FloatingChatWindow'
 import SettingsPanel from './components/SettingsPanel'
+import SoundEffectPanel from './components/SoundEffectPanel'
 
 // 引入服務
 import { 
@@ -408,6 +409,10 @@ function App() {
     [handleSendMessage, setUserInput]
   );
 
+  // 從 Zustand Store 獲取音效面板狀態
+  const isSoundEffectPanelVisible = useStore((state) => state.isSoundEffectPanelVisible);
+  const toggleSoundEffectPanel = useStore((state) => state.toggleSoundEffectPanel);
+
   return (
     <ErrorBoundary>
       <div className="app-container">
@@ -475,6 +480,12 @@ function App() {
           handleModelSwitch={() => { logger.warn('Model switching is temporarily disabled.', LogCategory.GENERAL); }} // Placeholder
         />
         {/* <--- 結束 ---> */}
+        
+        {/* 添加音效面板 */}
+        <SoundEffectPanel 
+          isVisible={isSoundEffectPanelVisible}
+          onClose={toggleSoundEffectPanel}
+        />
         
         {/* 渲染 AppUI (只傳遞必要 props) */}
         <AppUI
