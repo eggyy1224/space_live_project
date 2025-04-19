@@ -215,10 +215,33 @@ class WebSocketService {
           logger.info('[WebSocketService] Received audio effect command', LogCategory.WEBSOCKET);
           logger.info(data.payload, LogCategory.WEBSOCKET);
           
+          // 添加更多詳細日誌
+          logger.info(`[WebSocketService] Audio effect received - Type: ${data.type}`, LogCategory.WEBSOCKET);
+          
+          // 檢查整個數據結構
+          if (data && typeof data === 'object') {
+            const keys = Object.keys(data);
+            logger.info(`[WebSocketService] Audio effect data keys: ${keys.join(', ')}`, LogCategory.WEBSOCKET);
+          } else {
+            logger.error(`[WebSocketService] Audio effect data is not an object: ${typeof data}`, LogCategory.WEBSOCKET);
+          }
+          
           // 確保payload格式正確
           if (data.payload && data.payload.effects && Array.isArray(data.payload.effects)) {
             // 獲取音效服務實例
             const soundService = SoundEffectService.getInstance();
+            
+            // 記錄音效數量和類型
+            const effectsCount = data.payload.effects.length;
+            logger.info(`[WebSocketService] Audio effect contains ${effectsCount} effects`, LogCategory.WEBSOCKET);
+            
+            // 記錄每個音效的詳細信息
+            data.payload.effects.forEach((effect: any, index: number) => {
+              logger.info(`[WebSocketService] Effect #${index+1}: Type=${effect.type}, StartTime=${effect.startTime}`, LogCategory.WEBSOCKET);
+              if (effect.options) {
+                logger.info(`[WebSocketService] Effect #${index+1} options: ${JSON.stringify(effect.options)}`, LogCategory.WEBSOCKET);
+              }
+            });
             
             // 檢查是否為合成音效指令 - 簡化檢測邏輯
             const isSynthEffect = !!data.payload.synthMode;
@@ -259,6 +282,7 @@ class WebSocketService {
             });
           } else {
             logger.error('[WebSocketService] Invalid audio effect payload format', LogCategory.WEBSOCKET);
+            logger.error(`[WebSocketService] Payload: ${JSON.stringify(data.payload)}`, LogCategory.WEBSOCKET);
           }
         }
       }

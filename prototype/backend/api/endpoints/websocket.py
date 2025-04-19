@@ -81,7 +81,44 @@ def clean_murmur_prefix(text: str) -> str:
 # WebSocket端點
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
-    logger.info(f"WebSocket connection open for client: {websocket.client}")
+    
+    # 添加: 測試SoundEffectNode初始化和使用
+    try:
+        from services.ai.graph_nodes.sound_effect_node import SoundEffectNode
+        logger.info("開始初始化SoundEffectNode用於聲音效果測試...")
+        sound_effect_node_test = SoundEffectNode()
+        logger.info("SoundEffectNode成功初始化")
+        
+        # 測試產生一個簡單的音效
+        test_result = {
+            "response": {
+                "text": "這是一個測試文本，用於驗證聲音效果系統是否正常工作。"
+            }
+        }
+        logger.info("嘗試處理測試文本生成音效...")
+        # 測試處理是否可以執行
+        test_audio_effect = asyncio.create_task(sound_effect_node_test.process_dialogue(test_result))
+        logger.info("聲音效果測試任務已創建，等待結果...")
+        
+        # 使用外部函數處理結果
+        async def handle_test_result():
+            try:
+                result = await test_audio_effect
+                if result:
+                    logger.info(f"成功生成測試音效: {result.get('type')}")
+                    if 'payload' in result:
+                        import json
+                        logger.info(f"測試音效內容: {json.dumps(result['payload'])[:200]}...")
+                else:
+                    logger.warning("測試未生成音效命令")
+            except Exception as e:
+                logger.error(f"處理測試音效結果時出錯: {str(e)}", exc_info=True)
+        
+        # 啟動處理測試結果的任務
+        asyncio.create_task(handle_test_result())
+        
+    except Exception as e:
+        logger.error(f"SoundEffectNode測試初始化失敗: {str(e)}", exc_info=True)
     
     # --- 新增：為此連線創建一個異步鎖 ---   
     ai_processing_lock = asyncio.Lock()
@@ -682,6 +719,37 @@ async def websocket_endpoint(websocket: WebSocket):
                             logger.info(f"已發送 Emotional Trajectory，時長: {audio_duration:.2f}s")
                         else:
                             logger.info("No emotional keyframes available for this response")
+                            
+                        # 添加: 處理聲音效果
+                        try:
+                            # 導入聲音效果節點
+                            from services.ai.graph_nodes.sound_effect_node import SoundEffectNode
+                            
+                            # 實例化聲音效果節點
+                            sound_effect_node = SoundEffectNode()
+                            
+                            # 準備對話結果字典
+                            dialogue_result = {
+                                "response": {
+                                    "text": ai_response
+                                }
+                            }
+                            
+                            logger.info("正在處理對話以生成音效...")
+                            
+                            # 調用處理方法
+                            audio_effect_command = await sound_effect_node.process_dialogue(dialogue_result)
+                            
+                            # 如果成功生成了音效命令，發送給前端
+                            if audio_effect_command:
+                                logger.info(f"音效命令已生成，準備發送給客戶端: {audio_effect_command.get('type')}")
+                                await websocket.send_json(audio_effect_command)
+                                logger.info("音效命令已發送給客戶端")
+                            else:
+                                logger.warning("沒有生成音效命令")
+                                
+                        except Exception as e:
+                            logger.error(f"處理音效時發生錯誤: {str(e)}", exc_info=True)
 
                         # 告知客戶端語音播放完成，這將重置播放狀態
                         if audio_duration > 0 and audio_base64:
@@ -762,21 +830,3 @@ async def websocket_endpoint(websocket: WebSocket):
         except Exception as cleanup_err:
              logger.error(f"Error during connection cleanup for {websocket.client}: {cleanup_err}", exc_info=True)
         logger.info(f"WebSocket connection closed for client {websocket.client}")
-
-# --- 舊的 emotion_analyzer (需要移除或替換) ---
-# class SimpleEmotionAnalyzer:
-#     def analyze(self, text):
-#         # 這裡是一個非常基礎的實現，實際應用中會使用更複雜的模型
-#         text_lower = text.lower()
-#         if any(word in text_lower for word in ["開心", "高興", "太棒了", "好耶"]):
-#             return "happy", 0.8
-#         elif any(word in text_lower for word in ["傷心", "難過", "唉"]):
-#             return "sad", 0.7
-#         elif any(word in text_lower for word in ["生氣", "可惡", "討厭"]):
-#             return "angry", 0.6
-#         elif any(word in text_lower for word in ["驚訝", "哇", "真的嗎"]):
-#             return "surprised", 0.5
-#         return "neutral", 0.3
-
-# emotion_analyzer = SimpleEmotionAnalyzer()
-# --- 結束 ---
