@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import logger, { LogCategory } from '../utils/LogManager';
 import { useStore } from '../store';
+import SoundEffectService from './SoundEffectService';
 
 // WebSocket連接配置
 const WS_URL = `ws://${window.location.hostname}:8000/ws`;
@@ -207,6 +208,51 @@ class WebSocketService {
               logger.error('處理通用消息錯誤', LogCategory.WEBSOCKET, error);
             }
           });
+        }
+
+        // 處理音效事件類型
+        if (data.type === 'audio-effect') {
+          logger.info('[WebSocketService] Received audio effect command', LogCategory.WEBSOCKET);
+          
+          // 確保payload格式正確
+          if (data.payload && data.payload.effects && Array.isArray(data.payload.effects)) {
+            // 獲取音效服務實例
+            const soundService = SoundEffectService.getInstance();
+            
+            // 檢查是否為合成音效指令
+            const isSynthEffect = data.payload.synthMode === true && 
+                                data.payload.effects.every((e: any) => e.type && !e.name);
+            
+            // 嘗試解鎖音頻上下文並播放音效
+            soundService.unlockAudioContext().then(success => {
+              if (success) {
+                let result = false;
+                
+                // 根據是否為合成音效選擇不同的播放方法
+                if (isSynthEffect) {
+                  // 播放合成音效序列
+                  result = soundService.playSynthSequence(data.payload.effects);
+                  if (result) {
+                    logger.info('[WebSocketService] Successfully executed synth audio effect command', LogCategory.WEBSOCKET);
+                  } else {
+                    logger.warn('[WebSocketService] Failed to execute synth audio effect command', LogCategory.WEBSOCKET);
+                  }
+                } else {
+                  // 播放預設音效序列
+                  result = soundService.playSoundEffectFromCommand(data.payload.effects);
+                  if (result) {
+                    logger.info('[WebSocketService] Successfully executed audio effect command', LogCategory.WEBSOCKET);
+                  } else {
+                    logger.warn('[WebSocketService] Failed to execute audio effect command', LogCategory.WEBSOCKET);
+                  }
+                }
+              } else {
+                logger.warn('[WebSocketService] Cannot execute audio effect: AudioContext not unlocked', LogCategory.WEBSOCKET);
+              }
+            });
+          } else {
+            logger.warn('[WebSocketService] Invalid audio effect payload format', LogCategory.WEBSOCKET);
+          }
         }
       }
       // --- 後續處理結束 ---

@@ -14,4 +14,7 @@ export { useBodyService } from './BodyService';
 
 // 類型導出
 export type { MessageType } from './ChatService';
-// export type { ChatMessage, EmotionState } from './ChatService'; 
+// export type { ChatMessage, EmotionState } from './ChatService';
+
+// 導出音效服務
+export { default as useSoundEffects } from '../hooks/useSoundEffects'; 
