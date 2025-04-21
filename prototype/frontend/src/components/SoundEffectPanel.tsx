@@ -1,9 +1,12 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useSoundEffects } from '../hooks';
 import useFreesoundAPI from '../hooks/useFreesoundAPI';
-import { FreesoundSearchResult } from '../services/FreesoundService';
+import { FreesoundSearchResult, FreesoundSearchResultsPage } from '../services/FreesoundService';
 import { soundEffectCategories, soundEffectInfo } from '../config/soundEffectsConfig';
 import logger, { LogCategory } from '../utils/LogManager';
+import { AudioPlayerService } from '../services/audioPlayer';
+import { AnimationCue } from '../types/AudioTimeline';
+import { useStore } from '../store'; // 導入 Zustand store
 
 // 添加 props 定義，使組件接受從父元件傳入的可見性與切換函數
 interface SoundEffectPanelProps {
@@ -290,6 +293,51 @@ const synthExamples = {
   }
 };
 
+// 更新：歌曲數據結構，包含動畫線索
+interface Song {
+  id: string;
+  name: string;
+  url: string;
+  animationCues?: AnimationCue[];
+}
+
+// 範例歌曲數據 (更新 URL 並添加動畫線索)
+const sampleSongs: Song[] = [
+  {
+    id: 'song1', 
+    name: '範例歌曲 1 (快樂)', 
+    url: '/audio/songs/song1.mp3',
+    animationCues: [
+      { time: 0.5, type: 'emotion', value: 'happy' },
+      { time: 1.0, type: 'action', value: 'wave_hand' },
+      { time: 2.0, type: 'viseme', value: 'A' },
+      { time: 3.5, type: 'emotion', value: 'excited' },
+      { time: 5.0, type: 'action', value: 'idle' },
+    ]
+  },
+  {
+    id: 'song2',
+    name: '範例歌曲 2 (平靜)',
+    url: '/audio/songs/song2.mp3',
+    animationCues: [
+      { time: 0.0, type: 'emotion', value: 'calm' },
+      { time: 2.0, type: 'action', value: 'subtle_nod' },
+      { time: 4.0, type: 'viseme', value: 'O' },
+      { time: 6.0, type: 'emotion', value: 'neutral' },
+    ]
+  },
+  {
+    id: 'song3',
+    name: '範例歌曲 3 (無動畫)',
+    url: '/audio/songs/song3.mp3'
+  },
+  {
+    id: 'moonlight', 
+    name: '皎潔的滿月下', 
+    url: '/audio/songs/皎潔的滿月下.mp3' 
+  },
+];
+
 // 修改為接受 props 的形式
 const SoundEffectPanel: React.FC<SoundEffectPanelProps> = ({ isVisible, onClose }) => {
   // 添加JSON指令輸入狀態
@@ -297,7 +345,7 @@ const SoundEffectPanel: React.FC<SoundEffectPanelProps> = ({ isVisible, onClose 
   // 添加合成音效指令輸入狀態
   const [synthJsonInput, setSynthJsonInput] = useState('');
   // 添加當前標籤狀態
-  const [activeTab, setActiveTab] = useState('samples');
+  const [activeTab, setActiveTab] = useState('songs');
   // 添加Freesound搜索關鍵詞狀態
   const [searchQuery, setSearchQuery] = useState('');
   // 添加當前播放音效ID
@@ -371,8 +419,8 @@ const SoundEffectPanel: React.FC<SoundEffectPanelProps> = ({ isVisible, onClose 
 
   // 處理標籤切換
   const handleTabChange = (tab: string) => {
+    logger.debug(`[SoundEffectPanel] 切換標籤: ${tab}`, LogCategory.AUDIO);
     setActiveTab(tab);
-    // 不用直接操作 DOM，使用 React 狀態來控制顯示
   };
 
   // 播放音效並顯示日誌
@@ -544,6 +592,161 @@ const SoundEffectPanel: React.FC<SoundEffectPanelProps> = ({ isVisible, onClose 
     }
   };
 
+  // 新增：處理歌曲播放/停止
+  const [playingSongId, setPlayingSongId] = useState<string | null>(null);
+  const audioPlayerService = useRef(new AudioPlayerService()).current;
+  const animationFrameRef = useRef<number | null>(null); // Ref for animation frame
+  const currentAnimationCues = useRef<AnimationCue[]>([]); // Ref to store current song's cues
+  const currentCueIndex = useRef<number>(0); // Ref to track current cue index
+
+  // --- Animation Control Logic ---
+  const startAnimationLoop = (cues: AnimationCue[]) => {
+    logger.debug(`[SoundEffectPanel] Starting animation loop with ${cues.length} cues.`, LogCategory.ANIMATION);
+    currentAnimationCues.current = cues.sort((a, b) => a.time - b.time); // Sort cues by time
+    currentCueIndex.current = 0;
+    
+    // Stop any previous loop
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+
+    const loop = () => {
+      if (!audioPlayerService.isAudioPlaying()) {
+        stopAnimationLoop(); // Stop if audio is no longer playing
+        return;
+      }
+
+      const currentTime = audioPlayerService.getCurrentTime();
+      const cues = currentAnimationCues.current;
+      let nextCueIndex = currentCueIndex.current;
+
+      // Process cues up to the current time
+      while (nextCueIndex < cues.length && cues[nextCueIndex].time <= currentTime) {
+        const cue = cues[nextCueIndex];
+        // 將 cue 對象轉換為 JSON 字符串傳遞給 logger
+        logger.debug(`[SoundEffectPanel] Processing cue at ${currentTime.toFixed(2)}s:`, LogCategory.ANIMATION, JSON.stringify(cue));
+        
+        switch (cue.type) {
+          case 'viseme':
+            // TODO: Potentially reset other visemes first?
+            useStore.getState().setAudioLipsyncTarget(cue.value, 1); // Set target viseme weight
+            break;
+          case 'emotion':
+            // TODO: Apply emotion - needs integration with emotion system (e.g., setTargetEmotionWeights?)
+            // For now, just log it
+            logger.info(`[SoundEffectPanel] Emotion cue: ${cue.value}`, LogCategory.ANIMATION);
+            // Example placeholder: useStore.getState().updateMorphTarget(cue.value, 1);
+            break;
+          case 'action':
+            // 強制轉換為 string，因為我們確定 value 應為字符串
+            useStore.getState().setCurrentAnimation(cue.value as string);
+            break;
+        }
+        nextCueIndex++;
+      }
+      
+      currentCueIndex.current = nextCueIndex;
+
+      // Continue the loop if there are more cues or audio is still playing
+      if (nextCueIndex < cues.length || audioPlayerService.isAudioPlaying()) {
+        animationFrameRef.current = requestAnimationFrame(loop);
+      } else {
+        stopAnimationLoop(); // Reached end of cues and audio likely ended
+      }
+    };
+
+    animationFrameRef.current = requestAnimationFrame(loop);
+  };
+
+  const stopAnimationLoop = () => {
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    // Reset animation states when loop stops
+    useStore.getState().setAudioLipsyncTarget('jawOpen', 0); // Reset jaw
+    // TODO: Reset other visemes?
+    // TODO: Reset emotion state? Might fade out automatically.
+    // Reset to Idle animation if no longer speaking/singing
+    if (!useStore.getState().isSpeaking) {
+       useStore.getState().setCurrentAnimation('Idle'); 
+    }
+    logger.debug('[SoundEffectPanel] Stopped animation loop.', LogCategory.ANIMATION);
+  };
+  // --- End Animation Control Logic ---
+
+  useEffect(() => {
+    // 監聽 AudioPlayerService 的播放結束事件
+    const handleSongEnd = () => {
+      logger.debug('[SoundEffectPanel] Song ended event received from AudioPlayerService.', LogCategory.AUDIO);
+      setPlayingSongId(null);
+      useStore.getState().setSpeaking(false); // Set speaking state to false
+      stopAnimationLoop(); // Stop animation loop on song end
+    };
+    audioPlayerService.addEventListener('end', handleSongEnd);
+
+    // 清理函數
+    return () => {
+      audioPlayerService.removeEventListener('end', handleSongEnd);
+      if (audioPlayerService.isAudioPlaying()) { // Check if playing before stopping
+         audioPlayerService.stop();
+      }
+      useStore.getState().setSpeaking(false); // Ensure speaking state is reset on unmount/hide
+      stopAnimationLoop(); // Stop animation loop on unmount/hide
+    };
+  }, [isVisible, audioPlayerService]); // Include audioPlayerService in dependencies
+
+  // 處理歌曲播放/停止
+  const handlePlaySong = async (song: Song) => {
+    if (playingSongId === song.id) {
+      // 停止
+      logger.info(`[SoundEffectPanel] 手動停止歌曲: ${song.name}`, LogCategory.AUDIO);
+      audioPlayerService.stop();
+      setPlayingSongId(null);
+      useStore.getState().setSpeaking(false); // Set speaking state to false
+      stopAnimationLoop(); // Stop animation loop
+    } else {
+      // 播放新歌曲
+      try {
+        logger.info(`[SoundEffectPanel] 開始播放歌曲: ${song.name}`, LogCategory.AUDIO);
+        // Set speaking state to true *before* playing
+        useStore.getState().setSpeaking(true); 
+        const success = await audioPlayerService.playAudio(song.url);
+        if (success) {
+          setPlayingSongId(song.id);
+          // Start animation loop if cues exist
+          if (song.animationCues && song.animationCues.length > 0) {
+            startAnimationLoop(song.animationCues);
+          } else {
+            stopAnimationLoop(); // Ensure no old loop is running
+            // If no cues, maybe just keep jawOpen based on volume?
+            // For now, rely on AudioService's default analysis if isSpeaking=true
+            logger.debug(`[SoundEffectPanel] Song ${song.name} has no animation cues. Relying on default lipsync if active.`, LogCategory.ANIMATION);
+          }
+        } else {
+          logger.error(`[SoundEffectPanel] AudioPlayerService failed to play ${song.name}`, LogCategory.AUDIO);
+          setPlayingSongId(null);
+          useStore.getState().setSpeaking(false); // Reset speaking state on failure
+          stopAnimationLoop(); // Stop animation loop on failure
+        }
+      } catch (error) {
+        logger.error(`[SoundEffectPanel] 播放歌曲失敗: ${song.name}`, LogCategory.AUDIO, error);
+        setPlayingSongId(null);
+        useStore.getState().setSpeaking(false); // Reset speaking state on error
+        stopAnimationLoop(); // Stop animation loop on error
+      }
+    }
+  };
+  
+  // 停止所有歌曲播放
+  const handleStopAllSongs = () => {
+    logger.info(`[SoundEffectPanel] 停止所有歌曲播放`, LogCategory.AUDIO);
+    audioPlayerService.stop();
+    setPlayingSongId(null);
+    useStore.getState().setSpeaking(false); // Set speaking state to false
+    stopAnimationLoop(); // Stop animation loop
+  };
+
   // 如果面板不可見，則不渲染
   if (!isVisible) {
     return null;
@@ -580,10 +783,10 @@ const SoundEffectPanel: React.FC<SoundEffectPanelProps> = ({ isVisible, onClose 
         <ul className="flex border-b border-gray-700">
           <li className="mr-2">
             <button 
-              onClick={() => handleTabChange('samples')}
-              className={`inline-block px-4 py-2 border-b-2 ${activeTab === 'samples' ? 'border-blue-500 text-blue-500' : 'border-transparent hover:text-gray-300'}`}
+              onClick={() => handleTabChange('songs')}
+              className={`inline-block px-4 py-2 border-b-2 ${activeTab === 'songs' ? 'border-blue-500 text-blue-500' : 'border-transparent hover:text-gray-300'}`}
             >
-              預設音效
+              歌曲庫
             </button>
           </li>
           <li className="mr-2">
@@ -607,121 +810,40 @@ const SoundEffectPanel: React.FC<SoundEffectPanelProps> = ({ isVisible, onClose 
 
       {/* 標籤內容區域 */}
       <div className="tabs-content overflow-y-auto" style={{ maxHeight: '400px' }}>
-        {/* 預設音效標籤 */}
-        <div className={activeTab === 'samples' ? 'block' : 'hidden'}>
-          {/* 綜藝音效 */}
+        {/* 歌曲庫標籤 */}
+        <div className={activeTab === 'songs' ? 'block' : 'hidden'}>
           <div className="mb-4">
-            <h3 className="text-lg font-semibold mb-2">綜藝音效</h3>
-            <div className="grid grid-cols-2 gap-2">
-              {soundEffectCategories.variety.map(id => (
-                <button
-                  key={id}
-                  onClick={() => handlePlaySoundEffect(id)}
-                  className={`${isReady ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-600 cursor-not-allowed'} text-white px-3 py-2 rounded-md text-sm transition-colors duration-200`}
-                  title={soundEffectInfo[id]?.description || id}
-                  disabled={!isReady}
-                >
-                  {soundEffectInfo[id]?.name || id}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 科幻音效 */}
-          <div className="mb-4">
-            <h3 className="text-lg font-semibold mb-2">科幻音效</h3>
-            <div className="grid grid-cols-2 gap-2">
-              {soundEffectCategories['sci-fi'].map(id => (
-                <button
-                  key={id}
-                  onClick={() => handlePlaySoundEffect(id)}
-                  className={`${isReady ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-600 cursor-not-allowed'} text-white px-3 py-2 rounded-md text-sm transition-colors duration-200`}
-                  title={soundEffectInfo[id]?.description || id}
-                  disabled={!isReady}
-                >
-                  {soundEffectInfo[id]?.name || id}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 環境音效 */}
-          <div className="mb-4">
-            <h3 className="text-lg font-semibold mb-2">環境音效</h3>
-            <div className="grid grid-cols-2 gap-2">
-              {soundEffectCategories.environment.map(id => (
-                <button
-                  key={id}
-                  onClick={() => handlePlaySoundEffect(id)}
-                  className={`${isReady ? 'bg-teal-600 hover:bg-teal-700' : 'bg-gray-600 cursor-not-allowed'} text-white px-3 py-2 rounded-md text-sm transition-colors duration-200`}
-                  title={soundEffectInfo[id]?.description || id}
-                  disabled={!isReady}
-                >
-                  {soundEffectInfo[id]?.name || id}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* JSON指令測試區域 */}
-          <div className="mt-4 border-t border-gray-700 pt-4">
-            <h3 className="text-lg font-semibold mb-2">API測試</h3>
-            <div className="space-y-2">
-              <textarea 
-                className="w-full h-32 px-2 py-1 text-sm bg-gray-700 text-white rounded"
-                placeholder={`輸入JSON指令，例如：
-{
-  "effects": [
-    {
-      "name": "entrance",
-      "type": "variety",
-      "params": { "volume": 0.8 },
-      "startTime": 0
-    },
-    {
-      "name": "applause",
-      "params": { "volume": 1.0 },
-      "startTime": 1000
-    }
-  ]
-}`}
-                value={jsonInput}
-                onChange={(e) => setJsonInput(e.target.value)}
-              />
-              <div className="flex space-x-2">
-                <button
-                  onClick={handleExecuteCommand}
-                  className={`flex-1 ${isReady ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 cursor-not-allowed'} text-white py-2 rounded`}
-                  disabled={!isReady}
-                >
-                  執行指令
-                </button>
-                <button
-                  onClick={() => setJsonInput(JSON.stringify({
-                    effects: [
-                      {
-                        name: "entrance",
-                        type: "variety",
-                        params: { volume: 0.8 },
-                        startTime: 0
-                      },
-                      {
-                        name: "applause",
-                        params: { volume: 1.0 },
-                        startTime: 1000
-                      }
-                    ]
-                  }, null, 2))}
-                  className="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded"
-                  title="載入預設範例"
-                >
-                  範例
-                </button>
+            <h3 className="text-lg font-semibold mb-2">歌曲列表</h3>
+            {sampleSongs.length > 0 ? (
+              <div className="space-y-2">
+                {sampleSongs.map(song => (
+                  <div key={song.id} className="flex items-center justify-between p-2 bg-gray-700 rounded">
+                    <span className="text-sm truncate mr-2" title={song.name}>{song.name}</span>
+                    <button
+                      onClick={() => handlePlaySong(song)}
+                      className={`px-3 py-1 text-xs rounded transition-colors duration-200 ${
+                        playingSongId === song.id
+                          ? 'bg-red-600 hover:bg-red-700'
+                          : 'bg-green-600 hover:bg-green-700'
+                      } text-white`}
+                    >
+                      {playingSongId === song.id ? '停止' : '播放'}
+                    </button>
+                  </div>
+                ))}
+                {/* 添加一個全局停止按鈕 */} 
+                {playingSongId && (
+                   <button
+                     onClick={handleStopAllSongs}
+                     className="w-full mt-2 py-1 bg-red-700 hover:bg-red-800 rounded text-sm text-gray-200 transition-colors duration-200"
+                   >
+                     停止播放
+                   </button>
+                )}
               </div>
-            </div>
-            <p className="text-xs text-gray-400 mt-2">
-              可用於測試後端WebSocket指令。將JSON貼上並點擊執行。
-            </p>
+            ) : (
+              <p className="text-gray-400 text-sm">沒有可播放的歌曲。</p>
+            )}
           </div>
         </div>
 
