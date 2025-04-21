@@ -7,6 +7,7 @@ import logger, { LogCategory } from '../utils/LogManager';
 import { AudioPlayerService } from '../services/audioPlayer';
 import { AnimationCue } from '../types/AudioTimeline';
 import { useStore } from '../store'; // 導入 Zustand store
+import HeadService from '../services/HeadService'; // <--- 導入 HeadService
 
 // 添加 props 定義，使組件接受從父元件傳入的可見性與切換函數
 interface SoundEffectPanelProps {
@@ -334,7 +335,16 @@ const sampleSongs: Song[] = [
   {
     id: 'moonlight', 
     name: '皎潔的滿月下', 
-    url: '/audio/songs/皎潔的滿月下.mp3' 
+    url: '/audio/songs/皎潔的滿月下.mp3',
+    animationCues: [
+      { time: 0.0, type: 'emotion', value: 'neutral' },   // 開場
+      { time: 5.0, type: 'emotion', value: 'happy' },     // Verse 1 驚奇感
+      { time: 15.0, type: 'emotion', value: 'excited' },   // Chorus 驚呼
+      // Verse 2 維持 excited
+      { time: 55.0, type: 'emotion', value: 'neutral' },   // Bridge 氛圍
+      { time: 65.0, type: 'emotion', value: 'happy' },     // Verse 3 再起
+      { time: 88.0, type: 'emotion', value: 'neutral' },   // 接近結尾
+    ]
   },
 ];
 
@@ -598,6 +608,7 @@ const SoundEffectPanel: React.FC<SoundEffectPanelProps> = ({ isVisible, onClose 
   const animationFrameRef = useRef<number | null>(null); // Ref for animation frame
   const currentAnimationCues = useRef<AnimationCue[]>([]); // Ref to store current song's cues
   const currentCueIndex = useRef<number>(0); // Ref to track current cue index
+  const headService = useRef(HeadService.getInstance()).current; // <--- 獲取 HeadService 實例
 
   // --- Animation Control Logic ---
   const startAnimationLoop = (cues: AnimationCue[]) => {
@@ -623,19 +634,17 @@ const SoundEffectPanel: React.FC<SoundEffectPanelProps> = ({ isVisible, onClose 
       // Process cues up to the current time
       while (nextCueIndex < cues.length && cues[nextCueIndex].time <= currentTime) {
         const cue = cues[nextCueIndex];
-        // 將 cue 對象轉換為 JSON 字符串傳遞給 logger
         logger.debug(`[SoundEffectPanel] Processing cue at ${currentTime.toFixed(2)}s:`, LogCategory.ANIMATION, JSON.stringify(cue));
         
         switch (cue.type) {
           case 'viseme':
             // TODO: Potentially reset other visemes first?
-            useStore.getState().setAudioLipsyncTarget(cue.value, 1); // Set target viseme weight
+            useStore.getState().setAudioLipsyncTarget(cue.value, 1);
             break;
           case 'emotion':
-            // TODO: Apply emotion - needs integration with emotion system (e.g., setTargetEmotionWeights?)
-            // For now, just log it
-            logger.info(`[SoundEffectPanel] Emotion cue: ${cue.value}`, LogCategory.ANIMATION);
-            // Example placeholder: useStore.getState().updateMorphTarget(cue.value, 1);
+            logger.info(`[SoundEffectPanel] Applying emotion preset: ${cue.value}`, LogCategory.ANIMATION);
+            // 調用 HeadService 的方法來應用預設表情
+            headService.applyPresetExpression(cue.value as string);
             break;
           case 'action':
             // 強制轉換為 string，因為我們確定 value 應為字符串
@@ -666,7 +675,9 @@ const SoundEffectPanel: React.FC<SoundEffectPanelProps> = ({ isVisible, onClose 
     // Reset animation states when loop stops
     useStore.getState().setAudioLipsyncTarget('jawOpen', 0); // Reset jaw
     // TODO: Reset other visemes?
-    // TODO: Reset emotion state? Might fade out automatically.
+    // TODO: Reset emotion state? applyPresetExpression might handle clearing trajectory,
+    // but we might need to explicitly set back to neutral if the song ends mid-emotion.
+    // Consider adding: headService.applyPresetExpression('neutral'); ?
     // Reset to Idle animation if no longer speaking/singing
     if (!useStore.getState().isSpeaking) {
        useStore.getState().setCurrentAnimation('Idle'); 
