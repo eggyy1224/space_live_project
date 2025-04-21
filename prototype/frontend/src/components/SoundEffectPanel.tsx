@@ -337,13 +337,23 @@ const sampleSongs: Song[] = [
     name: '皎潔的滿月下', 
     url: '/audio/songs/皎潔的滿月下.mp3',
     animationCues: [
-      { time: 0.0, type: 'emotion', value: 'neutral' },   // 開場
-      { time: 5.0, type: 'emotion', value: 'happy' },     // Verse 1 驚奇感
-      { time: 15.0, type: 'emotion', value: 'excited' },   // Chorus 驚呼
-      // Verse 2 維持 excited
-      { time: 55.0, type: 'emotion', value: 'neutral' },   // Bridge 氛圍
-      { time: 65.0, type: 'emotion', value: 'happy' },     // Verse 3 再起
-      { time: 88.0, type: 'emotion', value: 'neutral' },   // 接近結尾
+      { time: 0.0, type: 'emotion', value: 'neutral' },
+      { time: 0.1, type: 'action', value: 'Idle' },
+      { time: 2.0, type: 'action', value: 'LookAround' },
+      { time: 5.0, type: 'emotion', value: 'happy' },
+      { time: 8.0, type: 'action', value: 'PointingGesture' },
+      { time: 15.0, type: 'emotion', value: 'excited' },
+      { time: 15.1, type: 'action', value: 'Cheering' },
+      { time: 25.0, type: 'action', value: 'ReachingOut' },
+      { time: 35.0, type: 'action', value: 'LookAround' },
+      { time: 45.0, type: 'action', value: 'FemaleDynamicPose' },
+      { time: 55.0, type: 'emotion', value: 'neutral' },
+      { time: 55.1, type: 'action', value: 'FemaleStandingPose' },
+      { time: 65.0, type: 'emotion', value: 'happy' },
+      { time: 65.1, type: 'action', value: 'Cheering' },
+      { time: 75.0, type: 'action', value: 'PointingGesture' },
+      { time: 85.0, type: 'action', value: 'Idle' },
+      { time: 88.0, type: 'emotion', value: 'neutral' },
     ]
   },
 ];
@@ -611,61 +621,73 @@ const SoundEffectPanel: React.FC<SoundEffectPanelProps> = ({ isVisible, onClose 
   const headService = useRef(HeadService.getInstance()).current; // <--- 獲取 HeadService 實例
 
   // --- Animation Control Logic ---
-  const startAnimationLoop = (cues: AnimationCue[]) => {
-    logger.debug(`[SoundEffectPanel] Starting animation loop with ${cues.length} cues.`, LogCategory.ANIMATION);
-    currentAnimationCues.current = cues.sort((a, b) => a.time - b.time); // Sort cues by time
-    currentCueIndex.current = 0;
-    
-    // Stop any previous loop
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-    }
+  const startAnimationLoop = useCallback(
+    (song: Song, onEndCallback?: () => void) => {
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+      // Check if the service instance and cues exist
+      if (!audioPlayerService || !song.animationCues) return;
 
-    const loop = () => {
-      if (!audioPlayerService.isAudioPlaying()) {
-        stopAnimationLoop(); // Stop if audio is no longer playing
-        return;
-      }
+      const cues = [...song.animationCues].sort((a, b) => a.time - b.time); // Sort cues just in case
+      let cueIndex = 0;
+      // No need for startTime calculation using context anymore
 
-      const currentTime = audioPlayerService.getCurrentTime();
-      const cues = currentAnimationCues.current;
-      let nextCueIndex = currentCueIndex.current;
-
-      // Process cues up to the current time
-      while (nextCueIndex < cues.length && cues[nextCueIndex].time <= currentTime) {
-        const cue = cues[nextCueIndex];
-        logger.debug(`[SoundEffectPanel] Processing cue at ${currentTime.toFixed(2)}s:`, LogCategory.ANIMATION, JSON.stringify(cue));
-        
-        switch (cue.type) {
-          case 'viseme':
-            // TODO: Potentially reset other visemes first?
-            useStore.getState().setAudioLipsyncTarget(cue.value, 1);
-            break;
-          case 'emotion':
-            logger.info(`[SoundEffectPanel] Applying emotion preset: ${cue.value}`, LogCategory.ANIMATION);
-            // 調用 HeadService 的方法來應用預設表情
-            headService.applyPresetExpression(cue.value as string);
-            break;
-          case 'action':
-            // 強制轉換為 string，因為我們確定 value 應為字符串
-            useStore.getState().setCurrentAnimation(cue.value as string);
-            break;
+      const loop = (currentTime: number) => {
+        // Check if the service instance exists
+        if (!audioPlayerService) { 
+          console.log("Animation loop stopped: Player service not available");
+          return;
         }
-        nextCueIndex++;
-      }
-      
-      currentCueIndex.current = nextCueIndex;
+        // Get elapsed time using the service method
+        const elapsedTime = audioPlayerService.getCurrentTime(); 
 
-      // Continue the loop if there are more cues or audio is still playing
-      if (nextCueIndex < cues.length || audioPlayerService.isAudioPlaying()) {
-        animationFrameRef.current = requestAnimationFrame(loop);
-      } else {
-        stopAnimationLoop(); // Reached end of cues and audio likely ended
-      }
-    };
+        // Process cues up to the current elapsed time
+        while (cueIndex < cues.length && cues[cueIndex].time <= elapsedTime) {
+          const cue = cues[cueIndex];
+          console.log(`Processing cue: time=${cue.time}, type=${cue.type}, value=${cue.value}`);
+          switch (cue.type) {
+            case 'emotion':
+              if (cue.value && typeof cue.value === 'string') {
+                headService.applyPresetExpression(cue.value as string);
+              }
+              break;
+            case 'action': // Handle action cues
+              if (cue.value && typeof cue.value === 'string') {
+                console.log(`Setting animation to: ${cue.value}`);
+                useStore.getState().setCurrentAnimation(cue.value as string);
+              }
+              break;
+            // Add other cue types here if needed
+          }
+          cueIndex++;
+        }
 
-    animationFrameRef.current = requestAnimationFrame(loop);
-  };
+        // Check if song has ended using the service method for duration
+        const duration = audioPlayerService.getDuration();
+        if (duration > 0 && elapsedTime >= duration - 0.1) { // Add a small buffer for end detection
+            console.log("Song ended, stopping animation loop.");
+            headService.applyPresetExpression('neutral'); // Reset emotion at the end
+            useStore.getState().setCurrentAnimation('Idle'); // Reset animation to Idle
+            if (onEndCallback) {
+                onEndCallback();
+            }
+            animationFrameRef.current = null;
+        // Check if the player is playing using the service method
+        } else if (audioPlayerService.isAudioPlaying()) { 
+          animationFrameRef.current = requestAnimationFrame(loop);
+        } else {
+          console.log("Animation loop stopped: Player is not playing");
+          // Optionally reset state here too if stopped prematurely
+          // headService.applyPresetExpression('neutral');
+          // useStore.getState().setCurrentAnimation('Idle');
+          animationFrameRef.current = null;
+        }
+      };
+
+      animationFrameRef.current = requestAnimationFrame(loop);
+    },
+    // Dependencies remain the same as audioPlayerService is a stable ref
+    [audioPlayerService, headService] 
+  );
 
   const stopAnimationLoop = () => {
     if (animationFrameRef.current) {
@@ -727,7 +749,7 @@ const SoundEffectPanel: React.FC<SoundEffectPanelProps> = ({ isVisible, onClose 
           setPlayingSongId(song.id);
           // Start animation loop if cues exist
           if (song.animationCues && song.animationCues.length > 0) {
-            startAnimationLoop(song.animationCues);
+            startAnimationLoop(song);
           } else {
             stopAnimationLoop(); // Ensure no old loop is running
             // If no cues, maybe just keep jawOpen based on volume?
