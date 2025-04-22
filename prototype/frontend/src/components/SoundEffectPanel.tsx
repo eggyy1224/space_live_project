@@ -1,19 +1,27 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSoundEffects } from '../hooks';
 import useFreesoundAPI from '../hooks/useFreesoundAPI';
-import { FreesoundSearchResult, FreesoundSearchResultsPage } from '../services/FreesoundService';
 import { soundEffectCategories, soundEffectInfo } from '../config/soundEffectsConfig';
 import logger, { LogCategory } from '../utils/LogManager';
-import { AudioPlayerService } from '../services/audioPlayer';
-import { AnimationCue } from '../types/AudioTimeline';
-import { useStore } from '../store'; // 導入 Zustand store
-import HeadService from '../services/HeadService'; // <--- 導入 HeadService
+import { useStore } from '../store';
+
+// 引入拆分後的組件
+import FreesoundPanel from './soundEffects/FreesoundPanel';
+import SynthPanel from './soundEffects/SynthPanel';
+import SongLibraryPanel from './soundEffects/SongLibraryPanel';
 
 // 添加 props 定義，使組件接受從父元件傳入的可見性與切換函數
 interface SoundEffectPanelProps {
   isVisible: boolean;
   onClose: () => void;
 }
+
+// 定義分類名稱映射
+const categoryNames: Record<string, string> = {
+  'variety': '綜藝音效',
+  'sci-fi': '科幻音效',
+  'environment': '環境音效'
+};
 
 // 定義多種合成音效範例
 const synthExamples = {
@@ -358,923 +366,140 @@ const sampleSongs: Song[] = [
   },
 ];
 
-// 修改為接受 props 的形式
 const SoundEffectPanel: React.FC<SoundEffectPanelProps> = ({ isVisible, onClose }) => {
-  // 添加JSON指令輸入狀態
-  const [jsonInput, setJsonInput] = useState('');
-  // 添加合成音效指令輸入狀態
-  const [synthJsonInput, setSynthJsonInput] = useState('');
-  // 添加當前標籤狀態
-  const [activeTab, setActiveTab] = useState('songs');
-  // 添加Freesound搜索關鍵詞狀態
-  const [searchQuery, setSearchQuery] = useState('');
-  // 添加當前播放音效ID
-  const [playingPreviewId, setPlayingPreviewId] = useState<number | null>(null);
-  // 添加音效預覽音頻元素
-  const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
+  // 使用音效掛鉤
+  const soundEffects = useSoundEffects();
   
-  // 標籤引用
-  const samplesTabRef = useRef<HTMLInputElement>(null);
-  const synthTabRef = useRef<HTMLInputElement>(null);
-  const freesoundTabRef = useRef<HTMLInputElement>(null);
-  
-  // 使用音效hook
-  const {
-    isReady,
-    isLoading,
-    globalVolume,
-    loadedSounds,
-    unlockAudioContext,
-    initAndLoadSounds,
-    playSingleSoundEffect,
-    playSynthSound,
-    playSynthSequence,
-    playSoundEffectFromCommand,
-    setGlobalVolume,
-    stopAllSounds
-  } = useSoundEffects();
+  // 當前選擇的標籤
+  const [activeTab, setActiveTab] = useState<string>('soundEffects');
+  const [volume, setVolume] = useState(100);
 
-  // 使用Freesound API hook
-  const {
-    isLoading: isSearchLoading,
-    error: searchError,
-    searchResults,
-    totalResults,
-    currentPage,
-    hasNextPage,
-    search,
-    loadMore,
-    cachedSounds,
-    cacheSound,
-    getPreviewUrl
-  } = useFreesoundAPI();
-
-  // 使用useMemo優化，避免不必要的重渲染
-  const categorizedTags = useMemo(() => {
-    const tags: Record<string, string[]> = {
-      '綜藝': ['applause', 'laugh', 'crowd', 'comedy', 'funny', 'drum', 'fail', 'success'],
-      '科幻': ['laser', 'space', 'futuristic', 'robot', 'sci-fi', 'technology', 'machine'],
-      '環境': ['nature', 'water', 'wind', 'rain', 'city', 'ambient', 'forest', 'birds'],
-      '音樂': ['music', 'piano', 'guitar', 'drum', 'bass', 'electronic', 'orchestra', 'beat'],
-      '動物': ['animal', 'dog', 'cat', 'bird', 'roar', 'howl', 'bark', 'meow'],
-      '人聲': ['voice', 'speech', 'shout', 'scream', 'whisper', 'talk', 'human'],
-      '物體': ['door', 'explosion', 'crash', 'impact', 'glass', 'metal', 'wooden', 'plastic']
-    };
-    return tags;
-  }, []);
-
-  // 首次載入時解鎖音頻上下文並初始化
+  // useEffect 讓面板在打開時停止所有聲音
   useEffect(() => {
-    if (isVisible && !isReady && !isLoading) {
-      // 嘗試解鎖音頻上下文
-      unlockAudioContext().then(success => {
-        if (success) {
-          logger.info('[SoundEffectPanel] AudioContext unlocked successfully', LogCategory.AUDIO);
-        } else {
-          logger.warn('[SoundEffectPanel] Failed to unlock AudioContext', LogCategory.AUDIO);
-        }
-      });
+    if (isVisible) {
+      soundEffects.stopAllSounds();
     }
-  }, [isVisible, isReady, isLoading, unlockAudioContext]);
+  }, [isVisible, soundEffects]);
 
   // 處理標籤切換
   const handleTabChange = (tab: string) => {
-    logger.debug(`[SoundEffectPanel] 切換標籤: ${tab}`, LogCategory.AUDIO);
     setActiveTab(tab);
-  };
-
-  // 播放音效並顯示日誌
-  const handlePlaySoundEffect = (soundId: string) => {
-    logger.info(`[SoundEffectPanel] Playing sound effect: ${soundId}`, LogCategory.AUDIO);
-    
-    if (!isReady) {
-      logger.warn(`[SoundEffectPanel] Cannot play sound ${soundId}: Service not ready`, LogCategory.AUDIO);
-      
-      // 嘗試初始化
-      unlockAudioContext().then(success => {
-        if (success) {
-          logger.info('[SoundEffectPanel] AudioContext unlocked on demand', LogCategory.AUDIO);
-        }
-      });
-      
-      return;
-    }
-    
-    // 播放音效
-    playSingleSoundEffect(soundId);
-  };
-
-  // 播放合成音效
-  const handlePlaySynthSound = (type: string, options = {}) => {
-    logger.info(`[SoundEffectPanel] Playing synth sound: ${type}`, LogCategory.AUDIO);
-    
-    // 解鎖音頻上下文（如果尚未完成）
-    unlockAudioContext().then(success => {
-      if (success) {
-        // 播放合成音效
-        playSynthSound(type, options);
-      } else {
-        logger.warn('[SoundEffectPanel] Cannot play synth sound: AudioContext not unlocked', LogCategory.AUDIO);
-      }
-    });
-  };
-
-  // 處理JSON指令執行
-  const handleExecuteCommand = () => {
-    try {
-      // 解析JSON
-      const commandObj = JSON.parse(jsonInput);
-      logger.info('[SoundEffectPanel] Parsed JSON command:', LogCategory.AUDIO, commandObj);
-      
-      // 檢查是否符合預期格式
-      if (commandObj.effects && Array.isArray(commandObj.effects)) {
-        logger.info(`[SoundEffectPanel] Executing command with ${commandObj.effects.length} effects`, LogCategory.AUDIO);
-        
-        // 解鎖音頻上下文（如果尚未完成）
-        unlockAudioContext().then(success => {
-          if (success && isReady) {
-            // 執行音效序列
-            const result = playSoundEffectFromCommand(commandObj.effects);
-            
-            if (!result) {
-              logger.warn('[SoundEffectPanel] Failed to execute sound effect command', LogCategory.AUDIO);
-            }
-          } else {
-            logger.warn('[SoundEffectPanel] Cannot execute command: AudioContext not unlocked or service not ready', LogCategory.AUDIO);
-          }
-        });
-      } else {
-        logger.warn('[SoundEffectPanel] Invalid command format: missing or invalid effects array', LogCategory.AUDIO);
-        alert('指令格式錯誤：未找到effects陣列');
-      }
-    } catch (error) {
-      logger.error('[SoundEffectPanel] JSON parsing error:', LogCategory.AUDIO, error);
-      alert(`JSON解析錯誤: ${error instanceof Error ? error.message : '未知錯誤'}`);
-    }
-  };
-
-  // 處理合成音效JSON指令執行
-  const handleExecuteSynthCommand = () => {
-    try {
-      // 解析JSON
-      const commandObj = JSON.parse(synthJsonInput);
-      logger.info('[SoundEffectPanel] Parsed synth JSON command:', LogCategory.AUDIO, commandObj);
-      
-      // 檢查是否符合預期格式（支持兩種格式：直接effects數組或包含在payload中）
-      const effects = commandObj.effects || (commandObj.payload && commandObj.payload.effects);
-      
-      if (effects && Array.isArray(effects)) {
-        logger.info(`[SoundEffectPanel] Executing synth command with ${effects.length} effects`, LogCategory.AUDIO);
-        
-        // 解鎖音頻上下文（如果尚未完成）
-        unlockAudioContext().then(success => {
-          if (success) {
-            // 執行合成音效序列
-            const result = playSynthSequence(effects);
-            
-            if (!result) {
-              logger.warn('[SoundEffectPanel] Failed to execute synth command', LogCategory.AUDIO);
-            }
-          } else {
-            logger.warn('[SoundEffectPanel] Cannot execute synth command: AudioContext not unlocked', LogCategory.AUDIO);
-          }
-        });
-      } else {
-        logger.warn('[SoundEffectPanel] Invalid synth command format: missing or invalid effects array', LogCategory.AUDIO);
-        alert('指令格式錯誤：未找到effects陣列');
-      }
-    } catch (error) {
-      logger.error('[SoundEffectPanel] JSON parsing error:', LogCategory.AUDIO, error);
-      alert(`JSON解析錯誤: ${error instanceof Error ? error.message : '未知錯誤'}`);
-    }
   };
 
   // 處理音量變更
   const handleVolumeChange = (value: number) => {
-    // 將0-100轉換為0-1
-    const normalizedVolume = value / 100;
-    setGlobalVolume(normalizedVolume);
+    setVolume(value);
+    soundEffects.setGlobalVolume(value / 100);
   };
 
-  // 執行搜索
-  const handleSearch = () => {
-    if (searchQuery.trim()) {
-      search({ query: searchQuery, page: 1 });
-    }
-  };
-
-  // 按標籤搜索
-  const handleTagSearch = (tag: string) => {
-    setSearchQuery(tag);
-    search({ query: `tag:${tag}`, page: 1 });
-  };
-
-  // 播放音效預覽
-  const handlePlayPreview = (sound: FreesoundSearchResult) => {
-    if (audioPreviewRef.current) {
-      // 停止當前播放
-      audioPreviewRef.current.pause();
-      
-      // 獲取預覽URL
-      const previewUrl = getPreviewUrl(sound);
-      
-      // 設置新音源
-      audioPreviewRef.current.src = previewUrl;
-      audioPreviewRef.current.volume = globalVolume;
-      
-      // 播放
-      audioPreviewRef.current.play()
-        .then(() => {
-          setPlayingPreviewId(sound.id);
-          logger.info(`[SoundEffectPanel] 預覽播放: ${sound.name}`, LogCategory.AUDIO);
-        })
-        .catch(error => {
-          logger.error(`[SoundEffectPanel] 預覽播放失敗: ${error.message}`, LogCategory.AUDIO);
-        });
-    }
-  };
-
-  // 停止預覽
-  const handleStopPreview = () => {
-    if (audioPreviewRef.current) {
-      audioPreviewRef.current.pause();
-      setPlayingPreviewId(null);
-    }
-  };
-
-  // 收藏音效
-  const handleSaveSound = async (sound: FreesoundSearchResult) => {
-    try {
-      await cacheSound(sound);
-      logger.info(`[SoundEffectPanel] 音效已收藏: ${sound.name}`, LogCategory.AUDIO);
-    } catch (error) {
-      logger.error(`[SoundEffectPanel] 收藏音效失敗`, LogCategory.AUDIO, error);
-    }
-  };
-
-  // 新增：處理歌曲播放/停止
-  const [playingSongId, setPlayingSongId] = useState<string | null>(null);
-  const audioPlayerService = useRef(new AudioPlayerService()).current;
-  const animationFrameRef = useRef<number | null>(null); // Ref for animation frame
-  const currentAnimationCues = useRef<AnimationCue[]>([]); // Ref to store current song's cues
-  const currentCueIndex = useRef<number>(0); // Ref to track current cue index
-  const headService = useRef(HeadService.getInstance()).current; // <--- 獲取 HeadService 實例
-
-  // --- Animation Control Logic ---
-  const startAnimationLoop = useCallback(
-    (song: Song, onEndCallback?: () => void) => {
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-      // Check if the service instance and cues exist
-      if (!audioPlayerService || !song.animationCues) return;
-
-      const cues = [...song.animationCues].sort((a, b) => a.time - b.time); // Sort cues just in case
-      let cueIndex = 0;
-      // No need for startTime calculation using context anymore
-
-      const loop = (currentTime: number) => {
-        // Check if the service instance exists
-        if (!audioPlayerService) { 
-          console.log("Animation loop stopped: Player service not available");
-          return;
-        }
-        // Get elapsed time using the service method
-        const elapsedTime = audioPlayerService.getCurrentTime(); 
-
-        // Process cues up to the current elapsed time
-        while (cueIndex < cues.length && cues[cueIndex].time <= elapsedTime) {
-          const cue = cues[cueIndex];
-          console.log(`Processing cue: time=${cue.time}, type=${cue.type}, value=${cue.value}`);
-          switch (cue.type) {
-            case 'emotion':
-              if (cue.value && typeof cue.value === 'string') {
-                headService.applyPresetExpression(cue.value as string);
-              }
-              break;
-            case 'action': // Handle action cues
-              if (cue.value && typeof cue.value === 'string') {
-                console.log(`Setting animation to: ${cue.value}`);
-                useStore.getState().setCurrentAnimation(cue.value as string);
-              }
-              break;
-            // Add other cue types here if needed
-          }
-          cueIndex++;
-        }
-
-        // Check if song has ended using the service method for duration
-        const duration = audioPlayerService.getDuration();
-        if (duration > 0 && elapsedTime >= duration - 0.1) { // Add a small buffer for end detection
-            console.log("Song ended, stopping animation loop.");
-            headService.applyPresetExpression('neutral'); // Reset emotion at the end
-            useStore.getState().setCurrentAnimation('Idle'); // Reset animation to Idle
-            if (onEndCallback) {
-                onEndCallback();
-            }
-            animationFrameRef.current = null;
-        // Check if the player is playing using the service method
-        } else if (audioPlayerService.isAudioPlaying()) { 
-          animationFrameRef.current = requestAnimationFrame(loop);
-        } else {
-          console.log("Animation loop stopped: Player is not playing");
-          // Optionally reset state here too if stopped prematurely
-          // headService.applyPresetExpression('neutral');
-          // useStore.getState().setCurrentAnimation('Idle');
-          animationFrameRef.current = null;
-        }
-      };
-
-      animationFrameRef.current = requestAnimationFrame(loop);
-    },
-    // Dependencies remain the same as audioPlayerService is a stable ref
-    [audioPlayerService, headService] 
-  );
-
-  const stopAnimationLoop = () => {
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-    }
-    // Reset animation states when loop stops
-    useStore.getState().setAudioLipsyncTarget('jawOpen', 0); // Reset jaw
-    // TODO: Reset other visemes?
-    // TODO: Reset emotion state? applyPresetExpression might handle clearing trajectory,
-    // but we might need to explicitly set back to neutral if the song ends mid-emotion.
-    // Consider adding: headService.applyPresetExpression('neutral'); ?
-    // Reset to Idle animation if no longer speaking/singing
-    if (!useStore.getState().isSpeaking) {
-       useStore.getState().setCurrentAnimation('Idle'); 
-    }
-    logger.debug('[SoundEffectPanel] Stopped animation loop.', LogCategory.ANIMATION);
-  };
-  // --- End Animation Control Logic ---
-
-  useEffect(() => {
-    // 監聽 AudioPlayerService 的播放結束事件
-    const handleSongEnd = () => {
-      logger.debug('[SoundEffectPanel] Song ended event received from AudioPlayerService.', LogCategory.AUDIO);
-      setPlayingSongId(null);
-      useStore.getState().setSpeaking(false); // Set speaking state to false
-      stopAnimationLoop(); // Stop animation loop on song end
-    };
-    audioPlayerService.addEventListener('end', handleSongEnd);
-
-    // 清理函數
-    return () => {
-      audioPlayerService.removeEventListener('end', handleSongEnd);
-      if (audioPlayerService.isAudioPlaying()) { // Check if playing before stopping
-         audioPlayerService.stop();
-      }
-      useStore.getState().setSpeaking(false); // Ensure speaking state is reset on unmount/hide
-      stopAnimationLoop(); // Stop animation loop on unmount/hide
-    };
-  }, [isVisible, audioPlayerService]); // Include audioPlayerService in dependencies
-
-  // 處理歌曲播放/停止
-  const handlePlaySong = async (song: Song) => {
-    if (playingSongId === song.id) {
-      // 停止
-      logger.info(`[SoundEffectPanel] 手動停止歌曲: ${song.name}`, LogCategory.AUDIO);
-      audioPlayerService.stop();
-      setPlayingSongId(null);
-      useStore.getState().setSpeaking(false); // Set speaking state to false
-      stopAnimationLoop(); // Stop animation loop
-    } else {
-      // 播放新歌曲
-      try {
-        logger.info(`[SoundEffectPanel] 開始播放歌曲: ${song.name}`, LogCategory.AUDIO);
-        // Set speaking state to true *before* playing
-        useStore.getState().setSpeaking(true); 
-        const success = await audioPlayerService.playAudio(song.url);
-        if (success) {
-          setPlayingSongId(song.id);
-          // Start animation loop if cues exist
-          if (song.animationCues && song.animationCues.length > 0) {
-            startAnimationLoop(song);
-          } else {
-            stopAnimationLoop(); // Ensure no old loop is running
-            // If no cues, maybe just keep jawOpen based on volume?
-            // For now, rely on AudioService's default analysis if isSpeaking=true
-            logger.debug(`[SoundEffectPanel] Song ${song.name} has no animation cues. Relying on default lipsync if active.`, LogCategory.ANIMATION);
-          }
-        } else {
-          logger.error(`[SoundEffectPanel] AudioPlayerService failed to play ${song.name}`, LogCategory.AUDIO);
-          setPlayingSongId(null);
-          useStore.getState().setSpeaking(false); // Reset speaking state on failure
-          stopAnimationLoop(); // Stop animation loop on failure
-        }
-      } catch (error) {
-        logger.error(`[SoundEffectPanel] 播放歌曲失敗: ${song.name}`, LogCategory.AUDIO, error);
-        setPlayingSongId(null);
-        useStore.getState().setSpeaking(false); // Reset speaking state on error
-        stopAnimationLoop(); // Stop animation loop on error
-      }
-    }
-  };
-  
-  // 停止所有歌曲播放
-  const handleStopAllSongs = () => {
-    logger.info(`[SoundEffectPanel] 停止所有歌曲播放`, LogCategory.AUDIO);
-    audioPlayerService.stop();
-    setPlayingSongId(null);
-    useStore.getState().setSpeaking(false); // Set speaking state to false
-    stopAnimationLoop(); // Stop animation loop
-  };
-
-  // 如果面板不可見，則不渲染
+  // 如果面板不可見，不渲染任何內容
   if (!isVisible) {
     return null;
   }
 
-  // 獲取當前音量（轉換為百分比）
-  const volumePercent = Math.round(globalVolume * 100);
-
   return (
     <div 
-      className="fixed right-20 bottom-20 w-80 bg-gray-800 bg-opacity-90 rounded-lg shadow-lg p-4 z-[999] text-white"
-      // 點擊面板不會關閉(阻止冒泡)
-      onClick={e => e.stopPropagation()}
+      className="fixed right-8 top-16 w-96 bg-gray-800 shadow-lg rounded-lg z-30 text-white overflow-auto"
+      style={{ maxHeight: 'calc(100vh - 120px)' }}
+      onClick={(e) => e.stopPropagation()}
     >
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold">音效控制面板</h2>
-        <div className="flex items-center">
-          {/* 顯示載入狀態 */}
-          <span className={`w-3 h-3 rounded-full mr-2 ${isReady ? 'bg-green-500' : isLoading ? 'bg-yellow-500' : 'bg-red-500'}`} 
-                title={isReady ? '已準備就緒' : isLoading ? '正在載入中' : '未準備就緒'}>
-          </span>
+      {/* 標題列 */}
+      <div className="flex justify-between items-center px-4 py-3 bg-gray-900 border-b border-gray-700 sticky top-0">
+        <h2 className="text-xl font-bold">音效面板</h2>
+        <button 
+          onClick={onClose}
+          className="text-gray-400 hover:text-white focus:outline-none"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      
+      {/* 主內容區 */}
+      <div className="p-4">
+        {/* 標籤選擇區域 */}
+        <div className="flex border-b border-gray-700 mb-4 overflow-x-auto">
           <button 
-            onClick={onClose}
-            className="text-gray-400 hover:text-white"
-            aria-label="關閉音效面板"
+            className={`px-4 py-2 whitespace-nowrap ${activeTab === 'soundEffects' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}
+            onClick={() => handleTabChange('soundEffects')}
           >
-            ✕
+            預設音效
+          </button>
+          <button 
+            className={`px-4 py-2 whitespace-nowrap ${activeTab === 'freesound' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}
+            onClick={() => handleTabChange('freesound')}
+          >
+            Freesound搜尋
+          </button>
+          <button 
+            className={`px-4 py-2 whitespace-nowrap ${activeTab === 'synth' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}
+            onClick={() => handleTabChange('synth')}
+          >
+            合成音效
+          </button>
+          <button 
+            className={`px-4 py-2 whitespace-nowrap ${activeTab === 'songs' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}
+            onClick={() => handleTabChange('songs')}
+          >
+            歌曲
           </button>
         </div>
-      </div>
-
-      {/* 標籤頁切換 */}
-      <div className="mb-4">
-        <ul className="flex border-b border-gray-700">
-          <li className="mr-2">
-            <button 
-              onClick={() => handleTabChange('songs')}
-              className={`inline-block px-4 py-2 border-b-2 ${activeTab === 'songs' ? 'border-blue-500 text-blue-500' : 'border-transparent hover:text-gray-300'}`}
-            >
-              歌曲庫
-            </button>
-          </li>
-          <li className="mr-2">
-            <button 
-              onClick={() => handleTabChange('synth')}
-              className={`inline-block px-4 py-2 border-b-2 ${activeTab === 'synth' ? 'border-blue-500 text-blue-500' : 'border-transparent hover:text-gray-300'}`}
-            >
-              合成音效
-            </button>
-          </li>
-          <li className="mr-2">
-            <button 
-              onClick={() => handleTabChange('freesound')}
-              className={`inline-block px-4 py-2 border-b-2 ${activeTab === 'freesound' ? 'border-blue-500 text-blue-500' : 'border-transparent hover:text-gray-300'}`}
-            >
-              Freesound
-            </button>
-          </li>
-        </ul>
-      </div>
-
-      {/* 標籤內容區域 */}
-      <div className="tabs-content overflow-y-auto" style={{ maxHeight: '400px' }}>
-        {/* 歌曲庫標籤 */}
-        <div className={activeTab === 'songs' ? 'block' : 'hidden'}>
-          <div className="mb-4">
-            <h3 className="text-lg font-semibold mb-2">歌曲列表</h3>
-            {sampleSongs.length > 0 ? (
-              <div className="space-y-2">
-                {sampleSongs.map(song => (
-                  <div key={song.id} className="flex items-center justify-between p-2 bg-gray-700 rounded">
-                    <span className="text-sm truncate mr-2" title={song.name}>{song.name}</span>
-                    <button
-                      onClick={() => handlePlaySong(song)}
-                      className={`px-3 py-1 text-xs rounded transition-colors duration-200 ${
-                        playingSongId === song.id
-                          ? 'bg-red-600 hover:bg-red-700'
-                          : 'bg-green-600 hover:bg-green-700'
-                      } text-white`}
-                    >
-                      {playingSongId === song.id ? '停止' : '播放'}
-                    </button>
-                  </div>
-                ))}
-                {/* 添加一個全局停止按鈕 */} 
-                {playingSongId && (
-                   <button
-                     onClick={handleStopAllSongs}
-                     className="w-full mt-2 py-1 bg-red-700 hover:bg-red-800 rounded text-sm text-gray-200 transition-colors duration-200"
-                   >
-                     停止播放
-                   </button>
-                )}
-              </div>
-            ) : (
-              <p className="text-gray-400 text-sm">沒有可播放的歌曲。</p>
-            )}
-          </div>
-        </div>
-
-        {/* 合成音效標籤 */}
-        <div className={activeTab === 'synth' ? 'block' : 'hidden'}>
-          <div className="mb-4">
-            <h3 className="text-lg font-semibold mb-2">Tone.js 合成器音效</h3>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => handlePlaySynthSound('beep', { frequency: 880, duration: 0.2 })}
-                className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-2 rounded-md text-sm transition-colors duration-200"
-                title="簡單的高音嗶聲"
-              >
-                嗶聲 (高音)
-              </button>
-              <button
-                onClick={() => handlePlaySynthSound('beep', { frequency: 440, duration: 0.3 })}
-                className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-2 rounded-md text-sm transition-colors duration-200"
-                title="簡單的中音嗶聲"
-              >
-                嗶聲 (中音)
-              </button>
-              <button
-                onClick={() => handlePlaySynthSound('sweep', { startFreq: 220, endFreq: 880, duration: 0.5 })}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-md text-sm transition-colors duration-200"
-                title="上升頻率掃描"
-              >
-                頻率掃描 (上升)
-              </button>
-              <button
-                onClick={() => handlePlaySynthSound('sweep', { startFreq: 880, endFreq: 220, duration: 0.5 })}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-md text-sm transition-colors duration-200"
-                title="下降頻率掃描"
-              >
-                頻率掃描 (下降)
-              </button>
-              <button
-                onClick={() => handlePlaySynthSound('noise', { noiseType: 'white', duration: 0.3 })}
-                className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md text-sm transition-colors duration-200"
-                title="白噪音"
-              >
-                白噪音
-              </button>
-              <button
-                onClick={() => handlePlaySynthSound('noise', { noiseType: 'pink', duration: 0.3 })}
-                className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md text-sm transition-colors duration-200"
-                title="粉紅噪音"
-              >
-                粉紅噪音
-              </button>
-              <button
-                onClick={() => handlePlaySynthSound('laser')}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-sm transition-colors duration-200"
-                title="雷射槍音效"
-              >
-                雷射音效
-              </button>
-              <button
-                onClick={() => handlePlaySynthSound('explosion')}
-                className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md text-sm transition-colors duration-200"
-                title="爆炸音效"
-              >
-                爆炸音效
-              </button>
-              <button
-                onClick={() => handlePlaySynthSound('powerUp', { duration: 1 })}
-                className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-sm transition-colors duration-200 col-span-2"
-                title="能量充能音效"
-              >
-                能量充能
-              </button>
-            </div>
-          </div>
-
-          {/* 合成音效JSON指令測試區域 */}
-          <div className="mt-4 border-t border-gray-700 pt-4">
-            <h3 className="text-lg font-semibold mb-2">合成音效測試</h3>
-            <div className="space-y-2">
-              <textarea 
-                className="w-full h-32 px-2 py-1 text-sm bg-gray-700 text-white rounded"
-                placeholder={`輸入合成音效序列，例如：
-{
-  "effects": [
-    {
-      "type": "beep",
-      "options": { 
-        "frequency": 880,
-        "duration": 0.2,
-        "volume": 0.8
-      },
-      "startTime": 0
-    },
-    {
-      "type": "laser",
-      "options": {
-        "volume": 0.7
-      },
-      "startTime": 500
-    }
-  ]
-}`}
-                value={synthJsonInput}
-                onChange={(e) => setSynthJsonInput(e.target.value)}
-              />
-              <div className="flex space-x-2 mb-2">
-                <button
-                  onClick={handleExecuteSynthCommand}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded"
-                >
-                  執行合成序列
-                </button>
-              </div>
-              
-              {/* 範例選擇區 */}
-              <div className="grid grid-cols-2 gap-2 mb-2">
-                <button
-                  onClick={() => setSynthJsonInput(JSON.stringify(synthExamples.basic, null, 2))}
-                  className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded"
-                  title="基本音效組合"
-                >
-                  基本範例
-                </button>
-                <button
-                  onClick={() => setSynthJsonInput(JSON.stringify(synthExamples.variety, null, 2))}
-                  className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded"
-                  title="帶有綜藝節目風格的音效序列"
-                >
-                  綜藝鼓聲
-                </button>
-                <button
-                  onClick={() => setSynthJsonInput(JSON.stringify(synthExamples.scifi, null, 2))}
-                  className="px-3 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded"
-                  title="科幻風格音效"
-                >
-                  科幻系列
-                </button>
-                <button
-                  onClick={() => setSynthJsonInput(JSON.stringify(synthExamples.drums, null, 2))}
-                  className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded"
-                  title="鼓聲節奏模式"
-                >
-                  鼓聲節奏
-                </button>
-              </div>
-            </div>
-            <p className="text-xs text-gray-400 mt-2">
-              測試直接通過Tone.js生成的合成音效和音效序列。點擊範例後再點擊"執行合成序列"。
-            </p>
-          </div>
-        </div>
-
-        {/* Freesound庫標籤 */}
-        <div className={activeTab === 'freesound' ? 'block' : 'hidden'}>
-          {/* 搜索區域 */}
-          <div className="mb-4">
-            <div className="flex space-x-2 mb-2">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="搜索音效..."
-                className="flex-1 px-2 py-1 bg-gray-700 rounded text-white text-sm"
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              />
-              <button
-                onClick={handleSearch}
-                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm"
-                disabled={isSearchLoading}
-              >
-                {isSearchLoading ? '搜索中...' : '搜索'}
-              </button>
-            </div>
-            
-            {/* 熱門標籤 */}
-            <div className="mb-2">
-              <p className="text-xs text-gray-400 mb-1">熱門標籤:</p>
-              <div className="flex flex-wrap gap-1">
-                {Object.entries(categorizedTags).flatMap(([category, tags]) => (
-                  tags.slice(0, 3).map(tag => (
-                    <button
-                      key={tag}
-                      onClick={() => handleTagSearch(tag)}
-                      className="px-2 py-0.5 text-xs bg-gray-700 hover:bg-gray-600 rounded-full text-gray-200"
-                    >
-                      {tag}
-                    </button>
-                  ))
-                ))}
-              </div>
-            </div>
-            
-            {/* 分類標籤 */}
-            <div className="mb-2">
-              <details className="text-xs">
-                <summary className="text-gray-400 cursor-pointer">所有分類</summary>
-                <div className="mt-1 pl-2">
-                  {Object.entries(categorizedTags).map(([category, tags]) => (
-                    <div key={category} className="mb-2">
-                      <p className="text-gray-400 mb-1">{category}:</p>
-                      <div className="flex flex-wrap gap-1">
-                        {tags.map(tag => (
-                          <button
-                            key={tag}
-                            onClick={() => handleTagSearch(tag)}
-                            className="px-2 py-0.5 text-xs bg-gray-700 hover:bg-gray-600 rounded-full text-gray-200"
-                          >
-                            {tag}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </details>
-            </div>
-          </div>
-          
-          {/* 搜索結果 */}
-          <div className="mb-4">
-            {searchError && (
-              <p className="text-red-400 text-sm">{searchError}</p>
-            )}
-            
-            {searchResults.length > 0 ? (
-              <>
-                <p className="text-xs text-gray-400 mb-2">找到 {totalResults} 個結果:</p>
-                
-                <div className="space-y-2">
-                  {searchResults.map(sound => (
-                    <div 
-                      key={sound.id} 
-                      className="p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors"
-                    >
-                      <div className="flex justify-between items-start mb-1">
-                        <h4 className="text-sm font-semibold truncate" title={sound.name}>
-                          {sound.name}
-                        </h4>
-                        <span className="text-xs text-gray-400">
-                          {sound.duration.toFixed(1)}s
-                        </span>
-                      </div>
-                      
-                      {/* 波形圖 */}
-                      {sound.images?.waveform_m && (
-                        <div className="mb-1">
-                          <img 
-                            src={sound.images.waveform_m} 
-                            alt="波形圖" 
-                            className="w-full h-12 object-cover rounded"
-                          />
-                        </div>
-                      )}
-                      
-                      <div className="flex flex-wrap gap-1 mb-1">
-                        {sound.tags.slice(0, 3).map(tag => (
-                          <span key={tag} className="px-1.5 py-0.5 bg-gray-800 rounded-full text-gray-300 text-xs">
-                            {tag}
-                          </span>
-                        ))}
-                        {sound.tags.length > 3 && (
-                          <span className="px-1.5 py-0.5 bg-gray-800 rounded-full text-gray-400 text-xs">
-                            +{sound.tags.length - 3}
-                          </span>
-                        )}
-                      </div>
-                      
-                      <div className="flex text-xs text-gray-400 justify-between">
-                        <span title="上傳者">{sound.username}</span>
-                        <span title="許可證">{sound.license}</span>
-                      </div>
-                      
-                      {/* 操作按鈕 */}
-                      <div className="flex justify-between mt-2">
-                        <button
-                          onClick={() => playingPreviewId === sound.id 
-                            ? handleStopPreview() 
-                            : handlePlayPreview(sound)
-                          }
-                          className={`px-2 py-1 text-xs rounded ${
-                            playingPreviewId === sound.id 
-                              ? 'bg-red-600 hover:bg-red-700' 
-                              : 'bg-green-600 hover:bg-green-700'
-                          } text-white`}
-                        >
-                          {playingPreviewId === sound.id ? '停止' : '預覽'}
-                        </button>
-                        
-                        <button
-                          onClick={() => handleSaveSound(sound)}
-                          className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 rounded text-white"
-                          title="收藏音效"
-                        >
-                          收藏
-                        </button>
-                        
-                        <a
-                          href={sound.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-2 py-1 text-xs bg-gray-600 hover:bg-gray-500 rounded text-white"
-                          title="查看詳情"
-                        >
-                          詳情
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                
-                {/* 加載更多按鈕 */}
-                {hasNextPage && (
-                  <button
-                    onClick={loadMore}
-                    disabled={isSearchLoading}
-                    className="w-full mt-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-200"
-                  >
-                    {isSearchLoading ? '加載中...' : '加載更多'}
-                  </button>
-                )}
-              </>
-            ) : searchQuery ? (
-              <p className="text-sm text-gray-400">未找到結果</p>
-            ) : (
-              <p className="text-sm text-gray-400">輸入關鍵詞開始搜索</p>
-            )}
-          </div>
-          
-          {/* 收藏的音效 */}
-          {cachedSounds.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-gray-700">
-              <h3 className="text-lg font-semibold mb-2">我的收藏</h3>
-              
-              <div className="space-y-2">
-                {cachedSounds.map(sound => (
-                  <div 
-                    key={sound.id} 
-                    className="p-2 bg-gray-700 rounded"
-                  >
-                    <div className="flex justify-between">
-                      <h4 className="text-sm truncate" title={sound.name}>
-                        {sound.name}
-                      </h4>
-                      
-                      <button
-                        onClick={() => sound.previews && handlePlayPreview(sound as FreesoundSearchResult)}
-                        className="px-2 text-xs bg-green-600 hover:bg-green-700 rounded text-white"
-                      >
-                        播放
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {/* 音頻預覽元素 */}
-          <audio ref={audioPreviewRef} className="hidden" />
-        </div>
-      </div>
-
-      {/* 控制區域 */}
-      <div className="mb-4 mt-4 pt-4 border-t border-gray-700">
-        <h3 className="text-lg font-semibold mb-2">控制</h3>
         
-        {/* 音量控制 */}
-        <div className="flex items-center mb-2">
-          <span className="mr-2">音量</span>
+        {/* 音量調節 */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-300 mb-1">音量: {volume}%</label>
           <input 
             type="range" 
             min="0" 
             max="100" 
-            value={volumePercent}
-            className="w-full"
+            value={volume} 
             onChange={(e) => handleVolumeChange(parseInt(e.target.value))}
+            className="w-full h-2 bg-gray-700 rounded-md appearance-none cursor-pointer"
           />
-          <span className="ml-2">{volumePercent}%</span>
         </div>
         
-        {/* 停止所有音效 */}
-        <button
-          onClick={stopAllSounds}
-          className="w-full bg-red-600 hover:bg-red-700 text-white py-1.5 rounded mt-2"
-        >
-          停止所有音效
-        </button>
+        {/* 各標籤內容 */}
+        {activeTab === 'soundEffects' && (
+          <div>
+            <h3 className="text-lg font-semibold mb-2">預設音效</h3>
+            <div className="grid grid-cols-2 gap-2">
+              {Object.entries(soundEffectCategories).map(([category, sounds]) => (
+                <div key={category} className="mb-4">
+                  <h4 className="text-md font-medium mb-1 text-gray-300">{categoryNames[category] || category}</h4>
+                  <div className="grid grid-cols-2 gap-1">
+                    {sounds.map(soundId => {
+                      const sound = soundEffectInfo[soundId];
+                      return (
+                        <button
+                          key={soundId}
+                          onClick={() => soundEffects.playSingleSoundEffect(soundId)}
+                          className="p-2 bg-gray-700 hover:bg-gray-600 rounded text-xs text-left transition-colors duration-200"
+                          title={sound.description}
+                        >
+                          {sound.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {activeTab === 'freesound' && (
+          <FreesoundPanel soundEffects={soundEffects} />
+        )}
+        
+        {activeTab === 'synth' && (
+          <SynthPanel soundEffects={soundEffects} />
+        )}
+        
+        {activeTab === 'songs' && (
+          <SongLibraryPanel globalVolume={volume} />
+        )}
       </div>
-      
-      {/* 載入狀態 */}
-      <div className="mt-4 text-xs text-gray-400">
-        狀態: {isReady ? '準備就緒' : isLoading ? '載入中...' : '未初始化'} | 
-        已載入預設音效: {loadedSounds.length}
-      </div>
-
-      {/* 測試用的隱藏標籤，添加freesound標籤 */}
-      <input ref={samplesTabRef} type="radio" id="tab-samples" name="tabs" className="hidden" defaultChecked />
-      <input ref={synthTabRef} type="radio" id="tab-synth" name="tabs" className="hidden" />
-      <input ref={freesoundTabRef} type="radio" id="tab-freesound" name="tabs" className="hidden" />
     </div>
   );
 };
