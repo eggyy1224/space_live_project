@@ -803,4 +803,70 @@ triggerEvent(event: AudioEvent): void {
 
 ## 7. 總結
 
-本設計提供了一個完整的方案，使用Tone.js為TTS語音添加豐富的音效處理能力。通過這些工具，可以實現機器人聲、太空感、電話效果等多種聲音變化，增強用戶體驗。該方案與現有的AudioCoordinator無縫集成，支持實時調整和預覽，可作為音效系統重構的重要組成部分。 
+本設計提供了一個完整的方案，使用Tone.js為TTS語音添加豐富的音效處理能力。通過這些工具，可以實現機器人聲、太空感、電話效果等多種聲音變化，增強用戶體驗。該方案與現有的AudioCoordinator無縫集成，支持實時調整和預覽，可作為音效系統重構的重要組成部分。
+
+## 8. 綜藝音效 (Variety SFX) 與 TTS 語音效果的差異與共存
+
+| 面向 | 綜藝/一般音效 (Variety SFX) | TTS 語音效果 (Voice FX) |
+|------|-----------------------------|--------------------------|
+| **目標** | 增添戲劇性或 UI 反饋的 **短促音效** | **改變正在播放之語音** 的音色/空間感 |
+| **素材來源** | 預先錄製或 Tone.Player 播放的檔案 | 由 TTS 服務生成的 **即時語音流** |
+| **處理位置** | `SoundEffectService` → `AudioCoordinator` 在 **SFX track** 直接播放 | `AudioService` 產生 AudioNode → 經 `VoiceEffectsProcessor` 效果鏈 → 輸出 |
+| **對話流程關係** | 與語音內容獨立，可與 TTS 同時播放 (ducking) | 直接影響語音內容，通常屬於 voice track |
+| **典型場景** | 掌聲、笑聲、轉場 Whoosh、雷射、爆炸 | 機器人變聲、回音、老式收音機、電話音質、太空艙混響 |
+
+> **結論：** 兩者並不衝突，且可互補。例如語音先套用「故障」效果後，緊接著播放「爆炸」SFX 形成節奏。
+
+---
+
+## 9. 統一處理管線設計 (草圖)
+
+```mermaid
+graph TD
+    subgraph Input & Control
+        Backend[後端 LLM / LangGraph] -->|AudioTimeline JSON| WS[WebSocketService]
+        WS -->|Dispatch| AC(AudioCoordinator)
+    end
+
+    subgraph Playback Layer
+        AC -->|TTS URL| AS(AudioService)
+        AC -->|Voice FX Config| VEP(VoiceEffectsProcessor)
+        AS --> Src[TTS AudioNode]
+        Src -->|Connect| VEP --> Out[(Destination)]
+
+        AC -->|SFX Event| SVC(SoundEffectService) --> Out
+    end
+
+    subgraph UI
+        VEPanel[VoiceEffectsPanel] -->|User Adjust| AC
+    end
+```
+
+流程說明：
+1. **後端** 生成含 `voiceEffect` 參數的 AudioTimeline JSON。
+2. `AudioCoordinator` 同時調用
+   * `AudioService` → 準備/播放 TTS 音訊
+   * `VoiceEffectsProcessor` → 建立/更新效果鏈
+3. `AudioService` 的 AudioNode 連接到 `VoiceEffectsProcessor` 輸入；處理後輸出到主混音。
+4. `SoundEffectService` 依舊可獨立播放 Variety SFX，若需要可由 `AudioCoordinator` 控制 ducking。
+
+---
+
+## 10. 腦洞大開的實踐可能 (Ideas)
+
+1. **情感驅動聲音風格**：後端將情感值映射到不同預設，讓 AI 說話自帶情緒音色。
+2. **角色聲音庫**：建立「老教授」「外星人」「小精靈」等角色預設，並允許動態切換。
+3. **環境模擬器**：根據場景 (洞穴 / 太空艙 / 大教堂)自動套用混響 + EQ，營造空間感。
+4. **實時變聲器 UI**：拖放式效果鏈編輯、即時預聽，像 DAW 插件一樣使用。
+5. **語音 + SFX Combo**：故障化語音 + 爆炸 SFX 等組合，`AudioCoordinator` 用 JSON 直接排程。
+6. **歌唱/Auto‑Tune**：結合 PitchShift 與音高量化，嘗試讓 TTS 唱歌。
+7. **麥克風模擬**：快速切換「手機麥」「廣播級麥」「老式收音機」等音質。
+8. **AI 建議效果**：分析對話內容自動推薦最合適的變聲/環境預設。
+
+---
+
+> **下一步建議**
+> 1. 於 `AudioCoordinator` MVP 中加入 **AudioNode 交換介面**，支援將任何音訊源路由到 `VoiceEffectsProcessor`。
+> 2. 先實作 2~3 個 **角色/環境預設**，在 UI 中可選並測試。
+> 3. 規劃 JSON 介面：`voiceEffect: { preset: 'robot', params: { pitchShift:{pitch:-12} } }`。
+> 4. 準備基礎效能測試，確保多效果鏈在中階裝置上仍可流暢播放。 

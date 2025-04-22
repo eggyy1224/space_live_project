@@ -21,6 +21,12 @@
     - [ ] 保留 Tone.js 測試按鈕 + JSON 編輯器  
     - [ ] 新增「快速模板」下拉，方便插入常用序列  
     - [ ] 測試驗證：按下模板 → JSON 區域更新 → 執行後可聽見對應音效 (透過 Coordinator)
+  - [ ] **VoiceEffectsPanel MVP**  
+    - [ ] 顯示內建角色 / 環境預設 (機器人、太空艙、電話、洞穴…)，並包含「原聲」  
+    - [ ] 允許即時切換預設並預聽，調整混響、PitchShift、Filter、Distortion 等參數  
+    - [ ] 與 `AudioCoordinator` 溝通 (`updateVoiceEffect`) 以動態修改 `voiceEffect` 參數  
+    - [ ] 支援輸入自訂 TTS URL 進行效果測試  
+    - [ ] (進階) 拖放式效果鏈 UI、預設儲存/載入
   - [ ] **FreesoundPanel MVP**  
     - [ ] 使用 `useFreesoundAPI` 實作搜尋 / 分頁 / 預覽 / 收藏  
     - [ ] 新增「我的收藏」子 Tab，顯示 IndexedDB 快取列表  
@@ -80,12 +86,13 @@
       - `getEvents(): AudioEvent[]` - 獲取當前排程的事件列表。
       - `getPlayhead(): number` - 獲取當前播放頭時間。
       - `isCoordinatorRunning(): boolean` - 獲取運行狀態。
+    - [ ] `connectVoiceSource(node: AudioNode): void` - 將任意語音 AudioNode 連接到 `VoiceEffectsProcessor`  
+    - [ ] `updateVoiceEffect(config: VoiceEffectConfig): void` - 即時更新語音效果參數
   - [ ] **事件觸發邏輯 `triggerEvent(event: AudioEvent)`：**
     - 根據 `event.type` / `track` 呼叫相應服務：
       - `tts`/`song` (`voice` track) → `AudioService.playAudio()` (可能需要重構 AudioService 以接受 URL/Blob)
       - `sfx` (`sfx` track) → `SoundEffectService.playSingleSoundEffect()`
-    - **(待辦)** 觸發表情/動作：呼叫 `HeadService` / `BodyService` (若事件含 `animationCues`)
-  - [ ] **整合現有服務呼叫** — 各服務播放聲音時，應改為調用 `AudioCoordinator.playNow()` 或生成 JSON。
+      - 若 `event.track === 'voice'` 且包含 `voiceEffect`，將效果參數傳遞給 `VoiceEffectsProcessor`
   - [ ] **後端 TTS 整合：**
     - `WebSocketService` 收到後端 TTS 回應 (含音檔 URL 和文字) 後，轉換為 `AudioTimeline` JSON。
     - 調用 `AudioCoordinator.scheduleFromJson()` 處理。
@@ -96,6 +103,10 @@
   - [ ] 聚焦於音效資源管理 (Tone.js、原生音效) 和基礎播放。
   - [ ] 移除排程邏輯，由 `AudioCoordinator` 負責。
   - [ ] 提供清晰的 API 供 `AudioCoordinator` 調用。
+  - [ ] **實作 VoiceEffectsProcessor 服務**  
+    - [ ] 建立 `src/services/VoiceEffectsProcessor.ts`，管理 Tone.js 效果器、處理鏈及輸出  
+    - [ ] 提供 `applyPreset`, `resetEffects`, `setEffectParameter`, `connectInput(node)` API  
+    - [ ] 支援角色/環境預設與 JSON 參數
 
 ## 四、語音與音效系統整合（優先級：高）
 
@@ -113,6 +124,8 @@
   - [ ] 支持語音的音高、音調和效果處理
   - [ ] 提供預設的語音效果組合（如機器人聲、空間感等）
   - [ ] 整合至 `AudioCoordinator` 的 `voice` track 處理流程
+
+- [ ] **與 `VoiceEffectsPanel` 互動：即時調整效果**
 
 ## 五、資源管理與快取系統（優先級：中）
 
@@ -210,8 +223,8 @@
 4.  **階段四**: **`SoundEffectPanel` 與 `AudioCoordinator` 串接** → 驗證所有聲音來源皆由 Coordinator 控制。
 5.  **階段五**: **恢復並增強 `TimelineInspector`** → 作為 `AudioCoordinator` 的調試工具，可發送測試 JSON。
 6.  **階段六**: 實現聲音分類、雙管線協調（ducking、衝突處理）、表情動作觸發（初步）。
-7.  **階段七**: 完善資源管理、進階功能與效能優化。
-8.  **(新增) 階段八**: **整合語音效果處理** → 使用Tone.js為TTS語音添加效果處理能力。
+7.  **階段七**: **整合語音效果處理** → 實作 `VoiceEffectsProcessor`、`VoiceEffectsPanel`，加入 AudioNode 路由支援。
+8.  **階段八**: 完善資源管理、進階功能與效能優化。
 
 ## 下一步優先任務
 
@@ -222,7 +235,7 @@
 5.  **重新啟用 `TimelineInspector`**，用於測試 `AudioCoordinator`。
 6.  強化 Freesound 整合與歌曲庫。
 7.  建立聲音分類系統與雙管線協調機制。
-8.  擴充 SynthPanel 並實現TTS語音效果處理。
+8.  擴充 SynthPanel；完成 VoiceEffectsPanel & Processor 與 Coordinator 的整合。
 
 這個順序將確保先實現對前端用戶有用的功能，同時為後續的深度架構重構打下基礎。 
 
