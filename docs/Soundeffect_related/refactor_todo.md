@@ -4,21 +4,25 @@
 
 ## 一、前端介面擴展與資源整合（優先級：最高）
 
-- [ ] **重構音效控制面板 (`SoundEffectPanel`)**  
+- [X] **重構音效控制面板 (`SoundEffectPanel`)**  
   _目標：將目前龐大的元件拆分為可獨立開發與測試的子模組，並為後續 AudioCoordinator 整合預留插槽。_
-  - [ ] **模組化拆分**  
-    - [ ] 將原面板拆為三個子元件：`SongLibraryPanel`, `SynthPanel`, `FreesoundPanel`  
-    - [ ] 建立 `SoundEffectPanelLayout` 作為頂層容器，僅負責 Tab 與共用狀態傳遞  
+  - [X] **模組化拆分**  
+    - [X] 將原面板拆為三個子元件：`SongLibraryPanel`, `SynthPanel`, `FreesoundPanel`  
+    - [X] 建立 `SoundEffectPanelLayout` 作為頂層容器，僅負責 Tab 與共用狀態傳遞  
   - [ ] **SongLibraryPanel MVP**  
     - [ ] 顯示 `sampleSongs`（或後端 API 回傳）清單：縮圖 / 標題 / 長度  
+    - [ ] 實現簡易歌曲導入功能，支持上傳音頻文件
     - [ ] **(調整)** 使用統一的 `AudioPlayerService` 或直接調用 `AudioCoordinator` API 播放、暫停、跳轉；播放期間自動更新 Coordinator 狀態  
     - [ ] 於列表中標示 `animationCues`，Hover 時高亮對應時間點（方便測試時間軸）  
+    - [ ] 為歌曲添加動作和表情時間線編輯功能
     - [ ] 測試驗證：點擊播放 => 聲音正常 + Coordinator 狀態切換正確
     - [ ] **(新增)** 將默認音效替換為更豐富的歌曲庫，包含各類風格的音樂資源
     - [ ] **(新增)** 支援音樂的分類顯示和快速篩選功能
     - [ ] **(新增)** 提供歌曲播放時的簡易波形可視化
   - [ ] **SynthPanel MVP**  
     - [ ] 保留 Tone.js 測試按鈕 + JSON 編輯器  
+    - [ ] 設計用於模型說話時的聲音處理界面
+    - [ ] 提供常用音效濾鏡和效果選擇
     - [ ] 新增「快速模板」下拉，方便插入常用序列  
     - [ ] 測試驗證：按下模板 → JSON 區域更新 → 執行後可聽見對應音效 (透過 Coordinator)
   - [ ] **VoiceEffectsPanel MVP**  
@@ -27,10 +31,12 @@
     - [ ] 與 `AudioCoordinator` 溝通 (`updateVoiceEffect`) 以動態修改 `voiceEffect` 參數  
     - [ ] 支援輸入自訂 TTS URL 進行效果測試  
     - [ ] (進階) 拖放式效果鏈 UI、預設儲存/載入
-  - [ ] **FreesoundPanel MVP**  
-    - [ ] 使用 `useFreesoundAPI` 實作搜尋 / 分頁 / 預覽 / 收藏  
+  - [X] **FreesoundPanel MVP**  
+    - [X] 使用 `useFreesoundAPI` 實作搜尋 / 分頁 / 預覽 / 收藏  
     - [ ] 新增「我的收藏」子 Tab，顯示 IndexedDB 快取列表  
-    - [ ] 測試驗證：搜尋關鍵字 → 點擊預覽 → 能聽到音效且快取狀態更新
+    - [ ] 實現收藏功能，將找到的音效保存到本地
+    - [ ] 建立收藏列表管理界面，方便以後 AI 查找和使用
+    - [X] 測試驗證：搜尋關鍵字 → 點擊預覽 → 能聽到音效且快取狀態更新
 
 - [ ] **實現音效資源庫**
   - [ ] 建立統一的資源管理系統
@@ -215,28 +221,42 @@
 
 ## 實施策略
 
-重構應採用漸進式方法，確保核心功能優先實現：
+重構已採用漸進式方法，確保核心功能優先實現：
 
-1.  **階段一 (進行中)**: **重構 `SoundEffectPanel`** → 模組化拆分 (SongLibrary / Synth / Freesound)，準備與 Coordinator 對接。
-2.  **階段二**: **設計並實作 `AudioCoordinator` MVP** → 核心 API (`scheduleFromJson`, `playNow` 等)、`AudioTimeline` JSON 格式定義、整合 TTS/歌唱/SFX 基礎播放邏輯。
-3.  **階段三**: **後端 TTS 協作改造** → 與後端確認並實現透過 WebSocket 傳輸 `AudioTimeline` JSON。
-4.  **階段四**: **`SoundEffectPanel` 與 `AudioCoordinator` 串接** → 驗證所有聲音來源皆由 Coordinator 控制。
-5.  **階段五**: **恢復並增強 `TimelineInspector`** → 作為 `AudioCoordinator` 的調試工具，可發送測試 JSON。
-6.  **階段六**: 實現聲音分類、雙管線協調（ducking、衝突處理）、表情動作觸發（初步）。
-7.  **階段七**: **整合語音效果處理** → 實作 `VoiceEffectsProcessor`、`VoiceEffectsPanel`，加入 AudioNode 路由支援。
-8.  **階段八**: 完善資源管理、進階功能與效能優化。
+1.  **階段一 (已完成)**: **重構 `SoundEffectPanel`** → 模組化拆分 (SongLibrary / Synth / Freesound)，準備與 Coordinator 對接。
+2.  **階段二 (進行中)**: **完善各面板的獨立功能**：
+    - **FreesoundPanel**: 實現收藏功能，將找到的音效保存到本地
+    - **SynthPanel**: 開發模型說話時的聲音處理功能
+    - **SongLibraryPanel**: 建立歌曲導入和時間線編輯功能
+3.  **階段三**: **設計統一API並實作 `AudioCoordinator` MVP** → 核心 API (`scheduleFromJson`, `playNow` 等)、`AudioTimeline` JSON 格式定義、整合 TTS/歌唱/SFX 基礎播放邏輯。
+4.  **階段四**: **後端 TTS 協作改造** → 與後端確認並實現透過 WebSocket 傳輸 `AudioTimeline` JSON。
+5.  **階段五**: **`SoundEffectPanel` 與 `AudioCoordinator` 串接** → 驗證所有聲音來源皆由 Coordinator 控制。
+6.  **階段六**: **恢復並增強 `TimelineInspector`** → 作為 `AudioCoordinator` 的調試工具，可發送測試 JSON。
+7.  **階段七**: 實現聲音分類、雙管線協調（ducking、衝突處理）、表情動作觸發（初步）。
+8.  **階段八**: **整合語音效果處理** → 實作 `VoiceEffectsProcessor`、`VoiceEffectsPanel`，加入 AudioNode 路由支援。
+9.  **階段九**: 完善資源管理、進階功能與效能優化。
 
 ## 下一步優先任務
 
-1.  **重構 `SoundEffectPanel`（拆分子元件）並推出 `SongLibraryPanel` MVP**。
-2.  **設計並實作 `AudioCoordinator` MVP**（API 骨架、JSON 格式草案、基礎事件觸發）。
-3.  **定義 `AudioTimeline` JSON 格式**，並與後端溝通確認 TTS 回應格式。
-4.  **將 `SoundEffectPanel` (初步) 與 `AudioCoordinator` 串接**，驗證基本播放。
-5.  **重新啟用 `TimelineInspector`**，用於測試 `AudioCoordinator`。
-6.  強化 Freesound 整合與歌曲庫。
-7.  建立聲音分類系統與雙管線協調機制。
-8.  擴充 SynthPanel；完成 VoiceEffectsPanel & Processor 與 Coordinator 的整合。
+1.  ✅ **重構 `SoundEffectPanel`（拆分子元件）**
+2.  **完善各面板的獨立功能**:
+    - **FreesoundPanel**: 實現「我的收藏」子Tab和收藏管理功能
+    - **SynthPanel**: 開發用於模型說話時的聲音處理界面
+    - **SongLibraryPanel**: 建立歌曲導入和時間線編輯功能
+3.  **設計統一的API接口**，確保每個面板都提供標準化的介面，為將來與 AudioCoordinator 整合做準備
+4.  **設計並實作 `AudioCoordinator` MVP**（API 骨架、JSON 格式草案、基礎事件觸發）。
+5.  **定義 `AudioTimeline` JSON 格式**，並與後端溝通確認 TTS 回應格式。
+6.  **將 `SoundEffectPanel` (初步) 與 `AudioCoordinator` 串接**，驗證基本播放。
+7.  **重新啟用 `TimelineInspector`**，用於測試 `AudioCoordinator`。
 
-這個順序將確保先實現對前端用戶有用的功能，同時為後續的深度架構重構打下基礎。 
+這個順序強調先完成各個組件的獨立功能，確保每個部分都可以獨立工作，然後再進行系統整合。這樣可以更有條理地推進開發，也方便測試和排錯。
 
-### 調整重點 
+### 最新進度
+
+- ✅ 已完成將音效面板拆分為三個獨立子組件：FreesoundPanel、SynthPanel 和 SongLibraryPanel
+- ✅ 已完成 SoundEffectPanel 的清理，移除了預設音效標籤頁和舊代碼
+- ✅ 已完成 FreesoundPanel MVP 基礎功能，實現搜索、分頁和預覽功能
+- ⏩ 下一步：
+  - 完善各面板的獨立功能（收藏、歌曲導入、聲音處理等）
+  - 設計統一的API接口
+  - 開始 AudioCoordinator 的設計和實現 
