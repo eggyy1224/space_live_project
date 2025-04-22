@@ -7,9 +7,14 @@
 - [X] **重構音效控制面板 (`SoundEffectPanel`)**  
   _目標：將目前龐大的元件拆分為可獨立開發與測試的子模組，並為後續 AudioCoordinator 整合預留插槽。_
   - [X] **模組化拆分**  
-    - [X] 將原面板拆為三個子元件：`SongLibraryPanel`, `SynthPanel`, `FreesoundPanel`  
+    - [X] 將原面板拆為四個子元件：
+      - [X] `FreesoundPanel` (外部音效資源)
+      - [X] `SongLibraryPanel` (Suno 預錄歌曲)
+      - [X] `SynthPanel` → 重命名為 `BandEffectsPanel` (綜藝樂隊音效)
+      - [ ] `VoiceEffectsPanel` (聲音後處理)
     - [X] 建立 `SoundEffectPanelLayout` 作為頂層容器，僅負責 Tab 與共用狀態傳遞  
-  - [ ] **SongLibraryPanel MVP**  
+
+  - [ ] **SongLibraryPanel MVP** (唱歌模組)  
     - [ ] 顯示 `sampleSongs`（或後端 API 回傳）清單：縮圖 / 標題 / 長度  
     - [ ] 實現簡易歌曲導入功能，支持上傳音頻文件
     - [ ] **(調整)** 使用統一的 `AudioPlayerService` 或直接調用 `AudioCoordinator` API 播放、暫停、跳轉；播放期間自動更新 Coordinator 狀態  
@@ -22,22 +27,26 @@
     - [ ] **(問題修復)** 解決 `useRef<HTMLAudioElement>(null!)` 每次 render 都新建 new Audio() 的問題
       - 抽成 `useAudioPlayer(url)` hook，實現音頻資源的統一管理
       - 在組件卸載時確保正確釋放資源：`audio.pause(); audio.src=''`
-  - [ ] **SynthPanel MVP**  
+
+  - [ ] **BandEffectsPanel MVP** (綜藝樂隊模組)  
     - [ ] 保留 Tone.js 測試按鈕 + JSON 編輯器  
-    - [ ] 設計用於模型說話時的聲音處理界面
-    - [ ] 提供常用音效濾鏡和效果選擇
+    - [ ] 設計綜藝節目風格的音效庫（掌聲、笑聲、驚嘆音效等）
+    - [ ] 提供常用樂隊音效選擇（鼓點、銅鈸、音樂小片段等）
     - [ ] 新增「快速模板」下拉，方便插入常用序列  
     - [ ] 測試驗證：按下模板 → JSON 區域更新 → 執行後可聽見對應音效 (透過 Coordinator)
     - [ ] **(問題修復)** 解決多次快速播放可能殘留 Transport 事件的問題
       - 建立 `useSynthEngine()` hook，返回 playSequence/stop 等方法
       - 在 useEffect cleanup 中徹底清理資源：`Transport.cancel(0), dispose()`
-  - [ ] **VoiceEffectsPanel MVP**  
+
+  - [ ] **VoiceEffectsPanel MVP** (聲音後處理模組)  
     - [ ] 顯示內建角色 / 環境預設 (機器人、太空艙、電話、洞穴…)，並包含「原聲」  
     - [ ] 允許即時切換預設並預聽，調整混響、PitchShift、Filter、Distortion 等參數  
     - [ ] 與 `AudioCoordinator` 溝通 (`updateVoiceEffect`) 以動態修改 `voiceEffect` 參數  
     - [ ] 支援輸入自訂 TTS URL 進行效果測試  
+    - [ ] 實現對 TTS 流程處理的整合接口
     - [ ] (進階) 拖放式效果鏈 UI、預設儲存/載入
-  - [X] **FreesoundPanel MVP**  
+
+  - [X] **FreesoundPanel MVP** (外部音效資源)  
     - [X] 使用 `useFreesoundAPI` 實作搜尋 / 分頁 / 預覽 / 收藏  
     - [ ] 新增「我的收藏」子 Tab，顯示 IndexedDB 快取列表  
     - [ ] 實現收藏功能，將找到的音效保存到本地
@@ -82,46 +91,34 @@
   - [ ] 實現資源驗證和處理工具
   - [ ] **(新增)** 支持多種音頻來源的標準化處理流程
 
-## 三、核心架構設計（優先級：高）
+## 三、核心架構設計（優先級：最高）
 
-- [ ] **定義 AudioTimeline JSON 格式**
-  - [ ] 設計完整的 JSON Schema，包含時間、類型（`tts`, `song`, `sfx` 等）、資源（ID, URL, Freesound ID）、參數（音量, 循環）等字段。
-  - [ ] 建立範例集，涵蓋各種音訊事件場景（後端 TTS 回應、前端歌曲播放、UI 音效）。
-  - [ ] 實現基本的驗證器確保 JSON 結構符合要求。
-  - [ ] **(關鍵)** 包含觸發表情/動作的 `animationCues` 數據結構 (可選)，供後續高層協調使用。
-  - [ ] 明確區分需要表情動畫的聲音事件 (`voice`) 與純音效事件 (`sfx`) 的 `track` 或 `pipeline` 屬性。
+- [ ] **API / Contract 先行 (立即開始)**
+  - [ ] 定義 `AudioEvent` 與 `AudioTimeline` JSON Schema（放在 `src/types/audio.ts`）
+    - `AudioKind = 'song' | 'sfx' | 'synth' | 'voice'`
+    - `AudioEvent` 最小欄位：`{ id, kind, url, volume?, loop? }`
+  - [ ] 定義 **AudioCoordinator 外部 API**（放在 `src/services/AudioCoordinator.ts`）
+    - `playNow(event: AudioEvent)`
+    - `schedule(events: AudioEvent[])`
+    - `scheduleFromJson(timeline: AudioTimeline)`
+    - `stop(id?: string)`
+    - `setGlobalVolume(v: number)`
+    - `addEventListener(type, cb)` / `removeEventListener`
+  - [ ] 資源類型對應呼叫建議：
+    - **歌曲 (SongLibrary)**  → `kind:'song'`, `url` 指向歌曲檔，附帶 `meta:{duration,artist}`
+    - **綜藝樂隊音效 (BandEffects)** → `kind:'synth'`, 附 `synthPatch` 或 `sequenceId`
+    - **外部音效 (Freesound)**  → `kind:'sfx'`, 附 `freesoundId`
+    - **聲音後處理 (VoiceEffects)** → 由 VoiceEffectsPanel 呼叫 `updateVoiceEffect(config)`
+  - [ ] **樣例 JSON** 放在 `examples/audio_timeline_demo.json` 供測試
+  - [ ] 實作 `AC.playNow` / `AC.scheduleFromJson` stub：僅 `console.log` + emit bus 事件
 
-- [ ] **實作 AudioCoordinator（統一聲音管線）** <!-- 原 TimelineCoordinator -->
-  - [ ] 建立 `src/services/AudioCoordinator.ts` (或沿用 TimelineService.ts 結構)，內含：
-    - [ ] `AudioEvent` 型別（基於 AudioTimeline JSON 格式）
-    - [ ] 單例 `AudioCoordinator`，提供 API：
-      - `scheduleFromJson(json: AudioTimeline): void` - 解析 JSON 並排程事件。
-      - `playNow(event: AudioEvent): void` - 立即播放單一事件。
-      - `pause()`, `resume()`, `stop()`, `seek()` 等控制方法。
-      - `getEvents(): AudioEvent[]` - 獲取當前排程的事件列表。
-      - `getPlayhead(): number` - 獲取當前播放頭時間。
-      - `isCoordinatorRunning(): boolean` - 獲取運行狀態。
-    - [ ] `connectVoiceSource(node: AudioNode): void` - 將任意語音 AudioNode 連接到 `VoiceEffectsProcessor`  
-    - [ ] `updateVoiceEffect(config: VoiceEffectConfig): void` - 即時更新語音效果參數
-  - [ ] **事件觸發邏輯 `triggerEvent(event: AudioEvent)`：**
-    - 根據 `event.type` / `track` 呼叫相應服務：
-      - `tts`/`song` (`voice` track) → `AudioService.playAudio()` (可能需要重構 AudioService 以接受 URL/Blob)
-      - `sfx` (`sfx` track) → `SoundEffectService.playSingleSoundEffect()`
-      - 若 `event.track === 'voice'` 且包含 `voiceEffect`，將效果參數傳遞給 `VoiceEffectsProcessor`
-  - [ ] **後端 TTS 整合：**
-    - `WebSocketService` 收到後端 TTS 回應 (含音檔 URL 和文字) 後，轉換為 `AudioTimeline` JSON。
-    - 調用 `AudioCoordinator.scheduleFromJson()` 處理。
-    - (需與後端溝通確認最終 JSON 格式)
-  - [ ] 提供狀態給 `TimelineInspector` (見第九部分)。
+- [ ] **事件匯流機制**
+  - [ ] 建立 `ACBus` (mitt) 與標準事件：`PLAY_NOW`, `STOP`, `TRACK_END`, `DUCKING_ON`, `DUCKING_OFF`
+  - [ ] 撰寫臨時 handler：收到 `PLAY_NOW` → `new Audio(url).play()`
+  - [ ] 撰寫單元測試驗證 bus 事件順序
 
-- [ ] **重構 SoundEffectManager/Service**
-  - [ ] 聚焦於音效資源管理 (Tone.js、原生音效) 和基礎播放。
-  - [ ] 移除排程邏輯，由 `AudioCoordinator` 負責。
-  - [ ] 提供清晰的 API 供 `AudioCoordinator` 調用。
-  - [ ] **實作 VoiceEffectsProcessor 服務**  
-    - [ ] 建立 `src/services/VoiceEffectsProcessor.ts`，管理 Tone.js 效果器、處理鏈及輸出  
-    - [ ] 提供 `applyPreset`, `resetEffects`, `setEffectParameter`, `connectInput(node)` API  
-    - [ ] 支援角色/環境預設與 JSON 參數
+- [ ] **擴充 AudioCoordinator 功能**
+  - [ ] 之後階段再實作優先級、ducking、schedule 等高級邏輯
 
 ## 四、語音與音效系統整合（優先級：高）
 
@@ -182,7 +179,7 @@
   - [ ] 音訊載入策略精細化
   - [ ] 開發統一的 hooks 庫
     - [ ] `useAudioPlayer` - 用於 SongLibraryPanel，確保正確的資源管理
-    - [ ] `useSynthEngine` - 用於 SynthPanel，防止 Tone.js 事件殘留
+    - [ ] `useSynthEngine` - 用於 BandEffectsPanel，防止 Tone.js 事件殘留
     - [ ] `useFreesoundCache` - 用於 FreesoundPanel，實現搜尋結果持久化
 
 ## 七、文檔與測試（優先級：低）
@@ -236,46 +233,47 @@
   - [ ] 透過左下角 toggle 按鈕控制顯示。
   - [ ] **(新增)** 支持音頻波形與音量可視化顯示
 
-## 實施策略
+## 實施策略 (更新)
 
-重構已採用漸進式方法，確保核心功能優先實現：
+1.  **階段一 (進行中)**: **API/Contract & Stub**
+    - 完成 `AudioEvent`/`AudioTimeline` 型別與 JSON Schema
+    - 提供 `AudioCoordinator` stub + mitt bus
+    - 各面板改為只呼叫 `AC.playNow()`，禁止直接調用底層 Service
+    - 建立範例 JSON 並可透過 `AC.scheduleFromJson()` 播放 (stub)
 
-1.  **階段一 (已完成)**: **重構 `SoundEffectPanel`** → 模組化拆分 (SongLibrary / Synth / Freesound)，準備與 Coordinator 對接。
-2.  **階段二 (進行中)**: **完善各面板的獨立功能**：
-    - **FreesoundPanel**: 實現收藏功能，將找到的音效保存到本地
-    - **SynthPanel**: 開發模型說話時的聲音處理功能
-    - **SongLibraryPanel**: 建立歌曲導入功能，為歌曲添加動作和表情時間線
-3.  **階段三**: **設計統一API並實作 `AudioCoordinator` MVP** → 核心 API (`scheduleFromJson`, `playNow` 等)、`AudioTimeline` JSON 格式定義、整合 TTS/歌唱/SFX 基礎播放邏輯。
-4.  **階段四**: **後端 TTS 協作改造** → 與後端確認並實現透過 WebSocket 傳輸 `AudioTimeline` JSON。
-5.  **階段五**: **`SoundEffectPanel` 與 `AudioCoordinator` 串接** → 驗證所有聲音來源皆由 Coordinator 控制。
-6.  **階段六**: **恢復並增強 `TimelineInspector`** → 作為 `AudioCoordinator` 的調試工具，可發送測試 JSON。
-7.  **階段七**: 實現聲音分類、雙管線協調（ducking、衝突處理）、表情動作觸發（初步）。
-8.  **階段八**: **整合語音效果處理** → 實作 `VoiceEffectsProcessor`、`VoiceEffectsPanel`，加入 AudioNode 路由支援。
-9.  **階段九**: 完善資源管理、進階功能與效能優化。
+2.  **階段二**: **面板 MVP 整合**
+    - FreesoundPanel → `kind:'sfx'`
+    - SongLibraryPanel → `kind:'song'`
+    - BandEffectsPanel → `kind:'synth'`
+    - VoiceEffectsPanel → `kind:'voice'` / `updateVoiceEffect`
+    - 確保多面板事件可並發播放 (stub 協調器)
 
-## 下一步優先任務
+3.  **階段三**: **實作 AudioCoordinator 核心邏輯**
+    - track/ducking/優先權
+    - scheduleFromJson 真正排程
 
-1.  ✅ **重構 `SoundEffectPanel`（拆分子元件）**
-2.  **完善各面板的獨立功能**:
-    - **FreesoundPanel**: 實現「我的收藏」子Tab和收藏管理功能
-    - **SynthPanel**: 開發用於模型說話時的聲音處理界面
-    - **SongLibraryPanel**: 建立歌曲導入和時間線編輯功能
-3.  **修復已知的技術問題**:
-    - **SongLibraryPanel**: 創建 `useAudioPlayer` hook 解決 Audio 實例管理問題
-    - **SynthPanel**: 開發 `useSynthEngine` hook 處理 Tone.js 事件清理問題
-    - **FreesoundPanel**: 改進搜索結果的持久化存儲機制
-4.  **設計統一的API接口**，確保每個面板都提供標準化的介面，為將來與 AudioCoordinator 整合做準備
-5.  **設計並實作 `AudioCoordinator` MVP**（API 骨架、JSON 格式草案、基礎事件觸發）。
-6.  **定義 `AudioTimeline` JSON 格式**，並與後端溝通確認 TTS 回應格式。
-7.  **將 `SoundEffectPanel` (初步) 與 `AudioCoordinator` 串接**，驗證基本播放。
+4.  **階段四**: **高級功能與資源管理**
+    - IndexedDB 快取
+    - VoiceEffectsProcessor
+    - TimelineInspector
 
-這個順序強調先完成各個組件的獨立功能，確保每個部分都可以獨立工作，然後再進行系統整合。這樣可以更有條理地推進開發，也方便測試和排錯。
+## 下一步優先任務 (調整)
+
+1.  **完成 API/Contract & Stub** (立即進行)
+2.  **將所有面板切換至 AC.playNow 流程**
+3.  **撰寫範例 AudioTimeline JSON + 測試**
+4.  **面板 MVP 開發同步進行**
 
 ### 最新進度
 
-- ✅ 已完成將音效面板拆分為三個獨立子組件：FreesoundPanel、SynthPanel 和 SongLibraryPanel
+- ✅ 已完成將音效面板拆分為獨立子組件
 - ✅ 已完成 SoundEffectPanel 的清理，移除了預設音效標籤頁和舊代碼
 - ✅ 已完成 FreesoundPanel MVP 基礎功能，實現搜索、分頁和預覽功能
+- 🔄 正在調整模組分類和命名:
+  - 將 SynthPanel 重命名為 BandEffectsPanel (綜藝樂隊音效模組)
+  - 新增 VoiceEffectsPanel (聲音後處理模組)
+  - 明確 SongLibraryPanel 為唱歌模組 (Suno 預錄)
+  - 保留 FreesoundPanel 作為外部音效資源模組
 
 ### 面板拆分成果
 
@@ -286,18 +284,42 @@
 
 - **狀態管理現狀**:
   - 目前各子面板仍使用各自的 useState 管理內部狀態
-  - 下一步需要將「目前正在播什麼」、「是否被 ducking」等狀態拉到單一 store 或 AudioCoordinator 中統一管理
+  - 下一步將透過 AudioCoordinator 雛形將「目前正在播什麼」、「是否被 ducking」等狀態統一管理
 
 - **依賴關係**:
   - 三個子面板目前都直接 import AudioPlayerService 或 SoundEffectService 來播放音效
-  - 未來需改為調用 AudioCoordinator.playNow(event) 統一管理播放邏輯
+  - 將透過實作 AudioCoordinator 雛形，提供統一的 playSound/stopSound API
+  - 各模組將改為調用 AudioCoordinator 相關方法，而非直接使用服務
 
-- ⚠️ 已發現各面板存在的技術問題，並提出了修復建議：
-  - SongLibraryPanel: 需要封裝 `useAudioPlayer` hook 來正確管理音頻資源
-  - SynthPanel: 需要 `useSynthEngine` hook 處理 Tone.js 事件清理問題
-  - FreesoundPanel: 需要改進搜索結果的持久化存儲機制
-- ⏩ 下一步：
-  - 修復上述技術問題
-  - 完善各面板的獨立功能（收藏、歌曲導入、聲音處理等）
-  - 設計統一的API接口
-  - 開始 AudioCoordinator 的設計和實現 
+- **下一步重點任務**:
+  - 實作 AudioCoordinator 雛形，建立四大模組的協調機制
+  - 整合現有 TTS 流程到 AudioCoordinator
+  - 各模組功能開發同步進行 
+
+- [ ] **types & Contract 定義（必先完成）**
+  - [ ] 在 `src/types/audio.ts` 定義共用型別：
+    - `AudioKind = 'song' | 'sfx' | 'synth' | 'voice'`
+    - `AudioEvent { id: string; kind: AudioKind; url: string; volume?: number }`
+  - [ ] 於 `src/services/AudioCoordinator.ts` 建立 **Stub 版協調器**：
+    - 匯入 `mitt`，建立 `ACBus`
+    - 暴露 `AC.playNow(event)`／`AC.stopSound(id)` 兩支空殼函式（emit 事件即可）
+  - [ ] 為 CI / ESLint 加規則：**禁止**面板直接呼叫 `AudioPlayerService` 或 `SoundEffectService`，強制使用 `AC` 介面
+
+- [ ] **事件匯流機制（bus / mitt）**
+  - [ ] 建立基本事件名稱：`PLAY_NOW`, `STOP`, `MUSIC_START`, `MUSIC_END`, `DUCKING_ON` …
+  - [ ] 各面板 MVP 皆改為：
+    - `AC.playNow({id,url,kind})`
+    - 透過 `ACBus.emit('MUSIC_START', id)` 等事件回報狀態
+  - [ ] 臨時實作：`ACBus.on('PLAY_NOW', e => new Audio(e.url).play())` 作為極簡協調器
+
+- [ ] **面板整合里程碑**
+  - [ ] FreesoundPanel: 呼叫 `AC.playNow({id,url,kind:'sfx'})`
+  - [ ] SongLibraryPanel: 呼叫 `kind:'song'`
+  - [ ] BandEffectsPanel: 呼叫 `kind:'synth'`
+  - [ ] VoiceEffectsPanel: 呼叫 `kind:'voice'`
+  - [ ] 確認多面板並發事件時播放正常（以 stub 為基準）
+
+- [ ] **風險緩解任務**
+  - [ ] 制定統一事件與參數格式，並寫入 `types/audio.ts`
+  - [ ] 在 stub 階段約定最小必要欄位：`{id, kind, url, volume?}`；擴充放 `options`
+  - [ ] 撰寫 GitHub Action / Husky pre-commit，若面板違規直接呼叫底層 Service 則警告 
