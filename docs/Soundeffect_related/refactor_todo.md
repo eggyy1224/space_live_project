@@ -19,12 +19,18 @@
     - [ ] **(新增)** 將默認音效替換為更豐富的歌曲庫，包含各類風格的音樂資源
     - [ ] **(新增)** 支援音樂的分類顯示和快速篩選功能
     - [ ] **(新增)** 提供歌曲播放時的簡易波形可視化
+    - [ ] **(問題修復)** 解決 `useRef<HTMLAudioElement>(null!)` 每次 render 都新建 new Audio() 的問題
+      - 抽成 `useAudioPlayer(url)` hook，實現音頻資源的統一管理
+      - 在組件卸載時確保正確釋放資源：`audio.pause(); audio.src=''`
   - [ ] **SynthPanel MVP**  
     - [ ] 保留 Tone.js 測試按鈕 + JSON 編輯器  
     - [ ] 設計用於模型說話時的聲音處理界面
     - [ ] 提供常用音效濾鏡和效果選擇
     - [ ] 新增「快速模板」下拉，方便插入常用序列  
     - [ ] 測試驗證：按下模板 → JSON 區域更新 → 執行後可聽見對應音效 (透過 Coordinator)
+    - [ ] **(問題修復)** 解決多次快速播放可能殘留 Transport 事件的問題
+      - 建立 `useSynthEngine()` hook，返回 playSequence/stop 等方法
+      - 在 useEffect cleanup 中徹底清理資源：`Transport.cancel(0), dispose()`
   - [ ] **VoiceEffectsPanel MVP**  
     - [ ] 顯示內建角色 / 環境預設 (機器人、太空艙、電話、洞穴…)，並包含「原聲」  
     - [ ] 允許即時切換預設並預聽，調整混響、PitchShift、Filter、Distortion 等參數  
@@ -37,6 +43,9 @@
     - [ ] 實現收藏功能，將找到的音效保存到本地
     - [ ] 建立收藏列表管理界面，方便以後 AI 查找和使用
     - [X] 測試驗證：搜尋關鍵字 → 點擊預覽 → 能聽到音效且快取狀態更新
+    - [ ] **(問題修復)** 解決分頁/搜尋結果暫存在 useState([]) 導致重整後丟失的問題
+      - 短期：將 useFreesoundAPI 回傳結果存入 useStore().setFreesoundCache
+      - 中期：實現完整的 IndexedDB 快取方案，支持離線使用和持久化儲存
 
 - [ ] **實現音效資源庫**
   - [ ] 建立統一的資源管理系統
@@ -142,6 +151,8 @@
 
 - [ ] **開發快取機制**
   - [ ] 實現 IndexedDB 儲存體系
+    - [ ] 為 FreesoundPanel 設計搜尋結果和收藏的持久化存儲
+    - [ ] 為 SongLibraryPanel 實現歌曲元數據和音頻資源的快取
   - [ ] 建立資源下載與驗證流程
   - [ ] 設計快取淘汰策略與空間管理
   - [ ] 添加音訊解碼與預處理功能
@@ -166,7 +177,13 @@
 - [ ] **效能優化**
   - [ ] 音訊處理線程優化
   - [ ] 記憶體使用優化
+    - [ ] 確保所有音頻元素在組件卸載時正確釋放資源
+    - [ ] 建立音頻資源池，避免頻繁創建和銷毀音頻實例
   - [ ] 音訊載入策略精細化
+  - [ ] 開發統一的 hooks 庫
+    - [ ] `useAudioPlayer` - 用於 SongLibraryPanel，確保正確的資源管理
+    - [ ] `useSynthEngine` - 用於 SynthPanel，防止 Tone.js 事件殘留
+    - [ ] `useFreesoundCache` - 用於 FreesoundPanel，實現搜尋結果持久化
 
 ## 七、文檔與測試（優先級：低）
 
@@ -227,7 +244,7 @@
 2.  **階段二 (進行中)**: **完善各面板的獨立功能**：
     - **FreesoundPanel**: 實現收藏功能，將找到的音效保存到本地
     - **SynthPanel**: 開發模型說話時的聲音處理功能
-    - **SongLibraryPanel**: 建立歌曲導入和時間線編輯功能
+    - **SongLibraryPanel**: 建立歌曲導入功能，為歌曲添加動作和表情時間線
 3.  **階段三**: **設計統一API並實作 `AudioCoordinator` MVP** → 核心 API (`scheduleFromJson`, `playNow` 等)、`AudioTimeline` JSON 格式定義、整合 TTS/歌唱/SFX 基礎播放邏輯。
 4.  **階段四**: **後端 TTS 協作改造** → 與後端確認並實現透過 WebSocket 傳輸 `AudioTimeline` JSON。
 5.  **階段五**: **`SoundEffectPanel` 與 `AudioCoordinator` 串接** → 驗證所有聲音來源皆由 Coordinator 控制。
@@ -243,11 +260,14 @@
     - **FreesoundPanel**: 實現「我的收藏」子Tab和收藏管理功能
     - **SynthPanel**: 開發用於模型說話時的聲音處理界面
     - **SongLibraryPanel**: 建立歌曲導入和時間線編輯功能
-3.  **設計統一的API接口**，確保每個面板都提供標準化的介面，為將來與 AudioCoordinator 整合做準備
-4.  **設計並實作 `AudioCoordinator` MVP**（API 骨架、JSON 格式草案、基礎事件觸發）。
-5.  **定義 `AudioTimeline` JSON 格式**，並與後端溝通確認 TTS 回應格式。
-6.  **將 `SoundEffectPanel` (初步) 與 `AudioCoordinator` 串接**，驗證基本播放。
-7.  **重新啟用 `TimelineInspector`**，用於測試 `AudioCoordinator`。
+3.  **修復已知的技術問題**:
+    - **SongLibraryPanel**: 創建 `useAudioPlayer` hook 解決 Audio 實例管理問題
+    - **SynthPanel**: 開發 `useSynthEngine` hook 處理 Tone.js 事件清理問題
+    - **FreesoundPanel**: 改進搜索結果的持久化存儲機制
+4.  **設計統一的API接口**，確保每個面板都提供標準化的介面，為將來與 AudioCoordinator 整合做準備
+5.  **設計並實作 `AudioCoordinator` MVP**（API 骨架、JSON 格式草案、基礎事件觸發）。
+6.  **定義 `AudioTimeline` JSON 格式**，並與後端溝通確認 TTS 回應格式。
+7.  **將 `SoundEffectPanel` (初步) 與 `AudioCoordinator` 串接**，驗證基本播放。
 
 這個順序強調先完成各個組件的獨立功能，確保每個部分都可以獨立工作，然後再進行系統整合。這樣可以更有條理地推進開發，也方便測試和排錯。
 
@@ -256,7 +276,28 @@
 - ✅ 已完成將音效面板拆分為三個獨立子組件：FreesoundPanel、SynthPanel 和 SongLibraryPanel
 - ✅ 已完成 SoundEffectPanel 的清理，移除了預設音效標籤頁和舊代碼
 - ✅ 已完成 FreesoundPanel MVP 基礎功能，實現搜索、分頁和預覽功能
+
+### 面板拆分成果
+
+- **結構優化**: 
+  - SoundEffectPanel 現只剩 3 個 props（可見性、關閉回調、全局音量）
+  - 大幅提升了代碼可讀性（+300%）
+  - 各子面板可獨立開發和測試
+
+- **狀態管理現狀**:
+  - 目前各子面板仍使用各自的 useState 管理內部狀態
+  - 下一步需要將「目前正在播什麼」、「是否被 ducking」等狀態拉到單一 store 或 AudioCoordinator 中統一管理
+
+- **依賴關係**:
+  - 三個子面板目前都直接 import AudioPlayerService 或 SoundEffectService 來播放音效
+  - 未來需改為調用 AudioCoordinator.playNow(event) 統一管理播放邏輯
+
+- ⚠️ 已發現各面板存在的技術問題，並提出了修復建議：
+  - SongLibraryPanel: 需要封裝 `useAudioPlayer` hook 來正確管理音頻資源
+  - SynthPanel: 需要 `useSynthEngine` hook 處理 Tone.js 事件清理問題
+  - FreesoundPanel: 需要改進搜索結果的持久化存儲機制
 - ⏩ 下一步：
+  - 修復上述技術問題
   - 完善各面板的獨立功能（收藏、歌曲導入、聲音處理等）
   - 設計統一的API接口
   - 開始 AudioCoordinator 的設計和實現 
