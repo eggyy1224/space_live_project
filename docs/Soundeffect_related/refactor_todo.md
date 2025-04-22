@@ -4,23 +4,32 @@
 
 ## 一、前端介面擴展與資源整合（優先級：最高）
 
-- [ ] **改進音效控制面板**
-  - [ ] 將「預設音效」頁籤改造為「歌曲庫」
-    - [ ] 設計歌曲庫界面結構（分類、詳情展示、控制項）
-    - [X] 實現歌曲播放核心功能（播放、暫停、進度控制） (已使用 AudioPlayerService 實現基礎播放/停止)
-    - [ ] 添加歌曲詳情顯示和列表管理
-  - [ ] 增強 Freesound 整合
-    - [ ] 優化搜索和分類功能
-    - [ ] 改進資源預覽和快取機制
-    - [ ] 添加收藏和管理功能
-  - [ ] 改進合成音效工具
-    - [ ] 添加更多 Tone.js 示例和模板
-    - [ ] 實現即時音效編輯器
-    - [ ] 支援音效參數調整的視覺化界面
-  - [ ] **重構 `SoundEffectPanel.tsx`** (組件過於龐大)
-    - [ ] 分析現有功能，規劃拆分邏輯 (例如：歌曲、合成、Freesound 各自獨立)
-    - [ ] 創建子組件 (例如：`SongPlayer`, `SynthTester`, `FreesoundBrowser`)
-    - [ ] 遷移狀態管理和邏輯到合適的組件或 Hook
+- [ ] **重構音效控制面板 (`SoundEffectPanel`)**  
+  _目標：將目前龐大的元件拆分為可獨立開發與測試的子模組，並為後續時間軸整合預留插槽。_
+  - [ ] **模組化拆分**  
+    - [ ] 將原面板拆為三個子元件：`SongLibraryPanel`, `SynthPanel`, `FreesoundPanel`  
+    - [ ] 建立 `SoundEffectPanelLayout` 作為頂層容器，僅負責 Tab 與共用狀態傳遞  
+    - [ ] 透過 Storybook/Dev Route 為每個子元件建立獨立測試場景（驗證 UI 與功能）
+  - [ ] **SongLibraryPanel MVP**  
+    - [ ] 顯示 `sampleSongs`（或後端 API 回傳）清單：縮圖 / 標題 / 長度  
+    - [ ] 使用 `AudioPlayerService` 播放、暫停、跳轉；播放期間自動設定 `isSpeaking=true`，結束時復原  
+    - [ ] 於列表中標示 `animationCues`，Hover 時高亮對應時間點（方便測試時間軸）  
+    - [ ] 測試驗證：點擊播放 => 聲音正常 + `isSpeaking` 狀態切換正確
+  - [ ] **SynthPanel MVP**  
+    - [ ] 保留 Tone.js 測試按鈕 + JSON 編輯器  
+    - [ ] 新增「快速模板」下拉，方便插入常用序列  
+    - [ ] 測試驗證：按下模板 → JSON 區域更新 → 執行後可聽見對應音效
+  - [ ] **FreesoundPanel MVP**  
+    - [ ] 使用 `useFreesoundAPI` 實作搜尋 / 分頁 / 預覽 / 收藏  
+    - [ ] 新增「我的收藏」子 Tab，顯示 IndexedDB 快取列表  
+    - [ ] 測試驗證：搜尋關鍵字 → 點擊預覽 → 能聽到音效且快取狀態更新
+
+- [ ] **TimelineInspector（開發模式）**  
+  _目標：提供時間軸即時視覺化與除錯能力，可持續驗證 TimelineCoordinator 行為。_
+  - [ ] React + CSS Grid 實作簡易時間軸視圖（多軌：Voice / SFX / Expression / Action）  
+  - [ ] 從 `TimelineCoordinator` 讀取事件列表與播放頭位置，每 1/30 秒更新  
+  - [ ] 點擊事件可跳出 payload 詳情（名稱、參數）  
+  - [ ] （調整中）改為面板右下角/左下角 toggle 按鈕控制顯示，可於正式環境透過開關啟用
 
 - [ ] **實現音效資源庫**
   - [ ] 建立統一的資源管理系統
@@ -61,15 +70,23 @@
     - [ ] 為聲音事件添加 `requiresAnimation` 或 `track` 屬性以區分管線
     - [X] 定義動畫同步所需的附加數據結構（viseme、表情標記等） (已定義 AnimationCue 接口)
 
-- [ ] **實現 AudioTimelineCoordinator 基本框架**
-  - [ ] 建立協調器類結構，明確責任範圍
-  - [ ] 實現時間軸解析和事件排程邏輯
-  - [ ] 添加基本事件發佈/訂閱機制
-  - [ ] 支援語音和音效資源統一調度
-  - [ ] **實現雙管線調度系統**
-    - [ ] 為角色聲音（要求表情動畫）建立專用管線
-    - [ ] 為背景音效（不需表情動畫）建立獨立管線
-    - [ ] 設計管線間通信機制，確保聲音協調
+- [ ] **實作 AudioCoordinator（統一聲音管線）**
+  - [ ] 建立 `src/services/TimelineService.ts`，內含：  
+    - [X] `TimelineEvent` 型別（time / type / payload）  
+    - [X] 單例 `TimelineCoordinator`，含 `scheduleEvents`, `start`, `pause`, `resume`, `stop`, `seek` 方法  
+  - [ ] `triggerEvent()` 具體整合各服務：  
+    - [ ] **整合現有服務呼叫** — 將下列服務包裝為能自動向 TimelineCoordinator 報到的接口：  
+      - [ ] `AudioService` → 播放語音 / 音樂 時自動推送 `voice` 事件  
+      - [ ] `SoundEffectService` → 播放效果音時推送 `sfx` 事件  
+      - [ ] `HeadService` → 套用表情 preset 時推送 `expression` 事件  
+      - [ ] `BodyService` → 選擇動畫時推送 `action` 事件  
+    - [ ] 建立 `ServiceEventAdapter`/HOC，集中管理包裝邏輯  
+    - [ ] 在 `ChatService`、`WebSocketService` 中將後端指令轉為 `TimelineEvent` 並 `timeline.start(...)`
+  - [ ] 提供 `getPlayhead()` 與事件列表給 TimelineInspector  
+  - [ ] 單元測試：排程多事件 → 快進 playhead → 檢查服務呼叫次數與順序
+  - [ ] 整合 `ChatService`：解析 AI 回覆 → 產生 TimelineEvents → `timeline.start(events)`  
+  - [ ] 修改 `WebSocketService` 處理 `audio-effect`：若 Timeline 運行中，轉換為事件加入；否則直接播放
+  - [ ] 驗證：文字 + 語音 + 表情 + 動作事件能準時執行，TimelineInspector 播放頭同步
 
 - [ ] **重構 SoundEffectManager**
   - [ ] 剔除排程邏輯，聚焦於資源管理
@@ -187,25 +204,31 @@
     - [ ] 表情系統訂閱語音事件
     - [ ] UI 系統訂閱音效事件以更新視覺元素
 
+## 九、開發與調試工具（優先級：中）
+
+- [ ] **TimelineInspector** （詳見前端介面段落）
+- [ ] 性能計數器：顯示每秒音效/服務呼叫統計
+- [ ] 錄製 / 匯出 TimelineEvents 到 JSON，用於回歸測試
+
 ## 實施策略
 
 重構應採用漸進式方法，但考慮到前端需求的優先性，建議以下實施順序：
 
 1. **階段一**: 優先改進前端介面，添加歌曲庫和增強 Freesound 整合，提供可用的工作界面。 **(進行中，需重構 Panel)**
-2. **階段二**: 實現聲音分類系統和雙管線基本架構，明確區分需要表情的聲音與純音效。**解決 TTS 與歌曲衝突問題**。
-3. **階段三**: 實現簡化版的時間軸功能，支援基本的音效排程。
-4. **階段四**: 逐步引入核心架構，包括 AudioTimeline 和協調器。
-5. **階段五**: 整合語音與音效系統，實現統一管線。
-6. **階段六**: 完善資源管理和進階功能。
+2. **階段二（進行中）**: 重構 **SoundEffectPanel** → 模組化拆分 (SongLibrary / Synth / Freesound) 並使用統一的 AudioPlayerService。  
+3. **階段三**: 實現 **AudioCoordinator** 核心，串接 AudioService、SoundEffectService 等，並提供排程 API。  
+4. **階段四**: 將 SoundEffectPanel 與 AudioCoordinator 串聯，確保所有聲音事件皆經由 Coordinator 控制。  
+5. **階段五**: 重新恢復 TimelineInspector 與 AudioTimeline 功能，使用 Coordinator 提供的事件流。  
+6. **階段六**: 進一步擴充資源管理、效能優化與進階功能。
 
 ## 下一步優先任務
 
-1. **解決後端 TTS 與前端歌曲播放的音頻衝突問題**。
-2. **重構 `SoundEffectPanel.tsx`**，拆分組件，提高可維護性。
-3. 將「預設音效」頁籤改造為「歌曲庫」，設計和完善歌曲播放介面。
-4. 增強 Freesound 整合，改進資源獲取和管理功能。
-5. 建立聲音分類系統，區分需要表情的語音與純音效。
-6. 設計簡單的時間軸編輯器，支援基本的音效排程。
-7. 嘗試將 Tone.js 用於合成語音處理，實現初步的語音效果。
+1. **重構 `SoundEffectPanel`（拆分子元件）並推出 `SongLibraryPanel` MVP**。
+2. **設計並實作 AudioCoordinator MVP**（替代 TimelineCoordinator，負責所有聲音事件）。
+3. **將 SoundEffectPanel 與 AudioCoordinator 串接，驗證播放、暫停、排程功能。**
+4. 強化 Freesound 整合（搜尋 + 預覽 + 收藏 IndexedDB）。
+5. 建立聲音分類系統（需/不需表情），並更新資源加載策略。
+6. 重新啟用 TimelineInspector，顯示 AudioCoordinator 事件流。
+7. 擴充 SynthPanel：加入 Tone.js 模板與即時參數調整介面。
 
 這個順序將確保先實現對前端用戶有用的功能，同時為後續的深度架構重構打下基礎。 
