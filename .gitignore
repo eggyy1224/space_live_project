@@ -106,3 +106,5 @@ prototype/backend/audio/
 /dist
 *.local
 
+.cursor
+
