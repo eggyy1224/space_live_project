@@ -120,6 +120,23 @@
 - [ ] **擴充 AudioCoordinator 功能**
   - [ ] 之後階段再實作優先級、ducking、schedule 等高級邏輯
 
+### AudioCoordinator MVP（依 20250423 架構藍圖）
+- [ ] **多頻道輸出**
+  - [ ] 建立 `VoiceChannel`、`MusicChannel`、`SFXChannel` 三個 GainNode（預留 `AmbientChannel`）
+  - [ ] 將 Tone.Player / Synth / HTMLAudioElement 音源輸出路由至對應 GainNode
+- [ ] **Ducking 與優先權**
+  - [ ] 語音 (`voice` track) 播放時，將 Music/SFX Gain 線性降至 0.3，語音結束後恢復
+  - [ ] 實作 Voice 互斥或排隊策略，並支援 `forceInterrupt` 旗標處理高優先語音
+- [ ] **事件發布**
+  - [ ] 在語音開始/結束時分別 emit `voice:start` / `voice:end`
+  - [ ] 其他事件：`music:start` / `music:end`、`sfx:start` / `sfx:end`
+- [ ] **統一播放入口**
+  - [ ] 將 AudioService TTS 播放邏輯改為 `AC.playNow({kind:'voice', url})`
+  - [ ] SongLibraryPanel / BandEffectsPanel / FreesoundPanel 均改用 `AC.playNow()`
+- [ ] **基礎時間線排程**
+  - [ ] 使用 `setTimeout` 實作 `scheduleFromJson` 事件列表式排程
+  - [ ] 支援停止/取消 timeline，並於 `timelineStart` / `timelineEnd` 發事件
+
 ## 四、語音與音效系統整合（優先級：高）
 
 - [ ] **統一語音與音效播放管線 (由 AudioCoordinator 實現)**
@@ -138,6 +155,9 @@
   - [ ] 整合至 `AudioCoordinator` 的 `voice` track 處理流程
 
 - [ ] **與 `VoiceEffectsPanel` 互動：即時調整效果**
+  - [ ] **VoiceEffectsProcessor 與 Tone.js 效果鏈**：初始化常用效果器，提供 `applyPreset` / `setEffectParameter`
+  - [ ] **連接 TTS 音訊**：在 `AudioCoordinator.connectVoiceSource()` 中將 TTS AudioNode 接入 VoiceEffectsProcessor，確保所有語音皆經效果鏈後輸出
+  - [ ] `VoiceEffectsPanel` 透過 AudioCoordinator 更新 `voiceEffect` 設定，並即時套用於正在播放的語音
 
 ## 五、資源管理與快取系統（優先級：中）
 

@@ -5,6 +5,7 @@ import { useSoundEffects } from '../hooks';
 import FreesoundPanel from './soundEffects/FreesoundPanel';
 import SynthPanel from './soundEffects/SynthPanel';
 import SongLibraryPanel from './soundEffects/SongLibraryPanel';
+import { AudioCoordinatorPanel } from './soundEffects';
 
 // 面板 props 定義
 interface SoundEffectPanelProps {
@@ -84,6 +85,12 @@ const SoundEffectPanel: React.FC<SoundEffectPanelProps> = ({ isVisible, onClose 
           >
             歌曲
           </button>
+          <button 
+            className={`px-4 py-2 whitespace-nowrap ${activeTab === 'coordinator' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}
+            onClick={() => handleTabChange('coordinator')}
+          >
+            音頻協調
+          </button>
         </div>
         
         {/* 音量調節 */}
@@ -110,6 +117,10 @@ const SoundEffectPanel: React.FC<SoundEffectPanelProps> = ({ isVisible, onClose 
         
         {activeTab === 'songs' && (
           <SongLibraryPanel globalVolume={volume} />
+        )}
+        
+        {activeTab === 'coordinator' && (
+          <AudioCoordinatorPanel />
         )}
       </div>
     </div>
