@@ -1,14 +1,18 @@
-# 🎧 SoundEffectPanel 重構 ＆ AudioCoordinator 設計藍圖（更新版）
+# 🎧 SoundEffectPanel 重構 ＆ AudioCoordinator 設計藍圖（更新版 v2）
 
 ## 0. 專案語境與現況回顧
 
 | 重構動機                       | 目前問題                           | 目標                                 |
 | ------------------------------ | ---------------------------------- | ------------------------------------ |
-| 單一 `SoundEffectPanel` 功能龐雜 | UI 渾沌、維護困難、測試不易        | 「三面板 + 一協調器」模組化              |
-| 聲音播放無統一排程               | 背景音、TTS、SFX 容易衝突            | 引入 `AudioCoordinator` 統一時間軸       |
+| 單一 `SoundEffectPanel` 功能龐雜 | UI 渾沌、維護困難、測試不易        | 「多面板 + 一協調器」模組化              |
+| 聲音播放無統一排程               | 背景音、TTS、SFX 容易衝突            | 引入 `AudioCoordinator` 統一**協調**       |
 | 無 ducking / 優先級            | 角色說話被背景音蓋過                 | 語音播放時自動壓低其他軌道音量（Ducking） |
 
 **現況分析**：現有的音效控制面板 (`prototype/frontend/src/components/SoundEffectPanel.tsx`) 是一個龐大的單一元件，集成了播放音樂、合成音效以及 Freesound 音效搜尋等多項功能。在當前實作中，各種聲音來源（後端 TTS 語音、前端歌曲、音效）缺乏統一的管控，導致**維護困難**且**擴充性受限**。例如，當前若同時播放語音和背景音樂，兩者可能互相衝突，沒有機制協調音量或順序。為解決這些問題，我們將進行模組化拆分並引入**音訊協調器 (`AudioCoordinator`)**來統一管理所有聲音來源。
+
+**重要架構決策：協調器僅負責協調，播放邏輯由獨立播放器實現**
+- `AudioCoordinator`：負責解析指令、排程、處理優先級/Ducking、**分發播放命令**。
+- 各 `Player`（如 `PreRecordedPlayer`, `TonePlayer`）：負責**實際播放**音頻、處理特定格式、回報狀態。
 
 ---
 
@@ -66,27 +70,62 @@
 
 ---
 
-## 2. AudioCoordinator（Service Layer）
+## 2. AudioCoordinator 與播放器（Service Layer）
 
-作為前端統一的**聲音調度中心**，負責按時間軸腳本協調音訊管線播放及高級控制。
+作為前端統一的**聲音協調中心**，負責接收指令、排程事件、管理衝突，並**委派給具體的播放器執行**。
 
-| 功能                      | 主要 Method / 介面                 | 預計檔案位置                             |
-| ------------------------- | ---------------------------------- | ---------------------------------------- |
-| 解析 & 排程 `AudioTimeline` | `scheduleFromJson(json)`           | `src/services/AudioCoordinator.ts` （新建） |
-| 即時插播                  | `playNow(event)`                   | 同上                                     |
-| 播放控制                  | `pause() / resume() / stop() / seek()` | 同上                                     |
-| 取得狀態                  | `getEvents() / getPlayhead()`      | 同上                                     |
-| 管線連接（語音效果）        | `connectVoiceSource(node)`         | 同上                                     |
-| 語音效果更新              | `updateVoiceEffect(config)`        | 同上                                     |
+| 組件                       | 職責                                  | 預計檔案位置                             |
+| -------------------------- | ------------------------------------- | ---------------------------------------- |
+| AudioCoordinator（協調器）     | • 解析 JSON/事件指令<br>• 排程 / 優先權 / Ducking<br>• **分發播放/停止命令**<br>• 監聽 Player 回報 | `src/services/AudioCoordinator.ts` （重構） |
+| IAudioPlayer（播放器接口）   | • 定義播放器通用方法 (load, play, stop, on) | `src/services/players/IAudioPlayer.ts` （新建） |
+| TonePlayer（具體播放器）     | • **實現 Tone.js 播放邏輯**<br>• 響應播放命令<br>• 回報播放狀態 | `src/services/players/TonePlayer.ts` （新建） |
+| PreRecordedPlayer（具體播放器） | • **實現 HTMLAudio/Howler 播放邏輯**<br>• 響應播放命令<br>• 回報播放狀態 | `src/services/players/PreRecordedPlayer.ts` （新建） |
+| TTSPlayer（具體播放器）      | • **實現 TTS 播放邏輯**<br>• 響應播放命令<br>• 回報播放狀態 | `src/services/players/TTSPlayer.ts` （新建/整合） |
+| EventBus（事件總線）        | • 協調器與播放器間通信<br>• 解耦組件依賴 | 使用 mitt 或其他事件庫 |
 
-**內部管線（三軌）:**
-1.  **Voice Track**: TTS／唱歌聲音，需同步表情/動作。
-2.  **Music Track**: 背景歌曲／BGM。
-3.  **SFX Track**: 一般音效／Combo 音效。
+### 2.1 統一播放器介面
+
+```typescript
+// src/services/players/IAudioPlayer.ts
+export interface IAudioPlayer {
+  load(src: string, options?: any): Promise<void>;
+  play(at?: number): void;
+  stop(): void;
+  pause(): void;
+  on(event: "progress" | "ended" | "error", callback: Function): void;
+  // 可能需要添加獲取當前狀態的方法
+  // isPlaying(): boolean;
+  // getCurrentTime(): number;
+}
+```
+
+### 2.2 事件流通信機制 (協調器 <-> 播放器)
+
+```typescript
+// 協調器發出播放請求
+eventBus.emit('play_requested', { playerId: 'preRecordedPlayer1', kind: 'sfx', url: '/audio/sfx/boom.mp3' });
+
+// 特定播放器監聽事件
+preRecordedPlayer1.eventBus.on('play_requested', (data) => {
+  if (data.playerId === this.id) {
+    this.play(data.url); // 執行播放
+  }
+});
+
+// 播放器回報狀態給協調器
+preRecordedPlayer1.eventBus.emit('playback_ended', { playerId: 'preRecordedPlayer1', kind: 'sfx' });
+
+// 協調器監聽所有播放器狀態
+eventBus.on('playback_ended', (data) => {
+  logger.debug(`Player ${data.playerId} finished playing ${data.kind}`);
+  // 處理後續排程或狀態更新
+});
+```
 
 **核心機制：**
-- **Ducking**: 當 Voice Track 播放時，自動降低 Music Track 和 SFX Track 的音量。
-- **優先級系統**: 處理事件衝突，確保重要聲音（如提示音）優先播放。
+- **Ducking**: 由 `AudioCoordinator` 判斷觸發時機，透過事件/命令通知相關 `Player` 降低音量，或直接操作 Web Audio API 的 GainNode。
+- **優先級系統**: 由 `AudioCoordinator` 根據事件類型或元數據決定哪個事件可以播放，以及是否打斷其他低優先級事件。
+- **事件調度**: `AudioCoordinator` 作為中心樞紐，接收請求，處理邏輯，並將具體操作**分派**給對應的 `Player` 執行。
 
 ---
 
@@ -143,54 +182,101 @@
 
 ---
 
-## 5. 開發節奏與 Commit 切分建議
+## 5. 開發節奏與 Commit 切分建議 (調整)
 
 採用**小步驟、反覆測試**的方式推進。
 
 | Stage | 主要內容                                     | 主要修改路徑                                                              |
 | ----- | -------------------------------------------- | ------------------------------------------------------------------------- |
-| 1     | 建立 `SoundEffectPanelLayout` + 空白三面板骨架 | `src/components/*`                                                        |
-| 2     | SongLibraryPanel MVP （列表 + 基礎播放）       | `SongLibraryPanel.tsx` + `audioPlayer.ts`                                |
-| 3     | SynthPanel MVP（Tone.js 基礎播放）             | `SynthPanel.tsx` + Tone.js 相關                                           |
-| 4     | FreesoundPanel MVP（搜尋 + 預覽）            | `FreesoundPanel.tsx` + `FreesoundService.ts`                              |
-| 5     | AudioTimeline JSON Schema & TimelineInspector (dev tool) | `shared/schemas/` + `src/components/TimelineInspector.tsx` （新建）       |
-| 6     | AudioCoordinator 雛形（排程 + 三軌基礎播放）   | `src/services/AudioCoordinator.ts` （新建）                                |
-| 7     | VoiceEffectsProcessor + VoiceEffectsPanel    | `VoiceEffectsProcessor.ts` + `VoiceEffectsPanel.tsx` （新建）             |
-| 8     | AudioCoordinator 完善（Ducking / 優先級 / 衝突處理） | `AudioCoordinator.ts`                                                    |
-
-**開發注意**：
-- **Cursor 指令粒度**：將任務分解為小步驟，避免一次性修改過多。
-- **即時驗證**：每步完成後進行測試，確保功能正常且未破壞現有系統。
-- **分開提交**：每個 Stage 或主要功能點建議獨立 Commit，方便追蹤和回滾。
+| 1     | **定義接口 & 播放器**：定義 `IAudioPlayer`，實現 `PreRecordedPlayer` (封裝現有邏輯) | `src/services/players/`                                                    |
+| 2     | **重構 Coordinator (Stub)**：移除播放邏輯，改為**事件分發**模式 | `src/services/AudioCoordinator.ts`                                     |
+| 3     | **事件總線集成**：建立 Coordinator 與 Player 基礎通信 | `src/services/eventBus.ts` (或使用 mitt) + 相關整合                  |
+| 4     | **面板整合測試**：將一個面板 (如 Freesound) 切換到新流程測試 | `FreesoundPanel.tsx` + `AudioCoordinator.ts` + `PreRecordedPlayer.ts`      |
+| 5     | **實現其他 Player**：`TonePlayer`, `TTSPlayer`  | `src/services/players/`                                                    |
+| 6     | **實現核心協調邏輯**：Ducking 與優先級管理     | `AudioCoordinator.ts`                                                    |
+| 7     | **完善時間軸與面板**：`scheduleFromJson` 實現，`AudioCoordinatorPanel` 功能 | `AudioCoordinator.ts` + `AudioCoordinatorPanel.tsx`                      |
+| 8     | **修復標籤切換問題** & 整合語音效果         | `SoundEffectPanel.tsx`, `VoiceEffectsProcessor.ts`, `TTSPlayer.ts`       |
 
 ---
 
-## 6. 對應現有檔案速查表
+## 6. 對應現有檔案速查表 (更新)
 
 | 現有檔案                                             | 用途             | 與新架構關係                                                        |
 | ---------------------------------------------------- | ---------------- | ------------------------------------------------------------------- |
-| `prototype/frontend/src/components/SoundEffectPanel.tsx` | 舊版巨型面板     | **將被拆分**，邏輯遷移至四個新元件                                      |
-| `prototype/frontend/src/services/SoundEffectService.ts`  | 播放音效         | 未來聚焦「資源管理」，排程移交給 `AudioCoordinator`                     |
-| `prototype/frontend/src/services/audioPlayer.ts`       | 通用播放器       | SongLibraryPanel 可沿用；之後由 Coordinator 控制                        |
-| `prototype/frontend/src/services/FreesoundService.ts`  | Freesound API    | FreesoundPanel 直接呼叫；需加 IndexedDB 快取                            |
-| `prototype/frontend/src/services/AudioService.ts`      | TTS / 錄音       | 其 AudioNode 最終需 `connectVoiceSource()` 到 `VoiceEffectsProcessor` |
-| `docs/Soundeffect_related/refactor_todo.md`          | 詳細待辦清單     | 本藍圖是其核心部分的具體化設計                                        |
-| `docs/Soundeffect_related/TTS_voice_effects_with_Tone.md` | 語音效果設計文檔 | 實作 `VoiceEffectsProcessor` 時的詳細參考                              |
+| `prototype/frontend/src/components/SoundEffectPanel.tsx` | 舊版巨型面板     | **將被更新**，修復標籤切換問題                                        |
+| `prototype/frontend/src/components/soundEffects/AudioCoordinatorPanel.tsx` | 音頻協調器面板  | **不變**，但其交互對象 `AudioCoordinator` 已重構                       |
+| `prototype/frontend/src/services/AudioCoordinator.ts`  | 音頻協調器       | **重構**，移除直接播放邏輯，改為事件分發給 Player                       |
+| `prototype/frontend/src/services/players/IAudioPlayer.ts` | 播放器介面     | **新建**                                                           |
+| `prototype/frontend/src/services/players/TonePlayer.ts` | Tone.js 播放器  | **新建**                                                           |
+| `prototype/frontend/src/services/players/PreRecordedPlayer.ts` | 預錄音頻播放器 | **新建** (或整合現有 `AudioPlayerService`)                         |
+| `prototype/frontend/src/services/players/TTSPlayer.ts` | TTS 播放器      | **新建** (或整合現有 `AudioService` 的 TTS 部分)                   |
+| `docs/Soundeffect_related/refactor_todo.md`          | 詳細待辦清單     | **將被更新**，反映新的架構和步驟                                   |
 
 ---
 
-## 7. 完成後的預期效果與使用者體驗
+## 7. 系統架構圖 (更新)
 
-1.  **UI 清晰分離**: 使用者可在 `SoundEffectPanel` 中透過 Tab 明確切換歌曲、合成音效、Freesound 搜尋功能。
-2.  **智能混音與 Ducking**: `AudioCoordinator` 確保語音清晰，播放語音時自動降低背景音樂/音效音量，語音結束後恢復。
-3.  **豐富語音效果**: 可一鍵套用機器人、太空艙等預設效果，或自訂混響、音高等參數，增加角色表現力。
-4.  **高效資源管理**: 常用音效/歌曲快速加載（Tier-0/1），不常用資源按需下載（Tier-2），提升響應速度。
-5.  **開發調試便捷**: `TimelineInspector` 可視化時間軸事件，方便開發者測試和除錯。
-6.  **整體體驗提升**: 聲音與動畫同步更精確，音效層次更豐富，系統穩定性與可維護性增強。
+```mermaid
+graph LR
+    subgraph UI Layer
+        direction LR
+        FSP[FreesoundPanel]
+        SYP[SynthPanel]
+        SLP[SongLibraryPanel]
+        ACP[AudioCoordinatorPanel]
+        VEP[VoiceEffectsPanel]
+    end
+
+    subgraph Service Layer
+        AC((AudioCoordinator)) -- Dispatches Events --> Players
+        Players -- Reports Status --> AC
+        subgraph Players
+            direction TB
+            PlayerInterface[IAudioPlayer]
+            ToneP[TonePlayer] --> PlayerInterface
+            PreP[PreRecordedPlayer] --> PlayerInterface
+            TTSP[TTSPlayer] --> PlayerInterface
+        end
+        VEFX[VoiceEffectsProcessor]
+    end
+
+    subgraph External / Browser
+        WebAudio[Web Audio API / Audio Element]
+        EventBus[(Event Bus - mitt)]
+    end
+
+    %% Connections
+    FSP -- Requests Playback --> AC
+    SYP -- Requests Playback --> AC
+    SLP -- Requests Playback --> AC
+    ACP -- Controls Timeline --> AC
+    VEP -- Configures --> VEFX
+
+    AC -- Uses --> EventBus
+    Players -- Uses --> EventBus
+
+    ToneP -- Uses --> WebAudio
+    PreP -- Uses --> WebAudio
+    TTSP -- Uses --> WebAudio
+    TTSP -- Uses --> VEFX
+    VEFX -- Uses --> WebAudio
+
+    AC -- Listens to --> Players
+    Players -- Listen to --> AC
+```
+
+## 8. 完成後的預期效果與使用者體驗 (更新)
+
+1.  **更清晰的職責分離**: 協調器專注於「何時播放什麼」，播放器專注於「如何播放」，代碼更易維護，測試更獨立。
+2.  **無縫標籤切換**: 解決標籤切換導致音頻停止的問題，因播放狀態由獨立的 Player 或 Coordinator 管理，不再受 UI 組件生命週期影響。
+3.  **直觀的時間軸編輯**: AudioCoordinatorPanel 提供視覺化時間軸編輯，讓用戶可以方便地排程和預覽複雜音頻序列。
+4.  **智能混音與 Ducking**: AudioCoordinator 根據規則協調各 Player，確保聲音不衝突，語音清晰。
+5.  **靈活的 JSON 控制**: 支持通過 JSON 指令控制複雜音頻行為，方便內容創建和自動化。
+6.  **強大的擴展性**: 添加新音頻源（如 Suno）只需實現新的 `IAudioPlayer` 並在協調器中註冊即可，無需修改核心協調邏輯。
 
 ---
 
-*（此文件基於 2025/04/22 的討論和程式碼研究進行更新）*
+*（此文件基於 2025/04/24 的討論，強調協調器與播放器分離的架構進行更新）*
 
 
 flowchart LR
