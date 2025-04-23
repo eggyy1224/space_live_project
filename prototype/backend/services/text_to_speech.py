@@ -11,7 +11,7 @@ logger = logging.getLogger("tts_service")
 logger.setLevel(logging.DEBUG)
 
 # 將 instructions 定義為常數或從配置讀取
-TTS_INSTRUCTIONS = "歡迎加入這場為期一年的業餘太空生活探險！每天都會有新的挑戰與事件，可能是來自真實太空環境的威脅，也可能只是些日常小事。你可以隨時觀察並透過語音參與，提供想法或建議。你的每個決定與回應，都將影響這次旅程的發展，以及我的生存狀態與情緒波動。讓我們看看最後能否順利完成這段冒險吧！"
+TTS_INSTRUCTIONS = "幾乎只用台語回覆，是一位辣台妹常常參雜english，動不動還會來點很多台語"
 
 class TextToSpeechService:
     """文字轉語音服務 (使用 OpenAI TTS)"""
