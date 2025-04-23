@@ -5,6 +5,10 @@
  * Blendshapes not listed for an emotion default to 0.
  */
 
+// Global multiplier applied to all emotion weights for exaggerated effect.
+// Set to 1.0 to disable exaggeration, >1.0 for stronger expressions, <1.0 for subtler ones.
+export const EXAGGERATION_FACTOR = 1;
+
 export const emotionBaseWeights: Record<string, Record<string, number>> = {
   // --- Foundational States ---
   neutral: {
@@ -56,19 +60,20 @@ export const emotionBaseWeights: Record<string, Record<string, number>> = {
 
   // --- Positive Emotions (Expanded) ---
   happy: { // Standard strong happiness
-    mouthSmileLeft: 1.5,
-    mouthSmileRight: 1.5,
+    mouthSmileLeft: 2.5,
+    mouthSmileRight: 2.5,
     cheekSquintLeft: 1.2,
     cheekSquintRight: 1.2,
-    eyeSquintLeft: 0.7,
-    eyeSquintRight: 0.7,
+    eyeSquintLeft: 1.2,
+    eyeSquintRight: 1.2,
     mouthDimpleLeft: 0.9,
     mouthDimpleRight: 0.9,
     browInnerUp: 0.2,
+    jawOpen: 0.6,
   },
   joyful: { // More exuberant happiness
-    mouthSmileLeft: 1.7,
-    mouthSmileRight: 1.7,
+    mouthSmileLeft: 3.0,
+    mouthSmileRight: 3.0,
     cheekSquintLeft: 1.3,
     cheekSquintRight: 1.3,
     eyeSquintLeft: 0.8,
@@ -78,43 +83,45 @@ export const emotionBaseWeights: Record<string, Record<string, number>> = {
     browInnerUp: 0.3,
     browOuterUpLeft: 0.2,
     browOuterUpRight: 0.2,
-    eyeWideLeft: 0.2,
-    eyeWideRight: 0.2,
+    eyeWideLeft: 0.5,
+    eyeWideRight: 0.5,
+    jawOpen: 0.8,
   },
   content: { // Calm happiness, satisfaction
-    mouthSmileLeft: 0.7,    // 增強到0.7（原值0.35）
-    mouthSmileRight: 0.7,   // 增強到0.7（原值0.35）
-    cheekSquintLeft: 0.3,   // 增強到0.3（原值0.15）
-    cheekSquintRight: 0.3,  // 增強到0.3（原值0.15）
-    eyeSquintLeft: 0.2,     // 增強到0.2（原值0.1）
-    eyeSquintRight: 0.2,    // 增強到0.2（原值0.1）
+    mouthSmileLeft: 1.5,
+    mouthSmileRight: 1.5,
+    cheekSquintLeft: 0.8,
+    cheekSquintRight: 0.8,
+    eyeSquintLeft: 0.6,
+    eyeSquintRight: 0.6,
     // Generally relaxed features
   },
   amused: { // Light-hearted enjoyment, often slightly asymmetrical
-    mouthSmileLeft: 1.1,    // 增強到1.1（原值0.6）
-    mouthSmileRight: 0.9,   // 增強到0.9（原值0.5）
-    cheekSquintLeft: 0.7,   // 增強到0.7（原值0.4）
-    cheekSquintRight: 0.55, // 增強到0.55（原值0.3）
-    eyeSquintLeft: 0.6,     // 增強到0.6（原值0.3）
-    eyeSquintRight: 0.5,    // 增強到0.5（原值0.25）
-    browOuterUpLeft: 0.4,   // 增強到0.4（原值0.2）
+    mouthSmileLeft: 1.8,
+    mouthSmileRight: 1.6,
+    cheekSquintLeft: 1.2,
+    cheekSquintRight: 1.0,
+    eyeSquintLeft: 1.1,
+    eyeSquintRight: 1.0,
+    browOuterUpLeft: 1.0,
   },
   excited: {
-    eyeWideLeft: 1.0,
-    eyeWideRight: 1.0,
-    mouthSmileLeft: 1.2,
-    mouthSmileRight: 1.2,
-    browOuterUpLeft: 1.1,
-    browOuterUpRight: 1.1,
-    jawOpen: 0.4,
+    eyeWideLeft: 2.0,
+    eyeWideRight: 2.0,
+    mouthSmileLeft: 2.0,
+    mouthSmileRight: 2.0,
+    browOuterUpLeft: 2.0,
+    browOuterUpRight: 2.0,
+    jawOpen: 1.2,
   },
   interested: { // Curiosity, engagement
-    browInnerUp: 0.9,       // 增強到0.9（原值0.45）
-    browOuterUpLeft: 0.6,   // 增強到0.6（原值0.3）
-    browOuterUpRight: 0.6,  // 增強到0.6（原值0.3）
-    eyeWideLeft: 0.4,       // 增強到0.4（原值0.2）
-    eyeWideRight: 0.4,      // 增強到0.4（原值0.2）
-    mouthPucker: 0.2,       // 增強到0.2（原值0.1）
+    browInnerUp: 1.5,
+    browOuterUpLeft: 0.6,
+    browOuterUpRight: 0.6,
+    eyeWideLeft: 1.0,
+    eyeWideRight: 1.0,
+    mouthPucker: 0.2,
+    jawOpen: 0.3,
   },
   affectionate: { // Warmth, fondness
     mouthSmileLeft: 1.0,    // 增強到1.0（原值0.5）
@@ -126,22 +133,24 @@ export const emotionBaseWeights: Record<string, Record<string, number>> = {
     browInnerUp: 0.3,       // 增強到0.3（原值0.15）
   },
   proud: {
-    mouthSmileLeft: 0.5,    // 增強到0.5（原值0.25）
-    mouthSmileRight: 0.5,   // 增強到0.5（原值0.25）
-    mouthPressLeft: 0.7,    // 增強到0.7（原值0.35）
-    mouthPressRight: 0.7,   // 增強到0.7（原值0.35）
-    cheekSquintLeft: 0.3,   // 增強到0.3（原值0.15）
-    cheekSquintRight: 0.3,  // 增強到0.3（原值0.15）
-    jawForward: 0.15,       // 增強到0.15（原值0.05）
+    mouthSmileLeft: 0.5,
+    mouthSmileRight: 0.5,
+    mouthPressLeft: 1.4,
+    mouthPressRight: 1.4,
+    cheekSquintLeft: 0.3,
+    cheekSquintRight: 0.3,
+    jawForward: 0.5,
+    browDownLeft: 0.4,
+    browDownRight: 0.4,
   },
   relieved: {
-    browInnerUp: -0.25,     // 增強到-0.25（原值-0.1）
-    browDownLeft: -0.4,     // 增強到-0.4（原值-0.2）
-    browDownRight: -0.4,    // 增強到-0.4（原值-0.2）
-    mouthPucker: 0.7,       // 增強到0.7（原值0.35）
-    jawOpen: 0.4,           // 增強到0.4（原值0.2）
-    eyeBlinkLeft: 0.8,      // 增強到0.8（原值0.5）
-    eyeBlinkRight: 0.8,     // 增強到0.8（原值0.5）
+    browInnerUp: -0.6,
+    browDownLeft: -0.4,
+    browDownRight: -0.4,
+    mouthPucker: 1.2,
+    jawOpen: 0.4,
+    eyeBlinkLeft: 1.6,
+    eyeBlinkRight: 1.6,
   },
   grateful: {
     mouthSmileLeft: 0.6,    // 增強到0.6（原值0.3）
@@ -152,21 +161,21 @@ export const emotionBaseWeights: Record<string, Record<string, number>> = {
     // Often includes head nod/tilt (animation)
   },
   hopeful: {
-    browInnerUp: 0.6,       // 增強到0.6（原值0.3）
-    browOuterUpLeft: 0.3,   // 增強到0.3（原值0.15）
-    browOuterUpRight: 0.3,  // 增強到0.3（原值0.15）
-    mouthSmileLeft: 0.3,    // 增強到0.3（原值0.15）
-    mouthSmileRight: 0.3,   // 增強到0.3（原值0.15）
-    eyeWideLeft: 0.25,      // 增強到0.25（原值0.1）
-    eyeWideRight: 0.25,     // 增強到0.25（原值0.1）
+    browInnerUp: 1.2,
+    browOuterUpLeft: 0.7,
+    browOuterUpRight: 0.7,
+    mouthSmileLeft: 0.3,
+    mouthSmileRight: 0.3,
+    eyeWideLeft: 0.6,
+    eyeWideRight: 0.6,
     // Looking forward
   },
   serene: { // Utter calm, peacefulness
     // Very close to neutral, perhaps slightly softer features
-    mouthSmileLeft: 0.15,   // 增強到0.15（原值0.05）
-    mouthSmileRight: 0.15,  // 增強到0.15（原值0.05）
-    eyeBlinkLeft: 0.25,     // 增強到0.25（原值0.1）
-    eyeBlinkRight: 0.25,    // 增強到0.25（原值0.1）
+    mouthSmileLeft: 0.3,
+    mouthSmileRight: 0.3,
+    eyeBlinkLeft: 0.1,
+    eyeBlinkRight: 0.1,
     // Relaxed blink rate (control via animation timing)
   },
   playful: {
@@ -174,10 +183,10 @@ export const emotionBaseWeights: Record<string, Record<string, number>> = {
     mouthSmileRight: 1.1,   // 增強到1.1（原值0.6）
     cheekSquintLeft: 0.9,   // 增強到0.9（原值0.5）
     cheekSquintRight: 0.75, // 增強到0.75（原值0.4）
-    eyeSquintLeft: 0.7,     // 增強到0.7（原值0.4）
-    eyeSquintRight: 0.6,    // 增強到0.6（原值0.3）
+    eyeSquintLeft: 1.2,
+    eyeSquintRight: 1.1,
     browOuterUpLeft: 0.6,   // 增強到0.6（原值0.3）
-    noseSneerRight: 0.2,    // 增強到0.2（原值0.1）
+    noseSneerRight: 0.5,
   },
   triumphant: {
     mouthSmileLeft: 1.4,    // 增強到1.4（原值0.8）
@@ -192,32 +201,32 @@ export const emotionBaseWeights: Record<string, Record<string, number>> = {
 
   // --- Negative Emotions (Expanded) ---
   sad: { // Standard strong sadness
-    browInnerUp: 1.4,
-    mouthFrownLeft: 1.2,
-    mouthFrownRight: 1.2,
+    browInnerUp: 2.0,
+    mouthFrownLeft: 2.0,
+    mouthFrownRight: 2.0,
     mouthStretchLeft: 0.3,
     mouthStretchRight: 0.3,
-    eyeSquintLeft: 0.25,
-    eyeSquintRight: 0.25,
+    eyeSquintLeft: 0.5,
+    eyeSquintRight: 0.5,
     mouthLowerDownLeft: 0.5,
     mouthLowerDownRight: 0.5,
   },
   gloomy: { // Less intense, more withdrawn sadness
-    browInnerUp: 0.9,       // 增強到0.9（原值0.45）
-    mouthFrownLeft: 0.9,    // 增強到0.9（原值0.45）
-    mouthFrownRight: 0.9,   // 增強到0.9（原值0.45）
-    mouthPressLeft: 0.4,    // 增強到0.4（原值0.2）
-    mouthPressRight: 0.4,   // 增強到0.4（原值0.2）
-    eyeLookDownLeft: 0.7,   // 增強到0.7（原值0.35）
-    eyeLookDownRight: 0.7,  // 增強到0.7（原值0.35）
+    browInnerUp: 1.5,
+    mouthFrownLeft: 0.9,
+    mouthFrownRight: 0.9,
+    mouthPressLeft: 0.4,
+    mouthPressRight: 0.4,
+    eyeLookDownLeft: 1.2,
+    eyeLookDownRight: 1.2,
   },
   disappointed: {
-    browInnerUp: 1.0,       // 增強到1.0（原值0.55）
-    browDownLeft: 0.5,      // 增強到0.5（原值0.25）
-    browDownRight: 0.5,     // 增強到0.5（原值0.25）
-    mouthFrownLeft: 1.0,    // 增強到1.0（原值0.55）
-    mouthFrownRight: 1.0,   // 增強到1.0（原值0.55）
-    mouthPucker: 0.5,       // 增強到0.5（原值0.25）
+    browInnerUp: 1.5,
+    browDownLeft: 0.8,
+    browDownRight: 0.8,
+    mouthFrownLeft: 1.0,
+    mouthFrownRight: 1.0,
+    mouthPucker: 1.0,
   },
   worried: { // Anxiety, concern
     browInnerUp: 1.4,       // 增強到1.4（原值0.8）
@@ -229,13 +238,13 @@ export const emotionBaseWeights: Record<string, Record<string, number>> = {
     eyeWideRight: 0.4,      // 增強到0.4（原值0.2）
   },
   angry: { // Standard strong anger
-    browDownLeft: 1.45,
-    browDownRight: 1.45,
-    noseSneerLeft: 1.2,
-    noseSneerRight: 1.2,
-    mouthPressLeft: 1.4,
-    mouthPressRight: 1.4,
-    jawForward: 0.55,
+    browDownLeft: 2.4,
+    browDownRight: 2.4,
+    noseSneerLeft: 2.0,
+    noseSneerRight: 2.0,
+    mouthPressLeft: 2.2,
+    mouthPressRight: 2.2,
+    jawForward: 1.0,
     eyeSquintLeft: 1.0,
     eyeSquintRight: 1.0,
   },
@@ -250,24 +259,24 @@ export const emotionBaseWeights: Record<string, Record<string, number>> = {
     eyeSquintRight: 0.7,    // 增強到0.7（原值0.35）
   },
   frustrated: {
-    browDownLeft: 1.4,      // 增強到1.4（原值0.75）
-    browDownRight: 1.4,     // 增強到1.4（原值0.75）
-    mouthPressLeft: 1.2,    // 增強到1.2（原值0.65）
-    mouthPressRight: 1.2,   // 增強到1.2（原值0.65）
-    jawForward: 0.4,        // 增強到0.4（原值0.2）
-    cheekPuff: 0.5,         // 增強到0.5（原值0.25）
-    noseSneerLeft: 0.5,     // 增強到0.5（原值0.25）
-    noseSneerRight: 0.5,    // 增強到0.5（原值0.25）
+    browDownLeft: 2.0,
+    browDownRight: 2.0,
+    mouthPressLeft: 1.2,
+    mouthPressRight: 1.2,
+    jawForward: 0.8,
+    cheekPuff: 1.2,
+    noseSneerLeft: 0.5,
+    noseSneerRight: 0.5,
   },
   fearful: { // Standard strong fear
-    eyeWideLeft: 1.5,
-    eyeWideRight: 1.5,
-    browInnerUp: 1.3,
+    eyeWideLeft: 2.5,
+    eyeWideRight: 2.5,
+    browInnerUp: 2.0,
     browOuterUpLeft: 0.85,
     browOuterUpRight: 0.85,
     mouthStretchLeft: 0.7,
     mouthStretchRight: 0.7,
-    jawOpen: 0.4,
+    jawOpen: 1.0,
   },
   nervous: { // Similar to worried, more agitated
     browInnerUp: 1.2,       // 增強到1.2（原值0.65）
@@ -380,21 +389,21 @@ export const emotionBaseWeights: Record<string, Record<string, number>> = {
 
   // --- Ambiguous / Cognitive / Other States (Expanded) ---
   surprised: { // Standard strong surprise
-    eyeWideLeft: 1.5,
-    eyeWideRight: 1.5,
+    eyeWideLeft: 2.5,
+    eyeWideRight: 2.5,
     browInnerUp: 0.8,
-    browOuterUpLeft: 1.5,
-    browOuterUpRight: 1.5,
-    jawOpen: 0.7,
+    browOuterUpLeft: 2.5,
+    browOuterUpRight: 2.5,
+    jawOpen: 1.5,
     mouthStretchLeft: 0.3,
     mouthStretchRight: 0.3,
   },
   confused: {
-    browDownLeft: 0.7,
-    browInnerUp: 1.0,
+    browDownLeft: 1.5,
+    browInnerUp: 1.8,
     browOuterUpRight: 0.55,
-    mouthPucker: 0.55,
-    jawLeft: 0.3,
+    mouthPucker: 1.0,
+    jawLeft: 0.6,
   },
   skeptical: {
     browOuterUpLeft: 1.2,
@@ -404,13 +413,13 @@ export const emotionBaseWeights: Record<string, Record<string, number>> = {
     jawLeft: 0.15,
   },
   bored: {
-    mouthFrownLeft: 0.5,    // 增強到0.5（原值0.25）
-    mouthFrownRight: 0.5,   // 增強到0.5（原值0.25）
-    eyeBlinkLeft: 0.8,      // 增強到0.8（原值0.4）
-    eyeBlinkRight: 0.8,     // 增強到0.8（原值0.4）
-    jawOpen: 0.3,           // 增強到0.3（原值0.15）
-    eyeLookUpLeft: 0.3,     // 新增：眼睛向上看表示不耐煩
-    eyeLookUpRight: 0.3,    // 新增：眼睛向上看表示不耐煩
+    mouthFrownLeft: 1.0,
+    mouthFrownRight: 1.0,
+    eyeBlinkLeft: 1.5,
+    eyeBlinkRight: 1.5,
+    jawOpen: 0.6,
+    eyeLookUpLeft: 0.6,
+    eyeLookUpRight: 0.6,
   },
   sleepy: {
     eyeBlinkLeft: 1.5,      // 增強到1.5（原值0.9）
@@ -507,13 +516,19 @@ export const getEmotionBaseWeights = (tag: string): Record<string, number> => {
   // Start with neutral weights (all zeros for emotion shapes)
   const base = { ...emotionBaseWeights.neutral };
   const specific = emotionBaseWeights[tag];
-  if (specific) {
-    // Override neutral with specific emotion weights
-    return { ...base, ...specific };
-  } else {
+  // Merge neutral with emotion‑specific weights (if any)
+  const merged = specific ? { ...base, ...specific } : base;
+
+  // Apply exaggeration
+  const scaled: Record<string, number> = {};
+  Object.keys(merged).forEach((key) => {
+    scaled[key] = merged[key] * EXAGGERATION_FACTOR;
+  });
+
+  if (!specific) {
     console.warn(`[emotionMappings] Emotion tag "${tag}" not found. Falling back to neutral.`);
-    return base;
   }
+  return scaled;
 };
 
 // Export the list of available emotion tags for reference and validation
