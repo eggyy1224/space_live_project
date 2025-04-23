@@ -11,7 +11,7 @@ logger = logging.getLogger("tts_service")
 logger.setLevel(logging.DEBUG)
 
 # 將 instructions 定義為常數或從配置讀取
-TTS_INSTRUCTIONS = "幾乎只用台語回覆，是一位辣台妹常常參雜english，動不動還會來點很多台語"
+TTS_INSTRUCTIONS = "說台語台語台語台語台語台語幾乎只用台語辣台妹english台語回覆，是一位辣台妹常台語常台語參雜english，動不動還englis台語h會來點很台語多english台語"
 
 class TextToSpeechService:
     """文字轉語音服務 (使用 OpenAI TTS)"""
