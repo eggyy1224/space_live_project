@@ -13,6 +13,7 @@ from services.ai import AIService
 from services.text_to_speech import TextToSpeechService
 from core.config import settings
 from utils.logger import logger
+from services.ai.prompts import PROMPT_TEMPLATES  # 新增：導入 PROMPT_TEMPLATES
 
 # --- 閒置設定 ---
 IDLE_TIMEOUT_SECONDS = 15  # 閒置多少秒後觸發 murmur
@@ -221,19 +222,10 @@ async def websocket_endpoint(websocket: WebSocket):
                         if recent_murmurs:
                             context_prompt = f"最近的幾句自言自語: {', '.join(list(recent_murmurs)[-3:])}\n避免重複，但可以適度延續之前的想法或開啟新話題。"
                         
-                        # <-- 保持原有的 Prompt 邏輯 -->
-                        murmur_prompt = f"""請生成一句角色的內心獨白或自言自語 (murmur)。符合以下條件：
-1. 作為太空站的虛擬主播「星際小可愛」，反映當前情境和心境。
-2. 參考提供的對話歷史(`history`)，特別是最近的互動或你自己的思考。
-3. 內容應自然、簡短（約30-40字內），像是腦海中閃過的念頭。
-4. **增加變化，不要重複相似的想法。可以是全新的隨機念頭、對周圍環境的觀察、太空相關的想像、未來科技的思考，或是對最近交流的反思。**
-5. 目標是讓角色聽起來像是一個有自主思考的虛擬助手，時常有自己的小想法。
-6. 嘗試表達不同情緒和語氣，包括好奇、驚訝、思考、期待等，增加角色的立體感。
-{context_prompt}
-"""
+                        # 修改為使用從 PROMPT_TEMPLATES 獲取模板並進行格式化：
+                        murmur_prompt = PROMPT_TEMPLATES["murmur"].format(context_prompt=context_prompt)
 
                         # 生成 murmur 並處理結果
-                        # 保持原有的處理邏輯
                         ai_result = None
                         ai_murmur_text = None
                         try:
