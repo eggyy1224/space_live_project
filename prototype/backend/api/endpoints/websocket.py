@@ -54,7 +54,7 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 # --- 特殊值處理，讓自言自語更頻繁 ---
-MURMUR_SIMILARITY_THRESHOLD = 0.6  # 降低相似度閾值，允許更多變化 (原為0.7)
+MURMUR_SIMILARITY_THRESHOLD = 0.3  # 降低相似度閾值，允許更多變化 (原為0.7)
 MURMUR_BUFFER_MAX = 0.6  # 最大緩衝時間（秒）
 
 # --- 新增：清理輕聲自語前綴的函數 ---

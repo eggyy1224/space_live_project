@@ -6,9 +6,11 @@
 import logging
 import asyncio
 import json
+import time
 from typing import Dict, List, Any, TypedDict, Optional
 
 from langchain_core.messages import BaseMessage, AIMessage
+from langchain_google_genai._common import GoogleGenerativeAIError
 
 # 配置基本日誌
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -31,44 +33,93 @@ async def retrieve_memory_node(state: TypedDict) -> Dict[str, Any]:
     # 檢索相關記憶 (最近N條消息用於構建上下文)
     history_for_retrieval = messages[-5:] if len(messages) >= 5 else messages
     
-    try:
-        # 根據輸入分類調整檢索策略
-        if input_classification["type"] in ["gibberish", "highly_repetitive"]:
-            # 對於亂碼或高度重複的輸入，減少檢索範圍，主要依賴最近對話歷史
-            logging.info("檢測到問題輸入，使用保守記憶檢索策略")
-            relevant_memories, persona_info = await memory_system.retrieve_context(
-                "",  # 使用空字符串作為查詢，只基於最近對話
-                history_for_retrieval,
-                k=1  # 減少返回的記憶數量
-            )
-        else:
-            # 對於正常輸入，使用標準檢索
-            relevant_memories, persona_info = await memory_system.retrieve_context(
-                user_text,
-                history_for_retrieval
-            )
-        
-        logging.info(f"記憶檢索成功: {len(relevant_memories)} 字符的相關記憶")
-        
-        # 將記憶轉換為列表形式以便後續處理
+    # 添加重試邏輯
+    max_retries = 3
+    retry_delay = 1.0  # 初始延遲1秒
+    
+    for attempt in range(max_retries):
         try:
-            retrieved_docs = memory_system.conversation_store.get_all()
-            retrieved_memories = retrieved_docs["documents"][:5]  # 獲取前5條記憶
+            # 根據輸入分類調整檢索策略
+            if input_classification["type"] in ["gibberish", "highly_repetitive"]:
+                # 對於亂碼或高度重複的輸入，減少檢索範圍，主要依賴最近對話歷史
+                logging.info("檢測到問題輸入，使用保守記憶檢索策略")
+                relevant_memories, persona_info = await memory_system.retrieve_context(
+                    "",  # 使用空字符串作為查詢，只基於最近對話
+                    history_for_retrieval,
+                    k=1  # 減少返回的記憶數量
+                )
+            else:
+                # 對於正常輸入，使用標準檢索
+                relevant_memories, persona_info = await memory_system.retrieve_context(
+                    user_text,
+                    history_for_retrieval
+                )
+            
+            logging.info(f"記憶檢索成功: {len(relevant_memories)} 字符的相關記憶")
+            
+            # 將記憶轉換為列表形式以便後續處理
+            try:
+                retrieved_docs = memory_system.conversation_store.get_all()
+                retrieved_memories = retrieved_docs["documents"][:5]  # 獲取前5條記憶
+            except Exception as e:
+                logging.error(f"獲取原始記憶失敗: {e}", exc_info=True)
+                retrieved_memories = [relevant_memories]
+            
+            return {
+                "retrieved_memories": retrieved_memories,
+                "persona_info": persona_info
+            }
+            
+        except GoogleGenerativeAIError as ge:
+            # 特別處理Google AI錯誤
+            error_msg = str(ge)
+            logging.error(f"Google AI錯誤 (嘗試 {attempt+1}/{max_retries}): {error_msg}", exc_info=True)
+            
+            if "Stream removed" in error_msg or "SSLV3_ALERT_BAD_RECORD_MAC" in error_msg or "DATA_CORRUPTED" in error_msg:
+                if attempt < max_retries - 1:
+                    # 網絡問題，等待後重試
+                    wait_time = retry_delay * (2 ** attempt)  # 指數退避
+                    logging.info(f"網絡連接問題，等待 {wait_time} 秒後重試...")
+                    await asyncio.sleep(wait_time)
+                    continue
+            
+            # 如果是最後一次嘗試或其他類型錯誤，使用備用策略
+            logging.warning("使用備用記憶檢索策略")
+            return _get_fallback_memories(state)
+            
         except Exception as e:
-            logging.error(f"獲取原始記憶失敗: {e}", exc_info=True)
-            retrieved_memories = [relevant_memories]
-        
-        return {
-            "retrieved_memories": retrieved_memories,
-            "persona_info": persona_info
-        }
-    except Exception as e:
-        logging.error(f"記憶檢索失敗: {e}", exc_info=True)
-        return {
-            "retrieved_memories": ["無法檢索記憶"],
-            "persona_info": f"我是一位太空網紅。",
-            "system_alert": "memory_retrieval_error"
-        }
+            # 一般錯誤處理
+            logging.error(f"記憶檢索失敗 (嘗試 {attempt+1}/{max_retries}): {e}", exc_info=True)
+            
+            if attempt < max_retries - 1:
+                # 非Google API特定錯誤也使用退避重試
+                wait_time = retry_delay * (2 ** attempt)
+                logging.info(f"等待 {wait_time} 秒後重試...")
+                await asyncio.sleep(wait_time)
+            else:
+                # 所有重試都失敗，使用備用策略
+                return _get_fallback_memories(state)
+    
+    # 理論上不會執行到這裡，但以防萬一
+    return _get_fallback_memories(state)
+
+def _get_fallback_memories(state: TypedDict) -> Dict[str, Any]:
+    """在記憶檢索失敗時提供備用記憶內容"""
+    # 使用最近的對話歷史作為上下文
+    messages = state["messages"]
+    recent_history = []
+    
+    # 只處理最近5輪對話
+    recent_messages = messages[-10:] if len(messages) > 10 else messages
+    for msg in recent_messages:
+        if hasattr(msg, 'content'):
+            recent_history.append(f"{msg.type}: {msg.content[:100]}...")
+    
+    return {
+        "retrieved_memories": recent_history if recent_history else ["無法檢索記憶，使用基本對話模式"],
+        "persona_info": f"我是一位太空網紅。我會盡量根據已有對話繼續交流。",
+        "system_alert": "memory_retrieval_used_fallback"
+    }
 
 def filter_memory_node(state: TypedDict) -> Dict[str, Any]:
     """記憶過濾節點 - 篩選和驗證檢索到的記憶"""
