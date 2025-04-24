@@ -589,12 +589,12 @@ class DialogueGraph:
         workflow.add_node("retrieve_memory", self._retrieve_memory_node_wrapper)
         workflow.add_node("filter_memory", filter_memory_node)
         
-        # 添加節點 - 工具處理
-        workflow.add_node("detect_tool_intent", self._detect_tool_intent_wrapper)
-        workflow.add_node("parse_tool_parameters", self._parse_tool_parameters_wrapper)
-        workflow.add_node("execute_tool", self._execute_tool_wrapper)
-        workflow.add_node("format_tool_result", format_tool_result_for_llm)
-        workflow.add_node("integrate_tool_result", integrate_tool_result)
+        # 添加節點 - 工具處理 (目前已禁用)
+        # workflow.add_node("detect_tool_intent", self._detect_tool_intent_wrapper)
+        # workflow.add_node("parse_tool_parameters", self._parse_tool_parameters_wrapper)
+        # workflow.add_node("execute_tool", self._execute_tool_wrapper)
+        # workflow.add_node("format_tool_result", format_tool_result_for_llm)
+        # workflow.add_node("integrate_tool_result", integrate_tool_result)
         
         # 添加節點 - 提示構建和 LLM 生成
         workflow.add_node("select_prompt_and_style", select_prompt_and_style_node)
@@ -608,23 +608,24 @@ class DialogueGraph:
         workflow.set_entry_point("preprocess_input")
         workflow.add_edge("preprocess_input", "retrieve_memory")
         workflow.add_edge("retrieve_memory", "filter_memory")
-        workflow.add_edge("filter_memory", "detect_tool_intent")
+        # 直接從 filter_memory 到 select_prompt_and_style，跳過工具檢測流程
+        workflow.add_edge("filter_memory", "select_prompt_and_style")
         
-        # 分支流程 - 工具處理
-        workflow.add_conditional_edges(
-            "detect_tool_intent",
-            lambda state: "tool_path" if state.get("has_tool_intent") else "normal_path",
-            {
-                "tool_path": "parse_tool_parameters",
-                "normal_path": "select_prompt_and_style"
-            }
-        )
+        # 禁用工具分支流程
+        # workflow.add_conditional_edges(
+        #     "detect_tool_intent",
+        #     lambda state: "tool_path" if state.get("has_tool_intent") else "normal_path",
+        #     {
+        #         "tool_path": "parse_tool_parameters",
+        #         "normal_path": "select_prompt_and_style"
+        #     }
+        # )
         
-        # 工具處理流程
-        workflow.add_edge("parse_tool_parameters", "execute_tool")
-        workflow.add_edge("execute_tool", "format_tool_result")
-        workflow.add_edge("format_tool_result", "integrate_tool_result")
-        workflow.add_edge("integrate_tool_result", "select_prompt_and_style")
+        # 禁用工具處理流程
+        # workflow.add_edge("parse_tool_parameters", "execute_tool")
+        # workflow.add_edge("execute_tool", "format_tool_result")
+        # workflow.add_edge("format_tool_result", "integrate_tool_result")
+        # workflow.add_edge("integrate_tool_result", "select_prompt_and_style")
         
         # 正常處理流程
         workflow.add_edge("select_prompt_and_style", "build_prompt")
@@ -777,23 +778,13 @@ class DialogueGraph:
             character_state: 當前的角色狀態。
             user_text: 使用者輸入文本。
             system_prompt: 系統觸發的提示 (例如用於 murmur)。
-            current_task: 當前任務。
-            tasks_history: 任務歷史。
-            current_intent: (可選) 外部傳入的意圖。
-
+            current_task: 當前正在進行的任務 (可選)。
+            tasks_history: 過去的任務歷史 (可選)。
+            current_intent: 識別的用戶意圖 (可選)。
+            
         Returns:
-            包含回應和狀態更新的字典。
+            Dict 包含生成的回應和狀態信息。
         """
-        if user_text is not None and system_prompt is not None:
-            logging.error("DialogueGraph.generate_response 不能同時接收 user_text 和 system_prompt")
-            return {
-                "error": "不能同時提供 user_text 和 system_prompt",
-                "final_response": "內部處理錯誤，請稍後再試。",
-                "emotion": "confused",
-                "emotional_keyframes": DEFAULT_NEUTRAL_KEYFRAMES.copy(),
-                "body_animation_sequence": DEFAULT_ANIMATION_SEQUENCE.copy(),
-                "updated_messages": messages
-            }
         if user_text is None and system_prompt is None:
              logging.error("DialogueGraph.generate_response 需要提供 user_text 或 system_prompt")
              return {
@@ -821,7 +812,7 @@ class DialogueGraph:
             "current_intent": current_intent,
             "current_task": current_task,
             "tasks_history": tasks_history if tasks_history is not None else [],
-            "has_tool_intent": None,
+            "has_tool_intent": False,  # 強制設為 False，禁用工具處理
             "potential_tool": None,
             "tool_confidence": None,
             "tool_parameters": None,
@@ -847,7 +838,8 @@ class DialogueGraph:
                 "memory_system": self.memory_system,
                 "llm": self.llm,
                 "persona_name": self.persona_name,
-                "available_tools": self.available_tools,
+                # 保留工具定義但不使用
+                "available_tools": {},  # 清空工具列表
                 "keyframes_schema": keyframes_schema,
                 "animation_sequence_schema": animation_sequence_schema,
                 "dialogue_styles": DIALOGUE_STYLES,

@@ -17,9 +17,9 @@ from utils.logger import logger
 from services.ai.prompts import PROMPT_TEMPLATES  # 新增：導入 PROMPT_TEMPLATES
 
 # --- 閒置設定 ---
-IDLE_TIMEOUT_SECONDS = 15  # 增加到15秒，減少murmur頻率
-IDLE_CHECK_INTERVAL_SECONDS = 5 # 增加到5秒，降低檢查頻率
-MURMUR_MIN_INTERVAL_SECONDS = 30  # 增加到30秒，減少AI調用頻率
+IDLE_TIMEOUT_SECONDS = 30  # 增加到30秒，大幅減少murmur頻率
+IDLE_CHECK_INTERVAL_SECONDS = 8 # 增加到8秒，顯著降低檢查頻率
+MURMUR_MIN_INTERVAL_SECONDS = 60  # 增加到60秒，大幅減少AI調用頻率
 # MURMUR_MAX_COUNT = 3  # <--- 移除：不再限制連續 murmur 次數
 MAX_HISTORY_LENGTH = 10 # 減少歷史長度，降低記憶負擔
 # --- 結束 ---
@@ -52,8 +52,8 @@ class SpeakingState:
 # --- 結束修改 ---
 
 # --- 修改配置參數，減少保護時間 ---
-MURMUR_BUFFER_MAX = 0.6  # 減少最大緩衝時間（從1.2秒減少到0.6秒）
-VOICE_FINISHING_BUFFER = 0.5  # 語音結束後的保護時間減半
+MURMUR_BUFFER_MAX = 0.4  # 減少最大緩衝時間（從0.6秒進一步減少到0.4秒）
+VOICE_FINISHING_BUFFER = 0.2  # 語音結束後的保護時間減至0.2秒
 # --- 結束修改 ---
 
 # 建立服務實例
