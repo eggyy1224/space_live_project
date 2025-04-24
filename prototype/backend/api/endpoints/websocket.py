@@ -17,11 +17,11 @@ from utils.logger import logger
 from services.ai.prompts import PROMPT_TEMPLATES  # 新增：導入 PROMPT_TEMPLATES
 
 # --- 閒置設定 ---
-IDLE_TIMEOUT_SECONDS = 12  # 閒置多少秒後觸發 murmur (原為15秒，縮短以增加頻率)
-IDLE_CHECK_INTERVAL_SECONDS = 2 # 每隔多少秒檢查一次閒置狀態 (原為3秒，縮短以提高響應性)
-MURMUR_MIN_INTERVAL_SECONDS = 20  # 兩次 murmur 之間的最小間隔 (原為25秒，縮短以使連續思考更流暢)
+IDLE_TIMEOUT_SECONDS = 15  # 增加到15秒，減少murmur頻率
+IDLE_CHECK_INTERVAL_SECONDS = 5 # 增加到5秒，降低檢查頻率
+MURMUR_MIN_INTERVAL_SECONDS = 30  # 增加到30秒，減少AI調用頻率
 # MURMUR_MAX_COUNT = 3  # <--- 移除：不再限制連續 murmur 次數
-MAX_HISTORY_LENGTH = 20 # 保存的最大對話歷史輪數（用戶+機器人算一輪）
+MAX_HISTORY_LENGTH = 10 # 減少歷史長度，降低記憶負擔
 # --- 結束 ---
 
 # --- 新增：思考流設定 ---
@@ -51,9 +51,9 @@ class SpeakingState:
     FINISHING = "finishing"   # 語音播放結束過渡狀態，不允許新播放
 # --- 結束修改 ---
 
-# --- 修改配置參數，增加保護時間 ---
-MURMUR_BUFFER_MAX = 1.2  # 增加最大緩衝時間（從0.6秒增加到1.2秒）
-VOICE_FINISHING_BUFFER = 1.0  # 語音結束後的額外保護時間
+# --- 修改配置參數，減少保護時間 ---
+MURMUR_BUFFER_MAX = 0.6  # 減少最大緩衝時間（從1.2秒減少到0.6秒）
+VOICE_FINISHING_BUFFER = 0.5  # 語音結束後的保護時間減半
 # --- 結束修改 ---
 
 # 建立服務實例
@@ -350,67 +350,29 @@ async def websocket_endpoint(websocket: WebSocket):
         speaking_state = SpeakingState.PLAYING_MURMUR
         logger.info(f"Generating murmur, setting speaking_state to {speaking_state}")
         
-        # --- 修改：為連續思考流準備更好的上下文 ---
+        # --- 簡化：降低連續思考的複雜度，移除記憶檢索 ---
         # 決定是否要更換思考主題
         if thinking_thread_continuity >= MAX_THREAD_CONTINUITY:
             # 隨機選擇新主題，但避免選到當前主題
             available_themes = [t for t in THINKING_THEMES if t != current_thinking_topic]
             current_thinking_topic = random.choice(available_themes)
             thinking_thread_continuity = 0
-            logger.info(f"Switching thinking topic to: {current_thinking_topic}")
         else:
             thinking_thread_continuity += 1
-            logger.info(f"Continuing thinking topic: {current_thinking_topic}, continuity: {thinking_thread_continuity}")
         
-        # 構建連續思考的上下文提示
+        # 構建簡化的連續思考上下文提示
         context_prompt = ""
         thinking_thread = ""
         
-        # --- 新增：嘗試從記憶系統中提取相關上下文 ---
-        recent_context = None
-        try:
-            # 使用主題作為關鍵詞生成相關的思考
-            # 注意：連續思考更依賴上下文而非外部記憶，所以我們不強依賴記憶檢索
-            if thinking_thread_continuity == 0 or thinking_thread_continuity >= MAX_THREAD_CONTINUITY - 1:
-                # 只在開始新思考線或接近結束當前思考線時查詢記憶
-                # 使用當前思考主題作為用戶輸入，以獲取與該主題相關的回憶
-                murmur_memory_result = await ai_service.generate_response(
-                    user_text=f"關於{current_thinking_topic}的有趣想法",
-                    history=conversation_history[-5:] if len(conversation_history) > 5 else conversation_history
-                )
-                
-                if murmur_memory_result and "final_response" in murmur_memory_result:
-                    # 從回應中提取有價值的信息作為記憶上下文
-                    memory_text = murmur_memory_result.get("final_response", "")
-                    if memory_text and len(memory_text) > 10:
-                        # 簡化記憶文本，移除開頭的問候語等
-                        memory_text = memory_text.split("。")[0] if "。" in memory_text else memory_text
-                        recent_context = memory_text
-                        logger.info(f"Generated memory for thinking: {recent_context[:50]}..." if recent_context else "No memory generated")
-        except Exception as e:
-            logger.warning(f"Failed to generate memory for thinking: {e}")
-            # 失敗時不影響主流程，繼續使用基本上下文
-        # --- 結束新增 ---
-        
-        # 從最近的 murmur 中構建思考線索
+        # 只使用最後一條murmur作為上下文，不再從記憶中檢索
         if recent_murmurs:
             recent_murmurs_list = list(recent_murmurs)
             if len(recent_murmurs_list) > 0:
                 # 最近的 murmur 作為直接延續的基礎
                 last_murmur_content = recent_murmurs_list[-1]
                 thinking_thread = f"你上一次的想法是：「{last_murmur_content}」，請自然延續這個想法。"
-                
-                # 如果有多個 murmur，提供更多上下文
-                if len(recent_murmurs_list) > 1:
-                    murmur_history = recent_murmurs_list[-3:] if len(recent_murmurs_list) >= 3 else recent_murmurs_list
-                    context_prompt = f"你最近的幾次想法：「{'」、「'.join(murmur_history)}」。記住，你的思考應該是連續的，像一個真實人類的意識流。"
-                    
-                    # --- 新增：如果有記憶上下文，添加到提示中 ---
-                    if recent_context:
-                        context_prompt += f"\n\n你曾經想過或談論過：「{recent_context}」，可以自然地將這些記憶融入你的思考流中。"
-                    # --- 結束新增 ---
-        # --- 結束修改 ---
-            
+        # --- 結束簡化 ---
+        
         # --- 修改：根據連續程度選擇不同的提示模板 ---
         prompt_template = "murmur_continuous" if thinking_thread_continuity > 0 else "murmur"
         
@@ -529,27 +491,24 @@ async def websocket_endpoint(websocket: WebSocket):
             speaking_state = SpeakingState.IDLE
 
     async def is_murmur_too_similar(new_murmur: str, existing_murmurs: Set[str], threshold: float = MURMUR_SIMILARITY_THRESHOLD) -> bool:
-        """檢查新的murmur是否與現有murmur太相似，支持可調整的相似度閾值"""
+        """檢查新的murmur是否與現有murmur太相似，簡化相似度檢測以提高速度"""
         # 如果完全相同，直接拒絕
         if new_murmur in existing_murmurs:
-            logger.warning(f"Generated murmur is a duplicate: '{new_murmur}', skipping...")
             return True
-            
-        # 檢查與所有現有 murmur 的相似度
-        for existing_murmur in existing_murmurs:
-            # 簡單的相似度檢測
-            if (new_murmur in existing_murmur or 
-                existing_murmur in new_murmur or
-                len(new_murmur) > 0 and existing_murmur and 
-                (len(set(new_murmur.lower()) & set(existing_murmur.lower())) / 
-                 len(set(new_murmur.lower() + existing_murmur.lower())) > threshold)):
-                logger.warning(f"Generated murmur is too similar to existing: New: '{new_murmur}', Existing: '{existing_murmur}', threshold: {threshold}, skipping...")
+        
+        # 只檢查最近的3個murmur，而不是全部
+        recent_list = list(existing_murmurs)[-3:] if len(existing_murmurs) > 3 else existing_murmurs
+        
+        # 檢查與最近的murmur的相似度
+        for existing_murmur in recent_list:
+            # 簡化的相似度檢測，只檢查包含關係
+            if (new_murmur in existing_murmur or existing_murmur in new_murmur):
                 return True
-                
+            
         return False
 
     async def save_audio_and_set_url(audio_base64: str, message_obj: Dict[str, Any], is_murmur: bool = False):
-        """保存音頻到文件並設置URL"""
+        """保存音頻到文件並設置URL - 優化版本"""
         prefix = "murmur-" if is_murmur else ""
         audio_filename = f"{prefix}{int(asyncio.get_event_loop().time() * 1000)}.mp3"
         
@@ -567,20 +526,14 @@ async def websocket_endpoint(websocket: WebSocket):
                 with open(audio_filepath, 'wb') as f:
                     f.write(audio_data)
                 # 如果成功保存，設置 audioUrl
-                if os.path.exists(audio_filepath) and os.path.getsize(audio_filepath) > 0:
-                    message_obj["audioUrl"] = f"/audio-file/{audio_filename}"
-                    logger.info(f"Successfully saved audio file: {audio_filepath}")
-                else:
-                    logger.error(f"Failed to save audio file or file is empty: {audio_filepath}")
+                message_obj["audioUrl"] = f"/audio-file/{audio_filename}"
             else:
                 logger.error(f"Audio data is not a valid string: {type(audio_base64)}")
-        except base64.binascii.Error as b64_error:
-            logger.error(f"Base64 decoding error: {b64_error}")
         except Exception as e:
-            logger.error(f"Error saving audio file: {e}", exc_info=True)
+            logger.error(f"Error saving audio file: {e}")
 
     async def idle_checker():
-        """背景任務，定期檢查閒置狀態並觸發 murmur。"""
+        """背景任務，定期檢查閒置狀態並觸發 murmur。優化版本，減少日誌輸出"""
         nonlocal last_activity_timestamp, current_emotion, last_murmur_timestamp, recent_murmurs, user_responded, speaking_state, last_speaking_reset_timestamp
         while True:
             await asyncio.sleep(IDLE_CHECK_INTERVAL_SECONDS)
@@ -588,23 +541,12 @@ async def websocket_endpoint(websocket: WebSocket):
                 current_time = datetime.utcnow()
                 idle_duration = current_time - last_activity_timestamp
 
-                # --- 檢查是否應該觸發 murmur ---
-                # 詳細記錄當前的狀態以便診斷
-                current_speaking_state = speaking_state
-                time_since_last_murmur = "N/A" if last_murmur_timestamp is None else f"{(current_time - last_murmur_timestamp).total_seconds():.2f}s"
-                time_since_last_reset = "N/A" if not last_speaking_reset_timestamp else f"{(current_time - last_speaking_reset_timestamp).total_seconds():.2f}s"
-                
-                # 檢查在語音剛結束後是否需要額外等待
+                # --- 簡化的murmur觸發條件檢查 ---
                 should_wait_after_speaking = False
                 if last_speaking_reset_timestamp:
                     time_since_last_reset_seconds = (current_time - last_speaking_reset_timestamp).total_seconds()
-                    should_wait_after_speaking = time_since_last_reset_seconds < 2.0  # 語音結束後等待2秒
+                    should_wait_after_speaking = time_since_last_reset_seconds < 1.0  # 減少等待時間
                 
-                # 完整的 murmur 觸發條件檢查：
-                # 1. 必須達到閒置閾值
-                # 2. 距離上次 murmur 必須超過最小間隔
-                # 3. 當前不能有其他語音在播放
-                # 4. 語音結束後需要短暫等待
                 murmur_condition_met = (
                     idle_duration > timedelta(seconds=IDLE_TIMEOUT_SECONDS) and
                     (last_murmur_timestamp is None or 
@@ -613,18 +555,10 @@ async def websocket_endpoint(websocket: WebSocket):
                     not should_wait_after_speaking
                 )
                 
-                # 記錄詳細的狀態和決策
-                logger.info(
-                    f"Murmur conditions check - idle: {idle_duration.total_seconds():.2f}s, "
-                    f"speaking_state: {current_speaking_state}, "
-                    f"time since last murmur: {time_since_last_murmur}, "
-                    f"time since last reset: {time_since_last_reset}, "
-                    f"should_wait_after_speaking: {should_wait_after_speaking}, "
-                    f"condition met: {murmur_condition_met}"
-                )
-                
-                # 如果滿足所有條件，嘗試觸發 murmur
+                # 只在條件滿足時記錄日誌，減少I/O開銷
                 if murmur_condition_met:
+                    logger.info("Murmur conditions met, triggering murmur")
+                    
                     # 使用消息隊列添加murmur請求
                     message_queue.add_message({"type": "murmur"}, priority=MESSAGE_PRIORITY["murmur"])
                     
@@ -632,13 +566,12 @@ async def websocket_endpoint(websocket: WebSocket):
                     await process_message_queue()
 
             except WebSocketDisconnect:
-                logger.info(f"Idle checker detected disconnection for {websocket.client}. Stopping checker.")
-                break # 連線斷開，退出檢查循環
+                logger.info(f"Idle checker detected disconnection. Stopping checker.")
+                break
             except asyncio.CancelledError:
-                 logger.info(f"Idle checker task cancelled for {websocket.client}.")
-                 break # 捕獲取消錯誤並退出
+                break
             except Exception as e:
-                logger.error(f"Error in idle_checker loop for {websocket.client}: {e}", exc_info=True)
+                logger.error(f"Error in idle_checker loop: {e}")
                 await asyncio.sleep(IDLE_CHECK_INTERVAL_SECONDS * 2)
 
     try:
