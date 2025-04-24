@@ -1,0 +1,91 @@
+{
+  "meta": {
+    "generatedAt": "2025-04-24T15:03:57.617Z",
+    "tasksAnalyzed": 10,
+    "thresholdScore": 5,
+    "projectName": "Your Project Name",
+    "usedResearch": false
+  },
+  "complexityAnalysis": [
+    {
+      "taskId": 1,
+      "taskTitle": "Restructure Project Folder Organization",
+      "complexityScore": 4,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Break down the project folder restructuring task into specific subtasks including directory creation, file movement, import path updates, and validation steps. For each subtask, specify the exact files and directories affected and any commands or scripts needed.",
+      "reasoning": "This task involves structural changes without functional modifications. The complexity is moderate because it requires careful path updates to maintain compatibility, but the requirements are clearly defined with specific directories to create."
+    },
+    {
+      "taskId": 2,
+      "taskTitle": "Extract Murmur Service Module",
+      "complexityScore": 6,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down the Murmur Service extraction into subtasks covering: identifying all murmur-related code in the current codebase, designing the MurmurService class interface, implementing core functionality, adding configuration options, and integrating with the WebSocket handler. For each subtask, specify the files to modify and the expected changes.",
+      "reasoning": "This task requires extracting functionality from existing code, creating a new service class, and ensuring the refactored code maintains the same behavior. The complexity comes from identifying all murmur-related code and ensuring proper state management during the transition."
+    },
+    {
+      "taskId": 3,
+      "taskTitle": "Implement Tool Executor Service",
+      "complexityScore": 7,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Divide the Tool Executor Service implementation into subtasks covering: analyzing current tool execution logic, designing the ToolExecutor interface, implementing the core service, creating individual tool implementations, adding configuration options, and integrating with the dialogue flow. For each subtask, specify the interfaces and key methods to implement.",
+      "reasoning": "This task involves creating a new service with multiple responsibilities (detection, execution, error handling) and refactoring existing code to use it. The complexity is higher because it requires understanding the current tool implementation details and designing a flexible interface."
+    },
+    {
+      "taskId": 4,
+      "taskTitle": "Refactor Memory Retrieval System",
+      "complexityScore": 8,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Break down the Memory Retrieval System refactoring into subtasks covering: designing the MemoryRetriever class structure, implementing parallel retrieval with asyncio, adding result caching, optimizing query limits, implementing error isolation, and performance instrumentation. For each subtask, specify the performance goals and technical approach.",
+      "reasoning": "This task has high complexity due to performance requirements (sub-500ms), parallel processing implementation, and the need to maintain functionality while significantly changing the architecture. It requires deep understanding of the existing memory system and asyncio programming."
+    },
+    {
+      "taskId": 5,
+      "taskTitle": "Refactor WebSocket Dialogue Handler",
+      "complexityScore": 7,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Divide the WebSocket handler refactoring into subtasks covering: analyzing current state variables and functions, designing the ConversationSession class structure, implementing state management methods, handling different message types, and integrating with the newly refactored services. For each subtask, specify the state transitions and event handling logic.",
+      "reasoning": "This task requires significant restructuring of core application logic, moving from functional to object-oriented design. The complexity comes from ensuring all state transitions and event handling remain correct while integrating multiple refactored services."
+    },
+    {
+      "taskId": 6,
+      "taskTitle": "Implement Dialogue Graph Abstraction",
+      "complexityScore": 8,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Break down the Dialogue Graph Abstraction implementation into subtasks covering: designing the base Node class hierarchy, implementing specific node types, separating graph definition from execution, creating interfaces for service integration, implementing graph traversal logic, and ensuring configurability. For each subtask, specify the class relationships and key methods.",
+      "reasoning": "This task involves creating an abstract framework for dialogue flow, which requires careful design of class hierarchies and interfaces. The complexity is high because it touches core application logic and needs to maintain compatibility with existing functionality while enabling future extensibility."
+    },
+    {
+      "taskId": 7,
+      "taskTitle": "Integrate Redis for Caching",
+      "complexityScore": 5,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Divide the Redis integration task into subtasks covering: setting up Redis client configuration, implementing caching in the MemoryRetriever, adding session state persistence, and creating fallback mechanisms. For each subtask, specify the Redis data structures to use, TTL settings, and serialization approaches.",
+      "reasoning": "This task has moderate complexity as it involves integrating a well-documented external service with clear use cases. The main challenges are proper configuration, serialization, and ensuring graceful degradation when Redis is unavailable."
+    },
+    {
+      "taskId": 8,
+      "taskTitle": "Implement Celery for Background Tasks",
+      "complexityScore": 6,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down the Celery integration into subtasks covering: setting up Celery configuration, identifying background tasks, implementing task definitions, creating scheduling logic, and documenting worker setup. For each subtask, specify the task parameters, retry policies, and expected behavior.",
+      "reasoning": "Integrating Celery requires understanding of asynchronous task processing and message brokers. The complexity comes from identifying appropriate background tasks, ensuring proper task isolation, and configuring the Celery workers correctly."
+    },
+    {
+      "taskId": 9,
+      "taskTitle": "Implement Monitoring and Error Handling",
+      "complexityScore": 7,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Divide the monitoring and error handling implementation into subtasks covering: OpenTelemetry integration, adding trace points to key operations, implementing structured logging, creating error boundaries, and setting up health check endpoints. For each subtask, specify the monitoring metrics, error handling strategies, and logging formats.",
+      "reasoning": "This task spans the entire application and requires understanding of distributed tracing concepts. The complexity comes from identifying all critical points for instrumentation and implementing consistent error handling throughout the codebase."
+    },
+    {
+      "taskId": 10,
+      "taskTitle": "Create Comprehensive Tests and Documentation",
+      "complexityScore": 7,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Break down the testing and documentation task into subtasks covering: end-to-end test implementation, integration test development, unit test creation, developer documentation writing, configuration guide creation, and performance documentation. For each subtask, specify the test coverage goals, documentation structure, and quality criteria.",
+      "reasoning": "This task requires comprehensive understanding of the entire refactored system. The complexity is high because it involves creating different types of tests (unit, integration, end-to-end) and documenting various aspects of the system for different audiences."
+    }
+  ]
+}
