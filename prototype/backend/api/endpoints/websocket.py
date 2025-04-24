@@ -1,6 +1,7 @@
 import json
 import asyncio
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Optional, Any, Deque
+from collections import deque
 from fastapi import WebSocket, WebSocketDisconnect
 import random
 import os
@@ -22,6 +23,27 @@ MURMUR_MIN_INTERVAL_SECONDS = 25  # 兩次 murmur 之間的最小間隔
 # MURMUR_MAX_COUNT = 3  # <--- 移除：不再限制連續 murmur 次數
 MAX_HISTORY_LENGTH = 20 # 保存的最大對話歷史輪數（用戶+機器人算一輪）
 # --- 結束 ---
+
+# --- 修改消息優先級和狀態，增加更高的語音保護 ---
+MESSAGE_PRIORITY = {
+    "user": 100,     # 用戶消息最高優先級
+    "murmur": 50,    # murmur 中等優先級
+    "system": 10     # 系統消息低優先級
+}
+
+# 定義音頻播放狀態枚舉
+class SpeakingState:
+    IDLE = "idle"             # 無語音播放
+    PLAYING_USER_RESPONSE = "playing_user_response"  # 播放用戶回應
+    PLAYING_MURMUR = "playing_murmur"    # 播放 murmur
+    PLAYING_SYSTEM = "playing_system"    # 播放系統消息
+    FINISHING = "finishing"   # 語音播放結束過渡狀態，不允許新播放
+# --- 結束修改 ---
+
+# --- 修改配置參數，增加保護時間 ---
+MURMUR_BUFFER_MAX = 1.2  # 增加最大緩衝時間（從0.6秒增加到1.2秒）
+VOICE_FINISHING_BUFFER = 1.0  # 語音結束後的額外保護時間
+# --- 結束修改 ---
 
 # 建立服務實例
 ai_service = AIService()
@@ -54,8 +76,7 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 # --- 特殊值處理，讓自言自語更頻繁 ---
-MURMUR_SIMILARITY_THRESHOLD = 0.3  # 降低相似度閾值，允許更多變化 (原為0.7)
-MURMUR_BUFFER_MAX = 0.6  # 最大緩衝時間（秒）
+MURMUR_SIMILARITY_THRESHOLD = 0.6  # 降低相似度閾值，允許更多變化 (原為0.7)
 
 # --- 新增：清理輕聲自語前綴的函數 ---
 def clean_murmur_prefix(text: str) -> str:
@@ -79,13 +100,56 @@ def clean_murmur_prefix(text: str) -> str:
     return text
 # --- 結束添加 ---
 
+# --- 新增：消息排隊和處理類 ---
+class MessageQueue:
+    """處理消息優先級和排隊的類"""
+    
+    def __init__(self):
+        self.queue: Deque[Dict[str, Any]] = deque()
+        self.processing_lock = asyncio.Lock()
+        self.is_processing = False
+    
+    def add_message(self, message: Dict[str, Any], priority: int):
+        """添加消息到隊列，根據優先級排序"""
+        self.queue.append({"message": message, "priority": priority})
+        # 根據優先級排序
+        sorted_queue = sorted(self.queue, key=lambda x: x["priority"], reverse=True)
+        self.queue = deque(sorted_queue)
+    
+    async def process_next(self, callback):
+        """處理隊列中的下一條消息"""
+        if not self.queue or self.is_processing:
+            return False
+        
+        async with self.processing_lock:
+            if not self.queue:  # 雙重檢查，避免競態條件
+                return False
+            
+            self.is_processing = True
+            try:
+                next_message = self.queue.popleft()
+                await callback(next_message["message"])
+                return True
+            finally:
+                self.is_processing = False
+    
+    def clear(self):
+        """清空隊列"""
+        self.queue.clear()
+    
+    def is_empty(self):
+        """檢查隊列是否為空"""
+        return len(self.queue) == 0
+# --- 結束新增 ---
+
 # WebSocket端點
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     logger.info(f"WebSocket connection open for client: {websocket.client}")
     
-    # --- 新增：為此連線創建一個異步鎖 ---   
+    # --- 新增：為此連線創建一個異步鎖和消息隊列 ---   
     ai_processing_lock = asyncio.Lock()
+    message_queue = MessageQueue()
     # --- 結束新增 ---
 
     # --- 新增：結構化對話歷史 ---   
@@ -100,16 +164,16 @@ async def websocket_endpoint(websocket: WebSocket):
     last_speaking_reset_timestamp = None  # 新增：追蹤最後一次重置說話狀態的時間
     recent_murmurs = set()  # 使用集合以避免重複
     current_emotion = "neutral"
-    is_speaking = False  # 指示當前是否有語音在播放
+    
+    # --- 修改：使用更精確的語音狀態管理 ---
+    speaking_state = SpeakingState.IDLE  # 當前語音狀態
+    current_audio_task = None  # 當前播放的音頻任務
+    # --- 結束修改 ---
+    
     user_responded = False
 
     # 記錄當前表情狀態，用於實現平滑過渡
-    # emotion_confidence = 0.0  # 情緒置信度 - 不再需要，由 AIService 決定
     idle_check_task = None # <--- 新增：閒置檢查任務
-
-    # --- 添加 murmur 狀態追蹤 ---
-    # murmur_count = 0 # <--- 移除：不再需要計數
-    # --- 結束添加 ---
 
     async def add_to_history(role: str, content: str, is_murmur: bool = False):
         """安全地添加記錄到對話歷史並進行修剪。"""
@@ -122,19 +186,26 @@ async def websocket_endpoint(websocket: WebSocket):
         if len(conversation_history) > MAX_HISTORY_LENGTH * 2:
             conversation_history = conversation_history[-(MAX_HISTORY_LENGTH * 2):]
 
-    async def reset_speaking_after_duration(duration_seconds: float):
-        """在指定的秒數後重置語音播放狀態。"""
-        nonlocal is_speaking, last_activity_timestamp, last_murmur_timestamp, last_speaking_reset_timestamp
+    async def reset_speaking_after_duration(duration_seconds: float, reset_to_state: str = SpeakingState.IDLE):
+        """在指定的秒數後重置語音播放狀態。增加過渡保護階段。"""
+        nonlocal speaking_state, last_activity_timestamp, last_murmur_timestamp, last_speaking_reset_timestamp
         
         # 記錄相關資訊以便調試
-        previous_speaking_state = is_speaking
-        logger.info(f"Starting reset_speaking_after_duration timer for {duration_seconds:.2f} seconds. Current is_speaking: {previous_speaking_state}")
+        previous_speaking_state = speaking_state
+        logger.info(f"Starting reset_speaking_after_duration timer for {duration_seconds:.2f} seconds. Current speaking_state: {previous_speaking_state}")
         
-        # 等待指定時間
+        # 等待指定時間（語音估計播放時間）
         await asyncio.sleep(duration_seconds)
         
-        # 重置語音狀態
-        is_speaking = False
+        # 先進入過渡保護狀態 FINISHING，不允許開始新的語音播放
+        speaking_state = SpeakingState.FINISHING
+        logger.info(f"Changed speaking_state from {previous_speaking_state} to {speaking_state} (finishing phase)")
+        
+        # 額外的保護緩衝時間，確保語音確實播放完畢
+        await asyncio.sleep(VOICE_FINISHING_BUFFER)
+        
+        # 最終轉入閒置狀態
+        speaking_state = reset_to_state
         
         # 更新所有相關時間戳，確保後續操作基於正確的時間
         current_time = datetime.utcnow()
@@ -144,12 +215,256 @@ async def websocket_endpoint(websocket: WebSocket):
         # 無論是什麼類型的語音(murmur或正常回覆)都更新last_murmur_timestamp
         # 這樣可以避免murmur結束後立即觸發下一個murmur
         last_murmur_timestamp = current_time
+        
+        logger.info(f"Reset speaking_state from {SpeakingState.FINISHING} to {reset_to_state} after total {duration_seconds + VOICE_FINISHING_BUFFER:.2f} seconds (including buffer) and updated all timestamps to current time")
+        
+        # 重置後處理下一條消息
+        if not message_queue.is_empty():
+            asyncio.create_task(process_message_queue())
+
+    async def process_message_queue():
+        """處理消息隊列中的下一條消息"""
+        # 只有在完全閒置狀態時才處理新消息，更嚴格的條件
+        if speaking_state != SpeakingState.IDLE:
+            logger.info(f"Cannot process next message, speaking_state is {speaking_state}")
+            return
             
-        logger.info(f"Reset is_speaking from {previous_speaking_state} to False after {duration_seconds:.2f} seconds and updated all timestamps to current time")
+        async def message_processor(message):
+            # 根據消息類型分發處理
+            message_type = message.get("type")
+            if message_type == "user_message":
+                await handle_user_message(message.get("content"))
+            elif message_type == "murmur":
+                await handle_murmur()
+                
+        await message_queue.process_next(message_processor)
+
+    async def handle_user_message(content: str):
+        """處理用戶消息"""
+        nonlocal speaking_state, last_activity_timestamp, user_responded
+        
+        if not content:
+            logger.warning("Received empty user message content.")
+            return
+            
+        # 更新狀態
+        last_activity_timestamp = datetime.utcnow()
+        user_responded = True
+        speaking_state = SpeakingState.PLAYING_USER_RESPONSE
+        
+        logger.info(f"Processing user message, setting speaking_state to {speaking_state}")
+        
+        try:
+            # 生成回復
+            ai_result = await ai_service.generate_response(user_text=content)
+            if not ai_result:
+                logger.error("AI service returned None for user message")
+                speaking_state = SpeakingState.IDLE
+                return
+                
+            bot_response = ai_result.get("final_response", "抱歉，我似乎有點恍神了...")
+            bot_response = clean_murmur_prefix(bot_response)
+            
+            # 處理TTS
+            tts_result = await tts_service.synthesize_speech(bot_response)
+            audio_base64 = tts_result.get("audio") if tts_result else None
+            audio_duration = tts_result.get("duration") if tts_result and "duration" in tts_result else len(bot_response) * 0.15
+            
+            # 創建回應消息
+            bot_message = {
+                "id": f"bot-{int(asyncio.get_event_loop().time() * 1000)}",
+                "role": "bot",
+                "content": bot_response,
+                "bodyAnimationSequence": ai_result.get("body_animation_sequence"),
+                "timestamp": None,
+                "audioUrl": None
+            }
+            
+            # 保存並設置音頻URL
+            if audio_base64:
+                await save_audio_and_set_url(audio_base64, bot_message)
+                
+            # 發送回應
+            await websocket.send_json({
+                "type": "chat-message",
+                "message": bot_message
+            })
+            
+            # 發送情緒軌跡（如果有）
+            emotional_keyframes = ai_result.get("emotional_keyframes")
+            if emotional_keyframes:
+                await websocket.send_json({
+                    "type": "emotionalTrajectory",
+                    "payload": {
+                        "duration": audio_duration,
+                        "keyframes": emotional_keyframes
+                    }
+                })
+            
+            # 設置音頻播放完成後的任務
+            buffer_time = min(MURMUR_BUFFER_MAX, 0.3 + audio_duration * 0.03)
+            reset_task = asyncio.create_task(
+                reset_speaking_after_duration(audio_duration + buffer_time)
+            )
+            
+            # 添加到歷史
+            await add_to_history("user", content)
+            await add_to_history("bot", bot_response)
+            
+        except Exception as e:
+            logger.error(f"Error processing user message: {e}", exc_info=True)
+            speaking_state = SpeakingState.IDLE
+            
+    async def handle_murmur():
+        """處理murmur生成和播放"""
+        nonlocal speaking_state, last_murmur_timestamp, recent_murmurs, current_emotion
+        
+        # 設置狀態
+        speaking_state = SpeakingState.PLAYING_MURMUR
+        logger.info(f"Generating murmur, setting speaking_state to {speaking_state}")
+        
+        # 準備上下文提示
+        context_prompt = ""
+        if recent_murmurs:
+            context_prompt = f"最近的幾句自言自語: {', '.join(list(recent_murmurs)[-3:])}\n避免重複，但可以適度延續之前的想法或開啟新話題。"
+            
+        # 獲取murmur提示模板
+        murmur_prompt = PROMPT_TEMPLATES["murmur"].format(context_prompt=context_prompt)
+        
+        try:
+            # 生成murmur
+            ai_result = await ai_service.generate_response(
+                system_prompt=murmur_prompt,
+                history=conversation_history
+            )
+            
+            if not ai_result or "final_response" not in ai_result:
+                logger.error("AIService failed to generate murmur or returned invalid format.")
+                speaking_state = SpeakingState.IDLE
+                return
+                
+            ai_murmur_text = ai_result.get("final_response")
+            ai_murmur_text = clean_murmur_prefix(ai_murmur_text)
+            
+            # 檢查相似度
+            if await is_murmur_too_similar(ai_murmur_text, recent_murmurs):
+                speaking_state = SpeakingState.IDLE
+                return
+                
+            # 添加到最近murmurs
+            recent_murmurs.add(ai_murmur_text)
+            if len(recent_murmurs) > 10:
+                recent_murmurs.pop()
+                
+            # 更新情緒
+            murmur_emotion = ai_result.get("emotion", current_emotion)
+            current_emotion = murmur_emotion
+            
+            # 添加到歷史
+            await add_to_history("bot", ai_murmur_text, is_murmur=True)
+            
+            # 轉換為音頻
+            tts_result = await tts_service.synthesize_speech(ai_murmur_text)
+            audio_base64 = tts_result.get("audio") if tts_result else None
+            audio_duration = tts_result.get("duration", len(ai_murmur_text) * 0.15)
+            
+            # 創建murmur消息
+            bot_message = {
+                "id": f"bot-murmur-{int(asyncio.get_event_loop().time() * 1000)}",
+                "role": "bot",
+                "content": ai_murmur_text,
+                "bodyAnimationSequence": ai_result.get("body_animation_sequence"),
+                "timestamp": None,
+                "audioUrl": None,
+                "isMurmur": True
+            }
+            
+            # 保存並設置音頻URL
+            if audio_base64:
+                await save_audio_and_set_url(audio_base64, bot_message, is_murmur=True)
+                
+            # 發送murmur
+            await websocket.send_json({
+                "type": "chat-message",
+                "message": bot_message
+            })
+            
+            # 發送情緒軌跡（如果有）
+            emotional_keyframes = ai_result.get("emotional_keyframes")
+            if emotional_keyframes:
+                await websocket.send_json({
+                    "type": "emotionalTrajectory",
+                    "payload": {
+                        "duration": audio_duration,
+                        "keyframes": emotional_keyframes
+                    }
+                })
+                
+            # 更新last_murmur_timestamp
+            last_murmur_timestamp = datetime.utcnow()
+            
+            # 設置音頻播放完成後的任務
+            buffer_time = min(MURMUR_BUFFER_MAX, 0.3 + audio_duration * 0.03)
+            reset_task = asyncio.create_task(
+                reset_speaking_after_duration(audio_duration + buffer_time)
+            )
+            
+        except Exception as e:
+            logger.error(f"Error generating murmur: {e}", exc_info=True)
+            speaking_state = SpeakingState.IDLE
+
+    async def is_murmur_too_similar(new_murmur: str, existing_murmurs: Set[str]) -> bool:
+        """檢查新的murmur是否與現有murmur太相似"""
+        for existing_murmur in existing_murmurs:
+            # 簡單的相似度檢測
+            if (new_murmur in existing_murmur or 
+                existing_murmur in new_murmur or
+                len(new_murmur) > 0 and existing_murmur and 
+                (len(set(new_murmur.lower()) & set(existing_murmur.lower())) / 
+                 len(set(new_murmur.lower() + existing_murmur.lower())) > MURMUR_SIMILARITY_THRESHOLD)):
+                logger.warning(f"Generated murmur is too similar to existing: New: '{new_murmur}', Existing: '{existing_murmur}', skipping...")
+                return True
+                
+        if new_murmur in existing_murmurs:
+            logger.warning(f"Generated murmur is a duplicate: '{new_murmur}', skipping...")
+            return True
+            
+        return False
+
+    async def save_audio_and_set_url(audio_base64: str, message_obj: Dict[str, Any], is_murmur: bool = False):
+        """保存音頻到文件並設置URL"""
+        prefix = "murmur-" if is_murmur else ""
+        audio_filename = f"{prefix}{int(asyncio.get_event_loop().time() * 1000)}.mp3"
+        
+        # 構建保存路徑
+        backend_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        audio_dir = os.path.join(backend_root, "audio")
+        os.makedirs(audio_dir, exist_ok=True)
+        audio_filepath = os.path.join(audio_dir, audio_filename)
+
+        try:
+            # 解碼並保存音頻
+            if isinstance(audio_base64, str):
+                audio_base64_data = audio_base64.split(",", 1)[1] if "," in audio_base64 else audio_base64
+                audio_data = base64.b64decode(audio_base64_data)
+                with open(audio_filepath, 'wb') as f:
+                    f.write(audio_data)
+                # 如果成功保存，設置 audioUrl
+                if os.path.exists(audio_filepath) and os.path.getsize(audio_filepath) > 0:
+                    message_obj["audioUrl"] = f"/audio-file/{audio_filename}"
+                    logger.info(f"Successfully saved audio file: {audio_filepath}")
+                else:
+                    logger.error(f"Failed to save audio file or file is empty: {audio_filepath}")
+            else:
+                logger.error(f"Audio data is not a valid string: {type(audio_base64)}")
+        except base64.binascii.Error as b64_error:
+            logger.error(f"Base64 decoding error: {b64_error}")
+        except Exception as e:
+            logger.error(f"Error saving audio file: {e}", exc_info=True)
 
     async def idle_checker():
         """背景任務，定期檢查閒置狀態並觸發 murmur。"""
-        nonlocal last_activity_timestamp, current_emotion, last_murmur_timestamp, recent_murmurs, user_responded, is_speaking, last_speaking_reset_timestamp
+        nonlocal last_activity_timestamp, current_emotion, last_murmur_timestamp, recent_murmurs, user_responded, speaking_state, last_speaking_reset_timestamp
         while True:
             await asyncio.sleep(IDLE_CHECK_INTERVAL_SECONDS)
             try:
@@ -158,7 +473,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 # --- 檢查是否應該觸發 murmur ---
                 # 詳細記錄當前的狀態以便診斷
-                current_speaking_state = is_speaking
+                current_speaking_state = speaking_state
                 time_since_last_murmur = "N/A" if last_murmur_timestamp is None else f"{(current_time - last_murmur_timestamp).total_seconds():.2f}s"
                 time_since_last_reset = "N/A" if not last_speaking_reset_timestamp else f"{(current_time - last_speaking_reset_timestamp).total_seconds():.2f}s"
                 
@@ -177,14 +492,14 @@ async def websocket_endpoint(websocket: WebSocket):
                     idle_duration > timedelta(seconds=IDLE_TIMEOUT_SECONDS) and
                     (last_murmur_timestamp is None or 
                      current_time - last_murmur_timestamp > timedelta(seconds=MURMUR_MIN_INTERVAL_SECONDS)) and
-                    not is_speaking and
+                    speaking_state == SpeakingState.IDLE and
                     not should_wait_after_speaking
                 )
                 
                 # 記錄詳細的狀態和決策
                 logger.info(
                     f"Murmur conditions check - idle: {idle_duration.total_seconds():.2f}s, "
-                    f"speaking: {current_speaking_state}, "
+                    f"speaking_state: {current_speaking_state}, "
                     f"time since last murmur: {time_since_last_murmur}, "
                     f"time since last reset: {time_since_last_reset}, "
                     f"should_wait_after_speaking: {should_wait_after_speaking}, "
@@ -193,214 +508,11 @@ async def websocket_endpoint(websocket: WebSocket):
                 
                 # 如果滿足所有條件，嘗試觸發 murmur
                 if murmur_condition_met:
-                    # --- 嘗試獲取鎖，如果鎖已被持有（表示正在處理用戶消息），則等待 ---                   
-                    async with ai_processing_lock:
-                        # 再次檢查閒置時間，避免在等待鎖的過程中用戶剛好發送了消息
-                        if datetime.utcnow() - last_activity_timestamp <= timedelta(seconds=IDLE_TIMEOUT_SECONDS):
-                            logger.info(f"User became active while waiting for lock in idle_checker. Skipping murmur.")
-                            continue # 用户在等待锁期间变得活跃，跳过此次 murmur
-                        
-                        # 再次檢查 is_speaking 狀態，確保在獲取鎖的過程中沒有其他語音開始播放
-                        if is_speaking:
-                            logger.info(f"Speaking state changed to {is_speaking} while waiting for lock. Skipping murmur.")
-                            continue # 語音狀態在等待鎖期間改變，跳過此次 murmur
-                        
-                        # 再次檢查是否已超過最小murmur間隔
-                        current_time = datetime.utcnow()
-                        if last_murmur_timestamp is not None and current_time - last_murmur_timestamp <= timedelta(seconds=MURMUR_MIN_INTERVAL_SECONDS):
-                            logger.info(f"Time since last murmur became less than minimum interval while waiting for lock. Skipping murmur.")
-                            continue
-
-                        logger.info(f"Client {websocket.client} idle timeout reached. Generating murmur...")
-
-                        # 在生成murmur前先標記is_speaking為True，避免多個murmur同時生成
-                        is_speaking = True
-                        logger.info(f"Set is_speaking to True before generating murmur to prevent overlap")
-
-                        # 1. 觸發 Murmur 生成
-                        context_prompt = ""
-                        if recent_murmurs:
-                            context_prompt = f"最近的幾句自言自語: {', '.join(list(recent_murmurs)[-3:])}\n避免重複，但可以適度延續之前的想法或開啟新話題。"
-                        
-                        # 修改為使用從 PROMPT_TEMPLATES 獲取模板並進行格式化：
-                        murmur_prompt = PROMPT_TEMPLATES["murmur"].format(context_prompt=context_prompt)
-
-                        # 生成 murmur 並處理結果
-                        ai_result = None
-                        ai_murmur_text = None
-                        try:
-                            # --- 傳遞歷史給 AI ---                           
-                            ai_result = await ai_service.generate_response(
-                                system_prompt=murmur_prompt,
-                                history=conversation_history
-                            )
-                            # --- 結束 ---
-
-                            # 以下保持原有邏輯
-                            if not ai_result or "final_response" not in ai_result:
-                                logger.error("AIService failed to generate murmur or returned invalid format.")
-                                continue # 跳過此次 murmur
-
-                            ai_murmur_text = ai_result.get("final_response")
-                            
-                            # 清理可能的前綴
-                            ai_murmur_text = clean_murmur_prefix(ai_murmur_text)
-                            
-                            # 更嚴格的重複檢查 - 不僅檢查完全匹配，還檢查高度相似
-                            skip_due_to_similarity = False
-                            for existing_murmur in recent_murmurs:
-                                # 簡單的相似度檢測 - 如果包含或被包含，認為太相似
-                                if (ai_murmur_text in existing_murmur or 
-                                    existing_murmur in ai_murmur_text or
-                                    len(ai_murmur_text) > 0 and existing_murmur and 
-                                    (len(set(ai_murmur_text.lower()) & set(existing_murmur.lower())) / len(set(ai_murmur_text.lower() + existing_murmur.lower())) > MURMUR_SIMILARITY_THRESHOLD)):
-                                    logger.warning(f"Generated murmur is too similar to existing: New: '{ai_murmur_text}', Existing: '{existing_murmur}', skipping...")
-                                    skip_due_to_similarity = True
-                                    break
-                            
-                            if skip_due_to_similarity:
-                                continue
-                                
-                            if ai_murmur_text in recent_murmurs:
-                                logger.warning(f"Generated murmur is a duplicate: '{ai_murmur_text}', skipping...")
-                                continue
-                            
-                            recent_murmurs.add(ai_murmur_text)
-                            if len(recent_murmurs) > 10:
-                                recent_murmurs.pop()
-                                
-                            murmur_emotion = ai_result.get("emotion", current_emotion)
-                            current_emotion = murmur_emotion
-                            logger.info(f"Generated murmur: '{ai_murmur_text}', Emotion: {current_emotion}")
-
-                            # --- 將生成的 murmur 添加到歷史 ---                           
-                            await add_to_history("bot", ai_murmur_text, is_murmur=True)
-                            # --- 結束 ---                           
-
-                        except Exception as ai_err:
-                            logger.error(f"Error generating murmur from AIService: {ai_err}", exc_info=True)
-                            continue # 發生錯誤，跳過此次 murmur
-
-                        # 2. 轉換為語音
-                        tts_result = None
-                        audio_base64 = None
-                        audio_duration = len(ai_murmur_text) * 0.15 # 預設估算值
-                        logger.info(f"Estimated initial audio duration for murmur: {audio_duration:.2f}s (based on text length)")
-                        try:
-                            if ai_murmur_text:
-                                tts_start_time = time.monotonic()
-                                tts_result = await tts_service.synthesize_speech(ai_murmur_text)
-                                tts_end_time = time.monotonic()
-                                logger.info(f"TTS processing time for murmur: {(tts_end_time - tts_start_time)*1000:.2f}ms")
-                                
-                                if tts_result:
-                                    audio_base64 = tts_result.get("audio")
-                                    audio_duration = tts_result.get("duration", audio_duration)
-                                    logger.info(f"TTS succeeded for murmur, actual duration: {audio_duration:.2f}s")
-                                else:
-                                    logger.warning("TTS returned empty result for murmur")
-                        except Exception as tts_err:
-                            logger.error(f"Error synthesizing speech for murmur: {tts_err}", exc_info=True)
-                            # 即使 TTS 失敗，還是可以發送文字 murmur
-
-                        # 3. 使用 chat-message 格式推送 Murmur
-                        # 創建機器人消息結構
-                        bot_message = {
-                            "id": f"bot-murmur-{int(asyncio.get_event_loop().time() * 1000)}",
-                            "role": "bot",
-                            "content": ai_murmur_text,
-                            "bodyAnimationSequence": ai_result.get("body_animation_sequence"),
-                            "timestamp": None,
-                            "audioUrl": None, # 稍後填充
-                            "isMurmur": True  # 標識這是一個自主生成的 murmur
-                        }
-
-                        # 如果有音頻，保存到文件並設置URL
-                        if audio_base64:
-                            # 生成唯一文件名
-                            audio_filename = f"murmur-{int(asyncio.get_event_loop().time() * 1000)}.mp3"
-                            # 構建保存路徑
-                            backend_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-                            audio_dir = os.path.join(backend_root, "audio")
-                            os.makedirs(audio_dir, exist_ok=True)
-                            audio_filepath = os.path.join(audio_dir, audio_filename)
-
-                            try:
-                                # 解碼並保存音頻
-                                if isinstance(audio_base64, str):
-                                    audio_base64_data = audio_base64.split(",", 1)[1] if "," in audio_base64 else audio_base64
-                                    audio_data = base64.b64decode(audio_base64_data)
-                                    with open(audio_filepath, 'wb') as f:
-                                        f.write(audio_data)
-                                    # 如果成功保存，設置 audioUrl
-                                    if os.path.exists(audio_filepath) and os.path.getsize(audio_filepath) > 0:
-                                        bot_message["audioUrl"] = f"/audio-file/{audio_filename}"
-                                        logger.info(f"Successfully saved murmur audio file: {audio_filepath}")
-                                    else:
-                                        logger.error(f"Failed to save murmur audio file or file is empty: {audio_filepath}")
-                                else:
-                                    logger.error(f"Audio data is not a valid string: {type(audio_base64)}")
-                            except base64.binascii.Error as b64_error:
-                                logger.error(f"Base64 decoding error: {b64_error}")
-                            except Exception as e:
-                                logger.error(f"Error saving murmur audio file: {e}", exc_info=True)
-
-                        # 發送 chat-message 格式的 murmur
-                        await websocket.send_json({
-                            "type": "chat-message",
-                            "message": bot_message
-                        })
-                        logger.info(f"Sent murmur as chat-message to client {websocket.client}")
-
-                        # 如果有情緒關鍵幀，發送 emotionalTrajectory
-                        emotional_keyframes = ai_result.get("emotional_keyframes")
-                        if emotional_keyframes:
-                            trajectory_payload = {
-                                "duration": audio_duration,
-                                "keyframes": emotional_keyframes
-                            }
-                            await websocket.send_json({
-                                "type": "emotionalTrajectory",
-                                "payload": trajectory_payload
-                            })
-                            logger.info(f"已發送 Emotional Trajectory，時長: {audio_duration:.2f}s")
-
-                        # 更新最後一次murmur的時間戳，確保不會立即再次觸發murmur
-                        last_murmur_timestamp = datetime.utcnow()
-                        logger.info(f"Updated last_murmur_timestamp before scheduling reset task")
-
-                        # 告知客戶端語音播放完成，這將重置播放狀態
-                        if audio_duration > 0 and audio_base64:
-                            # 根據語音時長安排一個任務，在語音播放結束後重置 is_speaking
-                            # 添加一些額外時間作為緩衝，隨著音頻時長增加，緩衝也適度增加
-                            buffer_time = min(MURMUR_BUFFER_MAX, 0.3 + audio_duration * 0.03)  # 調整緩衝時間
-                            total_wait_time = audio_duration + buffer_time
-                            
-                            # 創建任務前記錄當前狀態
-                            logger.info(f"Creating reset_speaking_after_duration task: audio_duration={audio_duration:.2f}s, "
-                                       f"buffer_time={buffer_time:.2f}s, total_wait_time={total_wait_time:.2f}s, "
-                                       f"current is_speaking={is_speaking}")
-                            
-                            # 創建異步任務重置語音狀態
-                            reset_task = asyncio.create_task(reset_speaking_after_duration(total_wait_time))
-                            
-                            # 不要在這裡更新last_murmur_timestamp，將在reset_speaking_after_duration函數中更新
-                            # last_murmur_timestamp = datetime.utcnow()
-                        else:
-                            # 如果沒有音頻，立即重置說話狀態
-                            is_speaking = False
-                            
-                            # 即使沒有音頻，也應該更新所有相關時間戳
-                            current_time = datetime.utcnow()
-                            last_activity_timestamp = current_time
-                            last_speaking_reset_timestamp = current_time
-                            last_murmur_timestamp = current_time
-                            
-                            logger.info(f"No audio for response, immediately reset is_speaking to False and updated all timestamps")
-
-                        # 調整活動時間戳，在聊天訊息處理後同步更新
-                        # 確保與音頻播放結束後的重置操作協調一致
-                        last_activity_timestamp = datetime.utcnow()
+                    # 使用消息隊列添加murmur請求
+                    message_queue.add_message({"type": "murmur"}, priority=MESSAGE_PRIORITY["murmur"])
+                    
+                    # 嘗試立即處理
+                    await process_message_queue()
 
             except WebSocketDisconnect:
                 logger.info(f"Idle checker detected disconnection for {websocket.client}. Stopping checker.")
@@ -419,316 +531,34 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             data = await websocket.receive_text()
             
-            # --- 更新活動時間，並獲取鎖以處理用戶消息 ---           
-            async with ai_processing_lock:
-                last_activity_timestamp = datetime.utcnow() 
-                user_responded = True
-                # murmur_count = 0 # <-- 移除計數重置
-                # --- 鎖定區間開始 ---
-
-                try:
-                    message = json.loads(data)
-                    message_type = message.get("type")
-                    logger.info(f"Received message type '{message_type}' from {websocket.client} while holding lock")
-
-                    if message_type == "message":
-                        user_text = message.get("content")
-                        if not user_text:
-                            logger.warning("Received empty 'message' content.")
-                            continue
-
-                        # 移除獨立的情緒分析器調用
-                        # emotion, confidence = emotion_analyzer.analyze(user_text)
-                        # print(f"分析情緒結果: {emotion}, 置信度: {confidence}")
-                        # if confidence > emotion_confidence:
-                        #     next_emotion = emotion
-                        #     emotion_confidence = confidence
-                        # else:
-                        #     next_emotion = current_emotion
-                        # current_emotion = next_emotion
-
-                        # 生成回復 (包含文字和情緒)
-                        ai_response = ""
-                        response_emotion = current_emotion # 預設為當前情緒
-                        ai_result = None
-                        try:
-                             # 假設 generate_response 返回包含 final_response 和 emotion 的字典
-                            ai_result = await ai_service.generate_response(user_text=user_text)
-                            if ai_result:
-                                ai_response = ai_result.get("final_response", "嗯...我該說些什麼呢？")
-                                response_emotion = ai_result.get("emotion", current_emotion) # 更新情緒
-                                current_emotion = response_emotion # 更新 Websocket 狀態
-                            else:
-                                 logger.error("AIService returned None or empty result for user message.")
-                                 ai_response = "抱歉，我好像沒聽清楚。"
-
-                        except Exception as ai_err:
-                            logger.error(f"Error generating response from AIService: {ai_err}", exc_info=True)
-                            ai_response = "糟糕，我的思緒有點混亂。"
-
-                        # 提取回應文本和情緒
-                        bot_response_text = ai_result.get("final_response", "抱歉，我沒有理解您的意思")
-                        
-                        # 清理可能的前綴
-                        bot_response_text = clean_murmur_prefix(bot_response_text)
-                        
-                        # 提取emotion和keyframes
-                        response_emotion = ai_result.get("emotion", current_emotion)
-                        emotional_keyframes = ai_result.get("emotional_keyframes")
-
-                        # 轉換回復為語音
-                        tts_result = await tts_service.synthesize_speech(bot_response_text)
-                        audio_base64 = tts_result.get("audio") if tts_result else None
-                        audio_duration = tts_result.get("duration") if tts_result and "duration" in tts_result else len(bot_response_text) * 0.15
-
-                        # 發送回覆
-                        await websocket.send_json({
-                            "type": "response",
-                            "content": bot_response_text,
-                            "emotion": response_emotion,
-                            "audio": audio_base64,
-                            "hasSpeech": audio_base64 is not None,
-                            "speechDuration": audio_duration,
-                            "characterState": ai_service.character_state
-                        })
-                        logger.info(f"Sent response to client {websocket.client}")
-
-                    elif message_type == "chat-message":
-                        logger.info(f"收到聊天訊息: {message}")
-                        user_text = message.get("message") # <-- 注意鍵名不同
-                        if not user_text:
-                            logger.warning("Received empty 'chat-message' message content.")
-                            continue
-
-                        T_recv = time.monotonic()
-                        logger.info(f"[Perf] T_recv: {T_recv:.4f}", extra={"log_category": "PERFORMANCE"})
-
-                        ai_response = ""
-                        response_emotion = current_emotion
-                        ai_result = None
-                        emotional_keyframes = None
-                        body_animation_sequence = None
-                        audio_base64 = None
-                        audio_duration = 0
-
-                        # <--- 修改：收到用戶消息，表示用戶已回應 --->
-                        # 設置播放狀態為 False，因為我們將開始一個新的回應
-                        prev_speaking = is_speaking
-                        if is_speaking:
-                            logger.info(f"Received user message while is_speaking={prev_speaking}, forcefully reset to False")
-                            is_speaking = False
-                        else:
-                            logger.info(f"Received user message, is_speaking already False")
-                        
-                        # 記錄用戶已回應，並更新時間戳
-                        user_responded = True
-                        last_activity_timestamp = datetime.utcnow()
-                        # <--- 修改結束 --->
-
-                        try:
-                            T_ai_start = time.monotonic()
-                            logger.info(f"[Perf] T_ai_start: {T_ai_start:.4f}", extra={"log_category": "PERFORMANCE"})
-                            ai_result = await ai_service.generate_response(user_text)
-                            T_ai_end = time.monotonic()
-                            logger.info(f"[Perf] T_ai_end: {T_ai_end:.4f} (Duration: {(T_ai_end - T_ai_start)*1000:.2f} ms)", extra={"log_category": "PERFORMANCE"})
-
-                            if ai_result:
-                                ai_response = ai_result.get("final_response", "抱歉，我好像有點短路了...")
-                                response_emotion = ai_result.get("emotion", current_emotion)
-                                current_emotion = response_emotion
-                                emotional_keyframes = ai_result.get("emotional_keyframes")
-                                body_animation_sequence = ai_result.get("body_animation_sequence")
-                                logger.info(f"AI 回應: {ai_response}, Emotion: {current_emotion}") # <--- 添加情緒日誌
-                            else:
-                                logger.error("AIService returned None for chat-message")
-                                ai_response = "看來我的迴路有點問題..."
-
-                            # TTS處理 - 只調用一次
-                            if ai_response:
-                                T_tts_start = time.monotonic()
-                                logger.info(f"[Perf] T_tts_start: {T_tts_start:.4f}", extra={"log_category": "PERFORMANCE"})
-                                tts_result = await tts_service.synthesize_speech(ai_response)
-                                T_tts_end = time.monotonic()
-                                logger.info(f"[Perf] T_tts_end: {T_tts_end:.4f} (Duration: {(T_tts_end - T_tts_start)*1000:.2f} ms)", extra={"log_category": "PERFORMANCE"})
-                                if tts_result:
-                                    audio_base64 = tts_result.get("audio")
-                                    audio_duration = tts_result.get("duration", len(ai_response) * 0.15)
-                                    # 設置語音正在播放標誌
-                                    is_speaking = True
-                                    logger.info(f"TTS generated successfully, duration: {audio_duration:.2f}s, is_speaking set to True")
-                                else:
-                                    logger.warning("TTS returned no result, no audio will be played")
-
-                        except Exception as e:
-                            logger.error(f"Error during AI or TTS for chat-message: {e}", exc_info=True)
-                            ai_response = "處理時發生了一點小插曲。"
-                            # 重置音頻和動畫，避免發送不匹配的數據
-                            audio_base64 = None
-                            emotional_keyframes = None
-                            body_animation_sequence = None
-
-                        # 提取回應文本和情緒
-                        bot_response_text = ai_result.get("final_response", "抱歉，我沒有理解您的意思")
-                        
-                        # 清理可能的前綴
-                        bot_response_text = clean_murmur_prefix(bot_response_text)
-                        
-                        # 提取emotion和keyframes
-                        response_emotion = ai_result.get("emotion", current_emotion)
-                        emotional_keyframes = ai_result.get("emotional_keyframes")
-
-                        # 處理murmur類型的回應
-                        if message_type == "murmur":
-                            if not ai_service:
-                                logger.error("AI服務未初始化")
-                                await websocket.send_json({"status": "error", "message": "AI服務未初始化"})
-                                continue
-
-                            text = message.get("content").strip()
-                            ai_response = await ai_service.get_murmur_response(text, system_lang, ws_session_id)
-                            
-                            # 清理回應中的前綴
-                            cleaned_response = clean_murmur_prefix(ai_response)
-                            logger.info(f"Murmur清理前: {ai_response}")
-                            logger.info(f"Murmur清理後: {cleaned_response}")
-                            
-                            # 使用清理後的文本進行TTS
-                            audio_data, sample_rate = await tts_service.synthesize_speech(cleaned_response, system_lang)
-                            audio_duration = len(audio_data) / sample_rate
-                            
-                            # 發送回應
-                            response_data = {
-                                "type": "bot_response",
-                                "content": ai_response,  # 保留原始回應以供顯示
-                                "audio": audio_data.tobytes().hex(),
-                                "sample_rate": sample_rate
-                            }
-                            await websocket.send_json(response_data)
-                            
-                            # 更新murmur時間戳和speaking狀態
-                            logger.info(f"Audio duration: {audio_duration}s")
-                            last_murmur_timestamp = datetime.now()
-                            user_sessions[ws_session_id]['is_speaking'] = True
-                            
-                            # 安排定時器在音頻播放結束後重置speaking狀態
-                            buffer_time = 0.2  # 緩衝時間
-                            reset_time = audio_duration + buffer_time
-                            asyncio.create_task(reset_speaking_after(ws_session_id, reset_time))
-                            
-                            continue
-
-                        # 準備消息體
-                        bot_message = {
-                            "id": f"bot-{int(asyncio.get_event_loop().time() * 1000)}",
-                            "role": "bot",
-                            "content": ai_response,
-                            "bodyAnimationSequence": body_animation_sequence,
-                            "timestamp": None,
-                            "audioUrl": None
-                        }
-
-                        if audio_base64:
-                            audio_filename = f"{int(asyncio.get_event_loop().time() * 1000)}.mp3"
-                            backend_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-                            audio_dir = os.path.join(backend_root, "audio")
-                            os.makedirs(audio_dir, exist_ok=True)
-                            audio_filepath = os.path.join(audio_dir, audio_filename)
-                            T_save_start = time.monotonic()
-                            try:
-                                if isinstance(audio_base64, str):
-                                    audio_base64_data = audio_base64.split(",", 1)[1] if "," in audio_base64 else audio_base64
-                                    audio_data = base64.b64decode(audio_base64_data)
-                                    with open(audio_filepath, 'wb') as f:
-                                        f.write(audio_data)
-                                    if os.path.exists(audio_filepath) and os.path.getsize(audio_filepath) > 0:
-                                        bot_message["audioUrl"] = f"/audio-file/{audio_filename}"
-                                        T_save_end = time.monotonic()
-                                        logger.info(f"[Perf] T_save_end: {T_save_end:.4f} (Duration: {(T_save_end - T_save_start)*1000:.2f} ms)", extra={"log_category": "PERFORMANCE"})
-                                    else:
-                                        logger.error(f"保存音頻文件失敗: 文件不存在或大小為0 {audio_filepath}")
-                                else:
-                                    logger.error(f"音頻數據不是有效的字符串: {type(audio_base64)}")
-                            except base64.binascii.Error as b64_error:
-                                logger.error(f"Base64 解碼錯誤: {b64_error}")
-                            except Exception as e:
-                                logger.error(f"保存音頻文件時發生未知錯誤: {e}", exc_info=True)
-
-                        T_send_start = time.monotonic()
-                        await websocket.send_json({
-                            "type": "chat-message",
-                            "message": bot_message
-                        })
-                        T_send_end = time.monotonic()
-                        logger.info(f"[Perf] Total Backend Processing Time (chat-message): {(T_send_end - T_recv)*1000:.2f} ms", extra={"log_category": "PERFORMANCE"})
-
-                        # 發送情緒軌跡（如果有的話）
-                        if emotional_keyframes:
-                            trajectory_payload = {
-                                "duration": audio_duration,
-                                "keyframes": emotional_keyframes
-                            }
-                            await websocket.send_json({
-                                "type": "emotionalTrajectory",
-                                "payload": trajectory_payload
-                            })
-                            logger.info(f"已發送 Emotional Trajectory，時長: {audio_duration:.2f}s")
-                        else:
-                            logger.info("No emotional keyframes available for this response")
-
-                        # 告知客戶端語音播放完成，這將重置播放狀態
-                        if audio_duration > 0 and audio_base64:
-                            # 根據語音時長安排一個任務，在語音播放結束後重置 is_speaking
-                            # 添加一些額外時間作為緩衝，隨著音頻時長增加，緩衝也適度增加
-                            buffer_time = min(MURMUR_BUFFER_MAX, 0.3 + audio_duration * 0.03)  # 調整緩衝時間
-                            total_wait_time = audio_duration + buffer_time
-                            
-                            # 創建任務前記錄當前狀態
-                            logger.info(f"Creating reset_speaking_after_duration task: audio_duration={audio_duration:.2f}s, "
-                                       f"buffer_time={buffer_time:.2f}s, total_wait_time={total_wait_time:.2f}s, "
-                                       f"current is_speaking={is_speaking}")
-                            
-                            # 創建異步任務重置語音狀態
-                            reset_task = asyncio.create_task(reset_speaking_after_duration(total_wait_time))
-                            
-                            # 不要在這裡更新last_murmur_timestamp，將在reset_speaking_after_duration函數中更新
-                            # last_murmur_timestamp = datetime.utcnow()
-                        else:
-                            # 如果沒有音頻，立即重置說話狀態
-                            is_speaking = False
-                            
-                            # 即使沒有音頻，也應該更新所有相關時間戳
-                            current_time = datetime.utcnow()
-                            last_activity_timestamp = current_time
-                            last_speaking_reset_timestamp = current_time
-                            last_murmur_timestamp = current_time
-                            
-                            logger.info(f"No audio for response, immediately reset is_speaking to False and updated all timestamps")
-
-                        # 調整活動時間戳，在聊天訊息處理後同步更新
-                        # 確保與音頻播放結束後的重置操作協調一致
-                        last_activity_timestamp = datetime.utcnow()
-
-                    else:
-                        logger.warning(f"Received unknown message type: {message_type}")
-
-                except json.JSONDecodeError:
-                    logger.error(f"Failed to decode JSON from message: {data}")
-                except WebSocketDisconnect: # 這個應該不太可能在鎖內部發生，但為了完整性加上
-                    logger.info(f"WebSocket disconnected while processing message inside lock for {websocket.client}")
-                    raise 
-                except Exception as e:
-                    logger.error(f"Error processing WebSocket message inside lock: {e}", exc_info=True)
-                    try:
-                        await websocket.send_json({"type": "error", "message": "處理訊息時發生內部錯誤。"})
-                    except WebSocketDisconnect:
-                        pass
-                # --- 鎖在此處自動釋放 ---
+            # 將用戶消息加入隊列
+            message = json.loads(data)
+            message_type = message.get("type")
+            
+            if message_type == "message" or message_type == "chat-message":
+                content = message.get("content", message.get("message", ""))
+                if content:
+                    # 更新活動時間戳
+                    last_activity_timestamp = datetime.utcnow()
+                    user_responded = True
+                    
+                    # 添加到消息隊列
+                    message_queue.add_message(
+                        {"type": "user_message", "content": content},
+                        priority=MESSAGE_PRIORITY["user"]
+                    )
+                    
+                    # 嘗試立即處理
+                    await process_message_queue()
+                else:
+                    logger.warning(f"Received empty content in message type: {message_type}")
+            else:
+                logger.warning(f"Unknown message type: {message_type}")
 
     except WebSocketDisconnect:
         logger.info(f"WebSocket disconnected for client {websocket.client}")
     except asyncio.CancelledError:
         logger.info(f"Main websocket task cancelled for {websocket.client}")
-        # 不需要再做什麼，finally 會處理清理工作
     except Exception as e:
         logger.error(f"Unexpected error in websocket_endpoint for {websocket.client}: {e}", exc_info=True)
     finally:
@@ -736,12 +566,9 @@ async def websocket_endpoint(websocket: WebSocket):
         if idle_check_task and not idle_check_task.done():
             idle_check_task.cancel()
             try:
-                # 等待任務實際取消完成（可選，但更安全）
-                await asyncio.wait_for(idle_check_task, timeout=1.0) 
-            except asyncio.TimeoutError:
-                logger.warning(f"Idle checker task for {websocket.client} did not cancel within timeout.")
-            except asyncio.CancelledError:
-                pass # 任務已被取消是正常的
+                await asyncio.wait_for(idle_check_task, timeout=1.0)
+            except (asyncio.TimeoutError, asyncio.CancelledError):
+                pass
             logger.info(f"Cancelled idle checker task for client {websocket.client}")
         
         # 安全地斷開連接
@@ -754,21 +581,3 @@ async def websocket_endpoint(websocket: WebSocket):
         except Exception as cleanup_err:
              logger.error(f"Error during connection cleanup for {websocket.client}: {cleanup_err}", exc_info=True)
         logger.info(f"WebSocket connection closed for client {websocket.client}")
-
-# --- 舊的 emotion_analyzer (需要移除或替換) ---
-# class SimpleEmotionAnalyzer:
-#     def analyze(self, text):
-#         # 這裡是一個非常基礎的實現，實際應用中會使用更複雜的模型
-#         text_lower = text.lower()
-#         if any(word in text_lower for word in ["開心", "高興", "太棒了", "好耶"]):
-#             return "happy", 0.8
-#         elif any(word in text_lower for word in ["傷心", "難過", "唉"]):
-#             return "sad", 0.7
-#         elif any(word in text_lower for word in ["生氣", "可惡", "討厭"]):
-#             return "angry", 0.6
-#         elif any(word in text_lower for word in ["驚訝", "哇", "真的嗎"]):
-#             return "surprised", 0.5
-#         return "neutral", 0.3
-
-# emotion_analyzer = SimpleEmotionAnalyzer()
-# --- 結束 ---
