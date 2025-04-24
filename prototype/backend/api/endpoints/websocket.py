@@ -17,11 +17,22 @@ from utils.logger import logger
 from services.ai.prompts import PROMPT_TEMPLATES  # 新增：導入 PROMPT_TEMPLATES
 
 # --- 閒置設定 ---
-IDLE_TIMEOUT_SECONDS = 15  # 閒置多少秒後觸發 murmur
-IDLE_CHECK_INTERVAL_SECONDS = 3 # 每隔多少秒檢查一次閒置狀態
-MURMUR_MIN_INTERVAL_SECONDS = 25  # 兩次 murmur 之間的最小間隔
+IDLE_TIMEOUT_SECONDS = 12  # 閒置多少秒後觸發 murmur (原為15秒，縮短以增加頻率)
+IDLE_CHECK_INTERVAL_SECONDS = 2 # 每隔多少秒檢查一次閒置狀態 (原為3秒，縮短以提高響應性)
+MURMUR_MIN_INTERVAL_SECONDS = 20  # 兩次 murmur 之間的最小間隔 (原為25秒，縮短以使連續思考更流暢)
 # MURMUR_MAX_COUNT = 3  # <--- 移除：不再限制連續 murmur 次數
 MAX_HISTORY_LENGTH = 20 # 保存的最大對話歷史輪數（用戶+機器人算一輪）
+# --- 結束 ---
+
+# --- 新增：思考流設定 ---
+THINKING_THEMES = [
+    "太空生活", "直播計劃", "美妝技巧", "個人形象", "外表煩惱", 
+    "粉絲互動", "地球思念", "太空站設備", "宅居日常", "飲食相關",
+    "科技新聞", "娛樂話題", "自我反思", "夢想與目標", "網路流行語"
+]
+MAX_THREAD_CONTINUITY = 4  # 連續幾次保持同一個思考主題
+SIMILARITY_THRESHOLD_CONTINUOUS = 0.4  # 連續模式下的相似度閾值（更低允許更多變化）
+CONTINUITY_MARKERS = ["不過", "話說回來", "順便一提", "另外", "而且", "搞不好", "說到這個", "然後", "其實"]
 # --- 結束 ---
 
 # --- 修改消息優先級和狀態，增加更高的語音保護 ---
@@ -80,7 +91,7 @@ MURMUR_SIMILARITY_THRESHOLD = 0.6  # 降低相似度閾值，允許更多變化 
 
 # --- 新增：清理輕聲自語前綴的函數 ---
 def clean_murmur_prefix(text: str) -> str:
-    """清理文本中的輕聲自語前綴"""
+    """清理文本中的輕聲自語前綴，但保留連續性標記"""
     patterns = [
         r"^\s*\(輕聲自語\)\s*",
         r"^\s*（輕聲自語）\s*",
@@ -96,6 +107,13 @@ def clean_murmur_prefix(text: str) -> str:
     
     for pattern in patterns:
         text = re.sub(pattern, "", text, flags=re.IGNORECASE)
+    
+    # 保留連接詞，但移除多餘空格
+    for marker in CONTINUITY_MARKERS:
+        if text.startswith(marker):
+            # 保留標記但格式化為「標記，」的格式
+            text = re.sub(f"^\s*{marker}\s*", f"{marker}，", text)
+            break
     
     return text
 # --- 結束添加 ---
@@ -154,6 +172,12 @@ async def websocket_endpoint(websocket: WebSocket):
 
     # --- 新增：結構化對話歷史 ---   
     conversation_history: List[Dict[str, any]] = []
+    # --- 結束新增 ---
+    
+    # --- 新增：思考流追蹤變數 ---
+    current_thinking_topic = random.choice(THINKING_THEMES)
+    thinking_thread_continuity = 0
+    last_murmur_content = ""
     # --- 結束新增 ---
 
     # 初始化連接狀態
@@ -318,18 +342,93 @@ async def websocket_endpoint(websocket: WebSocket):
     async def handle_murmur():
         """處理murmur生成和播放"""
         nonlocal speaking_state, last_murmur_timestamp, recent_murmurs, current_emotion
+        # --- 新增：思考流變量 ---
+        nonlocal current_thinking_topic, thinking_thread_continuity, last_murmur_content
+        # --- 結束新增 ---
         
         # 設置狀態
         speaking_state = SpeakingState.PLAYING_MURMUR
         logger.info(f"Generating murmur, setting speaking_state to {speaking_state}")
         
-        # 準備上下文提示
+        # --- 修改：為連續思考流準備更好的上下文 ---
+        # 決定是否要更換思考主題
+        if thinking_thread_continuity >= MAX_THREAD_CONTINUITY:
+            # 隨機選擇新主題，但避免選到當前主題
+            available_themes = [t for t in THINKING_THEMES if t != current_thinking_topic]
+            current_thinking_topic = random.choice(available_themes)
+            thinking_thread_continuity = 0
+            logger.info(f"Switching thinking topic to: {current_thinking_topic}")
+        else:
+            thinking_thread_continuity += 1
+            logger.info(f"Continuing thinking topic: {current_thinking_topic}, continuity: {thinking_thread_continuity}")
+        
+        # 構建連續思考的上下文提示
         context_prompt = ""
+        thinking_thread = ""
+        
+        # --- 新增：嘗試從記憶系統中提取相關上下文 ---
+        recent_context = None
+        try:
+            # 使用主題作為關鍵詞生成相關的思考
+            # 注意：連續思考更依賴上下文而非外部記憶，所以我們不強依賴記憶檢索
+            if thinking_thread_continuity == 0 or thinking_thread_continuity >= MAX_THREAD_CONTINUITY - 1:
+                # 只在開始新思考線或接近結束當前思考線時查詢記憶
+                # 使用當前思考主題作為用戶輸入，以獲取與該主題相關的回憶
+                murmur_memory_result = await ai_service.generate_response(
+                    user_text=f"關於{current_thinking_topic}的有趣想法",
+                    history=conversation_history[-5:] if len(conversation_history) > 5 else conversation_history
+                )
+                
+                if murmur_memory_result and "final_response" in murmur_memory_result:
+                    # 從回應中提取有價值的信息作為記憶上下文
+                    memory_text = murmur_memory_result.get("final_response", "")
+                    if memory_text and len(memory_text) > 10:
+                        # 簡化記憶文本，移除開頭的問候語等
+                        memory_text = memory_text.split("。")[0] if "。" in memory_text else memory_text
+                        recent_context = memory_text
+                        logger.info(f"Generated memory for thinking: {recent_context[:50]}..." if recent_context else "No memory generated")
+        except Exception as e:
+            logger.warning(f"Failed to generate memory for thinking: {e}")
+            # 失敗時不影響主流程，繼續使用基本上下文
+        # --- 結束新增 ---
+        
+        # 從最近的 murmur 中構建思考線索
         if recent_murmurs:
-            context_prompt = f"最近的幾句自言自語: {', '.join(list(recent_murmurs)[-3:])}\n避免重複，但可以適度延續之前的想法或開啟新話題。"
+            recent_murmurs_list = list(recent_murmurs)
+            if len(recent_murmurs_list) > 0:
+                # 最近的 murmur 作為直接延續的基礎
+                last_murmur_content = recent_murmurs_list[-1]
+                thinking_thread = f"你上一次的想法是：「{last_murmur_content}」，請自然延續這個想法。"
+                
+                # 如果有多個 murmur，提供更多上下文
+                if len(recent_murmurs_list) > 1:
+                    murmur_history = recent_murmurs_list[-3:] if len(recent_murmurs_list) >= 3 else recent_murmurs_list
+                    context_prompt = f"你最近的幾次想法：「{'」、「'.join(murmur_history)}」。記住，你的思考應該是連續的，像一個真實人類的意識流。"
+                    
+                    # --- 新增：如果有記憶上下文，添加到提示中 ---
+                    if recent_context:
+                        context_prompt += f"\n\n你曾經想過或談論過：「{recent_context}」，可以自然地將這些記憶融入你的思考流中。"
+                    # --- 結束新增 ---
+        # --- 結束修改 ---
             
-        # 獲取murmur提示模板
-        murmur_prompt = PROMPT_TEMPLATES["murmur"].format(context_prompt=context_prompt)
+        # --- 修改：根據連續程度選擇不同的提示模板 ---
+        prompt_template = "murmur_continuous" if thinking_thread_continuity > 0 else "murmur"
+        
+        # 獲取對應的 murmur 提示模板並填充變量
+        template = PROMPT_TEMPLATES.get(prompt_template, PROMPT_TEMPLATES["murmur"])
+        
+        # 格式化提示模板
+        if prompt_template == "murmur_continuous":
+            murmur_prompt = template.format(
+                context_prompt=context_prompt,
+                current_topic=current_thinking_topic,
+                thinking_thread=thinking_thread
+            )
+        else:
+            murmur_prompt = template.format(
+                context_prompt=context_prompt
+            )
+        # --- 結束修改 ---
         
         try:
             # 生成murmur
@@ -346,15 +445,31 @@ async def websocket_endpoint(websocket: WebSocket):
             ai_murmur_text = ai_result.get("final_response")
             ai_murmur_text = clean_murmur_prefix(ai_murmur_text)
             
-            # 檢查相似度
-            if await is_murmur_too_similar(ai_murmur_text, recent_murmurs):
+            # --- 修改：根據連續思考模式調整相似度判斷 ---
+            similarity_threshold = SIMILARITY_THRESHOLD_CONTINUOUS if thinking_thread_continuity > 0 else MURMUR_SIMILARITY_THRESHOLD
+            
+            if prompt_template == "murmur_continuous":
+                # 檢查是否包含連續性標記，如包含則更寬容對待相似度
+                has_continuity_marker = any(marker in ai_murmur_text for marker in CONTINUITY_MARKERS)
+                if has_continuity_marker:
+                    similarity_threshold *= 0.8  # 進一步降低相似度要求
+                    logger.info(f"Continuity marker detected, lowering similarity threshold to {similarity_threshold}")
+            
+            # 如果是首次 murmur 或相似度在允許範圍內，接受這個 murmur
+            if not recent_murmurs or not await is_murmur_too_similar(ai_murmur_text, recent_murmurs, similarity_threshold):
+                # 將內容添加到最近 murmurs
+                last_murmur_content = ai_murmur_text
+                recent_murmurs.add(ai_murmur_text)
+                if len(recent_murmurs) > 10:
+                    # 移除最舊的 murmur (集合沒有直接的 pop first 方法)
+                    oldest = next(iter(recent_murmurs))
+                    recent_murmurs.remove(oldest)
+                    logger.info(f"Removed oldest murmur from set: '{oldest}'")
+            else:
+                logger.warning(f"Generated murmur is too similar to existing ones, skipping: '{ai_murmur_text}'")
                 speaking_state = SpeakingState.IDLE
                 return
-                
-            # 添加到最近murmurs
-            recent_murmurs.add(ai_murmur_text)
-            if len(recent_murmurs) > 10:
-                recent_murmurs.pop()
+            # --- 結束修改 ---
                 
             # 更新情緒
             murmur_emotion = ai_result.get("emotion", current_emotion)
@@ -413,22 +528,24 @@ async def websocket_endpoint(websocket: WebSocket):
             logger.error(f"Error generating murmur: {e}", exc_info=True)
             speaking_state = SpeakingState.IDLE
 
-    async def is_murmur_too_similar(new_murmur: str, existing_murmurs: Set[str]) -> bool:
-        """檢查新的murmur是否與現有murmur太相似"""
+    async def is_murmur_too_similar(new_murmur: str, existing_murmurs: Set[str], threshold: float = MURMUR_SIMILARITY_THRESHOLD) -> bool:
+        """檢查新的murmur是否與現有murmur太相似，支持可調整的相似度閾值"""
+        # 如果完全相同，直接拒絕
+        if new_murmur in existing_murmurs:
+            logger.warning(f"Generated murmur is a duplicate: '{new_murmur}', skipping...")
+            return True
+            
+        # 檢查與所有現有 murmur 的相似度
         for existing_murmur in existing_murmurs:
             # 簡單的相似度檢測
             if (new_murmur in existing_murmur or 
                 existing_murmur in new_murmur or
                 len(new_murmur) > 0 and existing_murmur and 
                 (len(set(new_murmur.lower()) & set(existing_murmur.lower())) / 
-                 len(set(new_murmur.lower() + existing_murmur.lower())) > MURMUR_SIMILARITY_THRESHOLD)):
-                logger.warning(f"Generated murmur is too similar to existing: New: '{new_murmur}', Existing: '{existing_murmur}', skipping...")
+                 len(set(new_murmur.lower() + existing_murmur.lower())) > threshold)):
+                logger.warning(f"Generated murmur is too similar to existing: New: '{new_murmur}', Existing: '{existing_murmur}', threshold: {threshold}, skipping...")
                 return True
                 
-        if new_murmur in existing_murmurs:
-            logger.warning(f"Generated murmur is a duplicate: '{new_murmur}', skipping...")
-            return True
-            
         return False
 
     async def save_audio_and_set_url(audio_base64: str, message_obj: Dict[str, Any], is_murmur: bool = False):
