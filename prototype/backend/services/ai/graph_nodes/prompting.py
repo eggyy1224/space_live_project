@@ -117,7 +117,7 @@ def select_dialogue_style(character_state: Dict[str, Any], input_classification:
     style_key = random.choices(candidates, weights=weights, k=1)[0]
     return DIALOGUE_STYLES[style_key]
 
-def build_prompt_node(state: TypedDict) -> Dict[str, Any]:
+async def build_prompt_node(state: TypedDict) -> Dict[str, Any]:
     """構建提示節點 - 準備傳給 LLM 的輸入參數"""
     
     # 取得必要的狀態

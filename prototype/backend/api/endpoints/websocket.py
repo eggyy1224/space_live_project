@@ -254,8 +254,18 @@ async def websocket_endpoint(websocket: WebSocket):
         logger.info(f"Processing user message, setting speaking_state to {speaking_state}")
         
         try:
+            # 確保會話歷史不為空，如果是第一次消息，添加一個系統消息
+            if not conversation_history:
+                await add_to_history("bot", "你好！我是星宅妹，太空艙中的辣台妹。有什麼可以為你服務的嗎？")
+            
+            # 先將用戶消息添加到歷史，確保有至少一條消息
+            await add_to_history("user", content)
+            
             # 生成回復
-            ai_result = await ai_service.generate_response(user_text=content)
+            ai_result = await ai_service.generate_response(
+                user_text=content,
+                history=conversation_history
+            )
             if not ai_result:
                 logger.error("AI service returned None for user message")
                 speaking_state = SpeakingState.IDLE
@@ -306,8 +316,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 reset_speaking_after_duration(audio_duration + buffer_time)
             )
             
-            # 添加到歷史
-            await add_to_history("user", content)
+            # 添加機器人回應到歷史
             await add_to_history("bot", bot_response)
             
         except Exception as e:

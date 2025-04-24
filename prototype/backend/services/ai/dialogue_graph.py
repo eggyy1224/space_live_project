@@ -26,10 +26,6 @@ from .graph_nodes.input_processing import preprocess_input_node
 from .graph_nodes.memory_handling import retrieve_memory_node, filter_memory_node, store_memory_node
 from .graph_nodes.prompting import select_prompt_and_style_node, build_prompt_node, format_character_state
 from .graph_nodes.llm_interaction import call_llm_node, handle_llm_error, post_process_node
-from .graph_nodes.tool_processing import detect_tool_intent, parse_tool_parameters, execute_tool, format_tool_result_for_llm, integrate_tool_result
-from .tools.web_tools import search_wikipedia
-from .tools.space_tools import search_space_news
-from .tools.space_tools import get_iss_info, get_moon_phase
 
 # 配置基本日誌
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -473,17 +469,7 @@ class DialogueState(TypedDict):
     current_task: Optional[str]   # 當前任務 (若有)
     tasks_history: List[Dict]     # 任務歷史
     
-    # --- 工具呼叫 ---
-    has_tool_intent: Optional[bool]         # 是否需要使用工具
-    potential_tool: Optional[str]           # 可能要使用的工具
-    tool_confidence: Optional[float]        # 工具意圖識別的信心度
-    tool_parameters: Optional[Dict[str, Any]]  # 工具參數
-    tool_execution_result: Optional[str]    # 工具執行結果
-    tool_execution_status: Optional[str]    # 工具執行狀態
-    tool_used: Optional[str]                # 實際使用的工具
-    formatted_tool_result: Optional[str]    # 格式化後的工具結果 (中間步驟)
-    tool_result: Optional[str]              # 最終給模板使用的工具結果
-    tool_error: Optional[str]               # 最終給模板使用的工具錯誤
+    # 移除與工具相關的字段
     
     # --- 生成控制 ---
     prompt_template_key: str      # 選用的提示模板名稱 (e.g., 'standard', 'clarification', 'error')
@@ -530,44 +516,9 @@ class DialogueGraph:
                 input_variables=[
                     "conversation_history", "filtered_memories", "persona_info",
                     "user_message", "character_state", "current_task",
-                    "dialogue_style", "persona_name", "tool_result", "tool_error"
-                ] if "tool" in key else [
-                    "conversation_history", "filtered_memories", "persona_info",
-                    "user_message", "character_state", "current_task",
                     "dialogue_style", "persona_name"
                 ]
             ) for key, template in PROMPT_TEMPLATES.items()
-        }
-        
-        # 註冊可用的工具
-        self.available_tools = {
-            "search_wikipedia": {
-                "function": search_wikipedia,
-                "description": "當用戶詢問關於特定人物、地點、事件或概念的定義或一般知識時，使用此工具從維基百科查找信息。",
-                "parameters": [
-                    {"name": "query", "type": "string", "description": "要查詢的主題或關鍵字"}
-                ]
-            },
-            "search_space_news": {
-                "function": search_space_news,
-                "description": "獲取太空探索、天文發現或航天工業相關的新聞標題和摘要，支持關鍵字搜索和時間範圍篩選（包括特定年份如'2020年'）。",
-                "parameters": [
-                    {"name": "keywords", "type": "string", "description": "要搜索的關鍵詞或主題，例如 'NASA', 'SpaceX', '火星'", "required": False},
-                    {"name": "time_period", "type": "string", "description": "指定的時間範圍，可以是'今天'、'昨天'、'本週'、'本月'、'今年'，或特定年份如'2020年'", "required": False}
-                ]
-            },
-            "get_iss_info": {
-                "function": get_iss_info,
-                "description": "查詢國際太空站 (ISS) 的即時位置（經緯度）以及當前在太空中的總人數和在 ISS 上的人數。",
-                "parameters": [] # 無需參數
-            },
-            "get_moon_phase": {
-                "function": get_moon_phase,
-                "description": "查詢指定日期的月相。如果用戶沒有指定日期，則默認查詢今天。",
-                "parameters": [
-                    {"name": "date_str", "type": "string", "description": "要查詢的日期，格式可以是 YYYY-MM-DD，或者是 '今天'、'明天'、'昨天'。如果省略，則為今天。", "required": False}
-                ]
-            }
         }
         
         # 構建對話圖
@@ -576,7 +527,7 @@ class DialogueGraph:
         # 編譯圖
         self.app = self.graph.compile()
         
-        logging.info("增強版 DialogueGraph 初始化完成，已註冊工具")
+        logging.info("增強版 DialogueGraph 初始化完成")
         
     def _build_graph(self) -> StateGraph:
         """構建對話圖"""
@@ -588,13 +539,6 @@ class DialogueGraph:
         workflow.add_node("preprocess_input", self._preprocess_input_node_wrapper)
         workflow.add_node("retrieve_memory", self._retrieve_memory_node_wrapper)
         workflow.add_node("filter_memory", filter_memory_node)
-        
-        # 添加節點 - 工具處理 (目前已禁用)
-        # workflow.add_node("detect_tool_intent", self._detect_tool_intent_wrapper)
-        # workflow.add_node("parse_tool_parameters", self._parse_tool_parameters_wrapper)
-        # workflow.add_node("execute_tool", self._execute_tool_wrapper)
-        # workflow.add_node("format_tool_result", format_tool_result_for_llm)
-        # workflow.add_node("integrate_tool_result", integrate_tool_result)
         
         # 添加節點 - 提示構建和 LLM 生成
         workflow.add_node("select_prompt_and_style", select_prompt_and_style_node)
@@ -610,22 +554,6 @@ class DialogueGraph:
         workflow.add_edge("retrieve_memory", "filter_memory")
         # 直接從 filter_memory 到 select_prompt_and_style，跳過工具檢測流程
         workflow.add_edge("filter_memory", "select_prompt_and_style")
-        
-        # 禁用工具分支流程
-        # workflow.add_conditional_edges(
-        #     "detect_tool_intent",
-        #     lambda state: "tool_path" if state.get("has_tool_intent") else "normal_path",
-        #     {
-        #         "tool_path": "parse_tool_parameters",
-        #         "normal_path": "select_prompt_and_style"
-        #     }
-        # )
-        
-        # 禁用工具處理流程
-        # workflow.add_edge("parse_tool_parameters", "execute_tool")
-        # workflow.add_edge("execute_tool", "format_tool_result")
-        # workflow.add_edge("format_tool_result", "integrate_tool_result")
-        # workflow.add_edge("integrate_tool_result", "select_prompt_and_style")
         
         # 正常處理流程
         workflow.add_edge("select_prompt_and_style", "build_prompt")
@@ -671,56 +599,6 @@ class DialogueGraph:
         logging.info(f"[Perf][DialogueGraph] Node retrieve_memory duration: {duration:.2f} ms", extra={"log_category": "PERFORMANCE"})
         return result_state
     
-    async def _detect_tool_intent_wrapper(self, state: DialogueState) -> Dict[str, Any]:
-        """包裝工具意圖檢測節點，注入可用工具列表"""
-        start_time = time.monotonic()
-        if "_context" not in state:
-            state["_context"] = {}
-        state["_context"]["available_tools"] = self.available_tools
-        state["_context"]["llm"] = self.llm
-        result_state = await detect_tool_intent(state)
-        end_time = time.monotonic()
-        duration = (end_time - start_time) * 1000
-        logging.info(f"[Perf][DialogueGraph] Node detect_tool_intent duration: {duration:.2f} ms", extra={"log_category": "PERFORMANCE"})
-        return result_state
-    
-    async def _parse_tool_parameters_wrapper(self, state: DialogueState) -> Dict[str, Any]:
-        """包裝工具參數解析節點，注入可用工具列表"""
-        start_time = time.monotonic()
-        if "_context" not in state:
-            state["_context"] = {}
-        state["_context"]["available_tools"] = self.available_tools
-        state["_context"]["llm"] = self.llm
-        result_state = await parse_tool_parameters(state)
-        end_time = time.monotonic()
-        duration = (end_time - start_time) * 1000
-        logging.info(f"[Perf][DialogueGraph] Node parse_tool_parameters duration: {duration:.2f} ms", extra={"log_category": "PERFORMANCE"})
-        return result_state
-    
-    async def _execute_tool_wrapper(self, state: DialogueState) -> Dict[str, Any]:
-        """包裝工具執行節點，注入可用工具列表"""
-        start_time = time.monotonic()
-        if "_context" not in state:
-            state["_context"] = {}
-        state["_context"]["available_tools"] = self.available_tools
-        result_state = await execute_tool(state)
-        end_time = time.monotonic()
-        duration = (end_time - start_time) * 1000
-        logging.info(f"[Perf][DialogueGraph] Node execute_tool duration: {duration:.2f} ms (Tool: {state.get('potential_tool')})", extra={"log_category": "PERFORMANCE"})
-        return result_state
-    
-    def _build_prompt_node_wrapper(self, state: DialogueState) -> Dict[str, Any]:
-        """包裝提示構建節點，注入角色名稱"""
-        start_time = time.monotonic()
-        if "_context" not in state:
-            state["_context"] = {}
-        state["_context"]["persona_name"] = self.persona_name
-        result_state = build_prompt_node(state)
-        end_time = time.monotonic()
-        duration = (end_time - start_time) * 1000
-        logging.info(f"[Perf][DialogueGraph] Node build_prompt duration: {duration:.2f} ms", extra={"log_category": "PERFORMANCE"})
-        return result_state
-    
     async def _call_llm_node_wrapper(self, state: DialogueState) -> Dict[str, Any]:
         """包裝 LLM 調用節點，注入 LLM 和提示模板"""
         start_time = time.monotonic()
@@ -759,6 +637,19 @@ class DialogueGraph:
         logging.info(f"[Perf][DialogueGraph] Node store_memory duration: {duration:.2f} ms", extra={"log_category": "PERFORMANCE"})
         return result_state
     
+    async def _build_prompt_node_wrapper(self, state: DialogueState) -> Dict[str, Any]:
+        """包裝提示構建節點，注入提示模板"""
+        start_time = time.monotonic()
+        if "_context" not in state:
+            state["_context"] = {}
+        state["_context"]["prompt_templates"] = self.prompt_templates
+        state["_context"]["persona_name"] = self.persona_name
+        result_state = await build_prompt_node(state)
+        end_time = time.monotonic()
+        duration = (end_time - start_time) * 1000
+        logging.info(f"[Perf][DialogueGraph] Node build_prompt duration: {duration:.2f} ms", extra={"log_category": "PERFORMANCE"})
+        return result_state
+    
     async def generate_response(
         self,
         messages: List[BaseMessage],
@@ -770,41 +661,38 @@ class DialogueGraph:
         current_intent: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        異步生成回應 - 調用 LangGraph 圖。
-        接收 user_text 或 system_prompt 其中之一作為輸入。
-
+        生成對話回應
+        
         Args:
-            messages: 當前的對話歷史。
-            character_state: 當前的角色狀態。
-            user_text: 使用者輸入文本。
-            system_prompt: 系統觸發的提示 (例如用於 murmur)。
-            current_task: 當前正在進行的任務 (可選)。
-            tasks_history: 過去的任務歷史 (可選)。
-            current_intent: 識別的用戶意圖 (可選)。
+            messages: 對話歷史消息列表
+            character_state: 角色當前狀態
+            user_text: 最新用戶輸入 (可選，若不提供則從 messages 中提取)
+            system_prompt: 替代系統提示 (可選)
+            current_task: 當前任務 (可選)
+            tasks_history: 任務歷史 (可選)
+            current_intent: 當前識別的意圖 (可選)
             
         Returns:
-            Dict 包含生成的回應和狀態信息。
+            完整的狀態字典，包含生成的回應
         """
-        if user_text is None and system_prompt is None:
-             logging.error("DialogueGraph.generate_response 需要提供 user_text 或 system_prompt")
-             return {
-                "error": "缺少 user_text 或 system_prompt",
-                "final_response": "內部系統似乎沒有收到任何指令。",
-                "emotion": "confused",
-                "emotional_keyframes": DEFAULT_NEUTRAL_KEYFRAMES.copy(),
-                "body_animation_sequence": DEFAULT_ANIMATION_SEQUENCE.copy(),
-                "updated_messages": messages
-             }
-
-        start_time = time.time()
-        logging.info(f"DialogueGraph: 開始處理輸入。 User Text: '{user_text}', System Prompt: '{system_prompt}'")
-
-        graph_input_text = user_text if user_text is not None else system_prompt
-
-        initial_state: DialogueState = {
-            "raw_user_input": graph_input_text,
-            "processed_user_input": "",
-            "input_classification": {},
+        start_time = time.monotonic()
+        
+        if not messages or len(messages) == 0:
+            raise ValueError("至少需要提供一條消息")
+            
+        # 如果未提供用戶文本，使用最後一條人類消息作為輸入
+        if not user_text and messages[-1].type == "human":
+            user_text = messages[-1].content
+            
+        if not user_text:
+            logging.error("無法獲取用戶輸入")
+            user_text = "你好" # 使用安全回退
+        
+        # 構建初始狀態
+        input_state: Dict[str, Any] = {
+            "raw_user_input": user_text,
+            "processed_user_input": user_text,  # 先使用原始輸入，將在預處理中更新
+            "input_classification": {"type": "normal"},  # 先設為正常，將在預處理中更新
             "messages": messages,
             "retrieved_memories": [],
             "filtered_memories": "",
@@ -812,19 +700,9 @@ class DialogueGraph:
             "current_intent": current_intent,
             "current_task": current_task,
             "tasks_history": tasks_history if tasks_history is not None else [],
-            "has_tool_intent": False,  # 強制設為 False，禁用工具處理
-            "potential_tool": None,
-            "tool_confidence": None,
-            "tool_parameters": None,
-            "tool_execution_result": None,
-            "tool_execution_status": None,
-            "tool_used": None,
-            "formatted_tool_result": None,
-            "tool_result": None,
-            "tool_error": None,
             "prompt_template_key": "standard",
             "prompt_inputs": {},
-            "dialogue_style": "standard",
+            "dialogue_style": "",
             "character_state_prompt": "",
             "character_state": character_state,
             "llm_response_raw": "",
@@ -836,46 +714,46 @@ class DialogueGraph:
             "should_store_memory": True,
             "_context": {
                 "memory_system": self.memory_system,
-                "llm": self.llm,
+                "llm": self.llm, 
                 "persona_name": self.persona_name,
-                # 保留工具定義但不使用
-                "available_tools": {},  # 清空工具列表
                 "keyframes_schema": keyframes_schema,
                 "animation_sequence_schema": animation_sequence_schema,
-                "dialogue_styles": DIALOGUE_STYLES,
-                "prompt_templates": PROMPT_TEMPLATES
+                "allowed_emotion_tags": ALLOWED_EMOTION_TAGS,
+                "allowed_animation_names": ALLOWED_ANIMATION_NAMES,
+                "animation_descriptions": ANIMATION_DESCRIPTIONS
             }
         }
-
+        
         try:
-            final_state = await self.app.ainvoke(
-                initial_state,
-                config={"recursion_limit": 15}
-            )
-
-            end_time = time.time()
-            processing_time = (end_time - start_time) * 1000
-            logging.info(f"DialogueGraph: 處理完成。總耗時: {processing_time:.2f} ms")
-
-            return {
-                "final_response": final_state.get("final_response", "出了點問題，我不知道該說什麼。"),
-                "emotion": final_state.get("character_state", {}).get("current_emotion", "neutral"),
-                "emotional_keyframes": final_state.get("emotional_keyframes"),
-                "body_animation_sequence": final_state.get("body_animation_sequence"),
-                "updated_messages": final_state.get("messages", messages)
-            }
-
+            result = await self.app.ainvoke(input_state)
+            end_time = time.monotonic()
+            duration = (end_time - start_time) * 1000
+            logging.info(f"[Perf][DialogueGraph] Total response generation duration: {duration:.2f} ms", extra={"log_category": "PERFORMANCE"})
+            
+            # 如果有情緒標籤但沒有情緒關鍵幀，創建預設關鍵幀
+            if "emotional_keyframes" not in result or not result["emotional_keyframes"]:
+                if "llm_response_raw" in result and result["llm_response_raw"]:
+                    result["emotional_keyframes"] = DEFAULT_NEUTRAL_KEYFRAMES
+                    logging.warning(f"缺少情緒關鍵幀，使用默認中性關鍵幀")
+            
+            # 如果有回應但缺少身體動畫序列，使用默認序列
+            if "body_animation_sequence" not in result or not result["body_animation_sequence"]:
+                if "llm_response_raw" in result and result["llm_response_raw"]:
+                    result["body_animation_sequence"] = DEFAULT_ANIMATION_SEQUENCE
+                    logging.warning(f"缺少身體動畫序列，使用默認序列")
+            
+            return result
         except Exception as e:
-            end_time = time.time()
-            processing_time = (end_time - start_time) * 1000
-            logging.error(f"DialogueGraph: 調用圖時發生錯誤: {e}。耗時: {processing_time:.2f} ms", exc_info=True)
+            logging.error(f"生成回應時出錯: {e}", exc_info=True)
+            end_time = time.monotonic()
+            duration = (end_time - start_time) * 1000
+            logging.info(f"[Error][DialogueGraph] Failed response generation duration: {duration:.2f} ms", extra={"log_category": "ERROR"})
+            
+            # 返回錯誤狀態
             return {
-                "error": str(e),
-                "final_response": "哎呀，處理你的請求時我的內部線路好像纏繞在一起了！",
-                "emotion": "confused",
-                "emotional_keyframes": DEFAULT_NEUTRAL_KEYFRAMES.copy(),
-                "body_animation_sequence": DEFAULT_ANIMATION_SEQUENCE.copy(),
-                "updated_messages": messages
+                "final_response": "抱歉，我目前無法回應，可能是因為處理您的請求時出現了問題。",
+                "error_count": 1,
+                "system_alert": f"處理異常: {str(e)}"
             }
 
     def update_character_state(self, character_state: Dict[str, Any], updates: Dict[str, Any]) -> Dict[str, Any]:
