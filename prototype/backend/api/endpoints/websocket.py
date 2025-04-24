@@ -9,12 +9,17 @@ import base64
 import time
 from datetime import datetime, timedelta
 import re
+import uuid
+import logging
 
 from services.ai import AIService
 from services.text_to_speech import TextToSpeechService
 from core.config import settings
 from utils.logger import logger
 from services.ai.prompts import PROMPT_TEMPLATES  # 新增：導入 PROMPT_TEMPLATES
+from services.murmur_service.murmur_service import MurmurService
+from services.murmur_service import config as murmur_config
+from services.murmur_service.utils import clean_murmur_prefix
 
 # --- 閒置設定 ---
 IDLE_TIMEOUT_SECONDS = 30  # 增加到30秒，大幅減少murmur頻率
@@ -59,6 +64,8 @@ VOICE_FINISHING_BUFFER = 0.2  # 語音結束後的保護時間減至0.2秒
 # 建立服務實例
 ai_service = AIService()
 tts_service = TextToSpeechService()
+# 創建 MurmurService 實例
+murmur_service = MurmurService(ai_service=ai_service, tts_service=tts_service)
 
 # WebSocket連接管理器
 class ConnectionManager:
@@ -85,38 +92,6 @@ class ConnectionManager:
             await connection.send_text(message)
 
 manager = ConnectionManager()
-
-# --- 特殊值處理，讓自言自語更頻繁 ---
-MURMUR_SIMILARITY_THRESHOLD = 0.6  # 降低相似度閾值，允許更多變化 (原為0.7)
-
-# --- 新增：清理輕聲自語前綴的函數 ---
-def clean_murmur_prefix(text: str) -> str:
-    """清理文本中的輕聲自語前綴，但保留連續性標記"""
-    patterns = [
-        r"^\s*\(輕聲自語\)\s*",
-        r"^\s*（輕聲自語）\s*",
-        r"^\s*\(自言自語\)\s*",
-        r"^\s*（自言自語）\s*",
-        r"^\s*\(喃喃自語\)\s*", 
-        r"^\s*（喃喃自語）\s*",
-        r"^\s*\(murmur\)\s*",
-        r"^\s*（murmur）\s*",
-        r"^\s*\(murmuring\)\s*",
-        r"^\s*（murmuring）\s*"
-    ]
-    
-    for pattern in patterns:
-        text = re.sub(pattern, "", text, flags=re.IGNORECASE)
-    
-    # 保留連接詞，但移除多餘空格
-    for marker in CONTINUITY_MARKERS:
-        if text.startswith(marker):
-            # 保留標記但格式化為「標記，」的格式
-            text = re.sub(f"^\s*{marker}\s*", f"{marker}，", text)
-            break
-    
-    return text
-# --- 結束添加 ---
 
 # --- 新增：消息排隊和處理類 ---
 class MessageQueue:
@@ -407,18 +382,20 @@ async def websocket_endpoint(websocket: WebSocket):
             ai_murmur_text = ai_result.get("final_response")
             ai_murmur_text = clean_murmur_prefix(ai_murmur_text)
             
-            # --- 修改：根據連續思考模式調整相似度判斷 ---
-            similarity_threshold = SIMILARITY_THRESHOLD_CONTINUOUS if thinking_thread_continuity > 0 else MURMUR_SIMILARITY_THRESHOLD
+            # --- 修改：使用murmur服務的工具函數檢查相似度 ---
+            from services.murmur_service.utils import is_murmur_too_similar
             
-            if prompt_template == "murmur_continuous":
-                # 檢查是否包含連續性標記，如包含則更寬容對待相似度
-                has_continuity_marker = any(marker in ai_murmur_text for marker in CONTINUITY_MARKERS)
-                if has_continuity_marker:
-                    similarity_threshold *= 0.8  # 進一步降低相似度要求
-                    logger.info(f"Continuity marker detected, lowering similarity threshold to {similarity_threshold}")
+            # 計算相似度閾值
+            similarity_threshold = murmur_config.MURMUR_SIMILARITY_THRESHOLD
+            # 檢查是否有連續標記
+            has_continuity_marker = any(marker in ai_murmur_text for marker in CONTINUITY_MARKERS)
+            
+            if prompt_template == "murmur_continuous" and has_continuity_marker:
+                similarity_threshold *= 0.8  # 進一步降低相似度要求
+                logger.info(f"Continuity marker detected, lowering similarity threshold to {similarity_threshold}")
             
             # 如果是首次 murmur 或相似度在允許範圍內，接受這個 murmur
-            if not recent_murmurs or not await is_murmur_too_similar(ai_murmur_text, recent_murmurs, similarity_threshold):
+            if not recent_murmurs or not is_murmur_too_similar(ai_murmur_text, recent_murmurs, similarity_threshold):
                 # 將內容添加到最近 murmurs
                 last_murmur_content = ai_murmur_text
                 recent_murmurs.add(ai_murmur_text)
@@ -489,23 +466,6 @@ async def websocket_endpoint(websocket: WebSocket):
         except Exception as e:
             logger.error(f"Error generating murmur: {e}", exc_info=True)
             speaking_state = SpeakingState.IDLE
-
-    async def is_murmur_too_similar(new_murmur: str, existing_murmurs: Set[str], threshold: float = MURMUR_SIMILARITY_THRESHOLD) -> bool:
-        """檢查新的murmur是否與現有murmur太相似，簡化相似度檢測以提高速度"""
-        # 如果完全相同，直接拒絕
-        if new_murmur in existing_murmurs:
-            return True
-        
-        # 只檢查最近的3個murmur，而不是全部
-        recent_list = list(existing_murmurs)[-3:] if len(existing_murmurs) > 3 else existing_murmurs
-        
-        # 檢查與最近的murmur的相似度
-        for existing_murmur in recent_list:
-            # 簡化的相似度檢測，只檢查包含關係
-            if (new_murmur in existing_murmur or existing_murmur in new_murmur):
-                return True
-            
-        return False
 
     async def save_audio_and_set_url(audio_base64: str, message_obj: Dict[str, Any], is_murmur: bool = False):
         """保存音頻到文件並設置URL - 優化版本"""
