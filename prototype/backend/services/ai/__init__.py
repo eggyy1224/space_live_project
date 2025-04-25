@@ -10,8 +10,9 @@ from core.exceptions import AIServiceException
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 
-from .memory_system import MemorySystem
-from .dialogue_graph import DialogueGraph, DEFAULT_NEUTRAL_KEYFRAMES, DEFAULT_ANIMATION_SEQUENCE
+from .dialogue_graph import DialogueGraph
+from ..memory_system.memory_system import MemorySystem
+from .dialogue_graph import DEFAULT_NEUTRAL_KEYFRAMES, DEFAULT_ANIMATION_SEQUENCE
 
 # 配置基本日誌
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

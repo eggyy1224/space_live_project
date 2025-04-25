@@ -20,7 +20,9 @@ from google.generativeai.types import GenerationConfig
 
 from langgraph.graph import StateGraph, END
 
-from .memory_system import MemorySystem
+from core.exceptions import AIServiceException
+
+from ..memory_system.memory_system import MemorySystem
 from .prompts import DIALOGUE_STYLES, PROMPT_TEMPLATES
 from .graph_nodes.input_processing import preprocess_input_node
 from .graph_nodes.memory_handling import retrieve_memory_node, filter_memory_node, store_memory_node
