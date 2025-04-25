@@ -1,0 +1,20 @@
+# Task ID: 3
+# Title: Remove all tool detection and execution related code
+# Status: done
+# Dependencies: 1
+# Priority: high
+# Description: Remove all tool detection and execution related code to simplify the backend and improve response time.
+# Details:
+Remove tool-related code and functionality:
+1. Identify and remove tool detection and execution code from dialogue_graph.py
+2. Modify the dialogue flow to no longer check for or execute tool functionality
+3. Ensure the dialogue flow remains smooth and consistent after removal
+4. Remove tool-related configuration settings
+5. Remove unnecessary tool implementation code and files in the tools/ subdirectory
+6. Ensure dependencies on tool functionality in other modules are properly addressed
+
+# Test Strategy:
+1. Test the modified dialogue flow to ensure normal functionality is not affected
+2. Measure and compare response times before and after tool functionality removal
+3. Ensure no references to deleted functionality remain
+4. Verify the system performs normally on all existing non-tool-related functionality

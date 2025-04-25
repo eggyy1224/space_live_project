@@ -1,0 +1,23 @@
+# Task ID: 2
+# Title: Extract Murmur Service Module
+# Status: done
+# Dependencies: 1
+# Priority: high
+# Description: Refactor the self-talk (murmur) functionality into a separate MurmurService class with configurable context memory toggle.
+# Details:
+Create a MurmurService class in services/murmur_service/murmur_service.py that encapsulates all murmur-related functionality:
+- Extract murmur generation logic from websocket.py
+- Implement methods for murmur triggering (maybe_trigger_murmur)
+- Add content generation (generate_murmur)
+- Create configuration options for enabling/disabling murmur and context memory
+- Move murmur-related constants (IDLE_TIMEOUT_SECONDS, MURMUR_MIN_INTERVAL_SECONDS) to config.py
+- Ensure the service maintains state for recent murmurs when context memory is enabled
+
+Update WebSocket handler to use the new MurmurService instead of embedded logic.
+
+# Test Strategy:
+Write unit tests for MurmurService that verify:
+- Murmur triggering based on idle time
+- Context memory toggle functionality
+- Proper murmur generation with and without context
+Manually test the application to ensure murmurs still occur at appropriate intervals and can be toggled via configuration.

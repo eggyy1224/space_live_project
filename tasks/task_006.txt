@@ -1,0 +1,24 @@
+# Task ID: 6
+# Title: Implement Dialogue Graph Abstraction
+# Status: pending
+# Dependencies: 3, 4
+# Priority: medium
+# Description: Refactor the dialogue flow graph to separate node definitions from graph construction and execution.
+# Details:
+Restructure dialogue_graph.py into a more modular system:
+- Create a base Node class in dialogue_manager/graph_nodes/
+- Implement specific node types (ToolIntentDetectionNode, MemoryFetchNode, etc.)
+- Separate graph definition (nodes and edges) from execution logic
+- Make tool-related paths configurable and separable from normal dialogue
+- Implement a clean interface for adding/removing nodes and paths
+- Use the ToolExecutor and MemoryRetriever services through well-defined interfaces
+
+Ensure the dialogue graph can be easily modified without changing core execution logic.
+
+# Test Strategy:
+Develop unit tests for individual node types and the graph execution engine:
+- Test node behavior in isolation
+- Verify correct path selection based on input conditions
+- Test graph execution with various configurations
+- Ensure tool paths can be enabled/disabled without affecting normal dialogue
+Test the complete dialogue flow to validate that refactored graph maintains existing behavior.

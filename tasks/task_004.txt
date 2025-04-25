@@ -1,0 +1,102 @@
+# Task ID: 4
+# Title: Refactor Memory Retrieval System
+# Status: pending
+# Dependencies: 1
+# Priority: high
+# Description: Optimize the memory retrieval system with parallel processing, result caching, and query limiting to achieve sub-500ms response times.
+# Details:
+Refactor the memory system in services/memory_system/:
+- Create a MemoryRetriever class that orchestrates retrieval from different memory sources
+- Implement parallel retrieval using asyncio.gather
+- Add in-memory caching for recent query results
+- Set limits on retrieval scope (k value) for each memory source
+- Implement query skipping for simple greetings
+- Add error isolation to prevent failures in one memory source from affecting others
+- Separate query building, retrieval, and formatting into distinct components
+
+Ensure the memory retrieval process is properly instrumented for performance measurement.
+
+# Test Strategy:
+Develop benchmark tests that measure memory retrieval performance:
+- Test with various query types and memory store sizes
+- Verify that response times are under 500ms for typical queries
+- Test error scenarios to ensure graceful degradation
+- Validate that caching improves performance for repeated queries
+Implement unit tests for individual components (query builder, formatter, etc.).
+
+# Subtasks:
+## 1. Create MemoryRetriever class structure and interfaces [pending]
+### Dependencies: None
+### Description: Design and implement the base MemoryRetriever class that will orchestrate memory retrieval from different sources
+### Details:
+1. Create a new file `memory_retriever.py` in services/memory_system/
+2. Define the MemoryRetriever class with initialization parameters for different memory sources
+3. Create abstract methods for query building, retrieval, and formatting
+4. Define interfaces for memory sources to implement
+5. Add configuration parameters for retrieval limits and caching settings
+6. Implement basic logging and instrumentation hooks
+7. Test the class structure by creating a simple instance and verifying method signatures
+
+## 2. Implement parallel retrieval with asyncio [pending]
+### Dependencies: 4.1
+### Description: Add parallel processing capability to retrieve from multiple memory sources simultaneously
+### Details:
+1. Import asyncio and modify retrieval methods to be async
+2. Create a main retrieve method that uses asyncio.gather to call multiple memory sources in parallel
+3. Implement timeout handling for memory sources that take too long
+4. Add error handling to catch and log exceptions from individual memory sources
+5. Ensure results are properly aggregated after parallel retrieval
+6. Test with mock memory sources to verify parallel execution
+7. Measure and log execution time to verify performance improvements
+
+## 3. Implement in-memory caching system [pending]
+### Dependencies: 4.1
+### Description: Add caching functionality to store and retrieve recent query results
+### Details:
+1. Create a cache class with configurable size limits and expiration policies
+2. Implement cache key generation based on query parameters
+3. Add methods to store and retrieve results from cache
+4. Integrate cache with the MemoryRetriever class
+5. Implement cache statistics tracking (hits/misses)
+6. Add cache invalidation mechanisms
+7. Test caching with repeated queries to verify hit rates
+8. Measure performance improvement from cached vs. non-cached queries
+
+## 4. Implement query optimization and skipping logic [pending]
+### Dependencies: 4.1, 4.2
+### Description: Add intelligence to skip unnecessary retrievals and optimize query parameters
+### Details:
+1. Create a query analyzer component to detect simple greetings or queries that don't need memory retrieval
+2. Implement configurable k-value limits for each memory source based on query type
+3. Add query preprocessing to optimize search terms
+4. Create a decision tree for determining which memory sources to query based on input
+5. Implement early termination logic when sufficient results are found
+6. Test with various query types to verify correct skipping behavior
+7. Measure performance impact of skipping unnecessary retrievals
+
+## 5. Separate query building, retrieval, and formatting components [pending]
+### Dependencies: 4.1, 4.2, 4.4
+### Description: Refactor the system to have distinct components for each stage of the memory retrieval process
+### Details:
+1. Create separate QueryBuilder class with methods for different query types
+2. Implement ResultFormatter class to standardize output from different memory sources
+3. Refactor MemoryRetriever to use these components
+4. Add extension points for custom query builders and formatters
+5. Ensure proper error handling between components
+6. Create unit tests for each component independently
+7. Test the integration of all components together
+8. Verify that the separation doesn't negatively impact performance
+
+## 6. Add comprehensive performance instrumentation [pending]
+### Dependencies: 4.1, 4.2, 4.3, 4.4, 4.5
+### Description: Implement detailed performance tracking and reporting throughout the memory system
+### Details:
+1. Add timing decorators for all key methods
+2. Implement detailed logging with performance metrics
+3. Create a performance dashboard or reporting mechanism
+4. Add counters for cache hits/misses, query skips, and error rates
+5. Implement configurable performance thresholds with alerts
+6. Add tracing to identify bottlenecks in the retrieval process
+7. Create load testing scripts to verify sub-500ms response times
+8. Document performance optimization techniques and results
+
