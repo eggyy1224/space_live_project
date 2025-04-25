@@ -11,7 +11,7 @@ logger = logging.getLogger("tts_service")
 logger.setLevel(logging.DEBUG)
 
 # 將 instructions 定義為常數或從配置讀取
-TTS_INSTRUCTIONS = "說台語台語台語台語台語台語幾乎只用台語辣台妹english台語回覆，是一位辣台妹常台語常台語參雜english，動不動還englis台語h會來點很台語多english台語"
+TTS_INSTRUCTIONS = "說台語＋English"
 
 class TextToSpeechService:
     """文字轉語音服務 (使用 OpenAI TTS)"""
@@ -51,10 +51,10 @@ class TextToSpeechService:
 
             response = await self.openai_client.audio.speech.create(
                 model="gpt-4o-mini-tts", # 使用指定的模型
-                voice="nova",          # 選擇聲音 (可調整，例如 fable, shimmer)
+                voice="coral",          # 選擇聲音 (可調整，例如 fable, shimmer)
                 input=text,
                 response_format="mp3",
-                speed=1.1,             # 設定語速
+                speed=1.2,             # 設定語速
                 instructions=TTS_INSTRUCTIONS # 加入 instructions 參數
             )
 
