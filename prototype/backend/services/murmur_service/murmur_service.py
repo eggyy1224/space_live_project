@@ -36,8 +36,12 @@ class MurmurService:
         self.ai_service = ai_service or AIService()
         self.tts_service = tts_service or TextToSpeechService()
         
-        # 配置信息
-        self.config = {**config.DEFAULT_CONFIG, **(user_config or {})}
+        # 配置信息 - 增加默認連續思考次數
+        self.config = {
+            **config.DEFAULT_CONFIG, 
+            "max_thread_continuity": 12,  # 從8增加到12，讓連續思考可以持續更長時間
+            **(user_config or {})
+        }
         self.enabled = self.config.get('enabled', True)
         self.context_memory_enabled = self.config.get('context_memory_enabled', True)
         
