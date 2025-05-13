@@ -124,3 +124,7 @@ dev-debug.log
 *.sw?
 # OS specific
 
+# Added by Claude Task Master
+# Task files
+tasks.json
+tasks/ 
