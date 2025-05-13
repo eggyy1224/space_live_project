@@ -1,0 +1,140 @@
+{
+  "tasks": [
+    {
+      "id": 1,
+      "title": "Restructure Project Folder Organization",
+      "description": "Reorganize the backend folder structure to reflect the modular architecture described in the PRD, creating appropriate subdirectories for each functional module.",
+      "status": "done",
+      "dependencies": [],
+      "priority": "high",
+      "details": "Create the following directory structure in prototype/backend/:\n- services/murmur_service/\n- services/memory_system/\n- services/tool_executor/\n- services/dialogue_manager/\n- services/ai_service/\n\nEnsure each module directory has the appropriate __init__.py files and placeholder files for the main classes. Update import paths in existing files to maintain compatibility during the transition. This task should not change any functionality but prepare the codebase for modular refactoring.",
+      "testStrategy": "Verify that the application still runs with the new directory structure. Run existing tests to ensure no functionality is broken by the reorganization. Check that import paths are correctly updated."
+    },
+    {
+      "id": 2,
+      "title": "Extract Murmur Service Module",
+      "description": "Refactor the self-talk (murmur) functionality into a separate MurmurService class with configurable context memory toggle.",
+      "status": "done",
+      "dependencies": [
+        1
+      ],
+      "priority": "high",
+      "details": "Create a MurmurService class in services/murmur_service/murmur_service.py that encapsulates all murmur-related functionality:\n- Extract murmur generation logic from websocket.py\n- Implement methods for murmur triggering (maybe_trigger_murmur)\n- Add content generation (generate_murmur)\n- Create configuration options for enabling/disabling murmur and context memory\n- Move murmur-related constants (IDLE_TIMEOUT_SECONDS, MURMUR_MIN_INTERVAL_SECONDS) to config.py\n- Ensure the service maintains state for recent murmurs when context memory is enabled\n\nUpdate WebSocket handler to use the new MurmurService instead of embedded logic.",
+      "testStrategy": "Write unit tests for MurmurService that verify:\n- Murmur triggering based on idle time\n- Context memory toggle functionality\n- Proper murmur generation with and without context\nManually test the application to ensure murmurs still occur at appropriate intervals and can be toggled via configuration."
+    },
+    {
+      "id": 3,
+      "title": "Remove all tool detection and execution related code",
+      "description": "Remove all tool detection and execution related code to simplify the backend and improve response time.",
+      "status": "done",
+      "dependencies": [
+        1
+      ],
+      "priority": "high",
+      "details": "Remove tool-related code and functionality:\n1. Identify and remove tool detection and execution code from dialogue_graph.py\n2. Modify the dialogue flow to no longer check for or execute tool functionality\n3. Ensure the dialogue flow remains smooth and consistent after removal\n4. Remove tool-related configuration settings\n5. Remove unnecessary tool implementation code and files in the tools/ subdirectory\n6. Ensure dependencies on tool functionality in other modules are properly addressed",
+      "testStrategy": "1. Test the modified dialogue flow to ensure normal functionality is not affected\n2. Measure and compare response times before and after tool functionality removal\n3. Ensure no references to deleted functionality remain\n4. Verify the system performs normally on all existing non-tool-related functionality"
+    },
+    {
+      "id": 4,
+      "title": "Refactor Memory Retrieval System",
+      "description": "Reorganize the memory system directory structure to improve project organization while maintaining all existing functionality.",
+      "status": "done",
+      "dependencies": [
+        1
+      ],
+      "priority": "high",
+      "details": "Refactor the memory system by reorganizing its directory structure:\n- Move memory components from `/Volumes/2024data/space_live_project/prototype/backend/services/ai/memory_components` to `/Volumes/2024data/space_live_project/prototype/backend/services/memory_system/memory_components`\n- Move memory system from `/Volumes/2024data/space_live_project/prototype/backend/services/ai/memory_system.py` to `/Volumes/2024data/space_live_project/prototype/backend/services/memory_system/`\n- Update all import paths and references throughout the codebase\n- Ensure all existing functionality remains intact\n- Verify the system works correctly after the restructuring\n\nThis refactoring focuses on improving directory organization rather than modifying the memory system's logic or performance characteristics.",
+      "testStrategy": "Develop tests to ensure the refactored system works correctly:\n- Create a test plan that verifies all existing functionality works after the directory restructuring\n- Test that all import paths are correctly updated\n- Verify that the system behaves identically before and after the refactoring\n- Run existing tests to confirm no regressions were introduced",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Create New Directory Structure for Memory System",
+          "description": "Create the new directory structure for the memory system in the target location with proper initialization files.",
+          "dependencies": [],
+          "details": "1. Create the directory `/Volumes/2024data/space_live_project/prototype/backend/services/memory_system/`\n2. Create an empty `__init__.py` file in the new directory to make it a proper Python package\n3. Create the subdirectory `/Volumes/2024data/space_live_project/prototype/backend/services/memory_system/memory_components/`\n4. Create an empty `__init__.py` file in the memory_components subdirectory\n5. Verify the directory structure is correctly set up\n\nTesting approach: Verify that the directories exist and are accessible, and that the `__init__.py` files are properly created.\n\n<info added on 2025-04-25T11:05:55.978Z>\n## Implementation Notes\n\n- The memory system directory structure has been successfully created with all required components.\n- The memory_components subdirectory now contains additional system-generated subdirectories:\n  - `processing/`: Will contain memory processing logic (transformers, filters, etc.)\n  - `retrieval/`: Will contain memory retrieval mechanisms\n  - `sources/`: Will contain memory source adapters\n  - `stores/`: Will contain memory storage implementations\n\n- Each subdirectory has been automatically initialized with its own `__init__.py` file.\n- This structure follows the modular design pattern discussed in the architecture documentation, allowing for clean separation of concerns between different memory system components.\n- The directory structure is now ready for implementation of the memory system modules.\n</info added on 2025-04-25T11:05:55.978Z>",
+          "status": "done",
+          "parentTaskId": 4
+        },
+        {
+          "id": 2,
+          "title": "Move Memory Components Files to New Location",
+          "description": "Copy all memory component files from the old location to the new directory structure while preserving file content and structure.",
+          "dependencies": [
+            1
+          ],
+          "details": "1. Identify all files in `/Volumes/2024data/space_live_project/prototype/backend/services/ai/memory_components`\n2. Copy each file to the corresponding location in `/Volumes/2024data/space_live_project/prototype/backend/services/memory_system/memory_components/`\n3. Ensure all subdirectories within memory_components are also copied with their structure intact\n4. Copy the memory_system.py file from `/Volumes/2024data/space_live_project/prototype/backend/services/ai/memory_system.py` to `/Volumes/2024data/space_live_project/prototype/backend/services/memory_system/memory_system.py`\n5. Verify all files have been copied correctly with their content intact\n\nTesting approach: Compare file counts and checksums between source and destination directories to ensure all files were copied correctly.\n\n<info added on 2025-04-25T11:07:11.210Z>\nI've completed moving the memory component files to the new location:\n\n1. Successfully copied all files from the original memory_components directory to the new structure\n2. Successfully copied the memory_system.py file to the new directory\n3. Used the `diff` command to verify file integrity - only found expected differences in .pyc files (Python bytecode files), which is normal as these are automatically generated\n4. Noted a `sources` directory in the new structure that wasn't present in the original directory - this appears to be automatically created by the system\n5. Confirmed all necessary files and directory structures have been successfully copied\n\nThe migration is complete with all content preserved. No manual adjustments were needed for the file content during the transfer.\n</info added on 2025-04-25T11:07:11.210Z>",
+          "status": "done",
+          "parentTaskId": 4
+        },
+        {
+          "id": 3,
+          "title": "Update Import Paths in Memory System Files",
+          "description": "Update all import statements within the moved memory system files to reflect their new location.",
+          "dependencies": [
+            2
+          ],
+          "details": "1. Examine all Python files in the new memory_system directory and its subdirectories\n2. Update any relative or absolute imports that reference the old path structure\n3. Specifically update imports in memory_system.py that reference memory_components\n4. Update imports in memory_components files that reference other components or the main memory_system\n5. Ensure any cross-references between files in the memory system use the correct new paths\n\nTesting approach: Use static code analysis to verify all import statements are valid and point to existing modules. Try importing each module in isolation to check for import errors.\n\n<info added on 2025-04-25T11:07:51.910Z>\nI've verified the import path changes and can provide additional technical details:\n\n1. For memory_components files, updated cross-references:\n   - In `memory_components/retrieval.py`: Changed `from ..memory_system import MemorySystem` to `from memory_system import MemorySystem`\n   - In `memory_components/processing.py`: Updated circular imports using lazy imports with `typing.TYPE_CHECKING`\n\n2. Added proper package initialization:\n   - Created/updated `__init__.py` files in both `memory_system/` and `memory_components/` directories\n   - In `memory_components/__init__.py`: Added explicit exports like `from .stores import ChromaMemoryStore, ShortTermMemoryStore`\n\n3. Fixed potential import resolution issues:\n   - Updated PYTHONPATH handling in any scripts that directly execute memory components\n   - Added relative import fallbacks for backward compatibility: \n     ```python\n     try:\n         from memory_components.stores import ChromaMemoryStore\n     except ImportError:\n         from .memory_components.stores import ChromaMemoryStore\n     ```\n\n4. Verified imports work in both module and package contexts using `importlib.import_module()` tests\n</info added on 2025-04-25T11:07:51.910Z>",
+          "status": "done",
+          "parentTaskId": 4
+        },
+        {
+          "id": 4,
+          "title": "Update External References to Memory System",
+          "description": "Find and update all references to the memory system throughout the rest of the codebase.",
+          "dependencies": [
+            3
+          ],
+          "details": "1. Search the entire codebase for imports referencing the old paths:\n   - `from backend.services.ai.memory_system import ...`\n   - `from backend.services.ai.memory_components import ...`\n   - `import backend.services.ai.memory_system`\n   - Any other variations of these imports\n2. Update all found references to use the new path structure\n3. Check for any hardcoded file paths that might reference the old location\n4. Update any configuration files that might contain references to the memory system\n5. Check for any dynamic imports or string-based imports that might be used\n\nTesting approach: Use grep or similar tools to ensure no references to the old paths remain in the codebase.\n\n<info added on 2025-04-25T11:10:22.379Z>\n## Update Details\n\n### Specific Changes Made\n- Updated import statements in key files:\n  ```python\n  # Old\n  from .memory_system import MemorySystem\n  # New\n  from backend.services.memory_system.memory_system import MemorySystem\n  ```\n\n### Additional Files Checked\n- Verified references in:\n  - `/Volumes/2024data/space_live_project/prototype/backend/api/routes/memory_routes.py`\n  - `/Volumes/2024data/space_live_project/prototype/backend/services/ai/agent.py`\n  - `/Volumes/2024data/space_live_project/prototype/tests/test_memory_system.py`\n\n### Dynamic Import Handling\n- Updated dynamic imports in `backend/utils/module_loader.py`:\n  ```python\n  # Old\n  memory_module = importlib.import_module('backend.services.ai.memory_system')\n  # New\n  memory_module = importlib.import_module('backend.services.memory_system.memory_system')\n  ```\n\n### Configuration Updates\n- Modified memory system path in `config/services.yaml`\n- Updated Docker container paths in deployment scripts\n\n### Verification Method\n- Used `grep -r \"backend.services.ai.memory\" --include=\"*.py\" .` to find all references\n- Ran comprehensive test suite to ensure no import errors occur at runtime\n</info added on 2025-04-25T11:10:22.379Z>",
+          "status": "done",
+          "parentTaskId": 4
+        },
+        {
+          "id": 5,
+          "title": "Test Memory System Functionality After Refactoring",
+          "description": "Verify that the memory system functions correctly after the refactoring by running comprehensive tests.",
+          "dependencies": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "details": "1. Run all existing unit tests related to the memory system\n2. Create a simple integration test that exercises the main functionality of the memory system\n3. Verify that the memory system can be imported and initialized correctly from other parts of the codebase\n4. Test any API endpoints or services that rely on the memory system\n5. Once all tests pass, remove the original files from the old location to complete the migration\n\nTesting approach: Run the full test suite for the project, focusing on tests that involve the memory system. Manually test key functionality in a development environment before finalizing the changes.\n\n<info added on 2025-04-25T11:11:34.952Z>\n## Additional Test Information\n\n### Environment Setup for Testing\n- Install required dependencies before testing: `pip install langchain_google_genai`\n- Ensure environment variables are properly set for Google API credentials: `GOOGLE_API_KEY`\n- Consider using a virtual environment to isolate testing: `python -m venv memory_test_env`\n\n### Detailed Test Cases\n1. **Memory Persistence Test**:\n   ```python\n   # Test memory persistence across sessions\n   memory = MemorySystem()\n   memory.add_user_message(\"Remember this specific information\")\n   memory.save_state()\n   \n   # Create new instance and verify persistence\n   new_memory = MemorySystem()\n   new_memory.load_state()\n   context = new_memory.get_context()\n   assert \"Remember this specific information\" in context\n   ```\n\n2. **Performance Benchmarking**:\n   - Measure response time with varying memory sizes (100, 1000, 5000 entries)\n   - Test memory usage patterns to identify potential memory leaks\n   - Document performance changes compared to pre-refactoring implementation\n\n### Rollback Plan\n- Create a snapshot of the current working state before finalizing changes\n- Prepare rollback scripts that can quickly revert to the previous implementation if issues are discovered in production\n- Document the exact file locations and changes for both implementations\n\n### Final Verification Checklist\n- Verify thread safety in multi-user scenarios\n- Test edge cases: empty memory, extremely large context windows\n- Confirm compatibility with all supported API versions\n- Validate proper error handling when memory system encounters corrupted data\n</info added on 2025-04-25T11:11:34.952Z>",
+          "status": "done",
+          "parentTaskId": 4
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Refactor WebSocket Dialogue Handler",
+      "description": "Restructure the WebSocket connection handler to separate state management and event processing from the main handler function.",
+      "status": "pending",
+      "dependencies": [
+        2,
+        3,
+        4
+      ],
+      "priority": "medium",
+      "details": "Create a ConversationSession class to manage dialogue state:\n- Move state variables (speaking_state, current_emotion, etc.) from function scope to class attributes\n- Implement methods for handling different message types and events\n- Separate the main WebSocket handler logic from state management\n- Use the refactored MurmurService, ToolExecutor, and MemoryRetriever\n- Ensure clean separation of concerns between connection handling and dialogue processing\n\nUpdate the WebSocket endpoint to create and use ConversationSession instances for each connection.",
+      "testStrategy": "Create unit tests for ConversationSession that verify:\n- Proper state transitions during conversation\n- Correct handling of different message types\n- Integration with MurmurService, ToolExecutor, and MemoryRetriever\nManually test WebSocket connections to ensure the refactored handler maintains all existing functionality."
+    },
+    {
+      "id": 6,
+      "title": "Implement Performance Monitoring and Optimization for Dialogue System",
+      "description": "Develop and implement a comprehensive performance monitoring system to identify bottlenecks and optimize the dialogue system's response time by at least 30%.",
+      "details": "This task requires a systematic approach to performance optimization across all components of the dialogue system:\n\n1. **Performance Measurement Tools**:\n   - Create timing instrumentation for all key modules (memory system, API calls, frontend rendering, backend processing)\n   - Implement logging mechanisms to record execution times at various checkpoints\n   - Develop a dashboard to visualize performance metrics in real-time\n\n2. **Bottleneck Analysis**:\n   - Profile the system under various load conditions\n   - Identify operations consuming excessive time\n   - Create heat maps of performance bottlenecks\n   - Document baseline performance metrics for later comparison\n\n3. **Optimization Implementation**:\n   - Refactor code to implement asynchronous processing where appropriate\n   - Introduce parallel processing for independent operations\n   - Optimize memory retrieval algorithms (consider indexing improvements, caching strategies)\n   - Implement connection pooling for external API calls\n   - Minimize frontend rendering time through component optimization\n   - Reduce data payload size between frontend and backend\n   - Implement data compression for network transfers\n\n4. **Memory System Optimization**:\n   - Review and optimize current retrieval algorithms\n   - Implement caching for frequently accessed data\n   - Consider vector database optimizations if applicable\n\n5. **Frontend-Backend Communication**:\n   - Implement efficient data serialization\n   - Reduce unnecessary data transfers\n   - Consider implementing WebSockets for real-time updates\n\nThe implementation should be modular to allow for isolated testing of each optimization. Document all changes and their impact on performance metrics.",
+      "testStrategy": "Testing will focus on quantifiable performance improvements:\n\n1. **Baseline Measurement**:\n   - Record comprehensive performance metrics before optimization\n   - Measure average response time across 1000+ interactions\n   - Document p50, p90, and p99 response times\n   - Profile memory usage and CPU utilization\n\n2. **Component-Level Testing**:\n   - Test each optimization in isolation to measure its specific impact\n   - Create automated tests for each component\n   - Verify that optimizations don't introduce regressions in functionality\n\n3. **Integration Testing**:\n   - Perform end-to-end testing with optimized components\n   - Measure combined performance improvements\n   - Test under various load conditions (normal, peak, stress)\n\n4. **Validation Criteria**:\n   - Primary success metric: Average response time reduced by at least 30%\n   - Secondary metrics: Improved p90 and p99 response times\n   - Reduced server resource utilization\n   - No degradation in response quality or accuracy\n\n5. **A/B Testing**:\n   - Deploy optimizations to a subset of users\n   - Compare performance metrics between optimized and non-optimized versions\n   - Collect user feedback on perceived responsiveness\n\n6. **Documentation**:\n   - Create detailed performance reports comparing before and after metrics\n   - Document all optimization techniques implemented and their individual impact\n   - Provide recommendations for future optimization opportunities",
+      "status": "pending",
+      "dependencies": [
+        5
+      ],
+      "priority": "high"
+    }
+  ],
+  "metadata": {
+    "projectName": "PRD Implementation",
+    "totalTasks": 10,
+    "sourceFile": "/Volumes/2024data/space_live_project/scripts/後端重構_prd.md",
+    "generatedAt": "2023-06-15"
+  }
+}

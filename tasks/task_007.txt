@@ -1,0 +1,46 @@
+# Task ID: 7
+# Title: Develop Tool Nodes for Content Generation and External Services
+# Status: pending
+# Dependencies: 1, 4
+# Priority: medium
+# Description: Implement various tool nodes in LangGraph for content generation, external API integration, and multimedia handling required by the broadcast periods.
+# Details:
+Create a comprehensive set of tool nodes within LangGraph to support the various content requirements:
+
+1. News and Information Tools:
+   - Implement `NewsFetchingTool` for space and science news
+   - Create weather and satellite image retrieval tools
+   - Develop current events summarization tool
+
+2. Content Generation Tools:
+   - Implement `StoryGenerationNode` for sci-fi stories
+   - Create `DiaryGenerationNode` for daily AI diary entries
+   - Develop `NarrativeGenerationNode` for fantasy scenarios
+   - Implement `GreetingGenerationNode` for opening rituals
+
+3. Multimedia Tools:
+   - Create `AIImageGenerationTool` for fantasy backgrounds and task photos
+   - Implement `MusicPlaybackTool` for theme songs and background music
+   - Develop `SoundEffectTool` for ambient sounds
+   - Create `SingingSynthesisTool` for vocal performances
+
+4. Animation and Expression Tools:
+   - Implement `AnimationControlNode` for choreographed movements
+   - Create `EmotionExpressionNode` for facial expressions
+   - Develop `MimicryNode` for imitating audience expressions
+
+5. Memory and Display Tools:
+   - Implement `MemoryUpdateNode` for recording significant events
+   - Create `ImageDisplayNode` for showing generated images
+   - Develop `ImageThemeSettingNode` for daily task photo themes
+
+Ensure all tools have consistent interfaces, error handling, and performance monitoring. Implement rate limiting and caching where appropriate for external API calls.
+
+# Test Strategy:
+1. Unit tests for each tool with mock external services
+2. Integration tests with LangGraph scheduler
+3. Performance tests for response time requirements
+4. Error handling tests with simulated failures
+5. Content quality evaluation for generation tools
+6. Rate limit and throttling tests
+7. End-to-end tests for each broadcast period's tool requirements

@@ -1,0 +1,35 @@
+# Task ID: 1
+# Title: Design LangGraph Core Architecture
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Design and implement the core LangGraph architecture that will serve as the unified backend orchestration engine for the SpaceLive platform.
+# Details:
+Create the foundational LangGraph architecture with the following key components:
+
+1. Core node types:
+   - `TimeTriggerNode`: For schedule-based triggers
+   - `StateMonitorNode`: For monitoring character state and idle time
+   - `UserInputNode`: For processing user inputs
+   - `SchedulerNode`: For managing scheduled tasks
+   - `LLMInterfaceNode`: For LLM API calls
+   - `MemorySystemInterfaceNode`: For memory read/write operations
+   - `EmotionAnalyzerNode`: For analyzing text emotions
+
+2. Flow differentiation:
+   - Implement simplified path for real-time dialogue
+   - Implement complex path for scheduled tasks with tool invocation
+   - Implement spontaneous dialogue flow (former Murmur functionality)
+
+3. State management:
+   - Design shared state structure for all behavior types
+   - Implement state persistence mechanism
+
+Use Python with FastAPI as the backend framework. Ensure the architecture is modular and extensible to accommodate future tools and functionalities.
+
+# Test Strategy:
+1. Unit tests for each node type to verify correct functionality
+2. Integration tests for different flow paths
+3. State persistence and recovery tests
+4. Performance benchmarking to ensure response times meet requirements (<1.5s for real-time dialogue, <3s for scheduled tasks)
+5. Mock external dependencies (LLM, databases) for testing
