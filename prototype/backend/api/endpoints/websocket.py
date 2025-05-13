@@ -24,7 +24,7 @@ from services.murmur_service.utils import clean_murmur_prefix
 # --- 閒置設定 ---
 IDLE_TIMEOUT_SECONDS = 30  # 增加到30秒，大幅減少murmur頻率
 IDLE_CHECK_INTERVAL_SECONDS = 8 # 增加到8秒，顯著降低檢查頻率
-MURMUR_MIN_INTERVAL_SECONDS = 60  # 增加到60秒，大幅減少AI調用頻率
+MURMUR_MIN_INTERVAL_SECONDS = 45  # 增加到45秒，降低頻率但增加連續性價值
 # MURMUR_MAX_COUNT = 3  # <--- 移除：不再限制連續 murmur 次數
 MAX_HISTORY_LENGTH = 10 # 減少歷史長度，降低記憶負擔
 # --- 結束 ---
@@ -35,9 +35,14 @@ THINKING_THEMES = [
     "粉絲互動", "地球思念", "太空站設備", "宅居日常", "飲食相關",
     "科技新聞", "娛樂話題", "自我反思", "夢想與目標", "網路流行語"
 ]
-MAX_THREAD_CONTINUITY = 4  # 連續幾次保持同一個思考主題
-SIMILARITY_THRESHOLD_CONTINUOUS = 0.4  # 連續模式下的相似度閾值（更低允許更多變化）
-CONTINUITY_MARKERS = ["不過", "話說回來", "順便一提", "另外", "而且", "搞不好", "說到這個", "然後", "其實"]
+MAX_THREAD_CONTINUITY = 6  # 連續幾次保持同一個思考主題，增加到6確保更長的連續性
+SIMILARITY_THRESHOLD_CONTINUOUS = 0.35  # 連續模式下的相似度閾值，降低允許更多思考變化
+CONTINUITY_MARKERS = [
+    "不過", "話說回來", "順便一提", "另外", "而且", "搞不好", "說到這個", "然後", "其實",
+    "再想想", "也許", "不對", "等等", "嗯...", "哦！", "有了！", "原來如此", "但是", "所以",
+    "還有", "對了", "想一想", "再說啦", "想想喔", "回到剛剛", "說真的", "講到這個", "仔細想想",
+    "我突然想到", "換個角度想", "接著剛剛"
+]
 # --- 結束 ---
 
 # --- 修改消息優先級和狀態，增加更高的語音保護 ---
@@ -254,11 +259,13 @@ async def websocket_endpoint(websocket: WebSocket):
         logger.info(f"Processing user message, setting speaking_state to {speaking_state}")
         
         try:
-            # 確保會話歷史不為空，如果是第一次消息，添加一個系統消息
+            # 確保會話歷史不為空，如果是第一次消息，添加一個初始消息
             if not conversation_history:
-                await add_to_history("bot", "你好！我是星宅妹，太空艙中的辣台妹。有什麼可以為你服務的嗎？")
+                # 添加一個初始化的系統消息，與murmur生成時的初始化方式保持一致
+                await add_to_history("bot", "你好！我是星宅妹。", is_murmur=False)
+                logger.info("初始化對話歷史")
             
-            # 先將用戶消息添加到歷史，確保有至少一條消息
+            # 先將用戶消息添加到歷史
             await add_to_history("user", content)
             
             # 生成回復
@@ -341,8 +348,10 @@ async def websocket_endpoint(websocket: WebSocket):
             available_themes = [t for t in THINKING_THEMES if t != current_thinking_topic]
             current_thinking_topic = random.choice(available_themes)
             thinking_thread_continuity = 0
+            logger.info(f"重置思考主題為: {current_thinking_topic}")
         else:
             thinking_thread_continuity += 1
+            logger.info(f"繼續思考主題 {current_thinking_topic}，連續第 {thinking_thread_continuity} 次")
         
         # 構建簡化的連續思考上下文提示
         context_prompt = ""
@@ -354,11 +363,15 @@ async def websocket_endpoint(websocket: WebSocket):
             if len(recent_murmurs_list) > 0:
                 # 最近的 murmur 作為直接延續的基礎
                 last_murmur_content = recent_murmurs_list[-1]
-                thinking_thread = f"你上一次的想法是：「{last_murmur_content}」，請自然延續這個想法。"
+                thinking_thread = f"你上一次的想法是：「{last_murmur_content}」，請直接且明確地延續這個想法。"
+                logger.info(f"使用上一次思考作為連續性基礎: {last_murmur_content[:30]}...")
+                if thinking_thread_continuity > 0:
+                    logger.info(f"連續思考模式 [{thinking_thread_continuity}]: 主題={current_thinking_topic}, 上次思考={last_murmur_content}")
         # --- 結束簡化 ---
         
         # --- 修改：根據連續程度選擇不同的提示模板 ---
         prompt_template = "murmur_continuous" if thinking_thread_continuity > 0 else "murmur"
+        logger.info(f"使用murmur模板: {prompt_template}, 連續思考次數: {thinking_thread_continuity}")
         
         # 獲取對應的 murmur 提示模板並填充變量
         template = PROMPT_TEMPLATES.get(prompt_template, PROMPT_TEMPLATES["murmur"])
@@ -377,10 +390,18 @@ async def websocket_endpoint(websocket: WebSocket):
         # --- 結束修改 ---
         
         try:
+            # 確保至少有一條初始化消息在歷史中，避免出現"至少需要提供一條消息"的錯誤
+            temp_history = conversation_history.copy() if conversation_history else []
+            
+            # 如果對話歷史為空，添加一個初始消息以保證API調用成功
+            if not temp_history:
+                temp_history = [{"role": "bot", "content": "你好！我是星宅妹。", "is_murmur": False}]
+                logger.info("對話歷史為空，添加初始化消息")
+            
             # 生成murmur
             ai_result = await ai_service.generate_response(
                 system_prompt=murmur_prompt,
-                history=conversation_history
+                history=temp_history
             )
             
             if not ai_result or "final_response" not in ai_result:
@@ -392,16 +413,18 @@ async def websocket_endpoint(websocket: WebSocket):
             ai_murmur_text = clean_murmur_prefix(ai_murmur_text)
             
             # --- 修改：使用murmur服務的工具函數檢查相似度 ---
-            from services.murmur_service.utils import is_murmur_too_similar
+            from services.murmur_service.utils import is_murmur_too_similar, has_continuity_marker
+            
+            # 檢查是否包含連續性標記
+            has_continuity_marker = has_continuity_marker(ai_murmur_text)
             
             # 計算相似度閾值
-            similarity_threshold = murmur_config.MURMUR_SIMILARITY_THRESHOLD
-            # 檢查是否有連續標記
-            has_continuity_marker = any(marker in ai_murmur_text for marker in CONTINUITY_MARKERS)
+            similarity_threshold = SIMILARITY_THRESHOLD_CONTINUOUS if thinking_thread_continuity > 0 else murmur_config.MURMUR_SIMILARITY_THRESHOLD
             
-            if prompt_template == "murmur_continuous" and has_continuity_marker:
+            # 檢查是否有連續標記並調整閾值
+            if thinking_thread_continuity > 0 and has_continuity_marker:
                 similarity_threshold *= 0.8  # 進一步降低相似度要求
-                logger.info(f"Continuity marker detected, lowering similarity threshold to {similarity_threshold}")
+                logger.info(f"連續思考且有連續標記: 降低相似度閾值至 {similarity_threshold}")
             
             # 如果是首次 murmur 或相似度在允許範圍內，接受這個 murmur
             if not recent_murmurs or not is_murmur_too_similar(ai_murmur_text, recent_murmurs, similarity_threshold):
@@ -417,7 +440,6 @@ async def websocket_endpoint(websocket: WebSocket):
                 logger.warning(f"Generated murmur is too similar to existing ones, skipping: '{ai_murmur_text}'")
                 speaking_state = SpeakingState.IDLE
                 return
-            # --- 結束修改 ---
                 
             # 更新情緒
             murmur_emotion = ai_result.get("emotion", current_emotion)
@@ -439,7 +461,10 @@ async def websocket_endpoint(websocket: WebSocket):
                 "bodyAnimationSequence": ai_result.get("body_animation_sequence"),
                 "timestamp": None,
                 "audioUrl": None,
-                "isMurmur": True
+                "isMurmur": True,
+                "isContinuous": thinking_thread_continuity > 0,
+                "thinkingTopic": current_thinking_topic,
+                "continuityLevel": thinking_thread_continuity
             }
             
             # 保存並設置音頻URL

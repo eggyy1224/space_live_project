@@ -19,13 +19,14 @@ class SpeakingState(Enum):
 # 閒置設定
 IDLE_TIMEOUT_SECONDS = 15.0  # 空閒多少秒後觸發murmur
 IDLE_CHECK_INTERVAL_SECONDS = 1.0  # 多久檢查一次空閒狀態
-MURMUR_MIN_INTERVAL_SECONDS = 8.0  # murmur之間的最小間隔時間
+MURMUR_MIN_INTERVAL_SECONDS = 30.0  # murmur之間的最小間隔時間，從8秒改為30秒，增加連續性
 
 # 暫不設置MURMUR_MAX_COUNT，保持不限制連續murmur次數
 # 如需重新限制，可以在此設置一個整數值
 
 # 相似度檢測設定
 MURMUR_SIMILARITY_THRESHOLD = 0.6  # 允許更多變化
+SIMILARITY_THRESHOLD_CONTINUOUS = 0.3  # 連續思考模式的相似度閾值，降低以允許更多相關思考
 MURMUR_CONTINUITY_BASE_THRESHOLD = 0.7  # 基礎相似度閾值
 MURMUR_CONTINUITY_MARKER_ADJUSTMENT = 0.12  # 有連續標記時的閾值調整
 
@@ -65,7 +66,16 @@ CONTINUITY_MARKERS = [
     "所以",
     "還有",
     "對了",
-    "想一想"
+    "想一想",
+    "再說啦",
+    "想想喔",
+    "回到剛剛",
+    "說真的",
+    "講到這個",
+    "仔細想想",
+    "我突然想到",
+    "換個角度想",
+    "接著剛剛"
 ]
 
 # 消息處理相關
@@ -90,7 +100,7 @@ DEFAULT_CONFIG = {
     # 記憶與相似度設定
     "max_stored_murmurs": 10,  # 最多儲存多少條最近的murmur
     "similarity_threshold": MURMUR_SIMILARITY_THRESHOLD,
-    "max_thread_continuity": 4,  # 連續幾次保持同一個思考主題
+    "max_thread_continuity": 8,  # 連續幾次保持同一個思考主題，從4增加到8
     "thinking_themes": THINKING_THEMES,
 }
 

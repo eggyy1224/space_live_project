@@ -100,8 +100,10 @@ class MurmurService:
                                if t != self.current_thinking_topic]
             self.current_thinking_topic = random.choice(available_themes)
             self.thinking_thread_continuity = 0
+            logger.info(f"切換思考主題至: {self.current_thinking_topic}")
         else:
             self.thinking_thread_continuity += 1
+            logger.info(f"連續第 {self.thinking_thread_continuity} 次思考主題: {self.current_thinking_topic}")
         
         # --- 構建思考上下文提示
         context_prompt = ""
@@ -113,10 +115,12 @@ class MurmurService:
             if len(recent_murmurs_list) > 0:
                 # 最近的 murmur 作為直接延續的基礎
                 self.last_murmur_content = recent_murmurs_list[-1]
-                thinking_thread = f"你上一次的想法是：「{self.last_murmur_content}」，請自然延續這個想法。"
+                thinking_thread = f"你上一次的想法是：「{self.last_murmur_content}」，請直接且明確地延續這個想法。"
+                logger.info(f"使用上一次思考作為連續性基礎: {self.last_murmur_content[:30]}...")
         
         # --- 根據連續程度選擇不同的提示模板
         prompt_template = "murmur_continuous" if self.thinking_thread_continuity > 0 else "murmur"
+        logger.info(f"使用模板: {prompt_template}，連續性指數: {self.thinking_thread_continuity}")
         
         # 獲取對應的 murmur 提示模板並填充變量
         template = PROMPT_TEMPLATES.get(prompt_template, PROMPT_TEMPLATES["murmur"])
@@ -134,10 +138,18 @@ class MurmurService:
             )
         
         try:
+            # 確保至少有一條初始化消息在歷史中，避免出現"至少需要提供一條消息"的錯誤
+            temp_history = conversation_history.copy() if conversation_history else []
+            
+            # 如果對話歷史為空，添加一個初始消息以保證API調用成功
+            if not temp_history:
+                temp_history = [{"role": "bot", "content": "你好！我是星宅妹。", "is_murmur": False}]
+                logger.info("對話歷史為空，添加初始化消息")
+            
             # 生成murmur
             ai_result = await self.ai_service.generate_response(
                 system_prompt=murmur_prompt,
-                history=conversation_history
+                history=temp_history
             )
             
             if not ai_result or "final_response" not in ai_result:
@@ -153,6 +165,12 @@ class MurmurService:
                 self.thinking_thread_continuity, 
                 has_continuity_marker
             )
+            
+            # 專門用於連續思考的相似度調整
+            if self.thinking_thread_continuity > 0 and has_continuity_marker:
+                # 進一步降低連續思考的相似度閾值，確保思考流能繼續
+                similarity_threshold *= 0.8
+                logger.info(f"連續思考模式: 降低相似度閾值至 {similarity_threshold}")
             
             # 檢查是否與現有murmur太相似
             if self.recent_murmurs and utils.is_murmur_too_similar(
@@ -191,7 +209,9 @@ class MurmurService:
                 "emotion": ai_result.get("emotion", "neutral"),
                 "bodyAnimationSequence": ai_result.get("body_animation_sequence"),
                 "emotionalKeyframes": ai_result.get("emotional_keyframes"),
-                "is_murmur": True
+                "is_murmur": True,
+                "is_continuous": self.thinking_thread_continuity > 0,
+                "thinking_topic": self.current_thinking_topic
             }
         except Exception as e:
             logger.error(f"Error generating murmur: {e}", exc_info=True)
