@@ -3,38 +3,46 @@
 # Status: pending
 # Dependencies: 1, 3
 # Priority: medium
-# Description: Develop the SchedulerNode component in LangGraph to manage the six daily broadcast periods with their specific content and tool combinations.
+# Description: Develop the SchedulerNode component in LangGraph to manage the six daily broadcast periods with their specific content and tool combinations, following an MVP development approach.
 # Details:
-Implement the `SchedulerNode` in LangGraph to handle the six broadcast periods defined in the PRD:
+Implement the `SchedulerNode` in LangGraph using an incremental MVP approach with the following milestones:
 
+**Milestone 1: Basic Scheduler Implementation**
+- Create a minimal SchedulerNode that can manage simple scheduling tasks
+- Extract and reuse relevant functionality from existing murmur_service and dialogue_manager
+- Implement basic scheduling capabilities with time-based execution
+- Focus on core functionality without complex tool orchestration
+
+**Milestone 2: First Broadcast Period Implementation**
+- Fully implement the Space Morning Report broadcast period
+- Create the configuration schema for defining this initial period
+- Implement basic content generation for this period
+- Ensure integration with Task 3 (Trigger Mechanism) for time-based execution
+
+**Milestone 3: Incremental Period Addition**
+- Gradually implement remaining broadcast periods one by one
+- Expand the configuration system to handle additional periods
+- Add period-specific tool selection as needed for each new period
+- Develop content coordination capabilities incrementally
+
+**Core Implementation Components:**
 1. Period Configuration System:
-   - Create a configuration schema for defining broadcast periods
-   - Implement parser for the six periods from the PRD (Space Morning Report, Physical Performance, Fantasy Projection, etc.)
-   - Design flexible configuration system that can be updated without code changes
+   - Start with simplified configuration for initial periods
+   - Expand configuration schema as more periods are added
 
 2. Period-Specific Tool Orchestration:
-   - Implement tool selection logic based on current period
-   - Create tool chains for each period's requirements
-   - Develop fallback mechanisms for when tools are unavailable
+   - Begin with basic tool selection for first period
+   - Add complexity as more periods are implemented
 
 3. Content Generation Coordination:
-   - Implement period-appropriate content generation prompts
-   - Create context management to maintain thematic consistency within periods
-   - Develop transition handling between periods
+   - Focus on generating appropriate content for each implemented period
+   - Build transition handling incrementally
 
 4. Schedule Execution Engine:
-   - Implement precise timing control for period transitions
-   - Create progress tracking within periods
-   - Develop interruption and resumption capabilities
-   - Implement manual override interface for administrators
+   - Implement basic timing control that integrates with the trigger system
+   - Add more sophisticated features in later iterations
 
-Ensure the scheduler can handle the specific requirements of each period, such as news fetching for Space Morning Report, animation control for Physical Performance period, and AI image generation for Fantasy Projection period.
+Prioritize integration with Task 3 to ensure the system can execute basic broadcast tasks based on time triggers.
 
 # Test Strategy:
-1. Unit tests for period configuration parsing and validation
-2. Integration tests for tool orchestration in each period
-3. Timing tests to verify period transitions
-4. Content appropriateness tests for each period
-5. Manual override tests
-6. Fault tolerance tests with simulated tool failures
-7. End-to-end tests for full daily schedule execution
+

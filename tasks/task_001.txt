@@ -3,33 +3,127 @@
 # Status: pending
 # Dependencies: None
 # Priority: high
-# Description: Design and implement the core LangGraph architecture that will serve as the unified backend orchestration engine for the SpaceLive platform.
+# Description: Enhance and unify the existing LangGraph architecture to serve as the unified backend orchestration engine for the SpaceLive platform, building upon the current implementation.
 # Details:
-Create the foundational LangGraph architecture with the following key components:
+Enhance the existing LangGraph architecture in `/prototype/backend/services/ai/dialogue_graph.py` and related modules to create a unified orchestration system with the following improvements:
 
-1. Core node types:
-   - `TimeTriggerNode`: For schedule-based triggers
-   - `StateMonitorNode`: For monitoring character state and idle time
-   - `UserInputNode`: For processing user inputs
-   - `SchedulerNode`: For managing scheduled tasks
-   - `LLMInterfaceNode`: For LLM API calls
-   - `MemorySystemInterfaceNode`: For memory read/write operations
-   - `EmotionAnalyzerNode`: For analyzing text emotions
+1. Complete the ongoing modularization refactoring:
+   - Finalize migration from `services/ai/` to specialized modules like `services/dialogue_manager/`
+   - Ensure clean interfaces between modules
 
-2. Flow differentiation:
+2. Enhance and standardize core node types:
+   - Integrate existing nodes from `/prototype/backend/services/ai/graph_nodes/`
+   - Extend with additional required nodes:
+     - `TimeTriggerNode`: For schedule-based triggers
+     - `StateMonitorNode`: For monitoring character state and idle time
+     - `UserInputNode`: For processing user inputs
+     - `SchedulerNode`: For managing scheduled tasks
+     - `LLMInterfaceNode`: For LLM API calls (enhance existing)
+     - `MemorySystemInterfaceNode`: For memory read/write operations (enhance existing)
+     - `EmotionAnalyzerNode`: For analyzing text emotions
+
+3. Unify flow differentiation:
    - Implement simplified path for real-time dialogue
    - Implement complex path for scheduled tasks with tool invocation
-   - Implement spontaneous dialogue flow (former Murmur functionality)
+   - Enhance existing murmur_service for spontaneous dialogue flow
 
-3. State management:
+4. Improve state management:
    - Design shared state structure for all behavior types
-   - Implement state persistence mechanism
+   - Implement robust state persistence mechanism
+   - Ensure state sharing across different flow types
 
-Use Python with FastAPI as the backend framework. Ensure the architecture is modular and extensible to accommodate future tools and functionalities.
+Build upon the existing Python with FastAPI backend framework. Ensure the architecture remains modular and extensible to accommodate future tools and functionalities. Focus on iterative development with functional milestones at each stage.
 
 # Test Strategy:
-1. Unit tests for each node type to verify correct functionality
-2. Integration tests for different flow paths
-3. State persistence and recovery tests
-4. Performance benchmarking to ensure response times meet requirements (<1.5s for real-time dialogue, <3s for scheduled tasks)
-5. Mock external dependencies (LLM, databases) for testing
+1. Manual testing of each component as it's developed
+2. Integration verification when connecting components
+3. Basic functionality validation for each milestone
+4. Performance checks to ensure response times meet requirements (<1.5s for real-time dialogue, <3s for scheduled tasks)
+5. Use simple mocks for external dependencies during development
+
+# Subtasks:
+## 1. Core Node Type Implementation [in-progress]
+### Dependencies: None
+### Description: Design and implement the fundamental node types that will form the building blocks of the LangGraph architecture
+### Details:
+Define minimal viable base node interfaces, implement essential concrete node types (e.g., function nodes, LLM nodes, tool nodes), establish basic node communication protocols. Focus on creating a working foundation that can be iteratively improved.
+<info added on 2025-05-13T12:16:26.976Z>
+Define minimal viable base node interfaces, implement essential concrete node types (e.g., function nodes, LLM nodes, tool nodes), establish basic node communication protocols. Focus on creating a working foundation that can be iteratively improved.
+
+Adjusted implementation strategy to focus on rapid MVP completion of core nodes:
+1. Leverage and extend existing nodes from the graph_nodes directory rather than defining nodes from scratch
+2. Prioritize implementation of these critical nodes:
+   - Standardize interfaces for existing nodes
+   - TimeTriggerNode: For time-based event triggering
+   - StateMonitorNode: For monitoring agent states
+   - SchedulerNode: For managing scheduled tasks
+3. Ensure that after the first phase, a basic conversational flow can be demonstrated
+4. Use simple, intuitive interfaces and avoid over-engineering
+</info added on 2025-05-13T12:16:26.976Z>
+
+## 2. Flow Differentiation Paths [pending]
+### Dependencies: 1.1
+### Description: Develop the system for defining and managing different execution paths within the graph
+### Details:
+Implement basic conditional branching logic, create mechanisms for path selection based on node outputs, and establish simple error handling paths. Focus on getting the core functionality working first, with plans for later enhancement.
+
+## 3. State Management System [pending]
+### Dependencies: 1.1
+### Description: Create a robust state management system to track and maintain graph execution state
+### Details:
+Design minimal state container structures, implement basic state persistence mechanisms, and establish state sharing protocols between nodes. Focus on a working MVP that can be enhanced in future iterations.
+
+## 4. API Design [pending]
+### Dependencies: 1.1, 1.2, 1.3
+### Description: Design comprehensive APIs for graph creation, manipulation, and execution
+### Details:
+Create essential graph definition APIs, node configuration interfaces, and execution control APIs. Focus on the core functionality needed for the MVP, ensuring API consistency and basic error handling.
+
+## 6. Documentation [pending]
+### Dependencies: 1.1, 1.2, 1.3, 1.4
+### Description: Create essential documentation for the LangGraph architecture and its components
+### Details:
+Develop basic architecture overview, API usage examples, and implementation notes. Focus on documenting only what's necessary for other developers to understand and use the system effectively.
+
+## 8. Modularization Refactoring Completion [pending]
+### Dependencies: 1.1
+### Description: Complete the ongoing modularization refactoring of the LangGraph architecture
+### Details:
+Finalize the migration of components from services/ai/ to specialized modules like services/dialogue_manager/ and memory_system/. Ensure clean interfaces between modules, update import paths, and verify functionality after migration. Focus on making each module independently functional.
+
+## 9. Existing Node Integration and Extension [pending]
+### Dependencies: 1.1, 1.8
+### Description: Integrate existing nodes and extend with additional required node types
+### Details:
+Audit existing nodes in /prototype/backend/services/ai/graph_nodes/, standardize their interfaces, and extend with the most critical additional nodes first (prioritize TimeTriggerNode, LLMInterfaceNode, and MemorySystemInterfaceNode). Implement other nodes iteratively as needed.
+
+## 10. Unified Behavior Management [pending]
+### Dependencies: 1.2, 1.8, 1.9
+### Description: Implement unified management for all behavior types (dialogue, murmur, scheduled tasks)
+### Details:
+Create a unified orchestration layer that manages all behavior types through the LangGraph architecture. Start with integrating the existing dialogue system, then add murmur_service integration, and finally implement scheduled tasks. Ensure each phase is functional before moving to the next.
+
+## 11. Milestone 1: Basic Node Framework [pending]
+### Dependencies: 1.1
+### Description: Implement a minimal working version of the core node framework that can execute simple graphs
+### Details:
+Create a simplified version of the core node types and basic graph execution engine that can run a simple dialogue flow. This milestone should demonstrate the basic architecture working end-to-end with minimal functionality.
+
+## 12. Milestone 2: Dialogue Integration [pending]
+### Dependencies: 1.1, 1.8, 1.11
+### Description: Integrate the existing dialogue system with the new LangGraph architecture
+### Details:
+Connect the existing dialogue system to the new LangGraph architecture, ensuring that basic conversations work through the new framework. This milestone should demonstrate the ability to handle real-time dialogue through the new architecture.
+
+## 13. Milestone 3: Complete Behavior Integration [pending]
+### Dependencies: 1.2, 1.3, 1.9, 1.10, 1.12
+### Description: Integrate all behavior types (dialogue, murmur, scheduled tasks) with the LangGraph architecture
+### Details:
+Complete the integration of all behavior types, ensuring that the system can handle dialogue, murmurs, and scheduled tasks through the unified architecture. This milestone represents a complete MVP of the LangGraph orchestration system.
+
+## 14. Iterative Enhancement Plan [pending]
+### Dependencies: 1.13
+### Description: Create a plan for iterative enhancements to the LangGraph architecture after the MVP is complete
+### Details:
+Based on the experience with the MVP implementation, create a prioritized list of enhancements and optimizations for future iterations. Include performance improvements, additional node types, enhanced error handling, and other features that were deferred during the MVP development.
+

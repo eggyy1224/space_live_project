@@ -3,46 +3,35 @@
 # Status: pending
 # Dependencies: 1
 # Priority: high
-# Description: Develop the WebSocket communication layer between the LangGraph backend and the React frontend to enable real-time interactions and updates.
+# Description: Develop the WebSocket communication layer between the LangGraph backend and the React frontend to enable real-time interactions and updates, following an MVP development approach.
 # Details:
-Create a robust WebSocket communication system to connect the LangGraph backend with the React frontend:
+Create a WebSocket communication system to connect the LangGraph backend with the React frontend, focusing on incremental delivery through milestones:
 
-1. WebSocket Server Implementation:
-   - Implement WebSocket server using FastAPI's WebSocket support
-   - Create connection management for multiple clients
-   - Implement authentication and session management
-   - Develop message queuing for handling high traffic
+**Milestone 1: Basic WebSocket Implementation**
+- Implement basic WebSocket server using FastAPI's WebSocket support
+- Create simple client connection management
+- Implement standard WebSocket protocol with simple message format
+- Develop basic message routing functionality
 
-2. Message Protocol Design:
-   - Design JSON message schema for different types of communications
-   - Implement message serialization/deserialization
-   - Create message routing based on type
-   - Develop versioning strategy for protocol evolution
+**Milestone 2: Dialogue Communication Integration**
+- Integrate WebSocket with existing dialogue functionality
+- Implement real-time message passing for conversations
+- Create connection state management in the React frontend
+- Ensure proper handling of dialogue responses
+- Integrate with existing frontend code
 
-3. Frontend Integration:
-   - Implement WebSocket client in React
-   - Create connection state management
-   - Develop reconnection strategies
-   - Implement message handling and UI updates
+**Milestone 3: Extended Functionality**
+- Add support for schedule content updates
+- Implement character state change notifications
+- Develop basic reconnection strategy
+- Ensure proper error handling
 
-4. Real-time Updates:
-   - Create efficient update mechanism for character state changes
-   - Implement partial updates to minimize bandwidth
-   - Develop priority system for critical vs. non-critical updates
-   - Create buffering strategy for rapid updates
+**Integration with LangGraph Core**
+- Ensure WebSocket layer properly connects to LangGraph backend
+- Verify that dialogue interactions work end-to-end
+- Focus on demonstrable functionality at each milestone
 
-5. Performance Optimization:
-   - Implement message compression for large payloads
-   - Create connection pooling for scaling
-   - Develop monitoring and diagnostics
-
-Ensure the communication layer meets the performance requirements (<1.5s for real-time dialogue responses) and handles connection issues gracefully.
+Prioritize core communication features first, ensuring each milestone delivers working functionality that can be demonstrated.
 
 # Test Strategy:
-1. Unit tests for message protocol handling
-2. Connection stress tests with multiple clients
-3. Latency tests under various network conditions
-4. Reconnection tests with forced disconnections
-5. Load tests with high message throughput
-6. Integration tests with frontend components
-7. End-to-end tests for complete interaction flows
+

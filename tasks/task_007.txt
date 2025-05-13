@@ -3,44 +3,69 @@
 # Status: pending
 # Dependencies: 1, 4
 # Priority: medium
-# Description: Implement various tool nodes in LangGraph for content generation, external API integration, and multimedia handling required by the broadcast periods.
+# Description: Implement various tool nodes in LangGraph for content generation and external API integration using an MVP approach with phased milestones.
 # Details:
-Create a comprehensive set of tool nodes within LangGraph to support the various content requirements:
+Create a set of tool nodes within LangGraph using an incremental MVP development approach:
 
-1. News and Information Tools:
-   - Implement `NewsFetchingTool` for space and science news
-   - Create weather and satellite image retrieval tools
-   - Develop current events summarization tool
+**Milestone 1: Core Content Generation (MVP)**
+- Implement `StoryGenerationNode` for simple sci-fi stories
+- Create `GreetingGenerationNode` for basic opening rituals
+- Focus on minimal viable functionality with simple prompts
+- Ensure integration with LangGraph core (Task 1)
 
-2. Content Generation Tools:
-   - Implement `StoryGenerationNode` for sci-fi stories
-   - Create `DiaryGenerationNode` for daily AI diary entries
-   - Develop `NarrativeGenerationNode` for fantasy scenarios
-   - Implement `GreetingGenerationNode` for opening rituals
+**Milestone 2: Basic External Services**
+- Implement `NewsFetchingTool` for space and science news using a simple reliable API
+- Create `WeatherRetrievalTool` with minimal functionality
+- Develop `ImageDisplayNode` for showing content
+- Integrate with scheduling nodes (Task 4) to enable basic broadcast functionality
 
-3. Multimedia Tools:
-   - Create `AIImageGenerationTool` for fantasy backgrounds and task photos
-   - Implement `MusicPlaybackTool` for theme songs and background music
-   - Develop `SoundEffectTool` for ambient sounds
-   - Create `SingingSynthesisTool` for vocal performances
+**Milestone 3: Expanded Functionality**
+- Add `DiaryGenerationNode` for AI diary entries
+- Implement `AIImageGenerationTool` for simple image generation
+- Create `MusicPlaybackTool` for theme songs
+- Develop additional tools based on priority needs
 
-4. Animation and Expression Tools:
-   - Implement `AnimationControlNode` for choreographed movements
-   - Create `EmotionExpressionNode` for facial expressions
-   - Develop `MimicryNode` for imitating audience expressions
+**Implementation Guidelines:**
+- Use simple, reliable APIs and services
+- Implement minimal feature set for each tool node
+- Ensure each milestone delivers demonstrable functionality
+- Prioritize integration with core system over complex features
+- Defer complex error handling and fallback mechanisms
+- Focus on functional implementation rather than extensive testing
 
-5. Memory and Display Tools:
-   - Implement `MemoryUpdateNode` for recording significant events
-   - Create `ImageDisplayNode` for showing generated images
-   - Develop `ImageThemeSettingNode` for daily task photo themes
-
-Ensure all tools have consistent interfaces, error handling, and performance monitoring. Implement rate limiting and caching where appropriate for external API calls.
+Ensure close coordination with Task 1 (LangGraph Core) and Task 4 (Scheduling Nodes) to guarantee tool nodes can be properly utilized within broadcast periods.
 
 # Test Strategy:
-1. Unit tests for each tool with mock external services
-2. Integration tests with LangGraph scheduler
-3. Performance tests for response time requirements
-4. Error handling tests with simulated failures
-5. Content quality evaluation for generation tools
-6. Rate limit and throttling tests
-7. End-to-end tests for each broadcast period's tool requirements
+
+
+# Subtasks:
+## 7.1. Implement Milestone 1 Core Content Generation Tools [pending]
+### Dependencies: None
+### Description: Develop the minimum viable versions of the most essential content generation tools
+### Details:
+
+
+## 7.2. Implement Milestone 2 Basic External Services [pending]
+### Dependencies: None
+### Description: Add simple external API integrations for news and weather with minimal functionality
+### Details:
+
+
+## 7.3. Implement Milestone 3 Expanded Functionality [pending]
+### Dependencies: None
+### Description: Gradually add additional tool nodes based on priority needs after core functionality is established
+### Details:
+
+
+## 7.4. Integrate Tool Nodes with LangGraph Core [pending]
+### Dependencies: None
+### Description: Ensure all implemented tool nodes properly integrate with the LangGraph core system from Task 1
+### Details:
+
+
+## 7.5. Integrate Tool Nodes with Scheduling System [pending]
+### Dependencies: None
+### Description: Verify tool nodes can be properly utilized within broadcast periods via the scheduling system from Task 4
+### Details:
+
+

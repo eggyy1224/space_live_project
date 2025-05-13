@@ -3,34 +3,63 @@
 # Status: pending
 # Dependencies: 1
 # Priority: high
-# Description: Develop the three-layer memory architecture for the virtual character, including short-term, medium-term, and long-term memory components.
+# Description: Develop the three-layer memory architecture for the virtual character, including short-term, medium-term, and long-term memory components using an MVP approach with incremental milestones.
 # Details:
-Design and implement a comprehensive memory system with three distinct layers:
+Design and implement a comprehensive memory system with three distinct layers using an incremental MVP approach:
 
-1. Short-term memory:
-   - Daily emotion fluctuations
-   - Event summaries
-   - Task photos
-   - Implementation using MongoDB collections with TTL indexes
+**Milestone 1: Basic Short-term Memory**
+- Implement storage and retrieval of recent events
+- Daily emotion fluctuations
+- Event summaries
+- Task photos
+- Utilize existing database structures and interfaces
+- Integrate with LangGraph through the `MemorySystemInterfaceNode`
+- Focus on basic functionality that works end-to-end
 
-2. Medium-term memory:
-   - Weekly selection of high emotional value events
-   - Formation of main storyline events
-   - Triggers for appearance changes
-   - Implementation using aggregation pipelines to select important events
+**Milestone 2: Simplified Medium-term Memory**
+- Weekly selection of high emotional value events
+- Formation of main storyline events
+- Implement using simple selection criteria initially
+- Build upon the short-term memory integration
 
-3. Long-term memory:
-   - 52-week memory node chronological wall
-   - Audience quote wall
-   - Annual autobiographical life trajectory
-   - Implementation using specialized collections with indexing for efficient retrieval
+**Milestone 3: Basic Long-term Memory**
+- Implement chronological memory storage
+- Audience quote wall
+- Simple autobiographical trajectory
+- Focus on reliable storage and basic retrieval
 
-Integrate memory system with LangGraph through the `MemorySystemInterfaceNode`. Implement memory retrieval algorithms that prioritize relevant memories based on context, recency, and emotional significance. Ensure proper data structures for storing different memory types and efficient query patterns.
+**Implementation Strategy:**
+- Prioritize using existing database structures and interfaces
+- Start with simple memory storage and retrieval functions
+- Iterate to add more complex filtering and prioritization algorithms later
+- Ensure each milestone delivers working functionality
+- Prioritize early integration of short-term memory with LangGraph framework
 
 # Test Strategy:
-1. Unit tests for each memory layer's CRUD operations
-2. Integration tests with LangGraph nodes
-3. Performance tests for memory retrieval under load
-4. Consistency tests to ensure memories are properly categorized
-5. Simulated time progression tests to verify medium and long-term memory formation
-6. Data integrity tests to prevent memory corruption or loss
+
+
+# Subtasks:
+## 2.1. Implement Milestone 1: Basic Short-term Memory [pending]
+### Dependencies: None
+### Description: Develop and integrate the basic short-term memory functionality using existing database structures.
+### Details:
+
+
+## 2.2. Implement Milestone 2: Simplified Medium-term Memory [pending]
+### Dependencies: None
+### Description: Build simplified medium-term memory on top of short-term memory with basic selection criteria.
+### Details:
+
+
+## 2.3. Implement Milestone 3: Basic Long-term Memory [pending]
+### Dependencies: None
+### Description: Develop basic long-term memory storage and retrieval functionality.
+### Details:
+
+
+## 2.4. Integrate Short-term Memory with LangGraph [pending]
+### Dependencies: None
+### Description: Prioritize integration of short-term memory with LangGraph framework to enable early usage.
+### Details:
+
+
