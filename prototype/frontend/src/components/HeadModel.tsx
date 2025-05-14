@@ -205,11 +205,11 @@ export const HeadModel: React.FC<HeadModelProps> = ({
       if (isSpeakingRef.current) {
         // 只有在說話時才執行頭部動畫
         
-        // Y 軸 (Yaw - 左右擺動) - 布袋戲風格調整
-        const yawSpeed1 = 0.8; // 稍快
-        const yawAmplitude1 = Math.PI * 0.22; 
-        const yawSpeed2 = 1.5; // 更快，用於急轉或抖動感
-        const yawAmplitude2 = Math.PI * 0.20;
+        // Y 軸 (Yaw - 左右擺動) - 調整幅度，使其不那麼誇張
+        const yawSpeed1 = 0.8; 
+        const yawAmplitude1 = Math.PI * 0.15; // <-- 減少幅度 (原 0.22)
+        const yawSpeed2 = 1.5; 
+        const yawAmplitude2 = Math.PI * 0.12; // <-- 減少幅度 (原 0.20)
         const yawPhase = Math.PI / 1.5;
         let calculatedYaw = 
           Math.sin(time * yawSpeed1) * yawAmplitude1 +
@@ -218,31 +218,32 @@ export const HeadModel: React.FC<HeadModelProps> = ({
         const maxYaw = Math.PI * 0.47; // 約 +/- 85 度 (保持不轉到背面)
         group.current.rotation.y = Math.max(-maxYaw, Math.min(calculatedYaw, maxYaw));
 
-        // X 軸 (Pitch - 上下點頭) - 布袋戲風格調整
-        const pitchSpeed1 = 0.9; // 稍快
-        const pitchAmplitude1 = Math.PI * 0.18; 
-        const pitchSpeed2 = 1.8; // 更快，用於快速點頭或頓點
-        const pitchAmplitude2 = Math.PI * 0.15;
+        // X 軸 (Pitch - 上下點頭) - 調整幅度，使其不那麼誇張
+        const pitchSpeed1 = 0.9; 
+        const pitchAmplitude1 = Math.PI * 0.10; // <-- 減少幅度 (原 0.18)
+        const pitchSpeed2 = 1.8; 
+        const pitchAmplitude2 = Math.PI * 0.08; // <-- 減少幅度 (原 0.15)
         const pitchPhase = Math.PI / 2.0;
         let calculatedPitch = 
           Math.sin(time * pitchSpeed1) * pitchAmplitude1 +
           Math.sin(time * pitchSpeed2 + pitchPhase) * pitchAmplitude2;
 
-        const maxUpwardPitch = Math.PI / 7.5;   // 約 24 度向上 (更嚴格避免露脖子)
-        const maxDownwardPitch = -Math.PI / 3.5; // 約 -51 度向下
+        // 保持 Pitch 限制，避免露脖子或過度低頭
+        const maxUpwardPitch = Math.PI / 24;   // 約 7.5 度向上 (更嚴格限制上仰)
+        const maxDownwardPitch = -Math.PI / 4; // 約 -45 度向下 (保持不變)
         group.current.rotation.x = Math.max(maxDownwardPitch, Math.min(calculatedPitch, maxUpwardPitch));
 
-        // Z 軸 (Roll/Tilt) - 布袋戲風格調整
-        const rollSpeed1 = 0.6; // 稍快
-        const rollAmplitude1 = Math.PI * 0.25; 
-        const rollSpeed2 = 1.2; // 更快，用於快速歪頭
-        const rollAmplitude2 = Math.PI * 0.30;
+        // Z 軸 (Roll/Tilt) - 調整幅度，使其不那麼誇張
+        const rollSpeed1 = 0.6; 
+        const rollAmplitude1 = Math.PI * 0.12; // <-- 減少幅度 (原 0.25)
+        const rollSpeed2 = 1.2; 
+        const rollAmplitude2 = Math.PI * 0.15; // <-- 減少幅度 (原 0.30)
         const rollPhase = Math.PI / 2.8;
         group.current.rotation.z = 
           Math.sin(time * rollSpeed1) * rollAmplitude1 +
           Math.sin(time * rollSpeed2 + rollPhase) * rollAmplitude2;
 
-        // --- 移動邏輯 (取代舊的薛丁格瞬移) ---
+        // --- 移動邏輯 (保持不變) ---
         const moveDurationMin = 0.05; // 秒 (非常快的移動)
         const moveDurationMax = 0.5;  // 秒 (較慢的移動)
         const pauseIntervalMin = 0.1; // 秒 (移動後的短暫停頓)
