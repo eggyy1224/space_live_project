@@ -68,16 +68,29 @@ export const HeadModel: React.FC<HeadModelProps> = ({
     initialRotation.current.set(...rotation);
   }, [rotation]);
 
-  // 瞬移效果相關的 Refs
-  const lastTeleportTime = useRef(0);
-  const nextTeleportInterval = useRef(0);
+  // 移動狀態 Refs
+  const isMoving = useRef(false);
+  const startPositionRef = useRef(new THREE.Vector3(...position)); // Renamed to avoid conflict
+  const targetPositionRef = useRef(new THREE.Vector3(...position)); // Renamed to avoid conflict
+  const moveStartTime = useRef(0);
+  const moveDuration = useRef(0);
 
-  // 初始化下一次瞬移的時間間隔
+  // 停頓相關 Refs (之前是瞬移的間隔)
+  const lastMoveEndTime = useRef(0); 
+  const nextPauseDuration = useRef(0);
+
+  // 初始化停頓時間和初始位置相關的 Ref
   useEffect(() => {
-    const teleportIntervalMin = 0.3; // 秒
-    const teleportIntervalMax = 0.7; // 秒
-    nextTeleportInterval.current = Math.random() * (teleportIntervalMax - teleportIntervalMin) + teleportIntervalMin;
-  }, []);
+    const pauseIntervalMin = 0.15; // 秒
+    const pauseIntervalMax = 0.45; // 秒
+    nextPauseDuration.current = Math.random() * (pauseIntervalMax - pauseIntervalMin) + pauseIntervalMin;
+    
+    // 確保 startPositionRef 和 targetPositionRef 也隨 props 更新
+    startPositionRef.current.set(...position);
+    targetPositionRef.current.set(...position);
+    // 如果正在移動中，且初始位置變了，可能需要特殊處理，但這裡簡化為重設
+    isMoving.current = false; 
+  }, [position]);
 
   // --- 移除外部動畫預加載 ---
   // useEffect(() => {
@@ -192,67 +205,90 @@ export const HeadModel: React.FC<HeadModelProps> = ({
       if (isSpeakingRef.current) {
         // 只有在說話時才執行頭部動畫
         
-        // Y 軸 (Yaw - 左右擺動) - 調整幅度使其更傾向正面
-        const yawSpeed1 = 0.5;
-        const yawAmplitude1 = Math.PI * 0.25; // 幅度減少, e.g., +/- 45度
-        const yawSpeed2 = 1.0;
-        const yawAmplitude2 = Math.PI * 0.35; // 幅度減少, e.g., +/- 63度
-        const yawPhase = Math.PI / 1.7;
-        group.current.rotation.y = 
+        // Y 軸 (Yaw - 左右擺動) - 布袋戲風格調整
+        const yawSpeed1 = 0.8; // 稍快
+        const yawAmplitude1 = Math.PI * 0.22; 
+        const yawSpeed2 = 1.5; // 更快，用於急轉或抖動感
+        const yawAmplitude2 = Math.PI * 0.20;
+        const yawPhase = Math.PI / 1.5;
+        let calculatedYaw = 
           Math.sin(time * yawSpeed1) * yawAmplitude1 +
           Math.sin(time * yawSpeed2 + yawPhase) * yawAmplitude2;
+        
+        const maxYaw = Math.PI * 0.47; // 約 +/- 85 度 (保持不轉到背面)
+        group.current.rotation.y = Math.max(-maxYaw, Math.min(calculatedYaw, maxYaw));
 
-        // X 軸 (Pitch - 上下點頭) - 調整幅度並限制上仰以避免露脖子
-        const pitchSpeed1 = 0.6;
-        const pitchAmplitude1 = Math.PI * 0.2;  // e.g., +/- 36度
-        const pitchSpeed2 = 1.1;
-        const pitchAmplitude2 = Math.PI * 0.25; // e.g., +/- 45度
-        const pitchPhase = Math.PI / 2.3;
+        // X 軸 (Pitch - 上下點頭) - 布袋戲風格調整
+        const pitchSpeed1 = 0.9; // 稍快
+        const pitchAmplitude1 = Math.PI * 0.18; 
+        const pitchSpeed2 = 1.8; // 更快，用於快速點頭或頓點
+        const pitchAmplitude2 = Math.PI * 0.15;
+        const pitchPhase = Math.PI / 2.0;
         let calculatedPitch = 
           Math.sin(time * pitchSpeed1) * pitchAmplitude1 +
           Math.sin(time * pitchSpeed2 + pitchPhase) * pitchAmplitude2;
 
-        // 限制Pitch的範圍
-        const maxUpwardPitch = Math.PI / 7;   // 約 25.7 度向上
-        const maxDownwardPitch = -Math.PI / 3; // 約 -60 度向下
+        const maxUpwardPitch = Math.PI / 7.5;   // 約 24 度向上 (更嚴格避免露脖子)
+        const maxDownwardPitch = -Math.PI / 3.5; // 約 -51 度向下
         group.current.rotation.x = Math.max(maxDownwardPitch, Math.min(calculatedPitch, maxUpwardPitch));
 
-        // Z 軸 (Roll/Tilt) - 調整幅度
-        const rollSpeed1 = 0.4;
-        const rollAmplitude1 = Math.PI * 0.3;  // e.g., +/- 54度
-        const rollSpeed2 = 0.9;
-        const rollAmplitude2 = Math.PI * 0.4;  // e.g., +/- 72度
-        const rollPhase = Math.PI / 3.1;
+        // Z 軸 (Roll/Tilt) - 布袋戲風格調整
+        const rollSpeed1 = 0.6; // 稍快
+        const rollAmplitude1 = Math.PI * 0.25; 
+        const rollSpeed2 = 1.2; // 更快，用於快速歪頭
+        const rollAmplitude2 = Math.PI * 0.30;
+        const rollPhase = Math.PI / 2.8;
         group.current.rotation.z = 
           Math.sin(time * rollSpeed1) * rollAmplitude1 +
           Math.sin(time * rollSpeed2 + rollPhase) * rollAmplitude2;
 
-        // 薛丁格瞬移邏輯
-        const teleportRangeX = 0.05; // X軸瞬移範圍 (+/-)
-        const teleportRangeY = 0.05; // Y軸瞬移範圍 (+/-)
-        const teleportRangeZ = 0.03; // Z軸瞬移範圍 (+/-)
-        const teleportIntervalMin = 0.2; // 最小瞬移間隔 (秒)
-        const teleportIntervalMax = 0.6; // 最大瞬移間隔 (秒)
+        // --- 移動邏輯 (取代舊的薛丁格瞬移) ---
+        const moveDurationMin = 0.05; // 秒 (非常快的移動)
+        const moveDurationMax = 0.5;  // 秒 (較慢的移動)
+        const pauseIntervalMin = 0.1; // 秒 (移動後的短暫停頓)
+        const pauseIntervalMax = 0.6; // 秒 (移動後的較長停頓)
+        const moveRangeX = 0.07; // X軸移動範圍 (+/-), 之前 teleportRangeX
+        const moveRangeY = 0.07; // Y軸移動範圍 (+/-)
+        const moveRangeZ = 0.04; // Z軸移動範圍 (+/-)
 
-        if (time - lastTeleportTime.current > nextTeleportInterval.current) {
-          const newX = initialPosition.current.x + (Math.random() - 0.5) * 2 * teleportRangeX;
-          const newY = initialPosition.current.y + (Math.random() - 0.5) * 2 * teleportRangeY;
-          const newZ = initialPosition.current.z + (Math.random() - 0.5) * 2 * teleportRangeZ;
-          group.current.position.set(newX, newY, newZ);
-          
-          lastTeleportTime.current = time;
-          nextTeleportInterval.current = Math.random() * (teleportIntervalMax - teleportIntervalMin) + teleportIntervalMin;
+        if (isMoving.current) {
+          const elapsedTimeInMove = time - moveStartTime.current;
+          let t = moveDuration.current > 0 ? elapsedTimeInMove / moveDuration.current : 1;
+          t = Math.min(t, 1);
+
+          group.current.position.lerpVectors(startPositionRef.current, targetPositionRef.current, t);
+
+          if (t >= 1) {
+            isMoving.current = false;
+            lastMoveEndTime.current = time;
+            nextPauseDuration.current = Math.random() * (pauseIntervalMax - pauseIntervalMin) + pauseIntervalMin;
+          }
+        } else {
+          if (time - lastMoveEndTime.current > nextPauseDuration.current) {
+            isMoving.current = true;
+            startPositionRef.current.copy(group.current.position);
+            
+            const newX = initialPosition.current.x + (Math.random() - 0.5) * 2 * moveRangeX;
+            const newY = initialPosition.current.y + (Math.random() - 0.5) * 2 * moveRangeY;
+            const newZ = initialPosition.current.z + (Math.random() - 0.5) * 2 * moveRangeZ;
+            targetPositionRef.current.set(newX, newY, newZ);
+
+            moveStartTime.current = time;
+            moveDuration.current = Math.random() * (moveDurationMax - moveDurationMin) + moveDurationMin;
+          }
         }
+        // --- 移動邏輯結束 ---
       } else {
-        // 不說話時，重設頭部姿態和瞬移動畫狀態
+        // 不說話時，重設頭部姿態和移動狀態
         group.current.rotation.set(initialRotation.current.x, initialRotation.current.y, initialRotation.current.z);
         group.current.position.copy(initialPosition.current);
+        isMoving.current = false; // 確保停止移動
 
-        // 重設瞬移計時器，避免下次說話時立即觸發
-        lastTeleportTime.current = time;
-        const teleportIntervalMin = 0.2; // 與上方保持一致
-        const teleportIntervalMax = 0.6; // 與上方保持一致
-        nextTeleportInterval.current = Math.random() * (teleportIntervalMax - teleportIntervalMin) + teleportIntervalMin;
+        // 重設停頓計時器
+        lastMoveEndTime.current = time; // 使用 lastMoveEndTime
+        const pauseResetMin = 0.15; // 與上方 pauseIntervalMin/Max 保持一致或獨立設置
+        const pauseResetMax = 0.45;
+        nextPauseDuration.current = Math.random() * (pauseResetMax - pauseResetMin) + pauseResetMin;
       }
     }
 
