@@ -91,7 +91,15 @@ class AIService:
         try:
             # --- 根據傳入的 history 構建 LangChain messages ---
             messages: List[BaseMessage] = []
-            if history:
+            
+            # 如果 history 未提供或為空，但有 user_text，則用 user_text 初始化 messages
+            if not history and user_text:
+                messages.append(HumanMessage(content=user_text))
+                # 同時，如果後續的 history 處理也依賴 user_text 被加進去，這裡可能需要清空 user_text
+                # 或者讓 DialogueGraph 內部處理 user_text 和 messages 的合併邏輯更健壯
+                # 暫時先這樣處理，確保 messages 不為空
+
+            if history: # 如果 history 仍然有內容 (例如上面初始化後，或本身就有傳入)
                 for entry in history:
                     role = entry["role"]
                     content = entry["content"]
@@ -114,8 +122,17 @@ class AIService:
             if system_prompt:
                  graph_input["system_prompt"] = system_prompt
             # 如果有 user_text，它將被圖中的節點處理（例如添加到 messages 中）
-            if user_text:
-                 graph_input["user_text"] = user_text # 顯式傳遞，即使歷史中已有
+            # 修正：如果 messages 已經因為上面的邏輯包含了 user_text，這裡的 user_text 傳遞需要小心
+            # DialogueGraph 內部應該要有去重或智能合併的邏輯
+            # 目前，如果上面已經加了 user_text 到 messages，這裡的 user_text 可能會導致重複
+            # 一個更安全的做法是，如果上面加了，這裡就不再傳遞 user_text 給 graph_input
+            
+            graph_input_user_text = user_text
+            if not history and user_text: # 如果是因 user_text 初始化 messages 的情況
+                graph_input_user_text = None # 避免將 user_text 再次單獨傳入 DialogueGraph，導致重複處理
+
+            if graph_input_user_text:
+                 graph_input["user_text"] = graph_input_user_text
 
             # 調用 LangGraph 生成回應
             graph_result: Dict[str, Any] = await self.dialogue_graph.generate_response(**graph_input)
