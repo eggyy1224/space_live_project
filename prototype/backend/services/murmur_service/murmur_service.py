@@ -129,15 +129,27 @@ class MurmurService:
         # 獲取對應的 murmur 提示模板並填充變量
         template = PROMPT_TEMPLATES.get(prompt_template, PROMPT_TEMPLATES["murmur"])
         
+        # --- 新增：準備 optional seeds ---
+        # 您可以在此處加入更複雜的邏輯來生成這些 seeds，
+        # 例如從預設列表隨機選取，或根據對話歷史分析等。
+        # 目前，我們先使用空字串作為預設值。
+        optional_emotional_seed_value = "" 
+        optional_situational_seed_value = ""
+        # --- 結束新增 ---
+
         # 格式化提示模板
         if prompt_template == "murmur_continuous":
             murmur_prompt = template.format(
+                optional_emotional_seed=optional_emotional_seed_value,
+                optional_situational_seed=optional_situational_seed_value,
                 context_prompt=context_prompt,
                 current_topic=self.current_thinking_topic,
                 thinking_thread=thinking_thread
             )
         else:
             murmur_prompt = template.format(
+                optional_emotional_seed=optional_emotional_seed_value,
+                optional_situational_seed=optional_situational_seed_value,
                 context_prompt=context_prompt
             )
         

@@ -376,15 +376,24 @@ async def websocket_endpoint(websocket: WebSocket):
         # 獲取對應的 murmur 提示模板並填充變量
         template = PROMPT_TEMPLATES.get(prompt_template, PROMPT_TEMPLATES["murmur"])
         
+        # --- 新增：準備 optional seeds (與 MurmurService 中的修改類似) ---
+        optional_emotional_seed_value = "" 
+        optional_situational_seed_value = ""
+        # --- 結束新增 ---
+
         # 格式化提示模板
         if prompt_template == "murmur_continuous":
             murmur_prompt = template.format(
+                optional_emotional_seed=optional_emotional_seed_value,
+                optional_situational_seed=optional_situational_seed_value,
                 context_prompt=context_prompt,
                 current_topic=current_thinking_topic,
                 thinking_thread=thinking_thread
             )
         else:
             murmur_prompt = template.format(
+                optional_emotional_seed=optional_emotional_seed_value,
+                optional_situational_seed=optional_situational_seed_value,
                 context_prompt=context_prompt
             )
         # --- 結束修改 ---
