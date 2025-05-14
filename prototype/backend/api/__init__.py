@@ -40,6 +40,10 @@ def init_app() -> FastAPI:
     audio_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "audio")
     os.makedirs(audio_dir, exist_ok=True)
     
+    # 創建歌曲目錄（如果不存在）
+    songs_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "songs")
+    os.makedirs(songs_dir, exist_ok=True)
+    
     # 確保音頻目錄有正確的權限
     try:
         # 嘗試添加讀取權限
@@ -50,6 +54,9 @@ def init_app() -> FastAPI:
     
     # 掛載靜態文件，設置HTML=True以支持瀏覽器訪問
     app.mount("/audio", StaticFiles(directory=audio_dir, html=True, check_dir=True), name="audio")
+    
+    # 掛載歌曲靜態文件
+    app.mount("/songs-assets", StaticFiles(directory=songs_dir, html=True, check_dir=True), name="songs")
     
     # 添加簡單的音頻文件訪問路由，作為備選方案
     @app.get("/audio-file/{filename}")
@@ -73,5 +80,35 @@ def init_app() -> FastAPI:
         else:
             logger.error(f"音頻文件不存在: {filepath}")
             return {"error": "音頻文件不存在"}
+    
+    # 添加歌曲文件訪問路由
+    @app.get("/songs-file/{filename}")
+    async def get_song_file(filename: str):
+        filepath = os.path.join(songs_dir, filename)
+        if os.path.exists(filepath):
+            logger.info(f"提供歌曲文件: {filepath}")
+            cors_headers = {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type, Authorization",
+                "Access-Control-Max-Age": "86400",
+                "Cache-Control": "no-cache",
+            }
+            # 根據副檔名猜測 media_type，可以更完善
+            media_type = "audio/mpeg" # 預設為 mp3
+            if filename.lower().endswith(".wav"):
+                media_type = "audio/wav"
+            elif filename.lower().endswith(".ogg"):
+                media_type = "audio/ogg"
+            # 可以根據需要添加更多類型
+
+            return FileResponse(
+                filepath, 
+                media_type=media_type,
+                headers=cors_headers
+            )
+        else:
+            logger.error(f"歌曲文件不存在: {filepath}")
+            return {"error": "歌曲文件不存在"}
     
     return app 
