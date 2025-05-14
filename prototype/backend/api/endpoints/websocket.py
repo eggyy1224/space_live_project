@@ -172,7 +172,7 @@ async def websocket_endpoint(websocket: WebSocket):
     
     # --- 修改：使用更精確的語音狀態管理 ---
     speaking_state = SpeakingState.IDLE  # 當前語音狀態
-    current_audio_task = None  # 當前播放的音頻任務
+    current_audio_task: Optional[asyncio.Task] = None  # <-- 確保類型提示和初始值
     # --- 結束修改 ---
     
     user_responded = False
@@ -191,58 +191,170 @@ async def websocket_endpoint(websocket: WebSocket):
         if len(conversation_history) > MAX_HISTORY_LENGTH * 2:
             conversation_history = conversation_history[-(MAX_HISTORY_LENGTH * 2):]
 
-    async def reset_speaking_after_duration(duration_seconds: float, reset_to_state: str = SpeakingState.IDLE):
+    async def reset_speaking_after_duration(duration_seconds: float, reset_to_state: str = SpeakingState.IDLE, task_id: str = "default_task_id"): # <-- 新增 task_id 參數
         """在指定的秒數後重置語音播放狀態。增加過渡保護階段。"""
-        nonlocal speaking_state, last_activity_timestamp, last_murmur_timestamp, last_speaking_reset_timestamp
+        nonlocal speaking_state, last_activity_timestamp, last_murmur_timestamp, last_speaking_reset_timestamp, current_audio_task # <-- 確保 nonlocal current_audio_task
         
-        # 記錄相關資訊以便調試
         previous_speaking_state = speaking_state
-        logger.info(f"Starting reset_speaking_after_duration timer for {duration_seconds:.2f} seconds. Current speaking_state: {previous_speaking_state}")
+        logger.info(f"Task [{task_id}]: Starting reset timer for {duration_seconds:.2f}s. Current state: {previous_speaking_state}, Target reset state: {reset_to_state}")
         
-        # 等待指定時間（語音估計播放時間）
-        await asyncio.sleep(duration_seconds)
-        
-        # 先進入過渡保護狀態 FINISHING，不允許開始新的語音播放
-        speaking_state = SpeakingState.FINISHING
-        logger.info(f"Changed speaking_state from {previous_speaking_state} to {speaking_state} (finishing phase)")
-        
-        # 額外的保護緩衝時間，確保語音確實播放完畢
-        await asyncio.sleep(VOICE_FINISHING_BUFFER)
-        
-        # 最終轉入閒置狀態
-        speaking_state = reset_to_state
-        
-        # 更新所有相關時間戳，確保後續操作基於正確的時間
-        current_time = datetime.utcnow()
-        last_activity_timestamp = current_time
-        last_speaking_reset_timestamp = current_time
-        
-        # 無論是什麼類型的語音(murmur或正常回覆)都更新last_murmur_timestamp
-        # 這樣可以避免murmur結束後立即觸發下一個murmur
-        last_murmur_timestamp = current_time
-        
-        logger.info(f"Reset speaking_state from {SpeakingState.FINISHING} to {reset_to_state} after total {duration_seconds + VOICE_FINISHING_BUFFER:.2f} seconds (including buffer) and updated all timestamps to current time")
-        
-        # 重置後處理下一條消息
-        if not message_queue.is_empty():
-            asyncio.create_task(process_message_queue())
+        try:
+            await asyncio.sleep(duration_seconds)
+            
+            # 進入 FINISHING 狀態前，檢查任務是否已被取消（雖然 cancel 通常會拋異常）
+            # 或者 speaking_state 是否已被外部改變 (例如被更高優先級任務打斷)
+            if speaking_state != previous_speaking_state and speaking_state != SpeakingState.FINISHING : # 如果狀態已被其他流程改變，則此任務不再負責重置
+                logger.warning(f"Task [{task_id}]: Reset aborted. Speaking state changed externally from {previous_speaking_state} to {speaking_state} before finishing.")
+                return
+
+            # 只有當任務仍然是當前活動的音頻任務時，才繼續執行狀態變更
+            # 這需要 current_audio_task 被正確賦值為 asyncio.current_task() 或類似的引用
+            # 暫時的簡化：直接比較 task_id (如果 current_audio_task 存的是 task_id) 或 task 對象
+            # current_task_obj = asyncio.current_task() # 獲取當前執行的任務對象
+            # if current_audio_task is not None and current_audio_task is not current_task_obj:
+            #     logger.warning(f"Task [{task_id}]: Reset aborted. This task is no longer the current_audio_task.")
+            #     return
+
+            speaking_state = SpeakingState.FINISHING
+            logger.info(f"Task [{task_id}]: Changed speaking_state from {previous_speaking_state} to {speaking_state} (finishing phase)")
+            
+            await asyncio.sleep(VOICE_FINISHING_BUFFER)
+            
+            # 再次檢查狀態，確保是在此任務的 FINISHING 階段
+            if speaking_state == SpeakingState.FINISHING:
+                speaking_state = reset_to_state
+                current_time = datetime.utcnow()
+                last_activity_timestamp = current_time
+                last_speaking_reset_timestamp = current_time
+                last_murmur_timestamp = current_time # 更新 murmur 時間戳避免立即觸發
+                logger.info(f"Task [{task_id}]: Successfully reset speaking_state to {reset_to_state}. Updated all relevant timestamps.")
+            else:
+                logger.warning(f"Task [{task_id}]: Reset to {reset_to_state} aborted. Speaking_state was {speaking_state}, not FINISHING as expected (possibly interrupted or changed by another process).")
+
+        except asyncio.CancelledError:
+            logger.info(f"Task [{task_id}]: reset_speaking_after_duration was cancelled. Original speaking state was {previous_speaking_state}.")
+            # 如果任務被取消，不需要做額外操作，因為打斷它的邏輯會處理狀態
+            raise 
+        finally:
+            # 如果這個任務是 current_audio_task，則在結束時將其清除
+            # 這需要更精確的 current_audio_task 管理，例如賦值 task object
+            # if current_audio_task and asyncio.current_task() is current_audio_task:
+            #    current_audio_task = None
+            #    logger.info(f"Task [{task_id}]: Cleared as current_audio_task.")
+            
+            # 無論如何，嘗試處理下一個消息
+            if not message_queue.is_empty() and not message_queue.is_processing : # 確保不在處理中才創建新 task
+                logger.info(f"Task [{task_id}] finished or cancelled, attempting to process next message from queue.")
+                asyncio.create_task(process_message_queue())
 
     async def process_message_queue():
         """處理消息隊列中的下一條消息"""
-        # 只有在完全閒置狀態時才處理新消息，更嚴格的條件
-        if speaking_state != SpeakingState.IDLE:
-            logger.info(f"Cannot process next message, speaking_state is {speaking_state}")
+        nonlocal speaking_state, current_audio_task # <-- 新增 nonlocal current_audio_task
+
+        if not message_queue.queue: # 直接檢查隊列實際內容
+            # logger.debug("Message queue is empty, nothing to process.")
             return
+
+        # 查看隊列頂部消息
+        next_message_in_queue = message_queue.queue[0] # 查看但不取出
+        next_message_priority = next_message_in_queue["priority"]
+        next_message_type = next_message_in_queue["message"].get("type")
+        
+        can_process_now = False
+        interrupt_current_murmur = False
+
+        if speaking_state == SpeakingState.IDLE:
+            can_process_now = True
+        elif speaking_state == SpeakingState.PLAYING_MURMUR and next_message_priority > MESSAGE_PRIORITY["murmur"]:
+            logger.info(f"High priority message ({next_message_type}, P:{next_message_priority}) waiting. Current state: PLAYING_MURMUR (P:{MESSAGE_PRIORITY['murmur']}). Attempting to interrupt.")
+            interrupt_current_murmur = True
+            can_process_now = True # 允許處理，但需要先打斷
+        elif speaking_state == SpeakingState.FINISHING:
+            logger.info(f"Currently in FINISHING state. Will process queue once IDLE. Next message: {next_message_type}")
+            # 不立即處理，等待 reset_speaking_after_duration 完成後在其 finally 中觸發 process_message_queue
+            return 
+        else: # PLAYING_USER_RESPONSE or PLAYING_SYSTEM
+            logger.info(f"Cannot process queue now. Speaking_state is {speaking_state}. Next message: {next_message_type}")
+            return
+
+        if not can_process_now:
+            return
+
+        if message_queue.is_processing: # 使用 message_queue 自己的 is_processing 狀態
+            logger.debug("Message queue is already being processed by another task.")
+            return
+
+        async with message_queue.processing_lock: # 使用 message_queue 自己的鎖
+            if not message_queue.queue:  # 再次檢查，避免在等待鎖期間隊列變空
+                logger.debug("Message queue became empty while waiting for lock.")
+                return
             
-        async def message_processor(message):
-            # 根據消息類型分發處理
-            message_type = message.get("type")
-            if message_type == "user_message":
-                await handle_user_message(message.get("content"))
-            elif message_type == "murmur":
-                await handle_murmur()
+            # 在鎖內再次檢查打斷條件，因為 speaking_state 可能在等待鎖時被 reset_speaking_after_duration 的 finally 塊改變
+            current_top_message = message_queue.queue[0]
+            current_top_priority = current_top_message["priority"]
+            
+            # 重新評估打斷邏輯
+            should_interrupt_now = False
+            if speaking_state == SpeakingState.PLAYING_MURMUR and current_top_priority > MESSAGE_PRIORITY["murmur"]:
+                should_interrupt_now = True
+            elif speaking_state != SpeakingState.IDLE and not should_interrupt_now: # 如果不是IDLE且不能打斷
+                 logger.info(f"Re-check inside lock: Cannot process. Speaking_state: {speaking_state}, Top message priority: {current_top_priority}")
+                 return
+            
+            if should_interrupt_now:
+                if current_audio_task and not current_audio_task.done():
+                    task_name = current_audio_task.get_name() if hasattr(current_audio_task, 'get_name') else 'Unnamed Task'
+                    logger.info(f"Interrupting current murmur audio task [{task_name}] for higher priority message [{current_top_message['message'].get('type')}]")
+                    current_audio_task.cancel()
+                    try:
+                        await current_audio_task # 等待任務實際取消完成
+                    except asyncio.CancelledError:
+                        logger.info(f"Murmur audio task [{task_name}] successfully cancelled.")
+                    except Exception as e:
+                        logger.error(f"Error awaiting cancelled task [{task_name}]: {e}")
+                    
+                    current_audio_task = None # 清除被取消的任務引用
+                    # 打斷後，立即將狀態設為IDLE，讓新消息的 handler 可以設定正確的播放狀態
+                    speaking_state = SpeakingState.IDLE 
+                    logger.info(f"Speaking_state set to IDLE after interrupting murmur for message type {current_top_message['message'].get('type')}.")
+                else:
+                    logger.warning("Attempted to interrupt murmur, but no current_audio_task found or task already done.")
+                    # 如果沒有活動的 murmur 任務，但狀態仍是 PLAYING_MURMUR，也強制設為 IDLE
+                    if speaking_state == SpeakingState.PLAYING_MURMUR:
+                        speaking_state = SpeakingState.IDLE
+                        logger.info("Forcing speaking_state to IDLE as no active murmur task was found during interruption.")
+            
+            # 確保在實際處理前，狀態允許 (IDLE 或剛打斷 murmur 後變為 IDLE)
+            if speaking_state != SpeakingState.IDLE:
+                logger.warning(f"Cannot process message. Expected IDLE state before handling, but got {speaking_state}. Top message: {current_top_message['message'].get('type')}")
+                return
+
+            # 正式處理消息
+            message_queue.is_processing = True # 標記 message_queue 開始處理 (主要用於防止並發進入此處理塊)
+            try:
+                message_to_process_info = message_queue.queue.popleft() # 從 message_queue 中取出
+                message_content = message_to_process_info["message"]
+                message_type_to_process = message_content.get("type")
                 
-        await message_queue.process_next(message_processor)
+                logger.info(f"Processing message from queue: Type: {message_type_to_process}, Priority: {message_to_process_info['priority']}")
+
+                if message_type_to_process == "user_message":
+                    await handle_user_message(message_content.get("content"))
+                elif message_type_to_process == "murmur":
+                    # 由於上面已經有打斷邏輯，這裡的 murmur 應該是在 IDLE 狀態下被處理的
+                    await handle_murmur()
+                # Add other message types if any
+                
+            except Exception as e:
+                logger.error(f"Error processing message from queue: {e}", exc_info=True)
+                # 發生錯誤時，也應該重置 is_processing
+            finally:
+                message_queue.is_processing = False # 標記 message_queue 處理完畢
+                # 處理完畢後，如果隊列還有消息，且狀態允許，可以嘗試再處理一條
+                # 但要小心遞歸或過度佔用，reset_speaking_after_duration 的 finally 已經會調用
+                # if not message_queue.is_empty() and speaking_state == SpeakingState.IDLE:
+                #    logger.info("Processing finished, attempting to process next from queue immediately.")
+                #    asyncio.create_task(process_message_queue())
 
     async def handle_user_message(content: str):
         """處理用戶消息"""
@@ -320,8 +432,10 @@ async def websocket_endpoint(websocket: WebSocket):
             
             # 設置音頻播放完成後的任務
             buffer_time = min(MURMUR_BUFFER_MAX, 0.3 + audio_duration * 0.03)
-            reset_task = asyncio.create_task(
-                reset_speaking_after_duration(audio_duration + buffer_time)
+            task_id = f"user_resp_{uuid.uuid4().hex[:6]}" # 為任務生成唯一ID
+            current_audio_task = asyncio.create_task( # <-- 賦值給 current_audio_task
+                reset_speaking_after_duration(audio_duration + buffer_time, task_id=task_id),
+                name=task_id # asyncio.Task 可以命名
             )
             
             # 添加機器人回應到歷史
@@ -391,8 +505,10 @@ async def websocket_endpoint(websocket: WebSocket):
 
                     # 設置音頻播放完成後的任務
                     buffer_time = min(MURMUR_BUFFER_MAX, 0.3 + song_duration * 0.03)
-                    asyncio.create_task(
-                        reset_speaking_after_duration(song_duration + buffer_time)
+                    task_id = f"song_{uuid.uuid4().hex[:6]}" # 為歌曲任務生成唯一ID
+                    current_audio_task = asyncio.create_task( # <-- 賦值給 current_audio_task
+                        reset_speaking_after_duration(song_duration + buffer_time, task_id=task_id),
+                        name=task_id
                     )
                     return # 成功播放歌曲，結束 handle_murmur
 
@@ -495,7 +611,11 @@ async def websocket_endpoint(websocket: WebSocket):
             
             last_murmur_timestamp = datetime.utcnow()
             buffer_time = min(MURMUR_BUFFER_MAX, 0.3 + audio_duration * 0.03)
-            asyncio.create_task(reset_speaking_after_duration(audio_duration + buffer_time))
+            task_id = f"murmur_{uuid.uuid4().hex[:6]}" # 為 murmur 任務生成唯一ID
+            current_audio_task = asyncio.create_task( # <-- 賦值給 current_audio_task
+                reset_speaking_after_duration(audio_duration + buffer_time, task_id=task_id),
+                name=task_id
+            )
 
         except Exception as e:
             logger.error(f"Error generating standard murmur: {e}", exc_info=True)
@@ -551,13 +671,15 @@ async def websocket_endpoint(websocket: WebSocket):
                 
                 # 只在條件滿足時記錄日誌，減少I/O開銷
                 if murmur_condition_met:
-                    logger.info("Murmur conditions met, triggering murmur")
+                    logger.info("Murmur conditions met, adding murmur to queue.")
                     
-                    # 使用消息隊列添加murmur請求
                     message_queue.add_message({"type": "murmur"}, priority=MESSAGE_PRIORITY["murmur"])
                     
-                    # 嘗試立即處理
-                    await process_message_queue()
+                    # 只有在系統完全閒置且隊列不在處理中時，才由 idle_checker 主動觸發處理
+                    # 主要依賴 reset_speaking_after_duration 的 finally 或新用戶消息來驅動隊列
+                    if speaking_state == SpeakingState.IDLE and not message_queue.is_processing:
+                        logger.info("Idle checker triggering queue processing as system is IDLE.")
+                        asyncio.create_task(process_message_queue()) # 使用 create_task 避免阻塞 idle_checker
 
             except WebSocketDisconnect:
                 logger.info(f"Idle checker detected disconnection. Stopping checker.")
@@ -591,9 +713,10 @@ async def websocket_endpoint(websocket: WebSocket):
                         {"type": "user_message", "content": content},
                         priority=MESSAGE_PRIORITY["user"]
                     )
+                    logger.info(f"User message added to queue. Current queue size: {len(message_queue.queue)}")
                     
-                    # 嘗試立即處理
-                    await process_message_queue()
+                    # 用戶消息到達時，總是嘗試處理隊列 (process_message_queue 內部會判斷是否能打斷或立即執行)
+                    asyncio.create_task(process_message_queue()) # 使用 create_task
                 else:
                     logger.warning(f"Received empty content in message type: {message_type}")
             else:
