@@ -385,6 +385,7 @@ class AudioService {
     // 更新 Zustand store (使用新的 Action)
     // useStore.getState().updateMorphTarget('jawOpen', jawOpenValue);
     useStore.getState().setAudioLipsyncTarget('jawOpen', jawOpenValue); // <-- 使用新 Action
+    useStore.getState().setAudioAverageVolume(rms); // <-- 新增：設定平均音量
     
     // 移除之前的調試日誌
     // logger.debug(`[AnalyseFrame] RMS: ${rms.toFixed(3)}, jawOpen: ${jawOpenValue.toFixed(3)}`, LogCategory.AUDIO);

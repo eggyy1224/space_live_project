@@ -13,6 +13,7 @@ export interface HeadSlice {
   modelPosition: [number, number, number];
   morphTargets: Record<string, number>; // 用戶手動/預設的目標
   audioLipsyncTargets: Record<string, number>; // <-- 新增：語音驅動的口型目標
+  audioAverageVolume: number; // <-- 新增：音訊平均音量
   morphTargetDictionary: Record<string, number> | null;
   // availableAnimations: string[]; // 移除動畫狀態
   // currentAnimation: string | null;
@@ -40,6 +41,7 @@ export interface HeadSlice {
   
   // 操作：語音口型 Morph Targets
   setAudioLipsyncTarget: (key: string, value: number) => void; // <-- 新增 Action
+  setAudioAverageVolume: (volume: number) => void; // <-- 新增 Action
   
   // 操作：動畫相關 (移除)
   // setAvailableAnimations: (animations: string[]) => void;
@@ -58,6 +60,7 @@ export const createHeadSlice: StateCreator<HeadSlice> = (set) => ({
   modelPosition: [0, -1, 0], // 這個位置可能需要針對頭部調整
   morphTargets: {},
   audioLipsyncTargets: {}, // <-- 初始化新狀態
+  audioAverageVolume: 0, // <-- 初始化新狀態
   morphTargetDictionary: null,
   // availableAnimations: [], // 移除
   // currentAnimation: null, // 移除
@@ -116,6 +119,10 @@ export const createHeadSlice: StateCreator<HeadSlice> = (set) => ({
       // 只更新 audioLipsyncTargets 狀態
       audioLipsyncTargets: { ...state.audioLipsyncTargets, [key]: value }
   })),
+  // --- 新增結束 ---
+  
+  // --- 新增音訊平均音量 Action 實現 ---
+  setAudioAverageVolume: (volume) => set({ audioAverageVolume: volume }),
   // --- 新增結束 ---
   
   // 移除動畫相關 Actions

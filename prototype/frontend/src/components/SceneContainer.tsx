@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
 import { HeadModel } from './HeadModel';
 import BodyModel from './BodyModel';
+import { AudioReactiveBackground } from './AudioReactiveBackground';
 
 interface SceneContainerProps {
   headModelUrl: string;
@@ -25,6 +26,7 @@ const SceneContainer: React.FC<SceneContainerProps> = ({
       style={{ background: showSpaceBackground ? '#000010' : '#111a21' }}
     >
       {showSpaceBackground && <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />}
+      <AudioReactiveBackground />
       <ambientLight intensity={0.5} />
       <directionalLight 
         position={[10, 10, 5]} 
