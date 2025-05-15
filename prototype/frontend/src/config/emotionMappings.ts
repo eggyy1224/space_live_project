@@ -7,7 +7,7 @@
 
 // Global multiplier applied to all emotion weights for exaggerated effect.
 // Set to 1.0 to disable exaggeration, >1.0 for stronger expressions, <1.0 for subtler ones.
-export const EXAGGERATION_FACTOR = 1;
+export const EXAGGERATION_FACTOR = 0.9;
 
 export const emotionBaseWeights: Record<string, Record<string, number>> = {
   // --- Foundational States ---
@@ -44,189 +44,204 @@ export const emotionBaseWeights: Record<string, Record<string, number>> = {
     jawForward: 0,
     // Note: jawOpen and mouthClose are primarily handled by the speaking state logic
   },
-  listening: { // Slightly more engaged than neutral
-    browInnerUp: 0.25,      // 增強到0.25（原值0.1）
-    eyeWideLeft: 0.15,      // 增強到0.15（原值0.05）
-    eyeWideRight: 0.15,     // 增強到0.15（原值0.05）
+  listening: { // Slightly more engaged than neutral - Fun version
+    browInnerUp: 0.4,
+    eyeWideLeft: 0.3,
+    eyeWideRight: 0.3,
+    mouthPucker: 0.2, // Subtle "ooh?" shape
+    // Original: browInnerUp: 0.25, eyeWideLeft: 0.15, eyeWideRight: 0.15
   },
-  thinking: {
-    browDownLeft: 0.7,      // 增強到0.7（原值0.35）
-    browDownRight: 0.7,     // 增強到0.7（原值0.35）
-    mouthPressLeft: 0.5,    // 增強到0.5（原值0.25）
-    mouthPressRight: 0.5,   // 增強到0.5（原值0.25）
-    eyeLookDownLeft: 0.8,   // 增強到0.8（原值0.4）
-    eyeLookDownRight: 0.8,  // 增強到0.8（原值0.4）
+  thinking: { // Magical version - Retained from previous changes
+    browInnerUp: 1.8,
+    browOuterUpLeft: 1.0,
+    mouthPressLeft: 0.2,
+    mouthPressRight: 0.2,
+    mouthPucker: 0.7,
+    eyeLookUpLeft: 1.2,
+    eyeLookUpRight: 1.2,
   },
 
   // --- Positive Emotions (Expanded) ---
-  happy: { // Standard strong happiness
-    mouthSmileLeft: 2.5,
-    mouthSmileRight: 2.5,
-    cheekSquintLeft: 1.2,
-    cheekSquintRight: 1.2,
-    eyeSquintLeft: 1.2,
-    eyeSquintRight: 1.2,
+  happy: { // Magical version - Retained from previous changes
+    mouthSmileLeft: 4.0,
+    mouthSmileRight: 4.0,
+    cheekSquintLeft: 2.0,
+    cheekSquintRight: 2.0,
+    eyeSquintLeft: 1.8,
+    eyeSquintRight: 1.8,
     mouthDimpleLeft: 0.9,
     mouthDimpleRight: 0.9,
-    browInnerUp: 0.2,
+    browInnerUp: 0.8,
     jawOpen: 0.6,
-  },
-  joyful: { // More exuberant happiness
-    mouthSmileLeft: 3.0,
-    mouthSmileRight: 3.0,
-    cheekSquintLeft: 1.3,
-    cheekSquintRight: 1.3,
-    eyeSquintLeft: 0.8,
-    eyeSquintRight: 0.8,
-    mouthDimpleLeft: 1.1,
-    mouthDimpleRight: 1.1,
-    browInnerUp: 0.3,
-    browOuterUpLeft: 0.2,
-    browOuterUpRight: 0.2,
     eyeWideLeft: 0.5,
     eyeWideRight: 0.5,
-    jawOpen: 0.8,
   },
-  content: { // Calm happiness, satisfaction
-    mouthSmileLeft: 1.5,
-    mouthSmileRight: 1.5,
-    cheekSquintLeft: 0.8,
-    cheekSquintRight: 0.8,
-    eyeSquintLeft: 0.6,
-    eyeSquintRight: 0.6,
-    // Generally relaxed features
-  },
-  amused: { // Light-hearted enjoyment, often slightly asymmetrical
-    mouthSmileLeft: 1.8,
-    mouthSmileRight: 1.6,
-    cheekSquintLeft: 1.2,
-    cheekSquintRight: 1.0,
-    eyeSquintLeft: 1.1,
-    eyeSquintRight: 1.0,
+  joyful: { // More exuberant happiness - Fun version
+    mouthSmileLeft: 3.8,
+    mouthSmileRight: 3.8,
+    cheekSquintLeft: 2.0,
+    cheekSquintRight: 2.0,
+    eyeWideLeft: 1.8,
+    eyeWideRight: 1.8,
     browOuterUpLeft: 1.0,
+    browOuterUpRight: 1.0,
+    jawOpen: 1.5,
+    // Original: mouthSmileLeft: 3.0, mouthSmileRight: 3.0, cheekSquintLeft: 1.3, cheekSquintRight: 1.3, eyeSquintLeft: 0.8, eyeSquintRight: 0.8, mouthDimpleLeft: 1.1, mouthDimpleRight: 1.1, browInnerUp: 0.3, browOuterUpLeft: 0.2, browOuterUpRight: 0.2, eyeWideLeft: 0.5, eyeWideRight: 0.5, jawOpen: 0.8
   },
-  excited: {
-    eyeWideLeft: 2.0,
-    eyeWideRight: 2.0,
-    mouthSmileLeft: 2.0,
-    mouthSmileRight: 2.0,
-    browOuterUpLeft: 2.0,
-    browOuterUpRight: 2.0,
-    jawOpen: 1.2,
+  content: { // Calm happiness, satisfaction - Fun version
+    mouthSmileLeft: 1.2,
+    mouthSmileRight: 1.2,
+    cheekSquintLeft: 1.0,
+    cheekSquintRight: 1.0,
+    eyeSquintLeft: 0.7,
+    eyeSquintRight: 0.7,
+    eyeBlinkLeft: 0.2,
+    eyeBlinkRight: 0.2,
+    browInnerUp: 0.2,
   },
-  interested: { // Curiosity, engagement
+  amused: { // Light-hearted enjoyment, often slightly asymmetrical - Fun version
+    mouthSmileLeft: 2.2,
+    mouthSmileRight: 1.2, // Asymmetrical smile
+    cheekSquintLeft: 1.6,
+    eyeSquintLeft: 1.3,
+    eyeSquintRight: 0.6, // Knowing squint
+    browOuterUpLeft: 1.3,
+    browOuterUpRight: 0.4,
+    // Original: mouthSmileLeft: 1.8, mouthSmileRight: 1.6, cheekSquintLeft: 1.2, cheekSquintRight: 1.0, eyeSquintLeft: 1.1, eyeSquintRight: 1.0, browOuterUpLeft: 1.0
+  },
+  excited: { // Fun version - Very animated
+    eyeWideLeft: 3.0,
+    eyeWideRight: 3.0,
+    mouthSmileLeft: 2.8,
+    mouthSmileRight: 2.8,
+    browOuterUpLeft: 2.8,
+    browOuterUpRight: 2.8,
+    jawOpen: 2.0,
+    // Original: eyeWideLeft: 2.0, eyeWideRight: 2.0, mouthSmileLeft: 2.0, mouthSmileRight: 2.0, browOuterUpLeft: 2.0, browOuterUpRight: 2.0, jawOpen: 1.2
+  },
+  interested: { // Fun version - Curious
+    browInnerUp: 2.0,
+    browOuterUpLeft: 1.2,
+    browOuterUpRight: 1.2,
+    eyeWideLeft: 1.6,
+    eyeWideRight: 1.6,
+    mouthPucker: 0.5,
+    jawOpen: 0.7,
+    headTilt: 0.2,
+  },
+  affectionate: { // Fun version - Warm & fuzzy
+    mouthSmileLeft: 1.4,
+    mouthSmileRight: 1.4,
+    cheekSquintLeft: 1.2,
+    cheekSquintRight: 1.2,
+    eyeSquintLeft: 0.8,
+    eyeSquintRight: 0.8,
+    browInnerUp: 0.6,
+    eyeWideLeft: 0.3,
+    eyeWideRight: 0.3,
+  },
+  proud: { // Fun version - Chin up
+    mouthSmileLeft: 0.8,
+    mouthSmileRight: 0.8,
+    mouthPressLeft: 1.8,
+    mouthPressRight: 1.8,
+    cheekSquintLeft: 0.5,
+    cheekSquintRight: 0.5,
+    jawForward: 1.2,
+    browDownLeft: 1.0,
+    browDownRight: 1.0,
+    browOuterUpLeft: 0.5,
+    browOuterUpRight: 0.5,
+  },
+  relieved: { // Fun version - Big sigh
+    browInnerUp: -0.4,
+    browDownLeft: -0.2,
+    browDownRight: -0.2,
+    mouthPucker: 1.8,
+    jawOpen: 0.6,
+    eyeBlinkLeft: 2.0,
+    eyeBlinkRight: 2.0,
+    mouthSmileLeft: 0.4,
+    mouthSmileRight: 0.4,
+  },
+  grateful: { // Fun version - Thankful
+    mouthSmileLeft: 1.0,
+    mouthSmileRight: 1.0,
+    browInnerUp: 0.8,
+    eyeSquintLeft: 0.4,
+    eyeSquintRight: 0.4,
+    headTilt: 0.15,
+  },
+  hopeful: { // Fun version - Looking forward
     browInnerUp: 1.5,
-    browOuterUpLeft: 0.6,
-    browOuterUpRight: 0.6,
-    eyeWideLeft: 1.0,
-    eyeWideRight: 1.0,
-    mouthPucker: 0.2,
-    jawOpen: 0.3,
+    browOuterUpLeft: 1.0,
+    browOuterUpRight: 1.0,
+    mouthSmileLeft: 0.8,
+    mouthSmileRight: 0.8,
+    eyeWideLeft: 1.2,
+    eyeWideRight: 1.2,
   },
-  affectionate: { // Warmth, fondness
-    mouthSmileLeft: 1.0,    // 增強到1.0（原值0.5）
-    mouthSmileRight: 1.0,   // 增強到1.0（原值0.5）
-    cheekSquintLeft: 0.5,   // 增強到0.5（原值0.25）
-    cheekSquintRight: 0.5,  // 增強到0.5（原值0.25）
-    eyeSquintLeft: 0.4,     // 增強到0.4（原值0.2）
-    eyeSquintRight: 0.4,    // 增強到0.4（原值0.2）
-    browInnerUp: 0.3,       // 增強到0.3（原值0.15）
-  },
-  proud: {
+  serene: { // Fun version - Peaceful glow
     mouthSmileLeft: 0.5,
     mouthSmileRight: 0.5,
-    mouthPressLeft: 1.4,
-    mouthPressRight: 1.4,
-    cheekSquintLeft: 0.3,
-    cheekSquintRight: 0.3,
-    jawForward: 0.5,
+    eyeBlinkLeft: 0.3,
+    eyeBlinkRight: 0.3,
+    browInnerUp: -0.1,
+    headTilt: 0.1,
+  },
+  playful: { // Fun version - Cheeky
+    mouthSmileLeft: 1.8,    // Cheeky grin
+    mouthSmileRight: 1.0,
+    browOuterUpLeft: 1.0,
+    browOuterUpRight: 0.4,  // One eyebrow raised
+    eyeBlinkLeft: 0.8,      // Wink-like
+    eyeSquintRight: 0.5,
+    tongueOut: 0.5,         // Slightly out
+    // Original: mouthSmileLeft: 1.3, mouthSmileRight: 1.1, cheekSquintLeft: 0.9, cheekSquintRight: 0.75, eyeSquintLeft: 1.2, eyeSquintRight: 1.1, browOuterUpLeft: 0.6, noseSneerRight: 0.5
+  },
+  triumphant: { // Fun version - Victorious
+    mouthSmileLeft: 2.0,
+    mouthSmileRight: 2.0,
+    cheekSquintLeft: 1.4,
+    cheekSquintRight: 1.4,
+    jawForward: 0.6,
     browDownLeft: 0.4,
     browDownRight: 0.4,
-  },
-  relieved: {
-    browInnerUp: -0.6,
-    browDownLeft: -0.4,
-    browDownRight: -0.4,
-    mouthPucker: 1.2,
-    jawOpen: 0.4,
-    eyeBlinkLeft: 1.6,
-    eyeBlinkRight: 1.6,
-  },
-  grateful: {
-    mouthSmileLeft: 0.6,    // 增強到0.6（原值0.3）
-    mouthSmileRight: 0.6,   // 增強到0.6（原值0.3）
-    browInnerUp: 0.5,       // 增強到0.5（原值0.25）
-    eyeSquintLeft: 0.2,     // 增強到0.2（原值0.1）
-    eyeSquintRight: 0.2,    // 增強到0.2（原值0.1）
-    // Often includes head nod/tilt (animation)
-  },
-  hopeful: {
-    browInnerUp: 1.2,
-    browOuterUpLeft: 0.7,
-    browOuterUpRight: 0.7,
-    mouthSmileLeft: 0.3,
-    mouthSmileRight: 0.3,
-    eyeWideLeft: 0.6,
-    eyeWideRight: 0.6,
-    // Looking forward
-  },
-  serene: { // Utter calm, peacefulness
-    // Very close to neutral, perhaps slightly softer features
-    mouthSmileLeft: 0.3,
-    mouthSmileRight: 0.3,
-    eyeBlinkLeft: 0.1,
-    eyeBlinkRight: 0.1,
-    // Relaxed blink rate (control via animation timing)
-  },
-  playful: {
-    mouthSmileLeft: 1.3,    // 增強到1.3（原值0.7）
-    mouthSmileRight: 1.1,   // 增強到1.1（原值0.6）
-    cheekSquintLeft: 0.9,   // 增強到0.9（原值0.5）
-    cheekSquintRight: 0.75, // 增強到0.75（原值0.4）
-    eyeSquintLeft: 1.2,
-    eyeSquintRight: 1.1,
-    browOuterUpLeft: 0.6,   // 增強到0.6（原值0.3）
-    noseSneerRight: 0.5,
-  },
-  triumphant: {
-    mouthSmileLeft: 1.4,    // 增強到1.4（原值0.8）
-    mouthSmileRight: 1.4,   // 增強到1.4（原值0.8）
-    cheekSquintLeft: 1.0,   // 增強到1.0（原值0.6）
-    cheekSquintRight: 1.0,  // 增強到1.0（原值0.6）
-    jawForward: 0.3,        // 增強到0.3（原值0.15）
-    browDownLeft: 0.2,      // 增強到0.2（原值0.1）
-    browDownRight: 0.2,     // 增強到0.2（原值0.1）
-    // Slight lowering, intensity
+    eyeWideLeft: 0.8,
+    eyeWideRight: 0.8,
   },
 
   // --- Negative Emotions (Expanded) ---
-  sad: { // Standard strong sadness
+  sad: { // Standard strong sadness - Comically tragic fun version
+    browInnerUp: 3.0,
+    mouthFrownLeft: 2.8,
+    mouthFrownRight: 2.8,
+    mouthLowerDownLeft: 1.5,
+    mouthLowerDownRight: 1.5,
+    eyeSquintLeft: 1.0,
+    eyeSquintRight: 1.0,
+    jawOpen: 0.7, // Quivering lip effect
+    // Original: browInnerUp: 2.0, mouthFrownLeft: 2.0, mouthFrownRight: 2.0, mouthStretchLeft: 0.3, mouthStretchRight: 0.3, eyeSquintLeft: 0.5, eyeSquintRight: 0.5, mouthLowerDownLeft: 0.5, mouthLowerDownRight: 0.5
+  },
+  gloomy: { // Fun version - Melancholic
     browInnerUp: 2.0,
-    mouthFrownLeft: 2.0,
-    mouthFrownRight: 2.0,
-    mouthStretchLeft: 0.3,
-    mouthStretchRight: 0.3,
-    eyeSquintLeft: 0.5,
-    eyeSquintRight: 0.5,
-    mouthLowerDownLeft: 0.5,
-    mouthLowerDownRight: 0.5,
+    mouthFrownLeft: 1.2,
+    mouthFrownRight: 1.2,
+    mouthPressLeft: 0.6,
+    mouthPressRight: 0.6,
+    eyeLookDownLeft: 1.4,
+    eyeLookDownRight: 1.4,
+    jawOpen: 0.3,
   },
-  gloomy: { // Less intense, more withdrawn sadness
-    browInnerUp: 1.5,
-    mouthFrownLeft: 0.9,
-    mouthFrownRight: 0.9,
-    mouthPressLeft: 0.4,
-    mouthPressRight: 0.4,
-    eyeLookDownLeft: 1.2,
-    eyeLookDownRight: 1.2,
-  },
-  disappointed: {
-    browInnerUp: 1.5,
-    browDownLeft: 0.8,
-    browDownRight: 0.8,
-    mouthFrownLeft: 1.0,
-    mouthFrownRight: 1.0,
-    mouthPucker: 1.0,
+  disappointed: { // Fun version - Heavy sigh
+    browInnerUp: 1.8,
+    browDownLeft: 1.2,
+    browDownRight: 1.2,
+    mouthFrownLeft: 1.3,
+    mouthFrownRight: 1.3,
+    mouthPucker: 1.2,
+    eyeSquintLeft: 0.4,
+    eyeSquintRight: 0.4,
   },
   worried: { // Anxiety, concern
     browInnerUp: 1.4,       // 增強到1.4（原值0.8）
@@ -237,16 +252,16 @@ export const emotionBaseWeights: Record<string, Record<string, number>> = {
     eyeWideLeft: 0.4,       // 增強到0.4（原值0.2）
     eyeWideRight: 0.4,      // 增強到0.4（原值0.2）
   },
-  angry: { // Standard strong anger
-    browDownLeft: 2.4,
-    browDownRight: 2.4,
-    noseSneerLeft: 2.0,
-    noseSneerRight: 2.0,
-    mouthPressLeft: 2.2,
-    mouthPressRight: 2.2,
-    jawForward: 1.0,
-    eyeSquintLeft: 1.0,
-    eyeSquintRight: 1.0,
+  angry: { // Magical version - Retained from previous changes
+    browDownLeft: 3.5,
+    browDownRight: 3.5,
+    noseSneerLeft: 3.0,
+    noseSneerRight: 3.0,
+    mouthPressLeft: 3.2,
+    mouthPressRight: 3.2,
+    jawForward: 1.5,
+    eyeWideLeft: 1.0,
+    eyeWideRight: 1.0,
   },
   irritated: { // Annoyance, less intense anger
     browDownLeft: 1.0,      // 增強到1.0（原值0.55）
@@ -258,25 +273,30 @@ export const emotionBaseWeights: Record<string, Record<string, number>> = {
     eyeSquintLeft: 0.7,     // 增強到0.7（原值0.35）
     eyeSquintRight: 0.7,    // 增強到0.7（原值0.35）
   },
-  frustrated: {
-    browDownLeft: 2.0,
-    browDownRight: 2.0,
-    mouthPressLeft: 1.2,
-    mouthPressRight: 1.2,
-    jawForward: 0.8,
-    cheekPuff: 1.2,
-    noseSneerLeft: 0.5,
-    noseSneerRight: 0.5,
+  frustrated: { // Fun version - Steam out the ears
+    browDownLeft: 2.4,
+    browDownRight: 2.4,
+    mouthPressLeft: 1.6,
+    mouthPressRight: 1.6,
+    jawForward: 1.2,
+    cheekPuff: 1.8,
+    noseSneerLeft: 1.0,
+    noseSneerRight: 1.0,
+    eyeSquintLeft: 0.9,
+    eyeSquintRight: 0.9,
   },
-  fearful: { // Standard strong fear
-    eyeWideLeft: 2.5,
-    eyeWideRight: 2.5,
-    browInnerUp: 2.0,
-    browOuterUpLeft: 0.85,
-    browOuterUpRight: 0.85,
-    mouthStretchLeft: 0.7,
-    mouthStretchRight: 0.7,
-    jawOpen: 1.0,
+  fearful: { // Standard strong fear - Exaggerated terror fun version
+    eyeWideLeft: 3.8,
+    eyeWideRight: 3.8,
+    browInnerUp: 2.8,
+    browOuterUpLeft: 2.2,
+    browOuterUpRight: 2.2,
+    mouthStretchLeft: 1.8,
+    mouthStretchRight: 1.8,
+    jawOpen: 2.5,
+    cheekSquintLeft: 1.2, // Eyes so wide cheeks bunch up
+    cheekSquintRight: 1.2,
+    // Original: eyeWideLeft: 2.5, eyeWideRight: 2.5, browInnerUp: 2.0, browOuterUpLeft: 0.85, browOuterUpRight: 0.85, mouthStretchLeft: 0.7, mouthStretchRight: 0.7, jawOpen: 1.0
   },
   nervous: { // Similar to worried, more agitated
     browInnerUp: 1.2,       // 增強到1.2（原值0.65）
@@ -289,171 +309,186 @@ export const emotionBaseWeights: Record<string, Record<string, number>> = {
     eyeWideLeft: 0.25,      // 增強到0.25（原值0.1）
     eyeWideRight: 0.25,     // 增強到0.25（原值0.1）
   },
-  disgusted: { // Standard strong disgust
-    noseSneerLeft: 1.4,
-    noseSneerRight: 1.4,
-    mouthUpperUpLeft: 1.1,
-    mouthUpperUpRight: 1.1,
-    browDownLeft: 1.0,
-    browDownRight: 1.0,
-    eyeSquintLeft: 0.85,
-    eyeSquintRight: 0.85,
-    mouthLowerDownLeft: 0.4,
-    mouthLowerDownRight: 0.4,
+  disgusted: { // Fun version - Eww!
+    noseSneerLeft: 2.0,
+    noseSneerRight: 2.0,
+    mouthUpperUpLeft: 1.6,
+    mouthUpperUpRight: 1.6,
+    browDownLeft: 1.4,
+    browDownRight: 1.4,
+    eyeSquintLeft: 1.0,
+    eyeSquintRight: 1.0,
+    mouthLowerDownLeft: 0.6,
+    mouthLowerDownRight: 0.6,
   },
-  contemptuous: { // Scorn, disdain - often asymmetrical
-    mouthSmileLeft: 0.9,
-    noseSneerLeft: 0.7,
-    browDownRight: 0.7,
-    eyeSquintRight: 0.85,
-    jawLeft: 0.2,
+  contemptuous: { // Fun version - Really?
+    mouthSmileLeft: 1.4,
+    noseSneerLeft: 0.9,
+    browDownRight: 1.2,
+    eyeSquintRight: 1.1,
+    jawLeft: 0.4,
+    mouthRight: 0.2,
   },
-  pain: {
-    eyeSquintLeft: 1.5,     // 增強到1.5（原值0.95）
-    eyeSquintRight: 1.5,    // 增強到1.5（原值0.95）
-    browDownLeft: 1.4,      // 增強到1.4（原值0.85）
-    browDownRight: 1.4,     // 增強到1.4（原值0.85）
-    browInnerUp: 0.9,       // 增強到0.9（原值0.45）
-    mouthStretchLeft: 1.2,  // 增強到1.2（原值0.65）
-    mouthStretchRight: 1.2, // 增強到1.2（原值0.65）
-    jawOpen: 0.5,           // 增強到0.5（原值0.25）
-    mouthFrownLeft: 0.7,    // 增強到0.7（原值0.35）
-    mouthFrownRight: 0.7,   // 增強到0.7（原值0.35）
+  pain: { // Fun version - Ow!
+    eyeSquintLeft: 2.0,
+    eyeSquintRight: 2.0,
+    browDownLeft: 2.0,
+    browDownRight: 2.0,
+    browInnerUp: 1.2,
+    mouthStretchLeft: 1.6,
+    mouthStretchRight: 1.6,
+    jawOpen: 1.0,
+    mouthFrownLeft: 1.0,
+    mouthFrownRight: 1.0,
   },
-  embarrassed: {
-    cheekSquintLeft: 0.8,   // 增強到0.8（原值0.45）
-    cheekSquintRight: 0.8,  // 增強到0.8（原值0.45）
-    mouthPressLeft: 0.7,    // 增強到0.7（原值0.35）
-    mouthPressRight: 0.7,   // 增強到0.7（原值0.35）
-    eyeLookDownLeft: 1.1,   // 增強到1.1（原值0.65）
-    eyeLookDownRight: 1.1,  // 增強到1.1（原值0.65）
-    browInnerUp: 0.5,       // 增強到0.5（原值0.25）
+  embarrassed: { // Fun version - Blushing
+    cheekSquintLeft: 1.2,
+    cheekSquintRight: 1.2,
+    mouthPressLeft: 0.9,
+    mouthPressRight: 0.9,
+    eyeLookDownLeft: 1.4,
+    eyeLookDownRight: 1.4,
+    browInnerUp: 0.6,
+    headTilt: -0.2,
   },
-  jealous: {
-    browDownLeft: 1.1,      // 增強到1.1（原值0.6）
-    browDownRight: 1.1,     // 增強到1.1（原值0.6）
-    eyeSquintLeft: 0.8,     // 增強到0.8（原值0.4）
-    eyeSquintRight: 0.8,    // 增強到0.8（原值0.4）
-    mouthPressLeft: 1.0,    // 增強到1.0（原值0.5）
-    mouthPressRight: 1.0,   // 增強到1.0（原值0.5）
-    noseSneerRight: 0.4,    // 增強到0.4（原值0.2）
-    jawLeft: 0.2,           // 增強到0.2（原值0.1）
+  jealous: { // Fun version - Side-eye
+    browDownLeft: 1.4,
+    browDownRight: 1.4,
+    eyeSquintLeft: 1.0,
+    eyeSquintRight: 1.0,
+    mouthPressLeft: 1.2,
+    mouthPressRight: 1.2,
+    noseSneerRight: 0.6,
+    jawLeft: 0.3,
+    eyeLookUpLeft: 0.3,
+    eyeLookDownRight: 0.3,
   },
-  regretful: {
-    browInnerUp: 1.1,       // 增強到1.1（原值0.6）
-    mouthFrownLeft: 0.8,    // 增強到0.8（原值0.4）
-    mouthFrownRight: 0.8,   // 增強到0.8（原值0.4）
-    mouthLowerDownLeft: 0.4,// 增強到0.4（原值0.2）
-    mouthLowerDownRight: 0.4,// 增強到0.4（原值0.2）
-    eyeLookDownLeft: 0.8,   // 增強到0.8（原值0.4）
-    eyeLookDownRight: 0.8,  // 增強到0.8（原值0.4）
+  regretful: { // Fun version - Shouldn't have...
+    browInnerUp: 1.4,
+    mouthFrownLeft: 1.0,
+    mouthFrownRight: 1.0,
+    mouthLowerDownLeft: 0.6,
+    mouthLowerDownRight: 0.6,
+    eyeLookDownLeft: 1.2,
+    eyeLookDownRight: 1.2,
+    jawOpen: 0.3,
   },
-  guilty: {
-    browInnerUp: 1.0,       // 增強到1.0（原值0.5）
-    mouthPressLeft: 0.8,    // 增強到0.8（原值0.4）
-    mouthPressRight: 0.8,   // 增強到0.8（原值0.4）
-    eyeLookDownLeft: 1.2,   // 增強到1.2（原值0.7）
-    eyeLookDownRight: 1.2,  // 增強到1.2（原值0.7）
-    mouthFrownLeft: 0.4,    // 增強到0.4（原值0.2）
-    mouthFrownRight: 0.4,   // 增強到0.4（原值0.2）
+  guilty: { // Fun version - Caught red-handed
+    browInnerUp: 1.2,
+    mouthPressLeft: 1.0,
+    mouthPressRight: 1.0,
+    eyeLookDownLeft: 1.4,
+    eyeLookDownRight: 1.4,
+    mouthFrownLeft: 0.8,
+    mouthFrownRight: 0.8,
+    cheekPuff: 0.2,
   },
-  ashamed: { // Similar to guilty/embarrassed, perhaps more inward
-    browInnerUp: 0.8,       // 增強到0.8（原值0.4）
-    browDownLeft: 0.6,      // 增強到0.6（原值0.3）
-    browDownRight: 0.6,     // 增強到0.6（原值0.3）
-    eyeLookDownLeft: 1.4,   // 增強到1.4（原值0.8）
-    eyeLookDownRight: 1.4,  // 增強到1.4（原值0.8）
-    mouthPressLeft: 1.0,    // 增強到1.0（原值0.5）
-    mouthPressRight: 1.0,   // 增強到1.0（原值0.5）
+  ashamed: { // Fun version - Can't look
+    browInnerUp: 1.0,
+    browDownLeft: 0.8,
+    browDownRight: 0.8,
+    eyeLookDownLeft: 1.6,
+    eyeLookDownRight: 1.6,
+    mouthPressLeft: 1.2,
+    mouthPressRight: 1.2,
+    headTilt: -0.3,
   },
-  despairing: {
-    browInnerUp: 1.8,       // 增強到1.8（原值1.0）
-    mouthFrownLeft: 1.5,    // 增強到1.5（原值0.8）
-    mouthFrownRight: 1.5,   // 增強到1.5（原值0.8）
-    mouthLowerDownLeft: 1.0,// 增強到1.0（原值0.5）
-    mouthLowerDownRight: 1.0,// 增強到1.0（原值0.5）
-    eyeSquintLeft: 0.4,     // 增強到0.4（原值0.2）
-    eyeSquintRight: 0.4,    // 增強到0.4（原值0.2）
-    jawOpen: 0.3,           // 增強到0.3（原值0.1）
+  despairing: { // Fun version - Utter woe
+    browInnerUp: 2.2,
+    mouthFrownLeft: 2.0,
+    mouthFrownRight: 2.0,
+    mouthLowerDownLeft: 1.2,
+    mouthLowerDownRight: 1.2,
+    eyeSquintLeft: 0.6,
+    eyeSquintRight: 0.6,
+    jawOpen: 0.6,
   },
-  spiteful: {
-    mouthSmileLeft: 0.6,    // 增強到0.6（原值0.3）
-    mouthSmileRight: 0.6,   // 增強到0.6（原值0.3）
-    eyeSquintLeft: 1.1,     // 增強到1.1（原值0.6）
-    eyeSquintRight: 1.1,    // 增強到1.1（原值0.6）
-    noseSneerLeft: 0.8,     // 增強到0.8（原值0.4）
-    noseSneerRight: 0.8,    // 增強到0.8（原值0.4）
-    browDownLeft: 1.0,      // 增強到1.0（原值0.5）
-    browDownRight: 1.0,     // 增強到1.0（原值0.5）
+  spiteful: { // Fun version - Evil grin
+    mouthSmileLeft: 0.8,
+    mouthSmileRight: 0.3,
+    eyeSquintLeft: 1.3,
+    eyeSquintRight: 1.3,
+    noseSneerLeft: 1.0,
+    noseSneerRight: 1.0,
+    browDownLeft: 1.3,
+    browDownRight: 1.3,
   },
 
   // --- Ambiguous / Cognitive / Other States (Expanded) ---
-  surprised: { // Standard strong surprise
-    eyeWideLeft: 2.5,
-    eyeWideRight: 2.5,
-    browInnerUp: 0.8,
-    browOuterUpLeft: 2.5,
-    browOuterUpRight: 2.5,
-    jawOpen: 1.5,
-    mouthStretchLeft: 0.3,
-    mouthStretchRight: 0.3,
+  surprised: { // Standard strong surprise - Cartoonish pop-eyes fun version
+    eyeWideLeft: 3.5,
+    eyeWideRight: 3.5,
+    browOuterUpLeft: 3.2,
+    browOuterUpRight: 3.2,
+    jawOpen: 3.0,
+    mouthPucker: 0.8, // For a rounder 'O' mouth with jawOpen
+    // Original: eyeWideLeft: 2.5, eyeWideRight: 2.5, browInnerUp: 0.8, browOuterUpLeft: 2.5, browOuterUpRight: 2.5, jawOpen: 1.5, mouthStretchLeft: 0.3, mouthStretchRight: 0.3
   },
-  confused: {
-    browDownLeft: 1.5,
-    browInnerUp: 1.8,
-    browOuterUpRight: 0.55,
-    mouthPucker: 1.0,
-    jawLeft: 0.6,
-  },
-  skeptical: {
-    browOuterUpLeft: 1.2,
-    mouthPressRight: 0.7,
-    eyeSquintLeft: 0.7,
-    mouthLeft: 0.3,
-    jawLeft: 0.15,
-  },
-  bored: {
-    mouthFrownLeft: 1.0,
-    mouthFrownRight: 1.0,
-    eyeBlinkLeft: 1.5,
-    eyeBlinkRight: 1.5,
-    jawOpen: 0.6,
+  confused: { // Fun version - More exaggerated asymmetry
+    browDownLeft: 2.0,
+    browInnerUp: 2.2,
+    browOuterUpRight: 1.2,
+    mouthPucker: 1.3,
+    jawRight: 0.9, // Move jaw to one side
     eyeLookUpLeft: 0.6,
-    eyeLookUpRight: 0.6,
+    eyeLookDownRight: 0.6, // Eyes looking different directions subtly
+    // Original: browDownLeft: 1.5, browInnerUp: 1.8, browOuterUpRight: 0.55, mouthPucker: 1.0, jawLeft: 0.6
   },
-  sleepy: {
-    eyeBlinkLeft: 1.5,      // 增強到1.5（原值0.9）
-    eyeBlinkRight: 1.5,     // 增強到1.5（原值0.9）
-    jawOpen: 0.5,           // 增強到0.5（原值0.25）
-    browInnerUp: 0.1,       // 增強到0.1（原值0.05）
-    headTilt: 0.3,          // 新增：頭部微傾表示困倦
+  skeptical: { // Fun version - Stronger one-sided expression
+    browOuterUpLeft: 2.0,
+    browDownRight: 0.7,
+    mouthPressRight: 1.2,
+    eyeSquintLeft: 1.2,
+    mouthLeft: 0.6, // Pull mouth corner
+    jawLeft: 0.4,
+    // Original: browOuterUpLeft: 1.2, mouthPressRight: 0.7, eyeSquintLeft: 0.7, mouthLeft: 0.3, jawLeft: 0.15
   },
-  scheming: { // Mischievous, plotting
-    mouthSmileLeft: 0.9,    // 增強到0.9（原值0.45）
-    mouthSmileRight: 0.2,   // 增強到0.2（原值0.1）
-    browDownRight: 0.7,     // 增強到0.7（原值0.35）
-    browDownLeft: 0.2,      // 增強到0.2（原值0.1）
-    eyeSquintLeft: 0.9,     // 增強到0.9（原值0.55）
-    eyeSquintRight: 0.9,    // 增強到0.9（原值0.55）
-    noseSneerLeft: 0.3,     // 增強到0.3（原值0.15）
+  bored: { // Fun version - Extremely droopy and disinterested
+    mouthFrownLeft: 1.8,
+    mouthFrownRight: 1.8,
+    eyeBlinkLeft: 0.9, // Almost closed
+    eyeBlinkRight: 0.9,
+    jawOpen: 1.2, // Slack jaw
+    browDownLeft: 0.5, // Droopy eyebrows
+    browDownRight: 0.5,
+    // Original: mouthFrownLeft: 1.0, mouthFrownRight: 1.0, eyeBlinkLeft: 1.5, eyeBlinkRight: 1.5, jawOpen: 0.6, eyeLookUpLeft: 0.6, eyeLookUpRight: 0.6
   },
-  determined: {
-    browDownLeft: 1.2,      // 增強到1.2（原值0.6）
-    browDownRight: 1.2,     // 增強到1.2（原值0.6）
-    mouthPressLeft: 1.4,    // 增強到1.4（原值0.7）
-    mouthPressRight: 1.4,   // 增強到1.4（原值0.7）
-    jawForward: 0.4,        // 增強到0.4（原值0.2）
-    eyeSquintLeft: 0.6,     // 增強到0.6（原值0.3）
-    eyeSquintRight: 0.6,    // 增強到0.6（原值0.3）
+  sleepy: { // Fun version - Snoozing
+    eyeBlinkLeft: 2.2,
+    eyeBlinkRight: 2.2,
+    jawOpen: 0.7,
+    browInnerUp: -0.1,
+    headTilt: 0.5,
+    mouthClose: 0.4,
   },
-  impatient: {
-    browDownLeft: 0.8,      // 增強到0.8（原值0.4）
-    browDownRight: 0.8,     // 增強到0.8（原值0.4）
-    mouthPressLeft: 1.0,    // 增強到1.0（原值0.5）
-    mouthPressRight: 1.0,   // 增強到1.0（原值0.5）
-    cheekPuff: 0.3,         // 增強到0.3（原值0.15）
-    eyeSquintLeft: 0.3,     // 新增：眼睛微眯表示不耐煩
-    eyeSquintRight: 0.3,    // 新增：眼睛微眯表示不耐煩
+  scheming: { // Mischievous, plotting - Fun version, more villainous
+    mouthSmileLeft: 1.5,    // Sly grin
+    mouthSmileRight: 0.5,   // Asymmetrical
+    browDownLeft: 1.2,
+    browDownRight: 0.7,     // Asymmetrical plotting brows
+    eyeSquintLeft: 1.2,
+    eyeSquintRight: 1.2,
+    noseSneerLeft: 0.8,
+    // Original: mouthSmileLeft: 0.9, mouthSmileRight: 0.2, browDownRight: 0.7, browDownLeft: 0.2, eyeSquintLeft: 0.9, eyeSquintRight: 0.9, noseSneerLeft: 0.3
+  },
+  determined: { // Fun version - Steely resolve
+    browDownLeft: 1.8,
+    browDownRight: 1.8,
+    mouthPressLeft: 2.0,
+    mouthPressRight: 2.0,
+    jawForward: 0.8,
+    eyeSquintLeft: 1.0,
+    eyeSquintRight: 1.0,
+  },
+  impatient: { // Fun version - Hurry up!
+    browDownLeft: 1.2,
+    browDownRight: 1.2,
+    mouthPressLeft: 1.4,
+    mouthPressRight: 1.4,
+    cheekPuff: 0.5,
+    eyeSquintLeft: 0.5,
+    eyeSquintRight: 0.5,
+    headTilt: 0.25,
   },
   shy: { // Similar to embarrassed, maybe less negative
     mouthSmileLeft: 0.3,    // 增強到0.3（原值0.15）
@@ -475,34 +510,32 @@ export const emotionBaseWeights: Record<string, Record<string, number>> = {
     mouthPressLeft: 0.2,    // 增強到0.2（原值0.1）
     mouthPressRight: 0.2,   // 增強到0.2（原值0.1）
   },
-  smug: { // Self-satisfied, perhaps slightly contemptuous smile
-    mouthSmileLeft: 0.6,    // 增強到0.6（原值0.3）
-    mouthSmileRight: 0.6,   // 增強到0.6（原值0.3）
-    mouthDimpleLeft: 0.4,   // 增強到0.4（原值0.2）
-    mouthDimpleRight: 0.4,  // 增強到0.4（原值0.2）
-    browDownLeft: 0.2,      // 增強到0.2（原值0.1）
-    browDownRight: 0.2,     // 增強到0.2（原值0.1）
-    eyeSquintLeft: 0.4,     // 增強到0.4（原值0.2）
-    eyeSquintRight: 0.4,    // 增強到0.4（原值0.2）
-    cheekSquintLeft: 0.2,   // 增強到0.2（原值0.1）
-    cheekSquintRight: 0.2,  // 增強到0.2（原值0.1）
-    jawLeft: 0.15,          // 新增：微微偏頭
+  smug: { // Self-satisfied, perhaps slightly contemptuous smile - Fun version, overconfident
+    mouthSmileRight: 1.5,   // Strong one-sided smile
+    cheekPuff: 0.4,
+    browDownLeft: 0.3,
+    browOuterUpRight: 1.0,  // One eyebrow cocked high
+    eyeSquintLeft: 0.6,
+    eyeSquintRight: 0.3,
+    // Original: mouthSmileLeft: 0.6, mouthSmileRight: 0.6, mouthDimpleLeft: 0.4, mouthDimpleRight: 0.4, browDownLeft: 0.2, browDownRight: 0.2, eyeSquintLeft: 0.4, eyeSquintRight: 0.4, cheekSquintLeft: 0.2, cheekSquintRight: 0.2, jawLeft: 0.15
   },
-  awe: { // Wonder, amazement
-    eyeWideLeft: 1.4,       // 增強到1.4（原值0.7）
-    eyeWideRight: 1.4,      // 增強到1.4（原值0.7）
-    mouthOpen: 0.6,         // 增強到0.6（原值0.3）
-    jawOpen: 0.6,           // 增強到0.6（原值0.3）
-    browInnerUp: 0.4,       // 增強到0.4（原值0.2）
-    browOuterUpLeft: 0.8,   // 增強到0.8（原值0.4）
-    browOuterUpRight: 0.8,  // 增強到0.8（原值0.4）
+  awe: { // Wonder, amazement - Fun version, mind-blown
+    eyeWideLeft: 3.0,
+    eyeWideRight: 3.0,
+    jawOpen: 2.8,
+    mouthPucker: 1.0, // Combined with jawOpen for 'O'
+    browInnerUp: 1.8,
+    browOuterUpLeft: 1.8,
+    browOuterUpRight: 1.8,
+    // Original: eyeWideLeft: 1.4, eyeWideRight: 1.4, mouthOpen: 0.6, jawOpen: 0.6, browInnerUp: 0.4, browOuterUpLeft: 0.8, browOuterUpRight: 0.8
   },
-  doubtful: { // Questioning, uncertain
-    browInnerUp: 1.0,       // 增強到1.0（原值0.5）
-    browOuterUpLeft: 0.4,   // 增強到0.4（原值0.2）
-    mouthPucker: 0.4,       // 增強到0.4（原值0.2）
-    mouthLeft: 0.2,         // 增強到0.2（原值0.1）
-    headTilt: 0.2,          // 新增：頭部微微傾斜
+  doubtful: { // Fun version - Really?
+    browInnerUp: 1.2,
+    browOuterUpLeft: 0.8,
+    mouthPucker: 0.6,
+    mouthLeft: 0.4,
+    headTilt: 0.3,
+    eyeSquintLeft: 0.3,
   },
 };
 

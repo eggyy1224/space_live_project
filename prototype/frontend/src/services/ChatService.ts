@@ -86,7 +86,6 @@ class ChatService {
         // 添加打字機效果屬性
         message.isTyping = true;
         message.fullContent = content;
-        message.content = ''; // 初始設為空
         
         // 從消息中提取語音持續時間（如果有）
         if (data.speechDuration) {
