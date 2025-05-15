@@ -301,4 +301,4 @@ SONGS_METADATA = [
 
 # 在 murmur 時播放歌曲的機率 (0.0 至 1.0)
 # 例如，0.1 代表 10% 的機率播放歌曲而不是生成一般 murmur
-SONG_PLAY_PROBABILITY = 0.8 # 你可以調整這個值 
+SONG_PLAY_PROBABILITY = 0.7 # 你可以調整這個值 
