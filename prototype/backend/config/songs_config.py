@@ -296,6 +296,82 @@ SONGS_METADATA = [
             {"name": "FemaleDancePose", "proportion": 0.8},
             {"name": "Idle", "proportion": 1.0}
         ]
+    },
+    {
+        "id": "rap_1",
+        "title": "RAP 1",
+        "filename": "11L-A_Taiwanese_teenage_-1747298240041.mp3",
+        "duration": 15.0,
+        "emotionalKeyframes": [
+            {"tag": "energetic", "proportion": 0.0},
+            {"tag": "confident", "proportion": 0.25},
+            {"tag": "playful", "proportion": 0.5},
+            {"tag": "cool", "proportion": 0.75},
+            {"tag": "neutral", "proportion": 1.0}
+        ],
+        "bodyAnimationSequence": [
+            {"name": "HipHopDancin", "proportion": 0.0},
+            {"name": "BreakdanceFootwork2", "proportion": 0.3},
+            {"name": "MaleDynamicPose", "proportion": 0.6}, # Assuming a generally energetic pose
+            {"name": "Idle", "proportion": 1.0}
+        ]
+    },
+    {
+        "id": "rap_2",
+        "title": "RAP 2",
+        "filename": "11L-A_Taiwanese_teenage_-1747298241002.mp3",
+        "duration": 15.0,
+        "emotionalKeyframes": [
+            {"tag": "powerful", "proportion": 0.0},
+            {"tag": "assertive", "proportion": 0.25},
+            {"tag": "rhythmic", "proportion": 0.5},
+            {"tag": "focused", "proportion": 0.75},
+            {"tag": "neutral", "proportion": 1.0}
+        ],
+        "bodyAnimationSequence": [
+            {"name": "breakdance", "proportion": 0.0}, # Generic breakdance
+            {"name": "Flair", "proportion": 0.3},
+            {"name": "HipHopDancin", "proportion": 0.6},
+            {"name": "Idle", "proportion": 1.0}
+        ]
+    },
+    {
+        "id": "rap_3",
+        "title": "RAP 3",
+        "filename": "11L-A_Taiwanese_teenage_-1747298241942.mp3",
+        "duration": 15.0,
+        "emotionalKeyframes": [
+            {"tag": "intense", "proportion": 0.0},
+            {"tag": "defiant", "proportion": 0.25},
+            {"tag": "streetwise", "proportion": 0.5},
+            {"tag": "energetic", "proportion": 0.75},
+            {"tag": "neutral", "proportion": 1.0}
+        ],
+        "bodyAnimationSequence": [
+            {"name": "Popping", "proportion": 0.0},
+            {"name": "MaleActionPose", "proportion": 0.3},
+            {"name": "Breakdance1990", "proportion": 0.6},
+            {"name": "Idle", "proportion": 1.0}
+        ]
+    },
+    {
+        "id": "rap_4",
+        "title": "RAP 4",
+        "filename": "11L-A_Taiwanese_teenage_-1747298242725.mp3",
+        "duration": 15.0,
+        "emotionalKeyframes": [
+            {"tag": "upbeat", "proportion": 0.0},
+            {"tag": "challenging", "proportion": 0.25},
+            {"tag": "smooth", "proportion": 0.5},
+            {"tag": "confident", "proportion": 0.75},
+            {"tag": "neutral", "proportion": 1.0}
+        ],
+        "bodyAnimationSequence": [
+            {"name": "Moonwalk", "proportion": 0.0},
+            {"name": "HipHopDancin", "proportion": 0.3},
+            {"name": "Flair", "proportion": 0.6},
+            {"name": "Idle", "proportion": 1.0}
+        ]
     }
 ]
 
