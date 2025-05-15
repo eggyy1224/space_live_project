@@ -23,9 +23,9 @@ from services.murmur_service.utils import clean_murmur_prefix, is_murmur_too_sim
 from config.songs_config import SONGS_METADATA, SONG_PLAY_PROBABILITY
 
 # --- 閒置設定 ---
-IDLE_TIMEOUT_SECONDS = 15  # 從30秒改為15秒，讓murmur更快出現
+IDLE_TIMEOUT_SECONDS = 18  # 從15秒改為25秒，讓murmur更慢出現
 IDLE_CHECK_INTERVAL_SECONDS = 3 # 從8秒改為3秒，更頻繁地檢查空閒狀態
-MURMUR_MIN_INTERVAL_SECONDS = 25  # 從45秒改為25秒，允許murmur更頻繁出現
+MURMUR_MIN_INTERVAL_SECONDS = 30  # 從25秒改為35秒，允許murmur更頻繁出現
 # MURMUR_MAX_COUNT = 3  # <--- 移除：不再限制連續 murmur 次數
 MAX_HISTORY_LENGTH = 10 # 減少歷史長度，降低記憶負擔
 # --- 結束 ---

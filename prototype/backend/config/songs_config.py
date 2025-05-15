@@ -5,20 +5,20 @@ SONGS_METADATA = [
         "filename": "murmur.mp3",
         "duration": 10.0,  # 歌曲時長 (秒)
         "emotionalKeyframes": [
-            {"tag": "thinking", "proportion": 0.0},
-            {"tag": "neutral", "proportion": 0.15},
-            {"tag": "listening", "proportion": 0.3},
-            {"tag": "thinking", "proportion": 0.45},
-            {"tag": "neutral", "proportion": 0.6},
-            {"tag": "listening", "proportion": 0.75},
-            {"tag": "thinking", "proportion": 0.85},
+            {"tag": "joyful", "proportion": 0.0},
+            {"tag": "angry", "proportion": 0.15},
+            {"tag": "sad", "proportion": 0.3},
+            {"tag": "surprised", "proportion": 0.45},
+            {"tag": "fearful", "proportion": 0.6},
+            {"tag": "disgusted", "proportion": 0.75},
+            {"tag": "happy", "proportion": 0.85},
             {"tag": "neutral", "proportion": 1.0}
         ],
         "bodyAnimationSequence": [
             {"name": "JazzDancing", "proportion": 0.0},
-            {"name": "WeightShift", "proportion": 0.2}, 
-            {"name": "Swaying", "proportion": 0.5}, # 假設有輕微搖擺動作
-            {"name": "Flair", "proportion": 0.8},
+            {"name": "HipHopDancin", "proportion": 0.2},
+            {"name": "Flair", "proportion": 0.5}, 
+            {"name": "FemaleDancePose", "proportion": 0.8},
             {"name": "Idle", "proportion": 1.0}
         ]
     },
@@ -28,21 +28,21 @@ SONGS_METADATA = [
         "filename": "song_singing.mp3",
         "duration": 15.0,  # 歌曲時長 (秒)
         "emotionalKeyframes": [
-            {"tag": "neutral", "proportion": 0.0},
-            {"tag": "happy", "proportion": 0.1},
-            {"tag": "amused", "proportion": 0.2},
-            {"tag": "joyful", "proportion": 0.3},
-            {"tag": "excited", "proportion": 0.45},
-            {"tag": "playful", "proportion": 0.6},
-            {"tag": "triumphant", "proportion": 0.75},
-            {"tag": "happy", "proportion": 0.85},
-            {"tag": "content", "proportion": 0.95},
+            {"tag": "excited", "proportion": 0.0},
+            {"tag": "sad", "proportion": 0.1},
+            {"tag": "angry", "proportion": 0.2},
+            {"tag": "happy", "proportion": 0.3},
+            {"tag": "fearful", "proportion": 0.45},
+            {"tag": "triumphant", "proportion": 0.6},
+            {"tag": "surprised", "proportion": 0.75},
+            {"tag": "disgusted", "proportion": 0.85},
+            {"tag": "joyful", "proportion": 0.95},
             {"tag": "neutral", "proportion": 1.0}
         ],
         "bodyAnimationSequence": [
             {"name": "FemaleDynamicPose", "proportion": 0.0},
-            {"name": "JazzDancing", "proportion": 0.15},
-            {"name": "HipHopDancin", "proportion": 0.5},
+            {"name": "SalsaDancing", "proportion": 0.15},
+            {"name": "DancingTwerk", "proportion": 0.5},
             {"name": "Cheering", "proportion": 0.85},
             {"name": "Idle", "proportion": 1.0}
         ]
@@ -53,16 +53,16 @@ SONGS_METADATA = [
         "filename": "male_vocal.mp3",
         "duration": 10.0,  # 歌曲時長 (秒)
         "emotionalKeyframes": [
-            {"tag": "neutral", "proportion": 0.0},
-            {"tag": "thinking", "proportion": 0.2},
-            {"tag": "content", "proportion": 0.4}, # 使用 content 作為替代
-            {"tag": "playful", "proportion": 0.7},
+            {"tag": "angry", "proportion": 0.0},
+            {"tag": "happy", "proportion": 0.2},
+            {"tag": "sad", "proportion": 0.4},
+            {"tag": "excited", "proportion": 0.7},
             {"tag": "neutral", "proportion": 1.0}
         ],
         "bodyAnimationSequence": [
             {"name": "MaleDynamicPose", "proportion": 0.0},
-            {"name": "HipHopDancin", "proportion": 0.25},
-            {"name": "Flair", "proportion": 0.65},
+            {"name": "Breakdance1990", "proportion": 0.25},
+            {"name": "Moonwalk", "proportion": 0.65},
             {"name": "Idle", "proportion": 1.0}
         ]
     },
@@ -72,21 +72,21 @@ SONGS_METADATA = [
         "filename": "female_talking1.mp3",
         "duration": 10.0,  # 歌曲時長 (秒)
         "emotionalKeyframes": [
-            {"tag": "neutral", "proportion": 0.0},
-            {"tag": "listening", "proportion": 0.15},
-            {"tag": "thinking", "proportion": 0.3},
-            {"tag": "content", "proportion": 0.45},
-            {"tag": "neutral", "proportion": 0.6},
-            {"tag": "listening", "proportion": 0.75},
-            {"tag": "thinking", "proportion": 0.85},
+            {"tag": "surprised", "proportion": 0.0},
+            {"tag": "fearful", "proportion": 0.15},
+            {"tag": "joyful", "proportion": 0.3},
+            {"tag": "angry", "proportion": 0.45},
+            {"tag": "sad", "proportion": 0.6},
+            {"tag": "happy", "proportion": 0.75},
+            {"tag": "disgusted", "proportion": 0.85},
             {"tag": "neutral", "proportion": 1.0}
         ],
         "bodyAnimationSequence": [
-            {"name": "Talking_Neutral", "proportion": 0.0},
-            {"name": "Listening_Neutral", "proportion": 0.25},
-            {"name": "Talking_Explaining", "proportion": 0.5},
-            {"name": "WeightShift", "proportion": 0.75},
-            {"name": "Idle_Neutral", "proportion": 1.0}
+            {"name": "FemaleDancePose", "proportion": 0.0},
+            {"name": "JazzDancing", "proportion": 0.25},
+            {"name": "ButterflyTwirl", "proportion": 0.5},
+            {"name": "Flair", "proportion": 0.75},
+            {"name": "Idle", "proportion": 1.0}
         ]
     },
     {
@@ -95,15 +95,15 @@ SONGS_METADATA = [
         "filename": "A_looping_instrument.mp3",
         "duration": 10.0,  # TODO: 請確認並修改實際時長
         "emotionalKeyframes": [
-            {"tag": "neutral", "proportion": 0.0},
-            {"tag": "thinking", "proportion": 0.3},
-            {"tag": "content", "proportion": 0.6},
+            {"tag": "happy", "proportion": 0.0},
+            {"tag": "angry", "proportion": 0.3},
+            {"tag": "sad", "proportion": 0.6},
             {"tag": "neutral", "proportion": 1.0}
         ],
         "bodyAnimationSequence": [
-            {"name": "Idle", "proportion": 0.0},
-            {"name": "Swaying", "proportion": 0.4},
-            {"name": "Listening_Neutral", "proportion": 0.7},
+            {"name": "HipHopDancin", "proportion": 0.0},
+            {"name": "CanCan", "proportion": 0.4},
+            {"name": "Spin In Place", "proportion": 0.7},
             {"name": "Idle", "proportion": 1.0}
         ]
     },
@@ -113,15 +113,15 @@ SONGS_METADATA = [
         "filename": "A_male_vocalist_sing.mp3",
         "duration": 10.0,  # TODO: 請確認並修改實際時長
         "emotionalKeyframes": [
-            {"tag": "neutral", "proportion": 0.0},
-            {"tag": "happy", "proportion": 0.25},
-            {"tag": "content", "proportion": 0.5},
+            {"tag": "triumphant", "proportion": 0.0},
+            {"tag": "sad", "proportion": 0.25},
+            {"tag": "angry", "proportion": 0.5},
             {"tag": "joyful", "proportion": 0.75},
             {"tag": "neutral", "proportion": 1.0}
         ],
         "bodyAnimationSequence": [
             {"name": "MaleDynamicPose", "proportion": 0.0},
-            {"name": "Swaying", "proportion": 0.3},
+            {"name": "breaking", "proportion": 0.3},
             {"name": "Flair", "proportion": 0.6},
             {"name": "Idle", "proportion": 1.0}
         ]
@@ -132,16 +132,16 @@ SONGS_METADATA = [
         "filename": "Ambient_keyboard_cli.mp3",
         "duration": 10.0,  # TODO: 請確認並修改實際時長
         "emotionalKeyframes": [
-            {"tag": "neutral", "proportion": 0.0},
-            {"tag": "content", "proportion": 0.25},
-            {"tag": "thinking", "proportion": 0.5},
-            {"tag": "neutral", "proportion": 0.75},
+            {"tag": "fearful", "proportion": 0.0},
+            {"tag": "excited", "proportion": 0.25},
+            {"tag": "angry", "proportion": 0.5},
+            {"tag": "surprised", "proportion": 0.75},
             {"tag": "neutral", "proportion": 1.0}
         ],
         "bodyAnimationSequence": [
-            {"name": "Idle", "proportion": 0.0},
-            {"name": "WeightShift", "proportion": 0.3},
-            {"name": "Listening_Neutral", "proportion": 0.6},
+            {"name": "BreakdanceFootwork2", "proportion": 0.0},
+            {"name": "Au", "proportion": 0.3},
+            {"name": "twistdance", "proportion": 0.6},
             {"name": "Idle", "proportion": 1.0}
         ]
     },
@@ -151,16 +151,16 @@ SONGS_METADATA = [
         "filename": "Ambient_keyboard_cli_2.mp3",
         "duration": 10.0,  # TODO: 請確認並修改實際時長
         "emotionalKeyframes": [
-            {"tag": "neutral", "proportion": 0.0},
-            {"tag": "content", "proportion": 0.25},
-            {"tag": "thinking", "proportion": 0.5},
-            {"tag": "neutral", "proportion": 0.75},
+            {"tag": "disgusted", "proportion": 0.0},
+            {"tag": "happy", "proportion": 0.25},
+            {"tag": "sad", "proportion": 0.5},
+            {"tag": "angry", "proportion": 0.75},
             {"tag": "neutral", "proportion": 1.0}
         ],
         "bodyAnimationSequence": [
-            {"name": "Idle", "proportion": 0.0},
-            {"name": "WeightShift", "proportion": 0.3},
-            {"name": "Listening_Neutral", "proportion": 0.6},
+            {"name": "Au", "proportion": 0.0},
+            {"name": "MacacoSide", "proportion": 0.3},
+            {"name": "hiphopdance", "proportion": 0.6},
             {"name": "Idle", "proportion": 1.0}
         ]
     },
@@ -170,10 +170,10 @@ SONGS_METADATA = [
         "filename": "Energetic_fast_pace.mp3",
         "duration": 10.0,  # TODO: 請確認並修改實際時長
         "emotionalKeyframes": [
-            {"tag": "neutral", "proportion": 0.0},
-            {"tag": "happy", "proportion": 0.2},
-            {"tag": "excited", "proportion": 0.4},
-            {"tag": "playful", "proportion": 0.6},
+            {"tag": "joyful", "proportion": 0.0},
+            {"tag": "angry", "proportion": 0.2},
+            {"tag": "surprised", "proportion": 0.4},
+            {"tag": "sad", "proportion": 0.6},
             {"tag": "triumphant", "proportion": 0.8},
             {"tag": "neutral", "proportion": 1.0}
         ],
@@ -191,14 +191,14 @@ SONGS_METADATA = [
         "filename": "winds_blowing.mp3",
         "duration": 15.0,  
         "emotionalKeyframes": [
-            {"tag": "neutral", "proportion": 0.0},
-            {"tag": "listening", "proportion": 0.5},
+            {"tag": "fearful", "proportion": 0.0},
+            {"tag": "angry", "proportion": 0.5},
             {"tag": "neutral", "proportion": 1.0}
         ],
         "bodyAnimationSequence": [
-            {"name": "Idle_Neutral", "proportion": 0.0},
-            {"name": "Listening_Neutral", "proportion": 0.5},
-            {"name": "Idle_Neutral", "proportion": 1.0}
+            {"name": "FemaleDynamicPose", "proportion": 0.0},
+            {"name": "Spin In Place", "proportion": 0.5},
+            {"name": "Idle", "proportion": 1.0}
         ]
     }
 ]
