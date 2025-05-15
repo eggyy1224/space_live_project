@@ -357,6 +357,13 @@ async def analyze_keyframes_node(state: DialogueState) -> Dict[str, Any]:
 每個動畫關鍵幀包含 'name' (動作名稱) 和 'proportion' (相對時間比例 0.0 到 1.0)。
 可用的動作僅限於 (名稱(描述)): {available_actions_desc}。
 
+【特別要求】
+- 動作名稱只能從上面可用的動作列表中選擇，嚴格對應 animations.json 字典。
+- 請大膽選擇幽默、無厘頭、出其不意但又能和文本產生聯想的動作。
+- 動作不必完全合理，但要有某種內在聯繫或反差感。
+- 請避免只選擇 "Idle" 或重複動作，盡量多元且有創意。
+
+
 選擇動畫時，請考慮：
 - 文本的語義內容和表達的活動
 - 情緒變化與身體動作的協調
