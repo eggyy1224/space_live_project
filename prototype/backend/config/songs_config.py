@@ -200,6 +200,102 @@ SONGS_METADATA = [
             {"name": "Spin In Place", "proportion": 0.5},
             {"name": "Idle", "proportion": 1.0}
         ]
+    },
+    {
+        "id": "a_young_taiwanese_gi_1_song",
+        "title": "年輕台灣女孩 1",
+        "filename": "A_young_Taiwanese_gi_1.mp3",
+        "duration": 15.0,
+        "emotionalKeyframes": [
+            {"tag": "happy", "proportion": 0.0},
+            {"tag": "surprised", "proportion": 0.15},
+            {"tag": "joyful", "proportion": 0.3},
+            {"tag": "playful", "proportion": 0.45},
+            {"tag": "excited", "proportion": 0.6},
+            {"tag": "triumphant", "proportion": 0.75},
+            {"tag": "affectionate", "proportion": 0.9},
+            {"tag": "neutral", "proportion": 1.0}
+        ],
+        "bodyAnimationSequence": [
+            {"name": "FemaleDynamicPose", "proportion": 0.0},
+            {"name": "JazzDancing", "proportion": 0.2},
+            {"name": "twistdance", "proportion": 0.4},
+            {"name": "Cheering", "proportion": 0.6},
+            {"name": "ButterflyTwirl", "proportion": 0.8},
+            {"name": "Idle", "proportion": 1.0}
+        ]
+    },
+    {
+        "id": "a_young_taiwanese_gi_2_song",
+        "title": "年輕台灣女孩 2",
+        "filename": "A_young_Taiwanese_gi_2.mp3",
+        "duration": 15.0,
+        "emotionalKeyframes": [
+            {"tag": "serene", "proportion": 0.0},
+            {"tag": "hopeful", "proportion": 0.15},
+            {"tag": "amused", "proportion": 0.3},
+            {"tag": "grateful", "proportion": 0.45},
+            {"tag": "content", "proportion": 0.6},
+            {"tag": "interested", "proportion": 0.75},
+            {"tag": "shy", "proportion": 0.9},
+            {"tag": "neutral", "proportion": 1.0}
+        ],
+        "bodyAnimationSequence": [
+            {"name": "FemaleStandingPose", "proportion": 0.0},
+            {"name": "FemaleDancePose", "proportion": 0.2},
+            {"name": "SalsaDancing", "proportion": 0.4},
+            {"name": "FemaleCrouchPose", "proportion": 0.6},
+            {"name": "StandingClap", "proportion": 0.8},
+            {"name": "Idle", "proportion": 1.0}
+        ]
+    },
+    {
+        "id": "a_young_taiwanese_gi_3_song",
+        "title": "年輕台灣女孩 3",
+        "filename": "A_young_Taiwanese_gi_3.mp3",
+        "duration": 15.0,
+        "emotionalKeyframes": [
+            {"tag": "determined", "proportion": 0.0},
+            {"tag": "proud", "proportion": 0.15},
+            {"tag": "excited", "proportion": 0.3},
+            {"tag": "surprised", "proportion": 0.45},
+            {"tag": "triumphant", "proportion": 0.6},
+            {"tag": "joyful", "proportion": 0.75},
+            {"tag": "happy", "proportion": 0.9},
+            {"tag": "neutral", "proportion": 1.0}
+        ],
+        "bodyAnimationSequence": [
+            {"name": "HipHopDancin", "proportion": 0.0},
+            {"name": "Flair", "proportion": 0.2},
+            {"name": "DancingTwerk", "proportion": 0.4},
+            {"name": "Spin In Place", "proportion": 0.6},
+            {"name": "jumping", "proportion": 0.8},
+            {"name": "Idle", "proportion": 1.0}
+        ]
+    },
+    {
+        "id": "a_young_taiwanese_gi_4_song",
+        "title": "年輕台灣女孩 4",
+        "filename": "A_young_Taiwanese_gi_4.mp3",
+        "duration": 15.0,
+        "emotionalKeyframes": [
+            {"tag": "fearful", "proportion": 0.0},
+            {"tag": "worried", "proportion": 0.15},
+            {"tag": "surprised", "proportion": 0.3},
+            {"tag": "relieved", "proportion": 0.45},
+            {"tag": "hopeful", "proportion": 0.6},
+            {"tag": "content", "proportion": 0.75},
+            {"tag": "serene", "proportion": 0.9},
+            {"tag": "neutral", "proportion": 1.0}
+        ],
+        "bodyAnimationSequence": [
+            {"name": "ProneLeftTurn", "proportion": 0.0},
+            {"name": "ReachingOut", "proportion": 0.2},
+            {"name": "LookAround", "proportion": 0.4},
+            {"name": "Walking", "proportion": 0.6},
+            {"name": "FemaleDancePose", "proportion": 0.8},
+            {"name": "Idle", "proportion": 1.0}
+        ]
     }
 ]
 
