@@ -10,6 +10,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import { ToastContainer } from './components/Toast'
 import FloatingChatWindow from './components/FloatingChatWindow'
 import SettingsPanel from './components/SettingsPanel'
+import BackgroundSoundSystem from './components/BackgroundSoundSystem'
 
 // 引入服務
 import { 
@@ -379,9 +380,7 @@ function App() {
   }, []);
   
   // 切換模型分析工具
-  const toggleModelAnalyzer = useCallback(() => {
-    setShowModelAnalyzer(prev => !prev);
-  }, []);
+  const toggleModelAnalyzer = () => setShowModelAnalyzer(!showModelAnalyzer);
 
   // 處理發送消息 (Enter 鍵或點擊按鈕)
   const handleSendMessage = useCallback(() => {
@@ -411,6 +410,7 @@ function App() {
   return (
     <ErrorBoundary>
       <div className="app-container">
+        <BackgroundSoundSystem />
         <SceneContainer 
           headModelUrl={headModelUrl}
           isHeadModelLoaded={headModelLoaded}
@@ -478,9 +478,9 @@ function App() {
         
         {/* 渲染 AppUI (只傳遞必要 props) */}
         <AppUI
-          wsConnected={wsConnected} // <-- 從 Zustand 讀取
-          toggleChatWindow={toggleChatWindow} // <-- 從 Zustand action
-          toggleSettingsPanel={toggleSettingsPanel} // <-- 從 Zustand action
+          wsConnected={wsConnected}
+          toggleChatWindow={toggleChatWindow}
+          toggleSettingsPanel={toggleSettingsPanel}
         />
         
         <ToastContainer />
