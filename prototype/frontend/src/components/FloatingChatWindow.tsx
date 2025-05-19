@@ -164,7 +164,7 @@ const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
         className={`fixed bottom-28 right-5 z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl flex flex-col overflow-hidden border border-gray-200 dark:border-gray-700`}
         style={{ width: size.width, height: size.height }} // Control size via state
       >
-        <ResizableBox 
+        <ResizableBox
           width={size.width}
           height={size.height}
           onResizeStop={(e, data) => {
@@ -173,7 +173,8 @@ const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
           minConstraints={[250, 300]} // Min width 250px, Min height 300px
           maxConstraints={[window.innerWidth * 0.8, window.innerHeight * 0.8]} // Max 80% of viewport
           className="flex flex-col flex-grow" // Ensure ResizableBox fills the container initially and allows content to grow
-          handle={<span className="react-resizable-handle" />} // Default handle style
+          handle={<span className="custom-resize-handle" />} // Custom handle for better UX
+          resizeHandles={["se"]}
           // axis="both" // Already default
         >
           <div className="flex flex-col h-full"> {/* Inner container to hold layout */} 

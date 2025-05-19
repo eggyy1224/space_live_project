@@ -39,4 +39,19 @@
 @keyframes cursor-blink {
   0%, 100% { opacity: 0; }
   50% { opacity: 1; }
-} 
+}
+
+/* Custom resize handle for FloatingChatWindow */
+.custom-resize-handle {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  cursor: se-resize;
+  border-right: 2px solid rgba(107, 114, 128, 0.7); /* gray-500 */
+  border-bottom: 2px solid rgba(107, 114, 128, 0.7);
+}
+.dark .custom-resize-handle {
+  border-color: rgba(156, 163, 175, 0.7); /* gray-400 */
+}
