@@ -17,6 +17,7 @@ class AudioService {
   private playbackDataArray: Uint8Array | null = null;
   private mediaStream: MediaStream | null = null;
   private sourceNode: MediaStreamAudioSourceNode | null = null;
+  private mediaRecorder: MediaRecorder | null = null;
   private audioChunks: Blob[] = [];
   private audioBlob: Blob | null = null;
   private playbackAudio: HTMLAudioElement | null = null;
@@ -81,6 +82,8 @@ class AudioService {
       this.sourceNode.connect(this.analyser);
 
       const recorder = new MediaRecorder(this.mediaStream);
+      this.mediaRecorder = recorder;
+
       recorder.ondataavailable = (event) => {
         this.audioChunks.push(event.data);
       };
@@ -105,9 +108,10 @@ class AudioService {
         this.sourceNode?.disconnect();
         this.sourceNode = null;
         this.analyser = null;
+        this.mediaRecorder = null;
       };
 
-      recorder.start();
+      recorder.start(250);
 
     } catch (error) {
       logger.error('Error starting recording:', LogCategory.AUDIO, error);
@@ -117,11 +121,38 @@ class AudioService {
   }
 
   public stopRecording(): void {
-    if (!useStore.getState().isRecording || !this.mediaStream) return;
+    if (!useStore.getState().isRecording || !this.mediaRecorder) {
+      logger.warn('[AudioService] stopRecording called but not recording or mediaRecorder is null.', LogCategory.AUDIO);
+      return;
+    }
     // 添加日誌
-    logger.info('[AudioService] stopRecording called. Stopping media tracks...', LogCategory.AUDIO);
-    this.mediaStream.getTracks().forEach(track => track.stop());
-    logger.info('Stopped recording via track stop.', LogCategory.AUDIO);
+    logger.info('[AudioService] stopRecording called. Attempting to stop MediaRecorder...', LogCategory.AUDIO);
+    
+    try {
+      if (this.mediaRecorder.state === 'recording') {
+        this.mediaRecorder.stop();
+        logger.info('[AudioService] MediaRecorder.stop() called successfully.', LogCategory.AUDIO);
+      } else {
+        logger.warn(`[AudioService] MediaRecorder.stop() not called, state is: ${this.mediaRecorder.state}`, LogCategory.AUDIO);
+      }
+    } catch (error) {
+      logger.error('[AudioService] Error calling MediaRecorder.stop():', LogCategory.AUDIO, error);
+      // 如果 mediaRecorder.stop() 失敗，作為備案，我們還是嘗試停止軌道
+      if (this.mediaStream) {
+        logger.warn('[AudioService] Fallback: Stopping media tracks directly.', LogCategory.AUDIO);
+        this.mediaStream.getTracks().forEach(track => track.stop());
+      }
+      // 即使 mediaRecorder.stop() 出錯，也應該清理狀態
+      useStore.getState().setRecording(false);
+      this.stopMouthAnimation();
+      this.mediaStream = null; // 清理 mediaStream
+      this.sourceNode?.disconnect();
+      this.sourceNode = null;
+      this.analyser = null;
+      this.mediaRecorder = null; 
+    }
+    // mediaStream 的軌道停止和相關狀態清理邏輯現在主要在 MediaRecorder 的 onstop 事件中處理
+    // logger.info('Stopped recording via track stop.', LogCategory.AUDIO); // 這行日誌可以考慮移到 onstop 或保留以指示此函數的完成
   }
 
   private startMouthAnimation(): void {
