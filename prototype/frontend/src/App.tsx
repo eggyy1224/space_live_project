@@ -9,6 +9,7 @@ import ModelAnalyzerTool from './components/ModelAnalyzerTool'
 import ErrorBoundary from './components/ErrorBoundary'
 import { ToastContainer } from './components/Toast'
 import FloatingChatWindow from './components/FloatingChatWindow'
+import PushToTalkButton from './components/PushToTalkButton'
 import SettingsPanel from './components/SettingsPanel'
 import BackgroundSoundSystem from './components/BackgroundSoundSystem'
 
@@ -519,6 +520,7 @@ function App() {
           toggleSettingsPanel={toggleSettingsPanel}
         />
         
+        <PushToTalkButton />
         <ToastContainer />
       </div>
     </ErrorBoundary>

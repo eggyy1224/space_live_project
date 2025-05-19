@@ -6,6 +6,7 @@ from .base import create_app
 from .endpoints import websocket
 from .endpoints import speech
 from .endpoints import health
+from .endpoints import realtime
 from .middleware.cors import setup_cors
 import os
 import logging
@@ -31,6 +32,7 @@ def init_app() -> FastAPI:
     
     # 註冊WebSocket路由
     app.add_websocket_route("/ws", websocket.websocket_endpoint)
+    app.add_websocket_route("/ws/realtime", realtime.realtime_conversation)
     
     # 註冊常規API路由
     app.include_router(speech.router, prefix="/api", tags=["speech"])
