@@ -71,7 +71,6 @@ class AudioService {
     logger.info('Starting audio recording...', LogCategory.AUDIO);
     this.audioChunks = [];
     useStore.getState().setRecording(true); 
-    useStore.getState().setSpeaking(true); // Use the correct state
     useStore.getState().setAudioStartTime(null); 
 
     try {
@@ -98,7 +97,6 @@ class AudioService {
         }
         
         useStore.getState().setRecording(false);
-        useStore.getState().setSpeaking(false); // Use the correct state
         this.stopMouthAnimation(); 
         logger.info('Recording stopped, audio blob created.', LogCategory.AUDIO);
         
@@ -114,7 +112,6 @@ class AudioService {
     } catch (error) {
       logger.error('Error starting recording:', LogCategory.AUDIO, error);
       useStore.getState().setRecording(false); 
-      useStore.getState().setSpeaking(false); // Use the correct state
       this.stopMouthAnimation();
     }
   }
