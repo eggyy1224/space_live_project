@@ -26,6 +26,8 @@ import { speechToText, processSpeechAudio } from './services/api';
 
 // 引入 AudioService
 import AudioService from './services/AudioService';
+// 引入 MessageType
+import { type MessageType } from './services/ChatService';
 
 // 引入 Zustand Store
 import { useStore } from './store'
@@ -150,6 +152,7 @@ function App() {
 
   // --- Zustand State and Actions ---
   const setProcessing = useStore((state) => state.setProcessing); // <-- Get action via selector
+  const addChatMessage = useStore((state) => state.addMessage); // <-- Get chat message adding action. THIS IS THE CORRECT ONE.
   // --- End Zustand --- 
 
   // --- 從 Zustand 獲取/設置建議的動畫名稱 ---
@@ -329,49 +332,83 @@ function App() {
   // === 定義錄音結束後的回調 ===
   const handleStopRecording = useCallback(async (audioBlob: Blob | null) => {
     if (audioBlob && wsConnected) {
-      logger.info('[App] Sending audio for processing...', LogCategory.GENERAL); // 更新日誌
-      
+      logger.info('[App] Sending audio for processing...', LogCategory.GENERAL);
+      setProcessing(true); // Set processing before API call
       try {
-        // 將音頻發送到後端進行完整處理
-        const result = await processSpeechAudio(audioBlob); // 改為呼叫 processSpeechAudio
+        // Assuming processSpeechAudio returns: { success: boolean, text?: string, response?: string, audio?: string, error?: string }
+        // And does NOT currently return audio_duration.
+        const result = await processSpeechAudio(audioBlob); 
         
-        // 檢查處理結果
-        if (result && result.success && result.audio) {
-          // 記錄識別和回應文本
-          logger.info(`[App] STT: "${result.text}"`, LogCategory.GENERAL);
-          logger.info(`[App] Response: "${result.response}"`, LogCategory.GENERAL);
-          
-          // 播放返回的音頻 (假設 AudioService.playAudio 接受 Base64)
-          // 注意：playAudio 可能需要調整以接受 Base64 或轉換為 Blob URL
-          AudioService.getInstance().playAudio(`data:audio/mp3;base64,${result.audio}`);
-          
-          // 可選：將 AI 回應添加到聊天記錄 (如果需要顯示的話)
-          // addMessage({ sender: 'ai', text: result.response });
-          
+        if (result && result.success) {
+          // 1. Add user's transcribed speech if available
+          if (result.text) {
+            logger.info(`[App] STT: "${result.text}"`, LogCategory.GENERAL);
+            const userMessage: MessageType = {
+              id: `user-stt-${Date.now()}`,
+              role: 'user',
+              content: result.text,
+              timestamp: new Date().toISOString(),
+            };
+            addChatMessage(userMessage); 
+          }
+
+          // 2. Handle bot's response (audio and/or text)
+          if (result.response) { 
+            let speechDurationForTypingEffect: number | undefined = undefined;
+            
+            // Estimate duration based on text length and presence of audio
+            if (result.audio) { // Has audio, estimate duration based on text for lip-sync like effect
+              const estimatedDuration = result.response.length * 0.18; // Approx 0.18s per char
+              speechDurationForTypingEffect = Math.max(1, estimatedDuration); // Min 1 second for some effect
+              logger.info(`[App] Estimated audio duration for typing effect: ${speechDurationForTypingEffect}s for text length ${result.response.length}`, LogCategory.GENERAL);
+            } else { // No audio, just text response, estimate based on text for a comfortable reading speed
+              const estimatedDuration = result.response.length * 0.1; // Approx 0.1s per char for reading
+              speechDurationForTypingEffect = Math.max(1, estimatedDuration); // Min 1 second
+              logger.info(`[App] Estimated reading duration for typing effect (text only): ${speechDurationForTypingEffect}s for text length ${result.response.length}`, LogCategory.GENERAL);
+            }
+
+            const botResponseMessage: MessageType = {
+              id: `bot-resp-${Date.now()}`,
+              role: 'bot',
+              content: result.response, 
+              fullContent: result.response, 
+              isTyping: true, 
+              timestamp: new Date().toISOString(),
+              speechDuration: speechDurationForTypingEffect, 
+            };
+            addChatMessage(botResponseMessage);
+
+            if (result.audio) { 
+              logger.info(`[App] Playing bot audio.`, LogCategory.GENERAL);
+              AudioService.getInstance().playAudio(`data:audio/mp3;base64,${result.audio}`);
+            }
+          }
+
         } else if (result && !result.success) {
           logger.error(`[App] Audio processing failed: ${result.error}`, LogCategory.GENERAL);
-          // 可選：顯示錯誤提示給用戶
-          toast.error(`語音處理失敗: ${result.error || '未知錯誤'}`); 
+          toast.error(`語音處理失敗: ${result.error || '未知錯誤'}`);
         } else {
-          logger.warn('[App] Audio processing returned unexpected result or no audio.', LogCategory.GENERAL);
-          toast('無法處理您的語音，請再試一次。');
+          logger.warn('[App] Audio processing returned unexpected result or no audio/response.', LogCategory.GENERAL);
+          // Only show toast if there's no specific error message from backend
+          if (!(result && result.error)) {
+            toast('無法處理您的語音，請再試一次。');
+          }
         }
       } catch (error) {
         logger.error('[App] Audio processing API call error:', LogCategory.GENERAL, error);
-        // 可選：顯示錯誤提示給用戶
         toast.error(`語音處理請求失敗: ${error instanceof Error ? error.message : '未知網絡錯誤'}`);
       } finally {
-        // 無論成功與否，都重置處理狀態
-        setProcessing(false); // <-- Use action from selector
+        setProcessing(false);
       }
       
     } else if (!wsConnected) {
       logger.warn('[App] Recording finished, but WebSocket not connected. Cannot process audio.', LogCategory.GENERAL);
-      // 可選：提示用戶連接狀態問題
+      toast.error('網絡未連接，無法處理語音。');
     } else if (!audioBlob) {
       logger.warn('[App] Recording finished, but audio blob is null.', LogCategory.GENERAL);
+      // No toast here as this might be an intentional quick tap without speech
     }
-  }, [wsConnected, setProcessing]); // <-- Add setProcessing to dependency array
+  }, [wsConnected, setProcessing, addChatMessage]); // addChatMessage from useStore is correctly in dependencies now
   // === 回調定義結束 ===
 
   // 切換調試模式 
@@ -385,12 +422,11 @@ function App() {
   // 處理發送消息 (Enter 鍵或點擊按鈕)
   const handleSendMessage = useCallback(() => {
     if (userInput.trim() && wsConnected) { // 確保已連接才發送
-      sendMessage(userInput);
+      sendMessage(userInput); // This is from useChatService, sends text via WebSocket
       setUserInput(''); // 清空輸入
     } else if (!wsConnected) {
       console.warn("嘗試發送消息但 WebSocket 未連接");
-      // 可以選擇性地給用戶提示
-      // alert("連接已斷開，請稍後再試。");
+      toast.error('網絡未連接，無法發送消息。');
     }
   }, [userInput, wsConnected, sendMessage]);
 
@@ -428,14 +464,14 @@ function App() {
         <FloatingChatWindow 
           isVisible={isChatWindowVisible}
           onClose={toggleChatWindow}
-          messages={messages || []}
+          messages={messages || []} // messages from useChatService
           userInput={userInput}
           setUserInput={setUserInput}
-          isProcessing={chatProcessing}
+          isProcessing={chatProcessing} // chatProcessing from useStore
           wsConnected={wsConnected}
           sendMessage={handleSendMessage}
           handleKeyDown={handleKeyDown}
-          clearMessages={clearMessages}
+          clearMessages={clearMessages} // from useChatService
           isRecording={isRecording}
           startRecording={() => startRecording(handleStopRecording)}
           stopRecording={stopRecording}
