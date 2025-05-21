@@ -372,9 +372,54 @@ SONGS_METADATA = [
             {"name": "Flair", "proportion": 0.6},
             {"name": "Idle", "proportion": 1.0}
         ]
+    },
+    {
+        "id": "niaojiao_song",
+        "title": "鳥叫",
+        "filename": "鳥叫.mp3",
+        "duration": 15.0,  # 更新時長為 15 秒
+        "emotionalKeyframes": [
+            {"tag": "neutral", "proportion": 0.0},
+            {"tag": "surprised", "proportion": 0.2},
+            {"tag": "playful", "proportion": 0.5},
+            {"tag": "happy", "proportion": 0.8},
+            {"tag": "neutral", "proportion": 1.0}
+        ],
+        "bodyAnimationSequence": [
+            {"name": "Idle", "proportion": 0.0},
+            {"name": "LookAround", "proportion": 0.1},
+            {"name": "FemaleDynamicPose", "proportion": 0.4},
+            {"name": "Cheering", "proportion": 0.7},
+            {"name": "Idle", "proportion": 1.0}
+        ]
+    },
+    {
+        "id": "horse_panting_song",
+        "title": "馬喘息聲",
+        "filename": "馬喘息聲.mp3",
+        "duration": 15.0,  # 更新時長為 15 秒
+        "emotionalKeyframes": [
+            {"tag": "neutral", "proportion": 0.0},
+            {"tag": "worried", "proportion": 0.3},
+            {"tag": "worried", "proportion": 0.7},
+            {"tag": "neutral", "proportion": 1.0}
+        ],
+        "bodyAnimationSequence": [
+            {"name": "FemaleDynamicPose", "proportion": 0.0},
+            {"name": "LookAround", "proportion": 0.2},
+            {"name": "FemaleDynamicPose", "proportion": 0.8},
+            {"name": "Idle", "proportion": 1.0}
+        ]
     }
 ]
 
 # 在 murmur 時播放歌曲的機率 (0.0 至 1.0)
 # 例如，0.1 代表 10% 的機率播放歌曲而不是生成一般 murmur
 SONG_PLAY_PROBABILITY = 0.7 # 你可以調整這個值 
+
+# Helper function to get song metadata by id (if not already present)
+# def get_song_by_id(song_id):
+#     for song in SONGS_METADATA:
+#         if song["id"] == song_id:
+#             return song
+#     return None 

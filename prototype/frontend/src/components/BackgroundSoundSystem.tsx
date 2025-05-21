@@ -5,8 +5,8 @@ const EFFECTS_PATH = '/audio/effects/';
 
 // 假設 public/audio/BGM 和 public/audio/effects 中有以下檔案
 // 您需要根據實際檔案名稱進行修改
-const bgmFiles = ['spacelive_theme.mp3', 'spacelive_theme2.mp3', 'heavy_metal_bgm_01.mp3', 'heavy_metal_bgm_02.mp3', 'heavy_metal_bgm_03.mp3']; // 更新後的 BGM 檔案列表
-const effectFiles = ['winds_blowing.mp3', 'Energetic_fast_pace.mp3', 'Ambient_keyboard_cli_2.mp3', 'spaceship_ambience_01.mp3', 'spaceship_ambience_02.mp3', 'spaceship_ambience_03.mp3', 'spaceship_ambience_04.mp3', 'taiwan_variety_sfx_01.mp3', 'taiwan_variety_sfx_02.mp3', 'taiwan_variety_sfx_03.mp3', 'taiwan_variety_sfx_04.mp3']; // 更新後的音效檔案列表
+const bgmFiles = ['spacelive_theme.mp3', 'spacelive_theme2.mp3', 'heavy_metal_bgm_01.mp3', 'heavy_metal_bgm_02.mp3', 'heavy_metal_bgm_03.mp3', 'space_live_country_theme1.mp3', 'space_live_country_theme2.mp3']; // 更新後的 BGM 檔案列表
+const effectFiles = ['winds_blowing.mp3', 'Energetic_fast_pace.mp3', 'Ambient_keyboard_cli_2.mp3', 'spaceship_ambience_01.mp3', 'spaceship_ambience_02.mp3', 'spaceship_ambience_03.mp3', 'spaceship_ambience_04.mp3', 'taiwan_variety_sfx_01.mp3', 'taiwan_variety_sfx_02.mp3', 'taiwan_variety_sfx_03.mp3', 'taiwan_variety_sfx_04.mp3', '測試音效1.mp3', '測試音效2.mp3', '測試音效3.mp3', '測試音效4.mp3', '測試音效5.mp3']; // 更新後的音效檔案列表
 
 const BackgroundSoundSystem: React.FC = () => {
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
