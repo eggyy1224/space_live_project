@@ -6,6 +6,7 @@ import { useStore } from '../store'; // Import Zustand store
 import { availableEmotionTags } from '../config/emotionMappings'; 
 import logger, { LogCategory } from '../utils/LogManager'; // Import logger
 import Draggable from 'react-draggable'; // Import Draggable
+import AudioMixer from './AudioMixer';
 
 // --- 子組件: Morph Target 控制條 (Tailwind 樣式) ---
 interface MorphTargetBarProps {
@@ -400,7 +401,13 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
             </div>
           )}
 
-          {/* --- Debug Controls (Moved from AppUI) --- */} 
+          {/* --- Audio Mixer --- */}
+          <div className="space-y-2 pt-4 border-t border-gray-200 dark:border-gray-600">
+            <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">混音控制</h3>
+            <AudioMixer />
+          </div>
+
+          {/* --- Debug Controls (Moved from AppUI) --- */}
           <div className="space-y-2 pt-4 border-t border-gray-200 dark:border-gray-600">
             <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">除錯工具</h3>
             <div className="grid grid-cols-2 gap-2">

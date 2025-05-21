@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useStore } from '../store';
 
 const BGM_PATH = '/audio/BGM/';
 const EFFECTS_PATH = '/audio/effects/';
@@ -15,7 +16,23 @@ const BackgroundSoundSystem: React.FC = () => {
   const bgmGainNodeRef = useRef<GainNode | null>(null);
   const effectGainNodeRef = useRef<GainNode | null>(null);
 
+  const bgmVolume = useStore((state) => state.bgmVolume);
+  const effectVolume = useStore((state) => state.effectVolume);
+
   const [isUserInteracted, setIsUserInteracted] = useState(false);
+
+  // 更新音量設定
+  useEffect(() => {
+    if (bgmGainNodeRef.current) {
+      bgmGainNodeRef.current.gain.value = bgmVolume;
+    }
+  }, [bgmVolume]);
+
+  useEffect(() => {
+    if (effectGainNodeRef.current) {
+      effectGainNodeRef.current.gain.value = effectVolume;
+    }
+  }, [effectVolume]);
 
   // 初始化 AudioContext
   useEffect(() => {
@@ -26,13 +43,13 @@ const BackgroundSoundSystem: React.FC = () => {
 
         // 建立 BGM 的 GainNode
         const bgmGain = context.createGain();
-        bgmGain.gain.value = 0.4; // 預設 BGM 音量
+        bgmGain.gain.value = bgmVolume; // 預設 BGM 音量
         bgmGain.connect(context.destination);
         bgmGainNodeRef.current = bgmGain;
 
         // 建立 Effect 的 GainNode
         const effectGain = context.createGain();
-        effectGain.gain.value = 0.6; // 預設 Effect 音量
+        effectGain.gain.value = effectVolume; // 預設 Effect 音量
         effectGain.connect(context.destination);
         effectGainNodeRef.current = effectGain;
 

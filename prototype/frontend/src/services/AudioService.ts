@@ -13,6 +13,7 @@ class AudioService {
   private analyser: AnalyserNode | null = null;
   private playbackSourceNode: MediaElementAudioSourceNode | null = null;
   private playbackAnalyserNode: AnalyserNode | null = null;
+  private playbackGainNode: GainNode | null = null;
   private playbackAnalysisFrameId: number | null = null;
   private playbackDataArray: Uint8Array | null = null;
   private mediaStream: MediaStream | null = null;
@@ -24,6 +25,15 @@ class AudioService {
   private animationFrameId: number | null = null;
   private mouthAnimationIntervalId: number | null = null;
   private modelService: ModelService;
+
+  public updateTtsVolume(volume: number): void {
+    if (this.playbackAudio) {
+      this.playbackAudio.volume = volume;
+    }
+    if (this.playbackGainNode) {
+      this.playbackGainNode.gain.value = volume;
+    }
+  }
 
   // 單例模式
   public static getInstance(): AudioService {
@@ -246,6 +256,7 @@ class AudioService {
 
       this.playbackAudio = new Audio(audioUrl);
       this.playbackAudio.crossOrigin = "anonymous"; // 允許跨域加載，如果需要的話
+      this.playbackAudio.volume = useStore.getState().ttsVolume;
 
       // --- 獲取精確時長 --- 
       this.playbackAudio.onloadedmetadata = (event) => {
@@ -271,8 +282,14 @@ class AudioService {
         this.playbackAnalyserNode.fftSize = 256; // 較小的 FFT size 可能足夠用於音量分析
         this.playbackDataArray = new Uint8Array(this.playbackAnalyserNode.frequencyBinCount);
 
+        const gainNode = this.audioContext.createGain();
+        gainNode.gain.value = useStore.getState().ttsVolume;
+
         this.playbackSourceNode.connect(this.playbackAnalyserNode);
-        this.playbackAnalyserNode.connect(this.audioContext.destination); // 連接到輸出
+        this.playbackAnalyserNode.connect(gainNode);
+        gainNode.connect(this.audioContext.destination); // 連接到輸出
+
+        this.playbackGainNode = gainNode;
         logger.info('Web Audio nodes for playback created and connected.', LogCategory.AUDIO);
       } catch (error) {
         logger.error('Error creating or connecting Web Audio nodes for playback:', LogCategory.AUDIO, error);
@@ -358,8 +375,10 @@ class AudioService {
   private cleanupPlaybackAudioNodes(): void {
     this.playbackSourceNode?.disconnect();
     this.playbackAnalyserNode?.disconnect();
+    this.playbackGainNode?.disconnect();
     this.playbackSourceNode = null;
     this.playbackAnalyserNode = null;
+    this.playbackGainNode = null;
     this.playbackDataArray = null;
     logger.debug('Playback Web Audio nodes disconnected and cleaned up.', LogCategory.AUDIO);
   }
@@ -513,9 +532,14 @@ export function useAudioService() {
   const isSpeaking = useStore((state) => state.isSpeaking);
   const isProcessing = useStore((state) => state.isProcessing);
   const micPermission = useStore((state) => state.micPermission);
+  const ttsVolume = useStore((state) => state.ttsVolume);
   
   // 獲取 AudioService 實例
   const audioService = useRef<AudioService>(AudioService.getInstance());
+
+  useEffect(() => {
+    audioService.current.updateTtsVolume(ttsVolume);
+  }, [ttsVolume]);
 
   // 包裝 startRecording 以記錄 onStop 回調
   const startRecording = async (onStop: (audioBlob: Blob | null) => void) => {
