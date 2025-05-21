@@ -11,6 +11,7 @@ import { ToastContainer } from './components/Toast'
 import FloatingChatWindow from './components/FloatingChatWindow'
 import SettingsPanel from './components/SettingsPanel'
 import BackgroundSoundSystem from './components/BackgroundSoundSystem'
+import AudioReactiveBg from './components/AudioReactiveBg'
 
 // 引入服務
 import { 
@@ -446,8 +447,9 @@ function App() {
   return (
     <ErrorBoundary>
       <div className="app-container">
+        <AudioReactiveBg />
         <BackgroundSoundSystem />
-        <SceneContainer 
+        <SceneContainer
           headModelUrl={headModelUrl}
           isHeadModelLoaded={headModelLoaded}
           showSpaceBackground={showSpaceBackground}

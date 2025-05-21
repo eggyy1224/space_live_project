@@ -523,6 +523,17 @@ class AudioService {
   public getIsSpeaking(): boolean {
       return useStore.getState().isSpeaking;
   }
+
+  // 提供給外部使用的音頻分析節點
+  public getAnalysisNode(): AnalyserNode | null {
+      if (this.analyser) {
+          return this.analyser;
+      }
+      if (this.playbackAnalyserNode) {
+          return this.playbackAnalyserNode;
+      }
+      return null;
+  }
 }
 
 // React Hook - 使用音頻服務

@@ -15,6 +15,7 @@ const BackgroundSoundSystem: React.FC = () => {
   const effectSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const bgmGainNodeRef = useRef<GainNode | null>(null);
   const effectGainNodeRef = useRef<GainNode | null>(null);
+  const bgmAnalyserNodeRef = useRef<AnalyserNode | null>(null);
 
   const bgmVolume = useStore((state) => state.bgmVolume);
   const effectVolume = useStore((state) => state.effectVolume);
@@ -43,9 +44,13 @@ const BackgroundSoundSystem: React.FC = () => {
 
         // 建立 BGM 的 GainNode
         const bgmGain = context.createGain();
-        bgmGain.gain.value = bgmVolume; // 預設 BGM 音量
-        bgmGain.connect(context.destination);
+        bgmGain.gain.value = bgmVolume;
+        const analyser = context.createAnalyser();
+        analyser.fftSize = 256;
+        bgmAnalyserNodeRef.current = analyser;
         bgmGainNodeRef.current = bgmGain;
+        analyser.connect(bgmGain);
+        bgmGain.connect(context.destination);
 
         // 建立 Effect 的 GainNode
         const effectGain = context.createGain();
@@ -120,7 +125,9 @@ const BackgroundSoundSystem: React.FC = () => {
         const source = audioContext.createBufferSource();
         source.buffer = audioBuffer;
         source.loop = false; // 修改：不再循環播放單曲
-        source.connect(bgmGainNodeRef.current);
+        if (bgmAnalyserNodeRef.current && bgmGainNodeRef.current) {
+          source.connect(bgmAnalyserNodeRef.current);
+        }
         source.start();
         bgmSourceRef.current = source;
 
@@ -243,4 +250,6 @@ const BackgroundSoundSystem: React.FC = () => {
   return null;
 };
 
-export default BackgroundSoundSystem; 
+export const getBgmAnalyserNode = () => bgmAnalyserNodeRef.current;
+
+export default BackgroundSoundSystem;
