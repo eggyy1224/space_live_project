@@ -88,13 +88,13 @@ const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
     
     if (typingMessages.length === 0) return;
     
-    // 為每條需要打字機效果的消息設置一個打字定時器
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    
     // 獲取當前的音頻開始時間和持續時間，用於同步計算
     const audioStartTime = useStore.getState().audioStartTime;
     const audioDuration = useStore.getState().audioDuration;
     const isSpeaking = useStore.getState().isSpeaking;
+    
+    // 改用 requestAnimationFrame 實現更平滑的打字效果和更頻繁的同步檢查
+    const animationFrameIds: number[] = [];
     
     typingMessages.forEach(message => {
       if (!message.id || !message.fullContent) return;
@@ -105,76 +105,89 @@ const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
       // 避免重複處理已完成的消息
       if (currentIndex >= fullContent.length) return;
       
-      let typingInterval = 30; // 默認值
+      // 實現平滑的打字效果，同時與音頻保持同步
+      let lastTimestamp: number | null = null;
+      let accumulatedTime = 0;
       
-      // 重要修正：根據音頻的實際播放狀態計算打字速度
-      if (message.speechDuration && isSpeaking && audioStartTime && audioDuration) {
-        // 使用實際音頻播放時間來同步文字顯示
-        // 現在我們會跟踪音頻的實際播放進度，而不是使用估算
-        const now = performance.now();
-        const elapsedAudioTime = now - audioStartTime; // 已經播放的音頻時間
+      const animate = (timestamp: number) => {
+        if (lastTimestamp === null) {
+          lastTimestamp = timestamp;
+          animationFrameIds.push(requestAnimationFrame(animate));
+          return;
+        }
         
-        // 音頻總持續時間（毫秒）
-        const totalAudioDuration = audioDuration * 1000; 
+        const deltaTime = timestamp - lastTimestamp;
+        lastTimestamp = timestamp;
+        accumulatedTime += deltaTime;
         
-        // 確定當前應該顯示到的字符位置
-        // 根據音頻播放進度的比例計算
-        const expectedProgress = Math.min(1, elapsedAudioTime / totalAudioDuration);
-        const expectedCharIndex = Math.floor(fullContent.length * expectedProgress);
+        // 獲取最新的音頻播放狀態
+        const currentAudioStartTime = useStore.getState().audioStartTime;
+        const currentAudioDuration = useStore.getState().audioDuration;
+        const currentIsSpeaking = useStore.getState().isSpeaking;
         
-        // 如果實際顯示進度落後於音頻進度，需要加速追趕
-        if (expectedCharIndex > currentIndex) {
-          // 快速追趕 - 設置很短的間隔
-          typingInterval = 10;
-          logger.debug(`文字顯示落後: 期望位置 ${expectedCharIndex}, 當前位置 ${currentIndex}`, LogCategory.CHAT);
+        // 如果音頻狀態發生變化，重置累積時間
+        if (currentAudioStartTime !== audioStartTime || 
+            currentAudioDuration !== audioDuration || 
+            currentIsSpeaking !== isSpeaking) {
+          accumulatedTime = 0;
+        }
+        
+        // 確定當前的打字進度
+        const currentTypingIndex = typingStates[message.id] || 0;
+        
+        // 如果有音頻正在播放，基於音頻進度計算文本顯示
+        if (currentIsSpeaking && currentAudioStartTime && currentAudioDuration) {
+          const elapsedAudioTime = timestamp - currentAudioStartTime;
+          const totalAudioDuration = currentAudioDuration * 1000;
+          
+          // 添加初始延遲（等待音頻開始播放）
+          const initialDelay = 100;
+          const adjustedElapsedTime = Math.max(0, elapsedAudioTime - initialDelay);
+          
+          // 計算期望顯示的字符索引
+          const expectedCharIndex = Math.min(
+            fullContent.length,
+            Math.floor((adjustedElapsedTime / totalAudioDuration) * fullContent.length)
+          );
+          
+          if (expectedCharIndex > currentTypingIndex) {
+            // 更新顯示的字符數
+            setTypingStates(prev => ({
+              ...prev,
+              [message.id]: expectedCharIndex
+            }));
+          }
         } 
-        // 如果實際顯示進度超前於音頻進度，需要減速等待
-        else if (expectedCharIndex < currentIndex) {
-          // 當前顯示已經超前於音頻播放，放慢速度等待音頻
-          // 計算下一個字符應該何時顯示
-          const nextCharTime = totalAudioDuration * ((currentIndex + 1) / fullContent.length);
-          const timeUntilNextChar = Math.max(50, nextCharTime - elapsedAudioTime);
-          typingInterval = timeUntilNextChar;
-          logger.debug(`文字顯示超前: 期望位置 ${expectedCharIndex}, 當前位置 ${currentIndex}`, LogCategory.CHAT);
+        // 如果沒有音頻播放，使用時間間隔計算
+        else if (message.speechDuration && accumulatedTime >= 30) {
+          accumulatedTime = 0;
+          
+          // 使用保守的顯示速度
+          const totalDuration = message.speechDuration * 1000;
+          const charInterval = totalDuration / fullContent.length;
+          
+          // 更新下一個字符
+          if (currentTypingIndex < fullContent.length) {
+            setTypingStates(prev => ({
+              ...prev,
+              [message.id]: currentTypingIndex + 1
+            }));
+          }
         }
-        // 如果進度剛好匹配，維持正常速度
-        else {
-          // 計算下一個字符顯示時機
-          const charsRemaining = fullContent.length - currentIndex;
-          const timeRemaining = totalAudioDuration - elapsedAudioTime;
-          typingInterval = Math.max(30, timeRemaining / charsRemaining);
-        }
-      } 
-      // 如果沒有音頻相關數據，使用保守的顯示速度
-      else if (message.speechDuration) {
-        const totalDuration = message.speechDuration * 1000 * 1.2;
-        const audioStartDelay = 300;
         
-        if (currentIndex === 0) {
-          typingInterval = audioStartDelay;
-        } else {
-          const progress = currentIndex / fullContent.length;
-          const elapsedTimeEstimate = progress * totalDuration;
-          const remainingTime = totalDuration - elapsedTimeEstimate;
-          const remainingChars = fullContent.length - currentIndex;
-          const slowdownFactor = 1.5;
-          typingInterval = Math.max(30, (remainingTime * slowdownFactor) / remainingChars);
+        // 如果文本尚未完全顯示，繼續動畫
+        if (typingStates[message.id] < fullContent.length) {
+          animationFrameIds.push(requestAnimationFrame(animate));
         }
-      }
+      };
       
-      // 設置定時器顯示下一個字符
-      const timer = setTimeout(() => {
-        setTypingStates(prev => ({
-          ...prev,
-          [message.id]: currentIndex + 1
-        }));
-      }, typingInterval);
-      
-      timers.push(timer);
+      // 啟動動畫
+      animationFrameIds.push(requestAnimationFrame(animate));
     });
     
+    // 清理函數
     return () => {
-      timers.forEach(timer => clearTimeout(timer));
+      animationFrameIds.forEach(id => cancelAnimationFrame(id));
     };
   }, [messages, typingStates, useStore]);
 
