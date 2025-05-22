@@ -102,13 +102,17 @@ const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
         let typingInterval = 30; // 默認值
         
         if (message.speechDuration) {
-          // 將語音時長(秒)分配給所有字符，稍微保留一些時間給最後幾個字符
-          // 因為語音在一開始可能有較長的停頓
+          // 關鍵修改：改進打字速度計算方法，確保更精確地同步音頻
+          // 將語音時長精確分配給每個字符，考慮字符數量和音頻開始延遲
           const totalDuration = message.speechDuration * 1000; // 轉換為毫秒
-          const charsLeft = fullContent.length - currentIndex;
-          // 根據剩余字符數來計算每個字符的打字間隔
-          // 這裡我們保留一個平滑系數：使內容在語音期間的約90%時間內完成
-          typingInterval = Math.max(20, (totalDuration * 0.9) / fullContent.length);
+          const audioStartDelay = 100; // 音頻通常有約100ms的啟動延遲
+          // 計算每個字符應該顯示的時間間隔
+          typingInterval = Math.max(10, (totalDuration - audioStartDelay) / fullContent.length);
+          
+          // 如果是第一個字符，添加一個小延遲來匹配音頻開始
+          if (currentIndex === 0) {
+            typingInterval = audioStartDelay;
+          }
         }
         
         const timer = setTimeout(() => {

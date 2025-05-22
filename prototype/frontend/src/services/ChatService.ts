@@ -120,13 +120,14 @@ class ChatService {
         message.fullContent = content;
         
         // 從消息中提取語音持續時間（如果有）
+        // 關鍵修改：確保正確設置 speechDuration，這對於文本-音頻同步至關重要
         if (data.speechDuration) {
           message.speechDuration = data.speechDuration;
           logger.info(`語音持續時間: ${data.speechDuration}秒`, LogCategory.CHAT);
         } else if (message.audioUrl) {
-          // 如果沒有明確提供持續時間但有音頻，使用估算值
-          // 假設平均每個字符約0.2秒（可以根據實際情況調整）
-          const estimatedDuration = content.length * 0.2;
+          // 如果沒有明確提供持續時間但有音頻，使用更準確的估算值
+          // 改進估算算法，根據文字長度和複雜度
+          const estimatedDuration = Math.max(1, content.length * 0.08 + 0.5);
           message.speechDuration = estimatedDuration;
           logger.info(`估算語音持續時間: ${estimatedDuration}秒`, LogCategory.CHAT);
         }
@@ -142,9 +143,13 @@ class ChatService {
 
       this.addMessage(message);
       
+      // 關鍵修改：確保在 addMessage 之後再安排音頻播放，這樣文本和音頻能更好地同步
       if (message.audioUrl && message.role === 'bot') {
-        const fullAudioUrl = `${API_BASE_URL}${message.audioUrl}`;
-        this.enqueueAudioClip({ id: message.id, url: fullAudioUrl });
+        // 添加一個小延遲讓打字機效果先開始
+        setTimeout(() => {
+          const fullAudioUrl = `${API_BASE_URL}${message.audioUrl}`;
+          this.enqueueAudioClip({ id: message.id, url: fullAudioUrl });
+        }, 50);
       }
     });
 

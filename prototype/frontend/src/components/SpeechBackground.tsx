@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
 import { useStore } from '../store';
 import * as THREE from 'three';
+import logger, { LogCategory } from '../utils/LogManager';
 
 // Renders a plane that reacts to audio volume and displays the latest
 // speech text from the chat stream as a large floating caption.
@@ -12,12 +13,15 @@ const SpeechBackground: React.FC = () => {
   const { viewport } = useThree();
   const audioAverageVolume = useStore((state) => state.audioAverageVolume);
   const speechText = useStore((state) => state.speechText);
+  const lastJsonMessage = useStore((state) => state.lastJsonMessage);
 
   // 用於打字機效果的狀態
   const [displayText, setDisplayText] = useState('');
   const [typingIndex, setTypingIndex] = useState(0);
   const [fullText, setFullText] = useState('');
   const [typingComplete, setTypingComplete] = useState(true);
+  const [speechDuration, setSpeechDuration] = useState<number | null>(null);
+  const [typingStartTime, setTypingStartTime] = useState<number | null>(null);
   
   // 用於彩色 VJ 效果
   const [textColor, setTextColor] = useState<THREE.Color>(new THREE.Color(0xffffff));
@@ -29,26 +33,81 @@ const SpeechBackground: React.FC = () => {
       setFullText(speechText);
       setTypingIndex(0);
       setTypingComplete(false);
-    }
-  }, [speechText]);
-
-  // 打字機效果：每隔一段時間增加一個字符
-  useEffect(() => {
-    if (!typingComplete && fullText) {
-      const typingSpeed = 150; // 打字速度 (毫秒/字符)，調整為更慢的速度
+      setTypingStartTime(performance.now());
       
-      if (typingIndex < fullText.length) {
+      // 從最近的消息中獲取語音持續時間
+      if (lastJsonMessage && 
+          lastJsonMessage.type === 'chat-message' && 
+          lastJsonMessage.message && 
+          lastJsonMessage.message.role === 'bot') {
+        
+        // 首先檢查消息中直接提供的 speechDuration
+        if (lastJsonMessage.speechDuration) {
+          setSpeechDuration(lastJsonMessage.speechDuration);
+          logger.info(`大屏幕設置語音持續時間: ${lastJsonMessage.speechDuration}秒`, LogCategory.CHAT);
+        } 
+        // 然後檢查消息對象中的 speechDuration
+        else if (lastJsonMessage.message.speechDuration) {
+          setSpeechDuration(lastJsonMessage.message.speechDuration);
+          logger.info(`大屏幕設置語音持續時間(從消息): ${lastJsonMessage.message.speechDuration}秒`, LogCategory.CHAT);
+        } 
+        // 如果都沒有，使用基於文本長度的估算
+        else {
+          const estimatedDuration = Math.max(1, speechText.length * 0.08 + 0.5);
+          setSpeechDuration(estimatedDuration);
+          logger.info(`大屏幕估算語音持續時間: ${estimatedDuration}秒`, LogCategory.CHAT);
+        }
+      } else {
+        // 默認值
+        setSpeechDuration(speechText.length * 0.08 + 0.5);
+      }
+    }
+  }, [speechText, lastJsonMessage]);
+
+  // 改進的打字機效果：根據語音持續時間動態調整打字速度
+  useEffect(() => {
+    if (!typingComplete && fullText && typingStartTime !== null && speechDuration !== null) {
+      // 初始延遲，讓音頻有時間開始播放
+      const initialDelay = 100; 
+      
+      // 如果是首個字符，等待初始延遲
+      if (typingIndex === 0) {
         const timer = setTimeout(() => {
           setDisplayText(fullText.substring(0, typingIndex + 1));
           setTypingIndex(prev => prev + 1);
-        }, typingSpeed);
+        }, initialDelay);
         
         return () => clearTimeout(timer);
+      }
+      
+      // 計算整個打字過程應該花費的總時間 (毫秒)
+      const totalTypingDuration = speechDuration * 1000;
+      
+      // 計算每個字符應該顯示的時間間隔
+      // 根據字符總數和已經過去的時間來動態調整
+      if (typingIndex < fullText.length) {
+        const elapsedTime = performance.now() - typingStartTime;
+        const remainingTime = Math.max(0, totalTypingDuration - elapsedTime);
+        const remainingChars = fullText.length - typingIndex;
+        
+        // 如果還有字符需要顯示，計算下一個字符的顯示間隔
+        if (remainingChars > 0) {
+          const intervalPerChar = Math.max(10, remainingTime / remainingChars);
+          
+          const timer = setTimeout(() => {
+            setDisplayText(fullText.substring(0, typingIndex + 1));
+            setTypingIndex(prev => prev + 1);
+          }, intervalPerChar);
+          
+          return () => clearTimeout(timer);
+        } else {
+          setTypingComplete(true);
+        }
       } else {
         setTypingComplete(true);
       }
     }
-  }, [typingIndex, fullText, typingComplete]);
+  }, [typingIndex, fullText, typingComplete, typingStartTime, speechDuration]);
 
   useFrame((state, delta) => {
     // 背景發光效果
@@ -112,6 +171,17 @@ const SpeechBackground: React.FC = () => {
           outlineColor={new THREE.Color().setHSL((colorTimeRef.current * 0.2) % 1, 1, 0.7)} // 動態輪廓顏色
         >
           {displayText}
+          {!typingComplete && (
+            <meshBasicMaterial attach="material" color={textColor}>
+              <Text
+                position={[displayText.length * 0.5, 0, 0]}
+                fontSize={viewport.width / 20}
+                color={textColor}
+              >
+                |
+              </Text>
+            </meshBasicMaterial>
+          )}
         </Text>
       )}
     </group>
