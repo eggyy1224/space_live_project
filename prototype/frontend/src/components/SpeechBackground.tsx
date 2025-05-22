@@ -26,10 +26,37 @@ const SpeechBackground: React.FC = () => {
   // 用於彩色 VJ 效果
   const [textColor, setTextColor] = useState<THREE.Color>(new THREE.Color(0xffffff));
   const colorTimeRef = useRef(0);
+  interface FadingMessage {
+    id: string;
+    text: string;
+    start: number;
+    opacity: number;
+  }
+
+  const [fadingMessages, setFadingMessages] = useState<FadingMessage[]>([]);
+  const FADE_DELAY = 8000; // 文字停留時間(ms)
+  const FADE_DURATION = 1000; // 淡出時間(ms)
+  const activeTimerRef = useRef<number | null>(null);
+
 
   // 當新的語音文字到達時，重置打字機效果
   useEffect(() => {
     if (speechText !== fullText) {
+      if (displayText) {
+        if (activeTimerRef.current) {
+          clearTimeout(activeTimerRef.current);
+          activeTimerRef.current = null;
+        }
+        setFadingMessages((msgs) => [
+          ...msgs,
+          {
+            id: Math.random().toString(36).slice(2),
+            text: displayText,
+            start: performance.now(),
+            opacity: 1,
+          },
+        ]);
+      }
       setFullText(speechText);
       setTypingIndex(0);
       setTypingComplete(false);
@@ -170,6 +197,35 @@ const SpeechBackground: React.FC = () => {
     }
   }, [fullText, typingComplete, typingStartTime, speechDuration]);
 
+  // 文字顯示完成後，保持一段時間再淡出
+  useEffect(() => {
+    if (typingComplete && displayText) {
+      if (activeTimerRef.current) {
+        clearTimeout(activeTimerRef.current);
+      }
+      activeTimerRef.current = window.setTimeout(() => {
+        setFadingMessages((msgs) => [
+          ...msgs,
+          {
+            id: Math.random().toString(36).slice(2),
+            text: displayText,
+            start: performance.now(),
+            opacity: 1,
+          },
+        ]);
+        setDisplayText('');
+        activeTimerRef.current = null;
+      }, FADE_DELAY);
+    }
+
+    return () => {
+      if (activeTimerRef.current) {
+        clearTimeout(activeTimerRef.current);
+        activeTimerRef.current = null;
+      }
+    };
+  }, [typingComplete, displayText]);
+
   useFrame((state, delta) => {
     // 背景發光效果
     if (materialRef.current) {
@@ -193,6 +249,23 @@ const SpeechBackground: React.FC = () => {
     // 使用 HSL 設置顏色
     const newColor = new THREE.Color().setHSL(hue, saturation, lightness);
     setTextColor(newColor);
+
+    // 更新舊訊息的透明度並在淡出後移除
+    setFadingMessages((msgs) => {
+      const now = performance.now();
+      return msgs.reduce<FadingMessage[]>((acc, msg) => {
+        const elapsed = now - msg.start;
+        let opacity = msg.opacity;
+        if (elapsed > FADE_DELAY) {
+          const fadeElapsed = elapsed - FADE_DELAY;
+          opacity = 1 - Math.min(fadeElapsed / FADE_DURATION, 1);
+        }
+        if (opacity > 0) {
+          acc.push({ ...msg, opacity });
+        }
+        return acc;
+      }, []);
+    });
   });
 
   // 定義背景「大螢幕」區域
@@ -218,6 +291,26 @@ const SpeechBackground: React.FC = () => {
         <planeGeometry args={[screenWidth, screenHeight]} />
         <meshBasicMaterial color={0x000022} transparent opacity={0.2} />
       </mesh>
+
+      {fadingMessages.map((msg) => (
+        <Text
+          key={msg.id}
+          position={[0, 0, 0.1]}
+          fontSize={viewport.width / 20}
+          anchorX="center"
+          anchorY="middle"
+          maxWidth={screenWidth * 0.9}
+          textAlign="center"
+        >
+          {msg.text}
+          <meshBasicMaterial
+            attach="material"
+            color={textColor}
+            transparent
+            opacity={msg.opacity}
+          />
+        </Text>
+      ))}
       
       {displayText && (
         <Text
