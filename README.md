@@ -15,6 +15,11 @@ Space Live Project 是一個互動藝術裝置，模擬一名被困於太空艙�
 - **長期記憶**：使用 LangChain 與 ChromaDB 向量資料庫建立角色記憶系統
 - **音訊反應**：透過 Web Audio API 實現音訊分析與視覺反饋
 - **自發行為**：閒置時的自言自語與情緒變化，增強角色真實感
+- **音頻驅動的3D背景系統**：包含語音反應背景、音樂反應粒子效果和事件觸發特效，提供沉浸式視覺體驗
+  - **SpeechBackground**：對用戶語音輸入做出反應的背景牆
+  - **MusicBackground**：漂浮的太空音樂播放器，具有環繞粒子效果
+  - **EffectBackground**：對特定事件觸發的粒子效果
+  - **P5SpaceEffect**：P5.js風格的粒子系統
 
 ## 快速開始
 
@@ -72,6 +77,8 @@ GEMINI_API_KEY=your_gemini_api_key
 - **WebSocket**：即時通訊
 
 [詳細前端架構說明](docs/前端相關/前端架構概述.md)
+[音頻驅動的3D背景系統](docs/frontend/audio_driven_background_system.md)
+[背景效果概述](docs/display_backgrounds_overview.md)
 
 ### 後端技術
 
