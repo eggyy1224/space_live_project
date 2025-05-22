@@ -147,7 +147,12 @@ class ChatService {
       if (message.audioUrl && message.role === 'bot') {
         // 添加一個小延遲讓打字機效果先開始
         setTimeout(() => {
-          const fullAudioUrl = `${API_BASE_URL}${message.audioUrl}`;
+          // 檢查 audioUrl 格式，如果是 base64 格式則直接使用，否則拼接 API_BASE_URL
+          const fullAudioUrl = message.audioUrl.startsWith('data:') 
+            ? message.audioUrl 
+            : `${API_BASE_URL}${message.audioUrl}`;
+          
+          logger.info(`播放音頻: ${message.audioUrl.startsWith('data:') ? '[Base64 音頻]' : fullAudioUrl}`, LogCategory.CHAT);
           this.enqueueAudioClip({ id: message.id, url: fullAudioUrl });
         }, 50);
       }

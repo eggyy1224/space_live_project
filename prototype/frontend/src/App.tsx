@@ -375,13 +375,21 @@ function App() {
               isTyping: true, 
               timestamp: new Date().toISOString(),
               speechDuration: speechDurationForTypingEffect, 
+              // 添加音頻URL作為消息的一部分，但不在這裡播放
+              // ChatService 會負責處理音頻播放
+              audioUrl: result.audio ? `data:audio/mp3;base64,${result.audio}` : undefined
             };
             addChatMessage(botResponseMessage);
 
+            // 注意：不要在這裡播放音頻
+            // ChatService 將根據 audioUrl 自動處理播放
+            // 這段代碼可能是導致重複播放的原因
+            /*
             if (result.audio) { 
               logger.info(`[App] Playing bot audio.`, LogCategory.GENERAL);
               AudioService.getInstance().playAudio(`data:audio/mp3;base64,${result.audio}`);
             }
+            */
           }
 
         } else if (result && !result.success) {
