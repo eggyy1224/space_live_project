@@ -174,6 +174,37 @@ async def websocket_endpoint(websocket: WebSocket):
     speaking_state = SpeakingState.IDLE  # 當前語音狀態
     current_audio_task: Optional[asyncio.Task] = None  # <-- 確保類型提示和初始值
     # --- 結束修改 ---
+
+    # --- 新增：前端音頻播放握手 ---
+    audio_send_queue: Deque[Dict[str, Any]] = deque()
+    awaiting_playback_ack: Optional[str] = None
+
+    async def enqueue_audio_clip(clip: Dict[str, Any]):
+        """加入待發送音頻片段並嘗試發送"""
+        audio_send_queue.append(clip)
+        await try_send_next_audio_clip()
+
+    async def try_send_next_audio_clip():
+        nonlocal awaiting_playback_ack
+        if awaiting_playback_ack or not audio_send_queue:
+            return
+        clip = audio_send_queue[0]
+        await websocket.send_json({
+            "type": "play-audio",
+            "id": clip.get("id"),
+            "url": clip.get("url"),
+            "interrupt": clip.get("interrupt", False),
+        })
+        awaiting_playback_ack = clip.get("id")
+
+    async def handle_playback_ack(ack_id: str):
+        nonlocal awaiting_playback_ack
+        if awaiting_playback_ack and ack_id == awaiting_playback_ack:
+            audio_send_queue.popleft()
+            awaiting_playback_ack = None
+            await try_send_next_audio_clip()
+
+    # --- 結束新增 ---
     
     user_responded = False
 
@@ -418,6 +449,12 @@ async def websocket_endpoint(websocket: WebSocket):
                 "type": "chat-message",
                 "message": bot_message
             })
+
+            if bot_message.get("audioUrl"):
+                await enqueue_audio_clip({
+                    "id": bot_message["id"],
+                    "url": bot_message["audioUrl"],
+                })
             
             # 發送情緒軌跡（如果有）
             emotional_keyframes = ai_result.get("emotional_keyframes")
@@ -602,6 +639,12 @@ async def websocket_endpoint(websocket: WebSocket):
             
             await websocket.send_json({"type": "chat-message", "message": bot_message})
 
+            if bot_message.get("audioUrl"):
+                await enqueue_audio_clip({
+                    "id": bot_message["id"],
+                    "url": bot_message["audioUrl"],
+                })
+
             emotional_keyframes = ai_result.get("emotional_keyframes")
             if emotional_keyframes:
                 await websocket.send_json({
@@ -700,8 +743,11 @@ async def websocket_endpoint(websocket: WebSocket):
             # 將用戶消息加入隊列
             message = json.loads(data)
             message_type = message.get("type")
-            
-            if message_type == "message" or message_type == "chat-message":
+
+            if message_type == "playback_ack":
+                ack_id = message.get("id")
+                await handle_playback_ack(ack_id)
+            elif message_type == "message" or message_type == "chat-message":
                 content = message.get("content", message.get("message", ""))
                 if content:
                     # 更新活動時間戳

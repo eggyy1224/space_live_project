@@ -28,6 +28,9 @@ class ChatService {
   private static instance: ChatService;
   private websocket: WebSocketService;
   private audioService: AudioService;
+  private playbackQueue: { id: string; url: string; text?: string; interrupt?: boolean }[] = [];
+  private currentClip: { id: string; url: string } | null = null;
+  private waitingForAck = false;
   // ---> 添加一個映射來存儲每個請求的開始時間 <---
   private messageTimestamps: Map<string, number> = new Map();
   
@@ -44,9 +47,42 @@ class ChatService {
     // 初始化相關服務
     this.websocket = WebSocketService.getInstance();
     this.audioService = AudioService.getInstance();
-    
+
     // 註冊 WebSocket 消息處理器
     this.setupMessageHandlers();
+  }
+
+  private enqueueAudioClip(clip: { id: string; url: string; text?: string; interrupt?: boolean }): void {
+    if (clip.interrupt) {
+      this.audioService.stopPlayback();
+      this.playbackQueue = [];
+      this.currentClip = null;
+      this.waitingForAck = false;
+    }
+    this.playbackQueue.push(clip);
+    this.processPlaybackQueue();
+  }
+
+  private async processPlaybackQueue(): Promise<void> {
+    if (this.currentClip || this.waitingForAck) return;
+    const clip = this.playbackQueue.shift();
+    if (!clip) return;
+    this.currentClip = { id: clip.id, url: clip.url };
+    if (clip.text) {
+      useStore.getState().setSpeechText(clip.text);
+      useStore.getState().updateMessage(clip.id, { isTyping: true, fullContent: clip.text });
+    }
+    this.waitingForAck = true;
+    try {
+      await this.audioService.playAudio(clip.url);
+    } catch (err) {
+      logger.error('音頻播放失敗', LogCategory.CHAT, err);
+    } finally {
+      this.websocket.sendMessage({ type: 'playback_ack', id: clip.id });
+      this.currentClip = null;
+      this.waitingForAck = false;
+      this.processPlaybackQueue();
+    }
   }
   
   // 設置 WebSocket 消息處理器
@@ -78,14 +114,15 @@ class ChatService {
       
       // 將收到的消息添加到聊天歷史
       let message = data.message;
-      
-      // 如果是機器人消息並且不是錯誤消息，添加打字機效果
+      const content = message.content;
+
+      // 如果是機器人消息並且不是錯誤消息，先將內容加入佇列，待播放時再顯示
       if (message.role === 'bot' && !message.isError) {
-        const content = message.content;
-        
-        // 添加打字機效果屬性
-        message.isTyping = true;
+
+        // 保存完整內容，稍後播放時再開始打字
+        message.isTyping = false;
         message.fullContent = content;
+        message.content = '';
         
         // 從消息中提取語音持續時間（如果有）
         if (data.speechDuration) {
@@ -103,39 +140,20 @@ class ChatService {
       // 更新最近消息（用於顯示情緒等）
       useStore.getState().setLastJsonMessage(data);
 
-      // 將目前的語音文字存入 Zustand，供背景顯示
-      if (message.role === 'bot') {
-        useStore.getState().setSpeechText(message.content);
-      }
+      // 不立即顯示文本，待音頻播放時再處理
 
       this.addMessage(message);
       
-      // 如果消息包含音頻URL且不是用戶發送的消息，播放語音
       if (message.audioUrl && message.role === 'bot') {
-        logger.info('播放消息語音:', LogCategory.CHAT, message.audioUrl);
-        
-        // 構建完整的音頻URL
         const fullAudioUrl = `${API_BASE_URL}${message.audioUrl}`;
-        logger.info('完整音頻URL:', LogCategory.CHAT, fullAudioUrl);
-        
-        // --- 修改播放邏輯：先獲取 Blob 再播放 ---
-        fetch(fullAudioUrl)
-          .then(response => {
-            if (!response.ok) {
-              throw new Error(`無法獲取音頻文件: ${response.statusText}`);
-            }
-            return response.blob(); // 將響應轉換為 Blob
-          })
-          .then(audioBlob => {
-            logger.info('成功獲取音頻 Blob，開始播放', LogCategory.CHAT);
-            this.audioService.playAudio(audioBlob); // <--- 播放 Blob
-          })
-          .catch(error => {
-            logger.error('獲取或播放音頻時出錯:', LogCategory.CHAT, error);
-            // 可選：顯示錯誤給用戶或嘗試播放 URL 作為備用
-            // this.audioService.playAudio(fullAudioUrl); 
-          });
-        // --- 修改結束 ---
+        this.enqueueAudioClip({ id: message.id, url: fullAudioUrl, text: content });
+      }
+    });
+
+    this.websocket.registerHandler('play-audio', (data: any) => {
+      if (data && data.url && data.id) {
+        const fullUrl = `${API_BASE_URL}${data.url}`;
+        this.enqueueAudioClip({ id: data.id, url: fullUrl, interrupt: data.interrupt });
       }
     });
     

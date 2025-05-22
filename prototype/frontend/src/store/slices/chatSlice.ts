@@ -1,5 +1,4 @@
 import { StateCreator } from 'zustand';
-import { v4 as uuidv4 } from 'uuid';
 
 // 聊天消息類型定義
 export interface ChatMessage {
@@ -30,7 +29,8 @@ export interface ChatSlice {
   isChatWindowVisible: boolean;
 
   // 操作
-  addMessage: (message: Omit<ChatMessage, 'id'>) => void;
+  addMessage: (message: ChatMessage) => void;
+  updateMessage: (id: string, partial: Partial<ChatMessage>) => void;
   setMessages: (messages: ChatMessage[]) => void;
   clearMessages: () => void;
   setProcessing: (processing: boolean) => void;
@@ -47,9 +47,17 @@ export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
   isChatWindowVisible: false,
 
   // 操作實現
-  addMessage: (message) => set((state) => ({
-    messages: [...state.messages, { ...message, id: uuidv4() }]
-  })),
+  addMessage: (message) =>
+    set((state) => ({
+      messages: [...state.messages, { ...message }]
+    })),
+
+  updateMessage: (id, partial) =>
+    set((state) => ({
+      messages: state.messages.map((msg) =>
+        msg.id === id ? { ...msg, ...partial } : msg
+      )
+    })),
   
   setMessages: (messages) => set({ messages }),
   
