@@ -104,13 +104,23 @@ const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
         if (message.speechDuration) {
           // 關鍵修改：改進打字速度計算方法，確保更精確地同步音頻
           // 將語音時長精確分配給每個字符，考慮字符數量和音頻開始延遲
-          const totalDuration = message.speechDuration * 1000; // 轉換為毫秒
-          const audioStartDelay = 100; // 音頻通常有約100ms的啟動延遲
-          // 計算每個字符應該顯示的時間間隔
-          typingInterval = Math.max(10, (totalDuration - audioStartDelay) / fullContent.length);
+          const totalDuration = message.speechDuration * 1000 * 1.2; // 轉換為毫秒，並增加20%的時間讓顯示更慢
+          const audioStartDelay = 300; // 增加音頻啟動延遲到300ms，給音頻更多時間開始
           
-          // 如果是第一個字符，添加一個小延遲來匹配音頻開始
-          if (currentIndex === 0) {
+          // 對於已經顯示了一部分的消息，計算剩餘時間和剩餘字符
+          if (currentIndex > 0) {
+            // 如果已經顯示了一部分文本，計算剩餘時間和剩餘字符
+            const progress = currentIndex / fullContent.length; // 已完成的進度百分比
+            const elapsedTimeEstimate = progress * totalDuration; // 估計已經過的時間
+            const remainingTime = totalDuration - elapsedTimeEstimate;
+            const remainingChars = fullContent.length - currentIndex;
+            
+            // 使用更保守的計算，確保打字機效果不會在語音結束前完成
+            const slowdownFactor = 1.5; // 放慢因子
+            // 為剩餘的每個字符分配時間，確保最小間隔
+            typingInterval = Math.max(30, (remainingTime * slowdownFactor) / remainingChars);
+          } else {
+            // 第一個字符，使用啟動延遲
             typingInterval = audioStartDelay;
           }
         }
@@ -121,6 +131,16 @@ const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
             [message.id]: currentIndex + 1
           }));
         }, typingInterval);
+        
+        timers.push(timer);
+      } else {
+        // 如果字符已全部顯示，則延遲一段時間後再設置為完成
+        // 這可以確保文本在語音結束前不會消失
+        const displayCompleteDelay = 1000; // 1秒延遲
+        const timer = setTimeout(() => {
+          // 這裡不需要做任何事情，因為所有字符已經顯示
+          // 但我們可以添加一個完成標記，如果需要的話
+        }, displayCompleteDelay);
         
         timers.push(timer);
       }

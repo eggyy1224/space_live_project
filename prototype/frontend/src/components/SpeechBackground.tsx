@@ -43,23 +43,27 @@ const SpeechBackground: React.FC = () => {
         
         // 首先檢查消息中直接提供的 speechDuration
         if (lastJsonMessage.speechDuration) {
-          setSpeechDuration(lastJsonMessage.speechDuration);
-          logger.info(`大屏幕設置語音持續時間: ${lastJsonMessage.speechDuration}秒`, LogCategory.CHAT);
+          // 增加語音持續時間以確保文字顯示完成前語音不會結束
+          // 增加20%的時間來確保文字顯示不會太快結束
+          setSpeechDuration(lastJsonMessage.speechDuration * 1.2);
+          logger.info(`大屏幕設置語音持續時間: ${lastJsonMessage.speechDuration * 1.2}秒 (原始: ${lastJsonMessage.speechDuration}秒)`, LogCategory.CHAT);
         } 
         // 然後檢查消息對象中的 speechDuration
         else if (lastJsonMessage.message.speechDuration) {
-          setSpeechDuration(lastJsonMessage.message.speechDuration);
-          logger.info(`大屏幕設置語音持續時間(從消息): ${lastJsonMessage.message.speechDuration}秒`, LogCategory.CHAT);
+          // 同樣增加語音持續時間
+          setSpeechDuration(lastJsonMessage.message.speechDuration * 1.2);
+          logger.info(`大屏幕設置語音持續時間(從消息): ${lastJsonMessage.message.speechDuration * 1.2}秒 (原始: ${lastJsonMessage.message.speechDuration}秒)`, LogCategory.CHAT);
         } 
         // 如果都沒有，使用基於文本長度的估算
         else {
-          const estimatedDuration = Math.max(1, speechText.length * 0.08 + 0.5);
+          // 更保守的估算，以確保文字顯示速度更慢
+          const estimatedDuration = Math.max(2, speechText.length * 0.15);
           setSpeechDuration(estimatedDuration);
           logger.info(`大屏幕估算語音持續時間: ${estimatedDuration}秒`, LogCategory.CHAT);
         }
       } else {
-        // 默認值
-        setSpeechDuration(speechText.length * 0.08 + 0.5);
+        // 默認值 - 增加每個字符的時間以放慢顯示速度
+        setSpeechDuration(Math.max(2, speechText.length * 0.15));
       }
     }
   }, [speechText, lastJsonMessage]);
@@ -68,7 +72,7 @@ const SpeechBackground: React.FC = () => {
   useEffect(() => {
     if (!typingComplete && fullText && typingStartTime !== null && speechDuration !== null) {
       // 初始延遲，讓音頻有時間開始播放
-      const initialDelay = 100; 
+      const initialDelay = 300; // 增加初始延遲，讓音頻先開始播放
       
       // 如果是首個字符，等待初始延遲
       if (typingIndex === 0) {
@@ -87,12 +91,17 @@ const SpeechBackground: React.FC = () => {
       // 根據字符總數和已經過去的時間來動態調整
       if (typingIndex < fullText.length) {
         const elapsedTime = performance.now() - typingStartTime;
-        const remainingTime = Math.max(0, totalTypingDuration - elapsedTime);
+        
+        // 調整顯示速度，確保打字機效果不會在語音結束前完成
+        // 降低顯示速度，使用更保守的時間計算
+        const slowdownFactor = 1.5; // 放慢因子
+        const remainingTime = Math.max(500, (totalTypingDuration - elapsedTime) * slowdownFactor);
         const remainingChars = fullText.length - typingIndex;
         
         // 如果還有字符需要顯示，計算下一個字符的顯示間隔
         if (remainingChars > 0) {
-          const intervalPerChar = Math.max(10, remainingTime / remainingChars);
+          // 確保每個字符的顯示間隔不會太小，保持打字機效果的節奏感
+          const intervalPerChar = Math.max(30, remainingTime / remainingChars);
           
           const timer = setTimeout(() => {
             setDisplayText(fullText.substring(0, typingIndex + 1));
@@ -101,10 +110,15 @@ const SpeechBackground: React.FC = () => {
           
           return () => clearTimeout(timer);
         } else {
-          setTypingComplete(true);
+          // 文本顯示完成後，不要立即設置為完成
+          // 而是等待一段時間，確保語音已經結束
+          const displayCompleteDelay = 1000; // 1秒延遲
+          const timer = setTimeout(() => {
+            setTypingComplete(true);
+          }, displayCompleteDelay);
+          
+          return () => clearTimeout(timer);
         }
-      } else {
-        setTypingComplete(true);
       }
     }
   }, [typingIndex, fullText, typingComplete, typingStartTime, speechDuration]);
