@@ -102,7 +102,12 @@ class ChatService {
       
       // 更新最近消息（用於顯示情緒等）
       useStore.getState().setLastJsonMessage(data);
-      
+
+      // 將目前的語音文字存入 Zustand，供背景顯示
+      if (message.role === 'bot') {
+        useStore.getState().setSpeechText(message.content);
+      }
+
       this.addMessage(message);
       
       // 如果消息包含音頻URL且不是用戶發送的消息，播放語音
