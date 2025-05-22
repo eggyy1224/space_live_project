@@ -8,11 +8,20 @@ import { AppSlice, createAppSlice } from './slices/appSlice';
 import { MediaSlice, createMediaSlice } from './slices/mediaSlice';
 import { BodySlice, createBodySlice } from './slices/bodySlice';
 import { AudioSettingsSlice, createAudioSettingsSlice } from './slices/audioSettingsSlice';
+import { BackgroundAudioSlice, createBackgroundAudioSlice } from './slices/backgroundAudioSlice';
 // import { EmotionSlice, createEmotionSlice } from './slices/emotionSlice';
 // import { AudioSlice, createAudioSlice } from './slices/audioSlice';
 
 // 合併所有 slice 類型為最終 Store 類型
-export type Store = WebSocketSlice & ChatSlice & HeadSlice & AppSlice & MediaSlice & BodySlice & AudioSettingsSlice;
+export type Store =
+  WebSocketSlice &
+  ChatSlice &
+  HeadSlice &
+  AppSlice &
+  MediaSlice &
+  BodySlice &
+  AudioSettingsSlice &
+  BackgroundAudioSlice;
 
 // 創建 Zustand Store
 export const useStore = create<Store>()(
@@ -25,6 +34,7 @@ export const useStore = create<Store>()(
       ...createMediaSlice(set, get, api),
       ...createBodySlice(set, get, api),
       ...createAudioSettingsSlice(set, get, api),
+      ...createBackgroundAudioSlice(set, get, api),
     }),
     { name: 'AppStore' } // Optional: Name for Redux DevTools
   )

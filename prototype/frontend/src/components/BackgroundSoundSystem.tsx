@@ -1,6 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store';
 
+// utility to compute RMS from analyser data
+const getRms = (analyser: AnalyserNode, dataArray: Uint8Array) => {
+  analyser.getByteTimeDomainData(dataArray);
+  let sumSquares = 0;
+  for (let i = 0; i < dataArray.length; i++) {
+    const v = dataArray[i] / 128 - 1;
+    sumSquares += v * v;
+  }
+  return Math.sqrt(sumSquares / dataArray.length);
+};
+
 const BGM_PATH = '/audio/BGM/';
 const EFFECTS_PATH = '/audio/effects/';
 
@@ -15,11 +26,33 @@ const BackgroundSoundSystem: React.FC = () => {
   const effectSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const bgmGainNodeRef = useRef<GainNode | null>(null);
   const effectGainNodeRef = useRef<GainNode | null>(null);
+  const bgmAnalyserRef = useRef<AnalyserNode | null>(null);
+  const bgmDataRef = useRef<Uint8Array | null>(null);
+  const bgmRafRef = useRef<number | null>(null);
 
   const bgmVolume = useStore((state) => state.bgmVolume);
   const effectVolume = useStore((state) => state.effectVolume);
+  const setBgmIntensity = useStore((state) => state.setBgmIntensity);
+  const triggerEffect = useStore((state) => state.triggerEffect);
 
   const [isUserInteracted, setIsUserInteracted] = useState(false);
+
+  const startBgmAnalysis = () => {
+    if (!bgmAnalyserRef.current || !bgmDataRef.current) return;
+    const loop = () => {
+      if (!bgmAnalyserRef.current || !bgmDataRef.current) return;
+      const rms = getRms(bgmAnalyserRef.current, bgmDataRef.current);
+      setBgmIntensity(rms);
+      bgmRafRef.current = requestAnimationFrame(loop);
+    };
+    bgmRafRef.current = requestAnimationFrame(loop);
+  };
+
+  const stopBgmAnalysis = () => {
+    if (bgmRafRef.current) cancelAnimationFrame(bgmRafRef.current);
+    bgmRafRef.current = null;
+    setBgmIntensity(0);
+  };
 
   // 更新音量設定
   useEffect(() => {
@@ -44,7 +77,12 @@ const BackgroundSoundSystem: React.FC = () => {
         // 建立 BGM 的 GainNode
         const bgmGain = context.createGain();
         bgmGain.gain.value = bgmVolume; // 預設 BGM 音量
-        bgmGain.connect(context.destination);
+        const bgmAnalyser = context.createAnalyser();
+        bgmAnalyser.fftSize = 256;
+        bgmGain.connect(bgmAnalyser);
+        bgmAnalyser.connect(context.destination);
+        bgmAnalyserRef.current = bgmAnalyser;
+        bgmDataRef.current = new Uint8Array(bgmAnalyser.frequencyBinCount);
         bgmGainNodeRef.current = bgmGain;
 
         // 建立 Effect 的 GainNode
@@ -123,6 +161,7 @@ const BackgroundSoundSystem: React.FC = () => {
         source.connect(bgmGainNodeRef.current);
         source.start();
         bgmSourceRef.current = source;
+        startBgmAnalysis();
 
         // 新增：當歌曲播放完畢時，再次呼叫 playBGM 以播放下一首
         source.onended = () => {
@@ -149,6 +188,7 @@ const BackgroundSoundSystem: React.FC = () => {
         bgmSourceRef.current.stop();
         bgmSourceRef.current.disconnect();
       }
+      stopBgmAnalysis();
     };
   }, [audioContext, isUserInteracted]); // 依賴 audioContext 和 isUserInteracted
 
@@ -189,6 +229,7 @@ const BackgroundSoundSystem: React.FC = () => {
         source.connect(effectGainNodeRef.current);
         source.start();
         effectSourceRef.current = source;
+        triggerEffect();
 
         // 音效播放完畢後，設定下一次隨機播放
         source.onended = scheduleNextEffect;
