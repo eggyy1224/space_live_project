@@ -4,6 +4,8 @@ import { ResizableBox } from 'react-resizable';
 import 'react-resizable/css/styles.css'; // Import default styles for resizable
 
 import { ChatMessage } from '../store/slices/chatSlice'; // Import ChatMessage type
+import { useStore } from '../store'; // 修正 useStore 導入
+import logger, { LogCategory } from '../utils/LogManager'; // 修正 logger 導入
 
 interface FloatingChatWindowProps {
   // TODO: Define props later (e.g., messages, input state, send function, visibility toggle)
@@ -89,67 +91,92 @@ const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
     // 為每條需要打字機效果的消息設置一個打字定時器
     const timers: ReturnType<typeof setTimeout>[] = [];
     
+    // 獲取當前的音頻開始時間和持續時間，用於同步計算
+    const audioStartTime = useStore.getState().audioStartTime;
+    const audioDuration = useStore.getState().audioDuration;
+    const isSpeaking = useStore.getState().isSpeaking;
+    
     typingMessages.forEach(message => {
       if (!message.id || !message.fullContent) return;
       
       const fullContent = message.fullContent;
       const currentIndex = typingStates[message.id] || 0;
       
-      if (currentIndex < fullContent.length) {
-        // 根據語音長度計算打字速度
-        // 如果消息中有 speechDuration 屬性，使用它來計算打字速度
-        // 否則回退到默認速度 (30ms 每字符)
-        let typingInterval = 30; // 默認值
+      // 避免重複處理已完成的消息
+      if (currentIndex >= fullContent.length) return;
+      
+      let typingInterval = 30; // 默認值
+      
+      // 重要修正：根據音頻的實際播放狀態計算打字速度
+      if (message.speechDuration && isSpeaking && audioStartTime && audioDuration) {
+        // 使用實際音頻播放時間來同步文字顯示
+        // 現在我們會跟踪音頻的實際播放進度，而不是使用估算
+        const now = performance.now();
+        const elapsedAudioTime = now - audioStartTime; // 已經播放的音頻時間
         
-        if (message.speechDuration) {
-          // 關鍵修改：改進打字速度計算方法，確保更精確地同步音頻
-          // 將語音時長精確分配給每個字符，考慮字符數量和音頻開始延遲
-          const totalDuration = message.speechDuration * 1000 * 1.2; // 轉換為毫秒，並增加20%的時間讓顯示更慢
-          const audioStartDelay = 300; // 增加音頻啟動延遲到300ms，給音頻更多時間開始
-          
-          // 對於已經顯示了一部分的消息，計算剩餘時間和剩餘字符
-          if (currentIndex > 0) {
-            // 如果已經顯示了一部分文本，計算剩餘時間和剩餘字符
-            const progress = currentIndex / fullContent.length; // 已完成的進度百分比
-            const elapsedTimeEstimate = progress * totalDuration; // 估計已經過的時間
-            const remainingTime = totalDuration - elapsedTimeEstimate;
-            const remainingChars = fullContent.length - currentIndex;
-            
-            // 使用更保守的計算，確保打字機效果不會在語音結束前完成
-            const slowdownFactor = 1.5; // 放慢因子
-            // 為剩餘的每個字符分配時間，確保最小間隔
-            typingInterval = Math.max(30, (remainingTime * slowdownFactor) / remainingChars);
-          } else {
-            // 第一個字符，使用啟動延遲
-            typingInterval = audioStartDelay;
-          }
+        // 音頻總持續時間（毫秒）
+        const totalAudioDuration = audioDuration * 1000; 
+        
+        // 確定當前應該顯示到的字符位置
+        // 根據音頻播放進度的比例計算
+        const expectedProgress = Math.min(1, elapsedAudioTime / totalAudioDuration);
+        const expectedCharIndex = Math.floor(fullContent.length * expectedProgress);
+        
+        // 如果實際顯示進度落後於音頻進度，需要加速追趕
+        if (expectedCharIndex > currentIndex) {
+          // 快速追趕 - 設置很短的間隔
+          typingInterval = 10;
+          logger.debug(`文字顯示落後: 期望位置 ${expectedCharIndex}, 當前位置 ${currentIndex}`, LogCategory.CHAT);
+        } 
+        // 如果實際顯示進度超前於音頻進度，需要減速等待
+        else if (expectedCharIndex < currentIndex) {
+          // 當前顯示已經超前於音頻播放，放慢速度等待音頻
+          // 計算下一個字符應該何時顯示
+          const nextCharTime = totalAudioDuration * ((currentIndex + 1) / fullContent.length);
+          const timeUntilNextChar = Math.max(50, nextCharTime - elapsedAudioTime);
+          typingInterval = timeUntilNextChar;
+          logger.debug(`文字顯示超前: 期望位置 ${expectedCharIndex}, 當前位置 ${currentIndex}`, LogCategory.CHAT);
         }
+        // 如果進度剛好匹配，維持正常速度
+        else {
+          // 計算下一個字符顯示時機
+          const charsRemaining = fullContent.length - currentIndex;
+          const timeRemaining = totalAudioDuration - elapsedAudioTime;
+          typingInterval = Math.max(30, timeRemaining / charsRemaining);
+        }
+      } 
+      // 如果沒有音頻相關數據，使用保守的顯示速度
+      else if (message.speechDuration) {
+        const totalDuration = message.speechDuration * 1000 * 1.2;
+        const audioStartDelay = 300;
         
-        const timer = setTimeout(() => {
-          setTypingStates(prev => ({
-            ...prev,
-            [message.id]: currentIndex + 1
-          }));
-        }, typingInterval);
-        
-        timers.push(timer);
-      } else {
-        // 如果字符已全部顯示，則延遲一段時間後再設置為完成
-        // 這可以確保文本在語音結束前不會消失
-        const displayCompleteDelay = 1000; // 1秒延遲
-        const timer = setTimeout(() => {
-          // 這裡不需要做任何事情，因為所有字符已經顯示
-          // 但我們可以添加一個完成標記，如果需要的話
-        }, displayCompleteDelay);
-        
-        timers.push(timer);
+        if (currentIndex === 0) {
+          typingInterval = audioStartDelay;
+        } else {
+          const progress = currentIndex / fullContent.length;
+          const elapsedTimeEstimate = progress * totalDuration;
+          const remainingTime = totalDuration - elapsedTimeEstimate;
+          const remainingChars = fullContent.length - currentIndex;
+          const slowdownFactor = 1.5;
+          typingInterval = Math.max(30, (remainingTime * slowdownFactor) / remainingChars);
+        }
       }
+      
+      // 設置定時器顯示下一個字符
+      const timer = setTimeout(() => {
+        setTypingStates(prev => ({
+          ...prev,
+          [message.id]: currentIndex + 1
+        }));
+      }, typingInterval);
+      
+      timers.push(timer);
     });
     
     return () => {
       timers.forEach(timer => clearTimeout(timer));
     };
-  }, [messages, typingStates]);
+  }, [messages, typingStates, useStore]);
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {

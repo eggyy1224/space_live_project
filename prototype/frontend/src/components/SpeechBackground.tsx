@@ -71,53 +71,122 @@ const SpeechBackground: React.FC = () => {
   // 改進的打字機效果：根據語音持續時間動態調整打字速度
   useEffect(() => {
     if (!typingComplete && fullText && typingStartTime !== null && speechDuration !== null) {
-      // 初始延遲，讓音頻有時間開始播放
-      const initialDelay = 300; // 增加初始延遲，讓音頻先開始播放
+      // 獲取音頻的實際播放狀態
+      const audioStartTime = useStore.getState().audioStartTime;
+      const audioDuration = useStore.getState().audioDuration;
+      const isSpeaking = useStore.getState().isSpeaking;
       
-      // 如果是首個字符，等待初始延遲
-      if (typingIndex === 0) {
-        const timer = setTimeout(() => {
-          setDisplayText(fullText.substring(0, typingIndex + 1));
-          setTypingIndex(prev => prev + 1);
-        }, initialDelay);
+      // 如果有實際音頻播放數據，使用它來精確同步
+      if (isSpeaking && audioStartTime && audioDuration) {
+        const now = performance.now();
+        const elapsedAudioTime = now - audioStartTime; // 音頻已播放時間
+        const totalAudioDuration = audioDuration * 1000; // 音頻總持續時間（毫秒）
         
-        return () => clearTimeout(timer);
-      }
-      
-      // 計算整個打字過程應該花費的總時間 (毫秒)
-      const totalTypingDuration = speechDuration * 1000;
-      
-      // 計算每個字符應該顯示的時間間隔
-      // 根據字符總數和已經過去的時間來動態調整
-      if (typingIndex < fullText.length) {
-        const elapsedTime = performance.now() - typingStartTime;
+        // 根據音頻播放進度計算應該顯示的文字位置
+        const expectedProgress = Math.min(1, elapsedAudioTime / totalAudioDuration);
+        const expectedCharIndex = Math.floor(fullText.length * expectedProgress);
         
-        // 調整顯示速度，確保打字機效果不會在語音結束前完成
-        // 降低顯示速度，使用更保守的時間計算
-        const slowdownFactor = 1.5; // 放慢因子
-        const remainingTime = Math.max(500, (totalTypingDuration - elapsedTime) * slowdownFactor);
-        const remainingChars = fullText.length - typingIndex;
-        
-        // 如果還有字符需要顯示，計算下一個字符的顯示間隔
-        if (remainingChars > 0) {
-          // 確保每個字符的顯示間隔不會太小，保持打字機效果的節奏感
-          const intervalPerChar = Math.max(30, remainingTime / remainingChars);
+        // 顯示進度落後于音頻，需要快速趕上
+        if (expectedCharIndex > typingIndex) {
+          logger.debug(`大屏幕文字顯示落後: 期望位置 ${expectedCharIndex}, 當前位置 ${typingIndex}`, LogCategory.CHAT);
+          // 快速更新到當前應該顯示的位置
+          setDisplayText(fullText.substring(0, expectedCharIndex));
+          setTypingIndex(expectedCharIndex);
+          
+          // 設置下一個字符的顯示時間
+          const charsRemaining = fullText.length - expectedCharIndex;
+          if (charsRemaining > 0) {
+            const timeRemaining = totalAudioDuration - elapsedAudioTime;
+            const intervalPerChar = Math.max(30, timeRemaining / charsRemaining);
+            
+            const timer = setTimeout(() => {
+              setTypingIndex(prev => prev + 1);
+              setDisplayText(fullText.substring(0, expectedCharIndex + 1));
+            }, intervalPerChar);
+            
+            return () => clearTimeout(timer);
+          }
+        } 
+        // 顯示進度超前于音頻，需要等待
+        else if (expectedCharIndex < typingIndex) {
+          logger.debug(`大屏幕文字顯示超前: 期望位置 ${expectedCharIndex}, 當前位置 ${typingIndex}`, LogCategory.CHAT);
+          // 計算下一個字符應該何時顯示
+          const nextCharTime = totalAudioDuration * ((typingIndex + 1) / fullText.length);
+          const timeUntilNextChar = Math.max(50, nextCharTime - elapsedAudioTime);
           
           const timer = setTimeout(() => {
-            setDisplayText(fullText.substring(0, typingIndex + 1));
             setTypingIndex(prev => prev + 1);
+            setDisplayText(fullText.substring(0, typingIndex + 1));
+          }, timeUntilNextChar);
+          
+          return () => clearTimeout(timer);
+        }
+        // 進度匹配，正常顯示下一個字符
+        else if (typingIndex < fullText.length) {
+          const charsRemaining = fullText.length - typingIndex;
+          const timeRemaining = totalAudioDuration - elapsedAudioTime;
+          const intervalPerChar = Math.max(30, timeRemaining / charsRemaining);
+          
+          const timer = setTimeout(() => {
+            setTypingIndex(prev => prev + 1);
+            setDisplayText(fullText.substring(0, typingIndex + 1));
           }, intervalPerChar);
           
           return () => clearTimeout(timer);
         } else {
-          // 文本顯示完成後，不要立即設置為完成
-          // 而是等待一段時間，確保語音已經結束
-          const displayCompleteDelay = 1000; // 1秒延遲
-          const timer = setTimeout(() => {
+          // 所有字符已顯示完成，但保持打字狀態直到音頻結束
+          if (elapsedAudioTime < totalAudioDuration) {
+            const timer = setTimeout(() => {
+              // 保持打字狀態直到音頻結束
+            }, totalAudioDuration - elapsedAudioTime);
+            
+            return () => clearTimeout(timer);
+          } else {
             setTypingComplete(true);
-          }, displayCompleteDelay);
+          }
+        }
+      }
+      // 沒有實際音頻數據，使用預估的時間
+      else {
+        // 初始延遲，讓音頻有時間開始播放
+        const initialDelay = 300; 
+        
+        // 如果是首個字符，等待初始延遲
+        if (typingIndex === 0) {
+          const timer = setTimeout(() => {
+            setDisplayText(fullText.substring(0, typingIndex + 1));
+            setTypingIndex(prev => prev + 1);
+          }, initialDelay);
           
           return () => clearTimeout(timer);
+        }
+        
+        // 計算整個打字過程應該花費的總時間 (毫秒)
+        const totalTypingDuration = speechDuration * 1000;
+        
+        if (typingIndex < fullText.length) {
+          const elapsedTime = performance.now() - typingStartTime;
+          const slowdownFactor = 1.5;
+          const remainingTime = Math.max(500, (totalTypingDuration - elapsedTime) * slowdownFactor);
+          const remainingChars = fullText.length - typingIndex;
+          
+          if (remainingChars > 0) {
+            const intervalPerChar = Math.max(30, remainingTime / remainingChars);
+            
+            const timer = setTimeout(() => {
+              setDisplayText(fullText.substring(0, typingIndex + 1));
+              setTypingIndex(prev => prev + 1);
+            }, intervalPerChar);
+            
+            return () => clearTimeout(timer);
+          } else {
+            const displayCompleteDelay = 1000;
+            const timer = setTimeout(() => {
+              setTypingComplete(true);
+            }, displayCompleteDelay);
+            
+            return () => clearTimeout(timer);
+          }
         }
       }
     }
