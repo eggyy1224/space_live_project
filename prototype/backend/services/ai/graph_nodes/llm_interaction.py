@@ -104,13 +104,47 @@ def post_process_node(state: TypedDict) -> Dict[str, Any]:
 def post_process_response_simplified(response: str, template_key: str) -> Tuple[str, bool]:
     """
     極簡化的後處理回應函數。
-    只進行基本的清理 (strip)。
-    返回: (處理後的回應, 是否大幅修改 - 始終為 False)
+    進行基本的清理 (strip) 並限制回應長度。
+    返回: (處理後的回應, 是否大幅修改 - 如果進行了截斷則為 True)
     """
     processed_response = response.strip()
     
-    # 可選：如果需要，可以保留非常特定的清理邏輯，例如移除特定開頭/結尾符號
-    # processed_response = processed_response.strip('" \n')
+    # 定義不同模板的最大回應長度（中文字符數）
+    max_lengths = {
+        "standard": 300,          # 標準對話
+        "tool_response": 300,     # 工具回應
+        "clarification": 200,     # 澄清問題
+        "error": 150,             # 錯誤處理
+        "random_reply": 200,      # 隨機回覆
+        "murmur": 150,            # 內心獨白
+        "murmur_continuous": 200  # 連續思緒
+    }
     
-    # 始終返回 False，表示未進行可能改變語義的大幅修改
-    return processed_response, False 
+    # 獲取當前模板的最大長度，默認為 300
+    max_length = max_lengths.get(template_key, 300)
+    
+    # 檢查是否需要截斷
+    was_heavily_modified = False
+    
+    if len(processed_response) > max_length:
+        logging.info(f"回應過長 ({len(processed_response)}字符)，將截斷至大約 {max_length} 字符")
+        
+        # 將回應分割成句子
+        sentences = re.split(r'(?<=[。！？.!?])', processed_response)
+        
+        # 逐句添加，直到接近或超過最大長度
+        truncated_response = ""
+        for sentence in sentences:
+            if len(truncated_response + sentence) <= max_length:
+                truncated_response += sentence
+            else:
+                # 如果第一句就超過最大長度，則保留但進行截斷
+                if truncated_response == "":
+                    truncated_response = sentence[:max_length]
+                break
+        
+        processed_response = truncated_response.strip()
+        was_heavily_modified = True
+        logging.info(f"截斷後長度: {len(processed_response)} 字符")
+    
+    return processed_response, was_heavily_modified 
