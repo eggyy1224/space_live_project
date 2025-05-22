@@ -21,7 +21,7 @@ const EffectBackground: React.FC = () => {
   useFrame(() => {
     setRipples((prev) =>
       prev
-        .map((r) => ({ ...r, scale: r.scale + 0.05, opacity: r.opacity - 0.02 }))
+        .map((r) => ({ ...r, scale: r.scale + 0.1, opacity: r.opacity - 0.005 }))
         .filter((r) => r.opacity > 0)
     );
   });
@@ -31,7 +31,7 @@ const EffectBackground: React.FC = () => {
       {ripples.map((r) => (
         <mesh key={r.id} scale={r.scale} position={[0, 0, -5]}>
           <ringGeometry args={[0.5, 0.6, 32]} />
-          <meshBasicMaterial transparent color={0x88ffff} opacity={r.opacity} />
+          <meshBasicMaterial transparent color={0xFFFF00} opacity={r.opacity} />
         </mesh>
       ))}
     </>
