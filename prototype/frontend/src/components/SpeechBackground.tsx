@@ -22,7 +22,7 @@ const SpeechBackground: React.FC = () => {
   });
 
   return (
-    <mesh ref={meshRef} position={[0, 0, -5]}>
+    <mesh ref={meshRef} position={[0, 0, -15]}>
       <planeGeometry args={[viewport.width * 1.5, viewport.height * 1.5]} />
       <meshStandardMaterial ref={materialRef} color={0x050510} emissive={0x111133} emissiveIntensity={0.1} metalness={0} roughness={1} />
     </mesh>
