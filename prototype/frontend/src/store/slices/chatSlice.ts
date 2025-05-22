@@ -36,6 +36,7 @@ export interface ChatSlice {
   setProcessing: (processing: boolean) => void;
   setEmotion: (emotion: string, confidence: number) => void;
   toggleChatWindow: () => void;
+  updateMessage: (id: string, payload: Partial<ChatMessage>) => void;
 }
 
 // 創建 Chat Slice
@@ -60,6 +61,12 @@ export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
   setEmotion: (emotion, confidence) => set({
     currentEmotion: { emotion, confidence }
   }),
-  
+
   toggleChatWindow: () => set((state) => ({ isChatWindowVisible: !state.isChatWindowVisible })),
-}); 
+
+  updateMessage: (id, payload) => set((state) => ({
+    messages: state.messages.map((m) =>
+      m.id === id ? { ...m, ...payload } : m
+    )
+  })),
+});

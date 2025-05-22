@@ -69,6 +69,14 @@ class ChatService {
     if (!clip) return;
     this.currentClip = { id: clip.id, url: clip.url };
     this.waitingForAck = true;
+    // 在播放開始前觸發文字顯示並設置大螢幕文本
+    const msg = useStore.getState().messages.find(m => m.id === clip.id);
+    if (msg) {
+      useStore.getState().updateMessage(clip.id, { isTyping: true });
+      if (msg.role === 'bot') {
+        useStore.getState().setSpeechText(msg.content);
+      }
+    }
     try {
       await this.audioService.playAudio(clip.url);
     } catch (err) {
@@ -114,9 +122,9 @@ class ChatService {
       // 如果是機器人消息並且不是錯誤消息，添加打字機效果
       if (message.role === 'bot' && !message.isError) {
         const content = message.content;
-        
-        // 添加打字機效果屬性
-        message.isTyping = true;
+
+        // 僅在無音頻時立即開始打字效果，否則在播放時再啟動
+        message.isTyping = !message.audioUrl;
         message.fullContent = content;
         
         // 從消息中提取語音持續時間（如果有）
@@ -135,11 +143,6 @@ class ChatService {
       
       // 更新最近消息（用於顯示情緒等）
       useStore.getState().setLastJsonMessage(data);
-
-      // 將目前的語音文字存入 Zustand，供背景顯示
-      if (message.role === 'bot') {
-        useStore.getState().setSpeechText(message.content);
-      }
 
       this.addMessage(message);
       

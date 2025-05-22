@@ -179,14 +179,26 @@ async def websocket_endpoint(websocket: WebSocket):
     audio_send_queue: Deque[Dict[str, Any]] = deque()
     awaiting_playback_ack: Optional[str] = None
 
+    async def cleanup_audio_queue():
+        """Remove stale audio clips waiting too long in the queue."""
+        STALE_SECONDS = 30
+        now = datetime.utcnow()
+        while audio_send_queue and (now - audio_send_queue[0].get("timestamp", now)).total_seconds() > STALE_SECONDS:
+            stale = audio_send_queue.popleft()
+            logger.info(f"Removed stale audio clip {stale.get('id')}")
+
     async def enqueue_audio_clip(clip: Dict[str, Any]):
         """加入待發送音頻片段並嘗試發送"""
+        clip["timestamp"] = datetime.utcnow()
         audio_send_queue.append(clip)
         await try_send_next_audio_clip()
 
     async def try_send_next_audio_clip():
         nonlocal awaiting_playback_ack
         if awaiting_playback_ack or not audio_send_queue:
+            return
+        await cleanup_audio_queue()
+        if not audio_send_queue:
             return
         clip = audio_send_queue[0]
         await websocket.send_json({
