@@ -85,7 +85,13 @@ const SceneContainer: React.FC<SceneContainerProps> = ({
           );
         })()}
         {(() => {
-          return <DanceGroup scale={5} />;
+          // 舞群位置：往右上角移動
+          const danceGroupPosition: [number, number, number] = [15, 8, -5];
+          return (
+            <group position={danceGroupPosition}>
+              <DanceGroup scale={5} />
+            </group>
+          );
         })()}
       </Suspense>
       <OrbitControls 
