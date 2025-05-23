@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { useGLTF, Center } from '@react-three/drei';
 import * as THREE from 'three';
 import logger, { LogCategory } from '../utils/LogManager'; // Import logger
@@ -54,6 +54,12 @@ export const HeadModel: React.FC<HeadModelProps> = ({
 }) => {
   const group = useRef<THREE.Group>(null);
   const meshRef = useRef<MeshWithMorphs | null>(null);
+  const { gl } = useThree();
+  const setModelTransform = useStore((state) => state.setModelTransform);
+  const setUniformScale = useStore((state) => state.setUniformScale);
+
+  const [isDragging, setIsDragging] = useState(false);
+  const lastPointer = useRef<{x: number; y: number}>({x: 0, y: 0});
   // const headService = HeadService.getInstance(); // <-- 不再需要實例
 
   // 儲存初始位置的 Ref
@@ -78,6 +84,44 @@ export const HeadModel: React.FC<HeadModelProps> = ({
     const teleportIntervalMax = 1.5;  // 瞬移間隔上限 (秒) - 更慢
     nextTeleportTime.current = Math.random() * (teleportIntervalMax - teleportIntervalMin) + teleportIntervalMin;
   }, [position]);
+
+  // Cursor feedback
+  useEffect(() => {
+    gl.domElement.style.cursor = isDragging ? 'grabbing' : 'grab';
+  }, [isDragging, gl]);
+
+  const handlePointerDown = (e: any) => {
+    e.stopPropagation();
+    setIsDragging(true);
+    lastPointer.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handlePointerUp = (e: any) => {
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handlePointerMove = (e: any) => {
+    if (!isDragging) return;
+    e.stopPropagation();
+    const dx = e.clientX - lastPointer.current.x;
+    const dy = e.clientY - lastPointer.current.y;
+    lastPointer.current = { x: e.clientX, y: e.clientY };
+    if (e.shiftKey || e.ctrlKey) {
+      const current = useStore.getState().modelScale[0];
+      let newScale = current * (1 - dy * 0.01);
+      newScale = Math.max(0.5, Math.min(5, newScale));
+      setUniformScale(newScale);
+    } else {
+      const rot = useStore.getState().modelRotation;
+      const sensitivity = 0.005;
+      setModelTransform(undefined, [
+        rot[0] + dy * sensitivity,
+        rot[1] + dx * sensitivity,
+        rot[2]
+      ]);
+    }
+  };
 
   // --- 移除外部動畫預加載 ---
   // useEffect(() => {
@@ -284,9 +328,13 @@ export const HeadModel: React.FC<HeadModelProps> = ({
     <group ref={group} position={position} rotation={rotation}>
       {/* 使用drei的Center組件包裹scene，讓模型以視覺中心點進行縮放 */}
       <Center scale={scale} position={[0, 0, 0]}>
-        <primitive 
-          object={scene} 
-          key={headModelUrl} 
+        <primitive
+          object={scene}
+          key={headModelUrl}
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          onPointerMove={handlePointerMove}
+          onPointerLeave={handlePointerUp}
         />
       </Center>
     </group>
