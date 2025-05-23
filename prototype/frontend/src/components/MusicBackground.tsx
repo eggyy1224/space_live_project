@@ -1,7 +1,10 @@
 import React, { useRef, useMemo, useState } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
+import { useFrame } from '@react-three/fiber';
 import { useStore } from '../store';
 import * as THREE from 'three';
+
+// Global origin for particle effects
+const SCENE_CENTER = new THREE.Vector3(0, 0, 0);
 
 // 環繞粒子組件
 interface OrbitingParticleProps {
@@ -294,7 +297,6 @@ const MusicBackground: React.FC = () => {
   const meshRef = useRef<THREE.Mesh>(null);
   const materialRef = useRef<THREE.MeshStandardMaterial>(null);
   const bgmIntensity = useStore((s) => s.bgmIntensity);
-  const { viewport } = useThree();
   
   // 隨機變形計時器
   const morphTimerRef = useRef(0);
@@ -313,37 +315,33 @@ const MusicBackground: React.FC = () => {
 
   // 主物件漂流參數
   const driftParams = useMemo(() => ({
-    speedX: (Math.random() - 0.5) * 0.008,
-    speedY: (Math.random() - 0.5) * 0.008,
-    speedZ: (Math.random() - 0.5) * 0.003,
+    speedX: 0,
+    speedY: 0,
+    speedZ: 0,
     rotationSpeedBase: {
       x: (Math.random() - 0.5) * 0.001,
       y: (Math.random() - 0.5) * 0.001,
       z: (Math.random() - 0.5) * 0.001
     },
-    positionOffset: {
-      x: (Math.random() - 0.5) * viewport.width * 0.3,
-      y: (Math.random() - 0.5) * viewport.height * 0.3,
-      z: -8 + (Math.random() - 0.5) * 4 
-    }
-  }), [viewport.width, viewport.height]);
+    positionOffset: { x: SCENE_CENTER.x, y: SCENE_CENTER.y, z: SCENE_CENTER.z }
+  }), []);
   
   const positionRef = useRef({ x: driftParams.positionOffset.x, y: driftParams.positionOffset.y, z: driftParams.positionOffset.z });
 
   // 新增：漂浮方塊的初始位置
   const floatingCubesPositions = useMemo(() => {
     const positions: THREE.Vector3[] = [];
-    for (let i = 0; i < 8; i++) { // 8 個漂浮方塊
+    for (let i = 0; i < 8; i++) {
       positions.push(
         new THREE.Vector3(
-          (Math.random() - 0.5) * viewport.width * 0.8,
-          (Math.random() - 0.5) * viewport.height * 0.6 - 2, // 稍微向下偏移
-          driftParams.positionOffset.z - 5 - Math.random() * 5 // 在主物件後方
+          (Math.random() - 0.5) * 10,
+          (Math.random() - 0.5) * 6 - 2,
+          driftParams.positionOffset.z - 5 - Math.random() * 5
         )
       );
     }
     return positions;
-  }, [viewport.width, viewport.height, driftParams.positionOffset.z]);
+  }, [driftParams.positionOffset.z]);
 
   // 新增：隨機生成粒子類型和顏色
   const particleConfigs = useMemo(() => {
@@ -428,7 +426,7 @@ const MusicBackground: React.FC = () => {
       positionRef.current.z += driftParams.speedZ * (1 + bgmIntensity * 0.3 * crazyFactor);
       
       // 邊界反彈，瘋狂模式下反彈更強烈
-      const bounds = { x: viewport.width * 0.6, y: viewport.height * 0.6, z: 6 };
+      const bounds = { x: 5, y: 5, z: 6 };
       if (Math.abs(positionRef.current.x) > bounds.x) {
         driftParams.speedX *= -1 * (1 + (crazyMode ? 0.3 : 0));
         if (crazyMode) {
@@ -628,8 +626,8 @@ const MusicBackground: React.FC = () => {
         <mesh 
           key={`crazy-flash-${i}`}
           position={[
-            (Math.random() - 0.5) * viewport.width * 1.5, 
-            (Math.random() - 0.5) * viewport.height * 1.5, 
+            (Math.random() - 0.5) * 15,
+            (Math.random() - 0.5) * 15,
             -10 - Math.random() * 20
           ]}
           rotation={[Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2]}
