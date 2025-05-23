@@ -4,7 +4,7 @@ import { useStore } from '../store';
 import * as THREE from 'three';
 
 // Global origin for particle effects
-const SCENE_CENTER = new THREE.Vector3(8, 2, -2);
+const SCENE_CENTER = new THREE.Vector3(0, 0, 0);
 
 // 環繞粒子組件
 interface OrbitingParticleProps {
@@ -30,7 +30,6 @@ const OrbitingParticle: React.FC<OrbitingParticleProps> = ({
 }) => {
   const particleRef = useRef<THREE.Mesh>(null);
   const timeRef = useRef(phase);
-  const [particleScale, setParticleScale] = useState(1);
   
   // 隨機爆發參數
   const burstTimeRef = useRef(Math.random() * 10);
@@ -118,7 +117,7 @@ const OrbitingParticle: React.FC<OrbitingParticleProps> = ({
         particleRef.current.material.emissiveIntensity = emissiveIntensity;
         
         // 顏色變化
-        let activeColor = baseColor.clone().multiplyScalar(1.5);
+        const activeColor = baseColor.clone().multiplyScalar(1.5);
         
         if (isCrazyMode) {
           // 瘋狂模式下顏色快速變化
@@ -212,7 +211,7 @@ const FloatingCube: React.FC<FloatingCubeProps> = ({ bgmIntensity, initialPositi
         );
       
       // 旋轉行為
-      let rotSpeed = {
+      const rotSpeed = {
         x: (0.005 + bgmIntensity * 0.01) * (index % 2 === 0 ? 1 : -1),
         y: (0.003 + bgmIntensity * 0.008) * (index % 3 === 0 ? 1 : -1),
         z: (0.002 + bgmIntensity * 0.005) * (index % 4 === 0 ? 1 : -1)
@@ -249,8 +248,8 @@ const FloatingCube: React.FC<FloatingCubeProps> = ({ bgmIntensity, initialPositi
 
       if (cubeRef.current.material instanceof THREE.MeshStandardMaterial) {
         // 顏色和發光變化
-        let baseC = new THREE.Color(0x3333ff);
-        let activeC = new THREE.Color(0x88aaff);
+        const baseC = new THREE.Color(0x3333ff);
+        const activeC = new THREE.Color(0x88aaff);
         
         if (isCrazyMode || crazyCubeActiveRef.current) {
           // 瘋狂模式下彩虹色變化
@@ -345,7 +344,6 @@ const MusicBackground: React.FC = () => {
 
   // 新增：隨機生成粒子類型和顏色
   const particleConfigs = useMemo(() => {
-    const types: ('sphere' | 'box' | 'torus' | 'cone')[] = ['sphere', 'box', 'torus', 'cone'];
     const configs: {type: 'sphere' | 'box' | 'torus' | 'cone', color: THREE.Color}[] = [];
     
     // 為球體粒子生成配置
