@@ -71,9 +71,9 @@ const SceneContainer: React.FC<SceneContainerProps> = ({
       <DynamicLights />
       <Suspense fallback={null}>
         {(() => {
-          // 只使用基礎縮放值和位置
+          // 調整頭部位置：往前移動，稍微往右對齊中間
           const baseScale = 10;
-          const basePosition: [number, number, number] = [-22, -5, 0];
+          const basePosition: [number, number, number] = [-18, -5, 8];
           
           return (
             <group position={basePosition} scale={baseScale}>
