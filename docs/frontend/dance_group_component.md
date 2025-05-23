@@ -1,6 +1,6 @@
 # DanceGroup 元件
 
-`DanceGroup` 會在場景中渲染多個同步的 `BodyModel` 實例，以舞群方式展示角色動畫。預設會創建30個模型，並根據數量自動選擇最適合的佈局方式。所有實例共用同一組模型與動畫資料，藉由 React Three Fiber 的 `useGLTF` 快取避免重複載入。
+`DanceGroup` 會在場景中渲染多個同步的 `BodyModel` 實例，以舞群方式展示角色動畫。預設會創建30個模型，並根據數量自動選擇最適合的佈局方式。每個舞者都會有獨特的漂浮動畫，營造太空失重的感覺。所有實例共用同一組模型與動畫資料，藉由 React Three Fiber 的 `useGLTF` 快取避免重複載入。
 
 ## 使用方式
 
@@ -11,13 +11,31 @@ import DanceGroup from '@/components/DanceGroup';
 <DanceGroup />
 ```
 
+## 漂浮動畫系統
+
+每個舞者都有獨特的漂浮動畫效果：
+
+- **Y軸漂浮**：上下緩慢浮動，每個舞者有不同的頻率和相位
+- **輕微旋轉**：X、Y、Z軸的微妙旋轉，模擬失重狀態
+- **隨機初始位置**：圓形佈局時會有隨機的Y軸偏移
+
+### 控制漂浮效果
+
+```tsx
+// 啟用漂浮動畫（預設）
+<DanceGroup enableFloating={true} />
+
+// 關閉漂浮動畫
+<DanceGroup enableFloating={false} />
+```
+
 ## 佈局系統
 
 元件會根據舞者數量自動選擇最適合的佈局：
 
 - **1-10個模型**：單排水平排列
 - **11-20個模型**：前後兩排排列  
-- **21個以上模型**：圓形佈局
+- **21個以上模型**：圓形佈局（會添加隨機Y軸偏移）
 
 ### 自訂數量
 
@@ -25,7 +43,7 @@ import DanceGroup from '@/components/DanceGroup';
 // 創建15個舞者（會使用兩排佈局）
 <DanceGroup count={15} />
 
-// 創建50個舞者（會使用圓形佈局）
+// 創建50個舞者（會使用圓形佈局，每個都有漂浮效果）
 <DanceGroup count={50} />
 ```
 
@@ -36,22 +54,30 @@ import DanceGroup from '@/components/DanceGroup';
 ```tsx
 <DanceGroup
   scale={5}
+  enableFloating={true}
   positions={[
-    [-4, 0, 0],
-    [0, 0, 0],
-    [4, 0, 0],
-    [0, 0, -4]
+    [-4, 2, 0],
+    [0, -1, 0],
+    [4, 3, 0],
+    [0, 1, -4]
   ]}
 />
 ```
+
+## 動畫特性
+
+- **同步動作**：所有舞者執行相同的 BodyModel 動畫
+- **獨立漂浮**：每個舞者有不同的漂浮參數，避免同步化
+- **太空感**：輕微的旋轉和浮動營造失重環境
 
 ## 效能考量
 
 - 每個模型實例都使用 `SkeletonUtils.clone()` 來正確處理骨骼動畫
 - 模型和動畫資料會被快取，避免重複載入
+- 漂浮動畫使用高效的 `useFrame` 鉤子
 - 建議在較低端設備上限制舞者數量以維持流暢的幀率
 
 ## 整合
 
-`SceneContainer.tsx` 已改為使用 `DanceGroup` 取代單一 `BodyModel`，預設會顯示30個舞者的圓形佈局。
+`SceneContainer.tsx` 已改為使用 `DanceGroup` 取代單一 `BodyModel`，預設會顯示30個具有漂浮效果的舞者圓形佈局。
 

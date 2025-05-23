@@ -18,7 +18,15 @@ test('render dance group with custom count', () => {
   );
 });
 
-test('render dance group with custom positions', () => {
+test('render dance group with floating disabled', () => {
+  render(
+    <Canvas>
+      <DanceGroup enableFloating={false} />
+    </Canvas>
+  );
+});
+
+test('render dance group with custom positions and floating', () => {
   const customPositions: [number, number, number][] = [
     [0, 0, 0],
     [2, 0, 0]
@@ -26,7 +34,7 @@ test('render dance group with custom positions', () => {
   
   render(
     <Canvas>
-      <DanceGroup positions={customPositions} />
+      <DanceGroup positions={customPositions} enableFloating={true} />
     </Canvas>
   );
 });
