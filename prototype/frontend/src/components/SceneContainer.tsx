@@ -71,9 +71,9 @@ const SceneContainer: React.FC<SceneContainerProps> = ({
       <DynamicLights />
       <Suspense fallback={null}>
         {(() => {
-          // 調整頭部位置：往前移動，稍微往右對齊中間
+          // 調整頭部位置：再往前移動更多
           const baseScale = 10;
-          const basePosition: [number, number, number] = [-18, -5, 8];
+          const basePosition: [number, number, number] = [-18, -5, 15];
           
           return (
             <group position={basePosition} scale={baseScale}>
@@ -85,20 +85,20 @@ const SceneContainer: React.FC<SceneContainerProps> = ({
           );
         })()}
         {(() => {
-          // 左側隊伍：20個人，整齊排列
-          const leftArmyPosition: [number, number, number] = [-25, 0, -10];
+          // 左側隊伍：50個人，往後移動
+          const leftArmyPosition: [number, number, number] = [-25, 0, -20];
           return (
             <group position={leftArmyPosition}>
-              <DanceGroup count={20} scale={4} enableFloating={false} />
+              <DanceGroup count={50} scale={4} enableFloating={false} />
             </group>
           );
         })()}
         {(() => {
-          // 右側隊伍：20個人，整齊排列
-          const rightArmyPosition: [number, number, number] = [25, 0, -10];
+          // 右側隊伍：50個人，往後移動
+          const rightArmyPosition: [number, number, number] = [25, 0, -20];
           return (
             <group position={rightArmyPosition}>
-              <DanceGroup count={20} scale={4} enableFloating={false} />
+              <DanceGroup count={50} scale={4} enableFloating={false} />
             </group>
           );
         })()}

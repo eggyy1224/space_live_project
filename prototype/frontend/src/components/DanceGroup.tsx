@@ -27,11 +27,25 @@ const generatePositions = (count: number): [number, number, number][] => {
     for (let i = 0; i < count; i++) {
       positions.push([startX + i * spacing, 0, 0]);
     }
-  } else if (count <= 20) {
-    // 11-20個：整齊的軍隊陣形，4排5列
-    const cols = 5;
-    const rows = Math.ceil(count / cols);
-    const spacingX = 5; // 列間距
+  } else {
+    // 11個以上：整齊的軍隊陣形
+    let cols, rows;
+    
+    if (count <= 20) {
+      // 20個以下：5列為主
+      cols = 5;
+      rows = Math.ceil(count / cols);
+    } else if (count <= 50) {
+      // 21-50個：10列為主，更寬的陣形
+      cols = 10;
+      rows = Math.ceil(count / cols);
+    } else {
+      // 50個以上：15列為主
+      cols = 15;
+      rows = Math.ceil(count / cols);
+    }
+    
+    const spacingX = 4; // 列間距
     const spacingZ = 4; // 行間距
     
     let currentIndex = 0;
@@ -45,32 +59,6 @@ const generatePositions = (count: number): [number, number, number][] => {
         positions.push([x, 0, z]);
         currentIndex++;
       }
-    }
-  } else {
-    // 超過20個：多層圓形佈局
-    const totalLayers = Math.ceil(count / 15); // 每層最多15個
-    let remainingCount = count;
-    let currentIndex = 0;
-    
-    for (let layer = 0; layer < totalLayers; layer++) {
-      const layerCount = Math.min(15, remainingCount);
-      const baseRadius = 15 + layer * 10; // 基礎半徑更大，層與層間距更大
-      
-      for (let i = 0; i < layerCount; i++) {
-        const angle = (i / layerCount) * Math.PI * 2;
-        const x = Math.cos(angle) * baseRadius;
-        const z = Math.sin(angle) * baseRadius;
-        
-        // 更有序的Y軸分佈，但仍有變化
-        const yVariation = Math.sin(angle * 3) * 3; // 正弦波狀的高低變化
-        const layerHeight = layer * 4; // 每層有不同的基礎高度
-        const y = yVariation + layerHeight;
-        
-        positions.push([x, y, z]);
-        currentIndex++;
-      }
-      
-      remainingCount -= layerCount;
     }
   }
   
