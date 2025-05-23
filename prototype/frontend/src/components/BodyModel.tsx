@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useMemo } from 'react';
 import { useGLTF, useAnimations } from '@react-three/drei';
 import { Group } from 'three';
 import * as THREE from 'three';
+import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { useBodyService } from '../services/BodyService';
 import { useStore } from '../store';
 import logger, { LogCategory } from '../utils/LogManager';
@@ -74,6 +75,13 @@ export function BodyModel() {
   const { scene } = useGLTF(bodyModelUrl);
   // logger.info(`[BodyModel] Body scene loaded from ${bodyModelUrl}`, LogCategory.MODEL); // 註釋掉
 
+  // 克隆場景以允許多個實例
+  const clonedScene = useMemo(() => {
+    if (!scene) return null;
+    // 使用 SkeletonUtils.clone 來正確處理骨骼動畫
+    return SkeletonUtils.clone(scene);
+  }, [scene]);
+
   // 2. 加載所有外部動畫 (使用新的 ANIMATION_PATHS)
   const { combinedAnimations: externalAnimations, animationClipsPerFile } = 
     useExternalAnimations(ANIMATION_PATHS);
@@ -125,8 +133,8 @@ export function BodyModel() {
       logger.error(`[BodyModel] Mismatch between friendly names (${friendlyAnimationNames.length}) and animation files (${animationClipsPerFile.length}). Cannot create accurate map.`, LogCategory.ANIMATION);
     }
     return map;
-  // --- 添加 group.current 到依賴 --- 
-  }, [friendlyAnimationNames, animationClipsPerFile, mixer, group.current]); 
+  // --- 添加 clonedScene 到依賴 --- 
+  }, [friendlyAnimationNames, animationClipsPerFile, mixer, group.current, clonedScene]); 
   // --------------------------------
 
   // --- 動畫完成事件處理 ---
@@ -333,7 +341,7 @@ export function BodyModel() {
   // scene 應該總是存在，因為 useGLTF 會 suspend 直到加載完成或錯誤
   // 如果 useGLTF 拋出錯誤，會被 Suspense fallback 捕獲，不會執行到這裡
   // logger.info(`[BodyModel] Rendering primitive for ${bodyModelUrl}...`, LogCategory.MODEL); // 註釋掉
-  return <primitive ref={group} object={scene} dispose={null} />;
+  return <primitive ref={group} object={clonedScene || scene} dispose={null} />;
 }
 
 // --- 預加載邏輯更新 (使用新的 ANIMATION_PATHS) ---

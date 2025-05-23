@@ -79,6 +79,7 @@ GEMINI_API_KEY=your_gemini_api_key
 
 [詳細前端架構說明](docs/前端相關/前端架構概述.md)
 [音頻驅動的3D背景系統](docs/frontend/audio_driven_background_system.md)
+[DanceGroup 元件說明](docs/frontend/dance_group_component.md)
 [背景效果概述](docs/display_backgrounds_overview.md)
 
 ### 後端技術

@@ -2,7 +2,7 @@ import React, { Suspense, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
 import { HeadModel } from './HeadModel';
-import BodyModel from './BodyModel';
+import DanceGroup from './DanceGroup';
 import DynamicAudioBackgrounds from './DynamicAudioBackgrounds';
 import { useStore } from '../store';
 import * as THREE from 'three';
@@ -85,11 +85,7 @@ const SceneContainer: React.FC<SceneContainerProps> = ({
           );
         })()}
         {(() => {
-          return (
-            <group scale={5}> 
-              <BodyModel />
-            </group>
-          );
+          return <DanceGroup scale={5} />;
         })()}
       </Suspense>
       <OrbitControls 
