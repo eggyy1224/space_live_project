@@ -72,6 +72,12 @@ export const HeadModel: React.FC<HeadModelProps> = ({
   const teleportTimer = useRef(0);
   const nextTeleportTime = useRef(0);
 
+  // 新增量子徘徊效果的 Refs
+  const quantumPhaseRef = useRef(0);
+  const chaosAttractorRef = useRef({ x: 0, y: 0, z: 0 });
+  const timeWarpFactorsRef = useRef({ slow: 1, fast: 1 });
+  const realityLayersRef = useRef(Array.from({length: 3}, () => ({ phase: Math.random() * Math.PI * 2, intensity: 0 })));
+
   // 初始化瞬移時間
   useEffect(() => {
     const teleportIntervalMin = 0.08; // 瞬移間隔下限 (秒) - 更快
@@ -122,6 +128,9 @@ export const HeadModel: React.FC<HeadModelProps> = ({
   // -- 新增：讀取背景音樂強度 --
   const bgmIntensityFromStore = useStore((state) => state.bgmIntensity);
   const bgmIntensityRef = useRef(bgmIntensityFromStore);
+  // -- 新增：讀取語音音量強度 --
+  const audioAverageVolumeFromStore = useStore((state) => state.audioAverageVolume);
+  const audioAverageVolumeRef = useRef(audioAverageVolumeFromStore);
   // -- 新增結束 --
 
   useEffect(() => {
@@ -139,6 +148,10 @@ export const HeadModel: React.FC<HeadModelProps> = ({
   useEffect(() => {
     bgmIntensityRef.current = bgmIntensityFromStore;
   }, [bgmIntensityFromStore]);
+  // -- 新增：更新語音音量強度 Ref --
+  useEffect(() => {
+    audioAverageVolumeRef.current = audioAverageVolumeFromStore;
+  }, [audioAverageVolumeFromStore]);
   // -- 新增結束 --
 
   // --- 移除舊的設置可用動畫的 useEffect ---
@@ -197,75 +210,193 @@ export const HeadModel: React.FC<HeadModelProps> = ({
     const time = state.clock.elapsedTime; 
 
     if (group.current) {
+      // === 量子徘徊系統 ===
+      
+      // 1. 重新設計動態映射 - 語音為主，背景音樂為輔
+      const musicIntensity = bgmIntensityRef.current;
+      const voiceVolume = audioAverageVolumeRef.current;
+      const isSpeaking = isSpeakingRef.current;
+      
+      // 語音強度處理 - 主要驅動因素（80%權重）
+      const voiceIntensity = isSpeaking ? Math.min(voiceVolume * 8, 1.0) : 0; // 放大語音敏感度
+      
+      // 使用平滑的tanh函數創造中間值過渡，避免極端跳躍
+      const voiceBaseline = 0.15; // 基礎活動度，確保最小運動
+      const voiceSmoothCurve = Math.tanh(voiceIntensity * 3) * 1.8; // 使用tanh創造平滑S曲線
+      const voiceDynamicRange = voiceBaseline + voiceSmoothCurve * (1.0 - voiceBaseline); // 0.15-1.95範圍
+      
+      // 背景音樂強度處理 - 次要影響因素（20%權重）
+      const musicBaseline = 0.05; // 音樂基礎活動度
+      const musicSmoothCurve = Math.tanh(musicIntensity * 2.5) * 0.6; // 平滑音樂曲線
+      const musicDynamicRange = musicBaseline + musicSmoothCurve * (1.0 - musicBaseline); // 0.05-0.65範圍
+      
+      // 合併動態範圍 - 語音主導，確保平滑過渡
+      const rawCombinedRange = voiceDynamicRange * 0.8 + musicDynamicRange * 0.2;
+      const finalDynamicRange = Math.max(rawCombinedRange, 0.1); // 確保最小活動度 0.1
+      
+      // 2. 時間扭曲因子 - 使用更溫和的變化
+      quantumPhaseRef.current += delta * finalDynamicRange;
+      
+      // 溫和的慢速因子：0.5-1.0範圍
+      const timeWarpSlow = 0.5 + Math.sin(quantumPhaseRef.current * 0.1) * 0.25 + 0.25;
+      
+      // 溫和的快速因子：1.0-2.0範圍  
+      const timeWarpFast = 1.0 + Math.cos(quantumPhaseRef.current * 0.3) * 0.5 + 0.5;
+      
+      timeWarpFactorsRef.current = { slow: timeWarpSlow, fast: timeWarpFast };
+      
+      // 3. 混沌吸引子 (簡化的Lorenz系統)
+      const chaos = chaosAttractorRef.current;
+      const sigma = 10, rho = 28, beta = 8/3;
+      const dt = delta * (0.01 + finalDynamicRange * 0.02);
+      
+      chaos.x += sigma * (chaos.y - chaos.x) * dt;
+      chaos.y += (chaos.x * (rho - chaos.z) - chaos.y) * dt;
+      chaos.z += (chaos.x * chaos.y - beta * chaos.z) * dt;
+      
+      // 將混沌值歸一化到合理範圍
+      const chaosNormalized = {
+        x: Math.tanh(chaos.x * 0.05) * 0.02,
+        y: Math.tanh(chaos.y * 0.05) * 0.02,
+        z: Math.tanh(chaos.z * 0.05) * 0.01
+      };
+
       // 始終執行繞原點的徘徊動畫
       // 使用正弦波創造自然的飄浮效果
       const baseWaveSpeedX = 0.3; // X軸徘徊基礎速度
       const baseWaveSpeedY = 0.5; // Y軸徘徊基礎速度
       const baseWaveSpeedZ = 0.2; // Z軸徘徊基礎速度
       
-      // 添加隨機速度變化
-      const randomSpeedVariationX = 0.8 + Math.sin(time * 0.1) * 0.4 + Math.cos(time * 0.07) * 0.3; // 0.1-1.5倍變化
-      const randomSpeedVariationY = 0.8 + Math.sin(time * 0.13 + Math.PI/3) * 0.5 + Math.cos(time * 0.09) * 0.2; // 0.1-1.5倍變化
-      const randomSpeedVariationZ = 0.8 + Math.sin(time * 0.08 + Math.PI/6) * 0.3 + Math.cos(time * 0.12) * 0.4; // 0.1-1.5倍變化
+      // 4. 多重現實疊加
+      const realities = realityLayersRef.current;
+      let realityOffsetX = 0, realityOffsetY = 0, realityOffsetZ = 0;
+      
+      realities.forEach((reality, i) => {
+        reality.phase += delta * (0.1 + i * 0.05) * timeWarpFactorsRef.current.fast;
+        reality.intensity = Math.sin(reality.phase) * Math.cos(reality.phase * 1.7) * finalDynamicRange;
+        
+        const layerWeight = 1 / (i + 1); // 越高層影響越小
+        realityOffsetX += Math.sin(reality.phase * (i + 1)) * reality.intensity * layerWeight * 0.01;
+        realityOffsetY += Math.cos(reality.phase * (i + 1.3)) * reality.intensity * layerWeight * 0.008;
+        realityOffsetZ += Math.sin(reality.phase * (i + 0.7)) * reality.intensity * layerWeight * 0.005;
+      });
+      
+      // 5. 量子不確定性 - 微觀隨機擾動
+      const quantumUncertainty = {
+        x: (Math.random() - 0.5) * 0.001 * Math.sqrt(finalDynamicRange),
+        y: (Math.random() - 0.5) * 0.001 * Math.sqrt(finalDynamicRange),
+        z: (Math.random() - 0.5) * 0.0005 * Math.sqrt(finalDynamicRange)
+      };
+
+      // 添加隨機速度變化 - 現在受時間扭曲影響
+      const warpedTime = time * timeWarpFactorsRef.current.slow + time * timeWarpFactorsRef.current.fast * 0.1;
+      const randomSpeedVariationX = 0.8 + Math.sin(warpedTime * 0.1) * 0.4 + Math.cos(warpedTime * 0.07) * 0.3;
+      const randomSpeedVariationY = 0.8 + Math.sin(warpedTime * 0.13 + Math.PI/3) * 0.5 + Math.cos(warpedTime * 0.09) * 0.2;
+      const randomSpeedVariationZ = 0.8 + Math.sin(warpedTime * 0.08 + Math.PI/6) * 0.3 + Math.cos(warpedTime * 0.12) * 0.4;
       
       const baseDriftRangeX = 0.04; // X軸徘徊基礎範圍
       const baseDriftRangeY = 0.025; // Y軸徘徊基礎範圍
       const baseDriftRangeZ = 0.06; // Z軸徘徊基礎範圍
 
       // 如果在說話，增加一些隨機變化和額外的運動強度
-      const speakingMultiplier = isSpeakingRef.current ? 1.3 : 1.0; // 說話時運動倍數也稍微降低
-      const randomFactor = isSpeakingRef.current ? (0.8 + Math.random() * 0.4) : 1.0; // 說話時加入隨機因子
+      const speakingMultiplier = isSpeaking ? 1.4 : 1.0; // 增加說話時的運動倍數
+      const randomFactor = isSpeaking ? (0.7 + Math.random() * 0.6) : 1.0; // 增加隨機變化範圍
 
-      // 添加音樂強度影響
-      const musicIntensity = bgmIntensityRef.current;
-      const musicSpeedBoost = 1.0 + musicIntensity * 1.5; // 音樂強度可以增加最多1.5倍的速度
-      const musicRandomBoost = musicIntensity > 0.3 ? (0.9 + Math.random() * 0.2) : 1.0; // 強音樂時增加隨機性
+      // 音樂強度影響 - 現在使用非線性映射
+      const musicSpeedBoost = 1.0 + finalDynamicRange; // 使用新的動態範圍
+      const musicRandomBoost = voiceIntensity > 0.3 ? (0.9 + Math.random() * 0.2) : 1.0;
 
-      // 計算實際的運動參數（結合基礎速度、隨機變化、說話狀態和音樂強度）
+      // 計算實際的運動參數
       const waveSpeedX = baseWaveSpeedX * randomSpeedVariationX * speakingMultiplier * randomFactor * musicSpeedBoost * musicRandomBoost;
       const waveSpeedY = baseWaveSpeedY * randomSpeedVariationY * speakingMultiplier * randomFactor * musicSpeedBoost * musicRandomBoost;
       const waveSpeedZ = baseWaveSpeedZ * randomSpeedVariationZ * speakingMultiplier * musicSpeedBoost;
       
-      // 音樂強度也影響運動範圍
-      const musicRangeBoost = 1.0 + musicIntensity * 0.8; // 音樂強度可以增加最多80%的運動範圍
+      // 音樂強度也影響運動範圍 - 使用非線性映射
+      const musicRangeBoost = 1.0 + finalDynamicRange * 0.8;
       const driftRangeX = baseDriftRangeX * speakingMultiplier * musicRangeBoost;
       const driftRangeY = baseDriftRangeY * speakingMultiplier * musicRangeBoost;
       const driftRangeZ = baseDriftRangeZ * speakingMultiplier * musicRangeBoost;
 
-      // 計算徘徊偏移
-      const driftX = Math.sin(time * waveSpeedX) * driftRangeX;
-      const driftY = Math.sin(time * waveSpeedY + Math.PI/3) * driftRangeY; // 加上相位差
-      const driftZ = Math.sin(time * waveSpeedZ + Math.PI/6) * driftRangeZ + driftRangeZ * 0.6; // 讓它偏向前面
+      // 計算徘徊偏移 - 融入所有效果
+      const driftX = Math.sin(warpedTime * waveSpeedX) * driftRangeX + chaosNormalized.x + realityOffsetX + quantumUncertainty.x;
+      const driftY = Math.sin(warpedTime * waveSpeedY + Math.PI/3) * driftRangeY + chaosNormalized.y + realityOffsetY + quantumUncertainty.y;
+      const driftZ = Math.sin(warpedTime * waveSpeedZ + Math.PI/6) * driftRangeZ + driftRangeZ * 0.6 + chaosNormalized.z + realityOffsetZ + quantumUncertainty.z;
 
-      // 旋轉變化受音樂強度影響
-      const rotationIntensity = (isSpeakingRef.current ? 1.8 : 1.0) * (1.0 + musicIntensity * 0.6);
-      const musicRotationSpeedBoost = 1.0 + musicIntensity * 1.2; // 音樂影響旋轉速度
-      const rotationVariationY = Math.sin(time * 0.3 * randomFactor * musicRotationSpeedBoost) * 0.05 * rotationIntensity; // 輕微左右搖擺
-      const rotationVariationX = Math.sin(time * 0.4 * randomFactor * musicRotationSpeedBoost + Math.PI/4) * 0.03 * rotationIntensity; // 輕微上下點頭
+      // 旋轉變化受量子效應影響
+      const rotationIntensity = (isSpeaking ? 1.8 : 1.0) * (1.0 + finalDynamicRange * 0.6); // 增加說話時的旋轉強度
+      const musicRotationSpeedBoost = 1.0 + finalDynamicRange * 1.2;
+      const rotationVariationY = Math.sin(warpedTime * 0.3 * randomFactor * musicRotationSpeedBoost) * 0.05 * rotationIntensity + realityOffsetY * 2;
+      const rotationVariationX = Math.sin(warpedTime * 0.4 * randomFactor * musicRotationSpeedBoost + Math.PI/4) * 0.03 * rotationIntensity + realityOffsetX * 2;
 
       // 說話時可能添加一些瞬間的位置跳躍
       let extraOffsetX = 0, extraOffsetY = 0, extraOffsetZ = 0;
-      if (isSpeakingRef.current) {
-        // 每隔一段時間添加小幅度的隨機偏移
+      if (isSpeaking) {
+        // 語音驅動的瞬移效果 - 根據語音強度調整
         teleportTimer.current += delta;
+        const voiceBasedInterval = Math.max(0.05, 0.3 - voiceIntensity * 0.25); // 語音越強，間隔越短
+        
         if (teleportTimer.current >= nextTeleportTime.current) {
-          extraOffsetX = (Math.random() - 0.5) * 0.02;
-          extraOffsetY = (Math.random() - 0.5) * 0.02;
-          extraOffsetZ = (Math.random() - 0.5) * 0.01;
+          // 瞬移強度根據語音音量調整
+          const voiceOffsetMultiplier = 0.5 + voiceIntensity * 1.5; // 0.5-2.0倍
+          extraOffsetX = (Math.random() - 0.5) * 0.025 * voiceOffsetMultiplier;
+          extraOffsetY = (Math.random() - 0.5) * 0.025 * voiceOffsetMultiplier;
+          extraOffsetZ = (Math.random() - 0.5) * 0.015 * voiceOffsetMultiplier;
           
           teleportTimer.current = 0;
-          nextTeleportTime.current = Math.random() * 0.5 + 0.1; // 0.1-0.6秒隨機間隔
+          nextTeleportTime.current = voiceBasedInterval + Math.random() * voiceBasedInterval;
         }
       }
 
-      // 音樂高潮時的特殊效果
-      if (musicIntensity > 0.7) {
-        // 強音樂時增加軌道式運動
-        const orbitRadius = musicIntensity * 0.03;
-        const orbitSpeed = time * (2.0 + musicIntensity * 3.0);
-        extraOffsetX += Math.cos(orbitSpeed) * orbitRadius;
-        extraOffsetY += Math.sin(orbitSpeed * 1.3) * orbitRadius * 0.6;
-        extraOffsetZ += Math.sin(orbitSpeed * 0.7) * orbitRadius * 0.4;
+      // 量子現實撕裂效果 - 語音高潮時的極端視覺
+      if (voiceIntensity > 0.85) {
+        // 6. 現實撕裂 - 不受控的受控
+        const riftIntensity = Math.pow((voiceIntensity - 0.85) / 0.15, 1.5); // 0-1範圍的撕裂強度，更溫和的曲線
+        
+        // 空間扭曲 - 不同維度的時間流速
+        const dimensionX = Math.sin(warpedTime * 5 + chaos.x * 0.1) * riftIntensity * 0.08;
+        const dimensionY = Math.cos(warpedTime * 7 + chaos.y * 0.1) * riftIntensity * 0.06;
+        const dimensionZ = Math.sin(warpedTime * 3 + chaos.z * 0.1) * riftIntensity * 0.04;
+        
+        // 量子跳躍 - 瞬間位置變化
+        if (Math.random() < riftIntensity * 0.1) {
+          const jumpDistance = riftIntensity * 0.1;
+          extraOffsetX += (Math.random() - 0.5) * jumpDistance;
+          extraOffsetY += (Math.random() - 0.5) * jumpDistance;
+          extraOffsetZ += (Math.random() - 0.5) * jumpDistance * 0.5;
+        }
+        
+        // 時空螺旋 - 極端的軌道運動
+        const spiralRadius = riftIntensity * 0.15;
+        const spiralSpeed = warpedTime * (10 + riftIntensity * 20);
+        const spiralX = Math.cos(spiralSpeed) * spiralRadius * Math.sin(spiralSpeed * 0.3);
+        const spiralY = Math.sin(spiralSpeed * 1.1) * spiralRadius * Math.cos(spiralSpeed * 0.2);
+        const spiralZ = Math.sin(spiralSpeed * 0.7) * spiralRadius * 0.3 * Math.sin(spiralSpeed * 0.1);
+        
+        extraOffsetX += dimensionX + spiralX;
+        extraOffsetY += dimensionY + spiralY;
+        extraOffsetZ += dimensionZ + spiralZ;
+        
+        // 現實分層 - 同時存在多個位置的疊加
+        realityLayersRef.current.forEach((reality, i) => {
+          if (riftIntensity > 0.5) {
+            const layerPhase = reality.phase + warpedTime * (i + 1) * 2;
+            const layerIntensity = riftIntensity * reality.intensity * 0.1;
+            
+            extraOffsetX += Math.sin(layerPhase) * layerIntensity;
+            extraOffsetY += Math.cos(layerPhase * 1.3) * layerIntensity * 0.8;
+            extraOffsetZ += Math.sin(layerPhase * 0.7) * layerIntensity * 0.5;
+          }
+        });
+      } else if (musicIntensity > 0.8 && !isSpeaking) {
+        // 僅在不說話且音樂很強時，提供輕微的背景音樂驅動效果
+        const musicRiftIntensity = Math.pow((musicIntensity - 0.8) / 0.2, 1.5) * 0.3; // 降低強度
+        
+        // 輕微的音樂驅動軌道運動
+        const musicOrbitRadius = musicRiftIntensity * 0.02;
+        const musicOrbitSpeed = warpedTime * (3.0 + musicIntensity * 2.0);
+        extraOffsetX += Math.cos(musicOrbitSpeed) * musicOrbitRadius;
+        extraOffsetY += Math.sin(musicOrbitSpeed * 1.2) * musicOrbitRadius * 0.7;
+        extraOffsetZ += Math.sin(musicOrbitSpeed * 0.8) * musicOrbitRadius * 0.4;
       }
 
       // 設置最終位置（基於初始位置加上所有偏移）

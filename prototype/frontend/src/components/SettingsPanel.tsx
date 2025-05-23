@@ -271,7 +271,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               <input 
                 type="range" 
                 min="0.3" 
-                max="10" 
+                max="20" 
                 step="0.1" 
                 value={currentModelScale}
                 onChange={(e) => setUniformScale(parseFloat(e.target.value))} 
