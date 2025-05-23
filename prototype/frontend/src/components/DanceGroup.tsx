@@ -14,11 +14,29 @@ interface DanceGroupProps {
   count?: number;
   /** Enable floating animation (default: true) */
   enableFloating?: boolean;
+  /** Force circular layout */
+  forceCircular?: boolean;
+  /** Radius for circular layout */
+  circleRadius?: number;
 }
 
 // 生成圓形或網格佈局的位置
-const generatePositions = (count: number): [number, number, number][] => {
+const generatePositions = (count: number, forceCircular?: boolean, circleRadius?: number): [number, number, number][] => {
   const positions: [number, number, number][] = [];
+  
+  // 如果強制圓形佈局或人數超過80個，使用圓形陣列
+  if (forceCircular || count > 80) {
+    const radius = circleRadius || Math.max(30, count * 0.8); // 動態調整半徑
+    const angleStep = (2 * Math.PI) / count;
+    
+    for (let i = 0; i < count; i++) {
+      const angle = i * angleStep;
+      const x = Math.cos(angle) * radius;
+      const z = Math.sin(angle) * radius;
+      positions.push([x, 0, z]);
+    }
+    return positions;
+  }
   
   if (count <= 10) {
     // 少於等於10個：單排排列
@@ -45,8 +63,8 @@ const generatePositions = (count: number): [number, number, number][] => {
       rows = Math.ceil(count / cols);
     }
     
-    const spacingX = 4; // 列間距
-    const spacingZ = 4; // 行間距
+    const spacingX = 8; // 列間距
+    const spacingZ = 8; // 行間距
     
     let currentIndex = 0;
     for (let row = 0; row < rows && currentIndex < count; row++) {
@@ -129,9 +147,11 @@ const DanceGroup: React.FC<DanceGroupProps> = ({
   positions, 
   scale = 5, 
   count = 30,
-  enableFloating = true 
+  enableFloating = true,
+  forceCircular,
+  circleRadius
 }) => {
-  const finalPositions = positions || generatePositions(count);
+  const finalPositions = positions || generatePositions(count, forceCircular, circleRadius);
   
   return (
     <>

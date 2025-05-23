@@ -322,7 +322,7 @@ const MusicBackground: React.FC = () => {
       y: (Math.random() - 0.5) * 0.001,
       z: (Math.random() - 0.5) * 0.001
     },
-    positionOffset: { x: SCENE_CENTER.x, y: SCENE_CENTER.y, z: SCENE_CENTER.z }
+    positionOffset: { x: SCENE_CENTER.x, y: SCENE_CENTER.y + 40, z: SCENE_CENTER.z }
   }), []);
   
   const positionRef = useRef({ x: driftParams.positionOffset.x, y: driftParams.positionOffset.y, z: driftParams.positionOffset.z });
