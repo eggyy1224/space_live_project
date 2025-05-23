@@ -85,11 +85,20 @@ const SceneContainer: React.FC<SceneContainerProps> = ({
           );
         })()}
         {(() => {
-          // 舞群位置：往右上角移動
-          const danceGroupPosition: [number, number, number] = [15, 8, -5];
+          // 左側隊伍：20個人，整齊排列
+          const leftArmyPosition: [number, number, number] = [-25, 0, -10];
           return (
-            <group position={danceGroupPosition}>
-              <DanceGroup scale={5} />
+            <group position={leftArmyPosition}>
+              <DanceGroup count={20} scale={4} enableFloating={false} />
+            </group>
+          );
+        })()}
+        {(() => {
+          // 右側隊伍：20個人，整齊排列
+          const rightArmyPosition: [number, number, number] = [25, 0, -10];
+          return (
+            <group position={rightArmyPosition}>
+              <DanceGroup count={20} scale={4} enableFloating={false} />
             </group>
           );
         })()}

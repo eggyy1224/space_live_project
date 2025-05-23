@@ -28,21 +28,23 @@ const generatePositions = (count: number): [number, number, number][] => {
       positions.push([startX + i * spacing, 0, 0]);
     }
   } else if (count <= 20) {
-    // 11-20個：兩排排列
-    const spacing = 5; // 增加間距
-    const frontRow = Math.ceil(count / 2);
-    const backRow = count - frontRow;
+    // 11-20個：整齊的軍隊陣形，4排5列
+    const cols = 5;
+    const rows = Math.ceil(count / cols);
+    const spacingX = 5; // 列間距
+    const spacingZ = 4; // 行間距
     
-    // 前排
-    const frontStartX = -(frontRow - 1) * spacing / 2;
-    for (let i = 0; i < frontRow; i++) {
-      positions.push([frontStartX + i * spacing, 0, 4]);
-    }
-    
-    // 後排
-    const backStartX = -(backRow - 1) * spacing / 2;
-    for (let i = 0; i < backRow; i++) {
-      positions.push([backStartX + i * spacing, 0, -4]);
+    let currentIndex = 0;
+    for (let row = 0; row < rows && currentIndex < count; row++) {
+      const currentRowCount = Math.min(cols, count - currentIndex);
+      const startX = -(currentRowCount - 1) * spacingX / 2;
+      
+      for (let col = 0; col < currentRowCount; col++) {
+        const x = startX + col * spacingX;
+        const z = row * spacingZ;
+        positions.push([x, 0, z]);
+        currentIndex++;
+      }
     }
   } else {
     // 超過20個：多層圓形佈局
