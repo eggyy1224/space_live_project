@@ -4,7 +4,7 @@ import { useStore } from '../store';
 import * as THREE from 'three';
 
 // Global origin for particle effects
-const SCENE_CENTER = new THREE.Vector3(0, 0, 0);
+const SCENE_CENTER = new THREE.Vector3(8, 2, -2);
 
 // 環繞粒子組件
 interface OrbitingParticleProps {
