@@ -22,38 +22,53 @@ const generatePositions = (count: number): [number, number, number][] => {
   
   if (count <= 10) {
     // 少於等於10個：單排排列
-    const spacing = 4;
+    const spacing = 6; // 增加間距
     const startX = -(count - 1) * spacing / 2;
     for (let i = 0; i < count; i++) {
       positions.push([startX + i * spacing, 0, 0]);
     }
   } else if (count <= 20) {
     // 11-20個：兩排排列
-    const spacing = 4;
+    const spacing = 5; // 增加間距
     const frontRow = Math.ceil(count / 2);
     const backRow = count - frontRow;
     
     // 前排
     const frontStartX = -(frontRow - 1) * spacing / 2;
     for (let i = 0; i < frontRow; i++) {
-      positions.push([frontStartX + i * spacing, 0, 2]);
+      positions.push([frontStartX + i * spacing, 0, 4]);
     }
     
     // 後排
     const backStartX = -(backRow - 1) * spacing / 2;
     for (let i = 0; i < backRow; i++) {
-      positions.push([backStartX + i * spacing, 0, -2]);
+      positions.push([backStartX + i * spacing, 0, -4]);
     }
   } else {
-    // 超過20個：圓形佈局
-    const radius = Math.max(12, count * 0.4); // 根據數量調整半徑
-    for (let i = 0; i < count; i++) {
-      const angle = (i / count) * Math.PI * 2;
-      const x = Math.cos(angle) * radius;
-      const z = Math.sin(angle) * radius;
-      // 添加隨機的Y軸偏移，營造3D漂浮感
-      const y = (Math.random() - 0.5) * 8;
-      positions.push([x, y, z]);
+    // 超過20個：多層圓形佈局
+    const totalLayers = Math.ceil(count / 15); // 每層最多15個
+    let remainingCount = count;
+    let currentIndex = 0;
+    
+    for (let layer = 0; layer < totalLayers; layer++) {
+      const layerCount = Math.min(15, remainingCount);
+      const baseRadius = 15 + layer * 10; // 基礎半徑更大，層與層間距更大
+      
+      for (let i = 0; i < layerCount; i++) {
+        const angle = (i / layerCount) * Math.PI * 2;
+        const x = Math.cos(angle) * baseRadius;
+        const z = Math.sin(angle) * baseRadius;
+        
+        // 更有序的Y軸分佈，但仍有變化
+        const yVariation = Math.sin(angle * 3) * 3; // 正弦波狀的高低變化
+        const layerHeight = layer * 4; // 每層有不同的基礎高度
+        const y = yVariation + layerHeight;
+        
+        positions.push([x, y, z]);
+        currentIndex++;
+      }
+      
+      remainingCount -= layerCount;
     }
   }
   
