@@ -119,6 +119,10 @@ export const HeadModel: React.FC<HeadModelProps> = ({
   // -- 新增結束 -- 
   const isSpeakingFromStore = useStore((state) => state.isSpeaking);
   const isSpeakingRef = useRef(isSpeakingFromStore);
+  // -- 新增：讀取背景音樂強度 --
+  const bgmIntensityFromStore = useStore((state) => state.bgmIntensity);
+  const bgmIntensityRef = useRef(bgmIntensityFromStore);
+  // -- 新增結束 --
 
   useEffect(() => {
     manualOrPresetTargetsRef.current = manualOrPresetTargetsFromStore;
@@ -131,7 +135,11 @@ export const HeadModel: React.FC<HeadModelProps> = ({
   useEffect(() => {
     isSpeakingRef.current = isSpeakingFromStore;
   }, [isSpeakingFromStore]);
-  // --- Ref 傳遞結束 ---
+  // -- 新增：更新背景音樂強度 Ref --
+  useEffect(() => {
+    bgmIntensityRef.current = bgmIntensityFromStore;
+  }, [bgmIntensityFromStore]);
+  // -- 新增結束 --
 
   // --- 移除舊的設置可用動畫的 useEffect ---
   // useEffect(() => {
@@ -189,42 +197,90 @@ export const HeadModel: React.FC<HeadModelProps> = ({
     const time = state.clock.elapsedTime; 
 
     if (group.current) {
+      // 始終執行繞原點的徘徊動畫
+      // 使用正弦波創造自然的飄浮效果
+      const baseWaveSpeedX = 0.3; // X軸徘徊基礎速度
+      const baseWaveSpeedY = 0.5; // Y軸徘徊基礎速度
+      const baseWaveSpeedZ = 0.2; // Z軸徘徊基礎速度
+      
+      // 添加隨機速度變化
+      const randomSpeedVariationX = 0.8 + Math.sin(time * 0.1) * 0.4 + Math.cos(time * 0.07) * 0.3; // 0.1-1.5倍變化
+      const randomSpeedVariationY = 0.8 + Math.sin(time * 0.13 + Math.PI/3) * 0.5 + Math.cos(time * 0.09) * 0.2; // 0.1-1.5倍變化
+      const randomSpeedVariationZ = 0.8 + Math.sin(time * 0.08 + Math.PI/6) * 0.3 + Math.cos(time * 0.12) * 0.4; // 0.1-1.5倍變化
+      
+      const baseDriftRangeX = 0.04; // X軸徘徊基礎範圍
+      const baseDriftRangeY = 0.025; // Y軸徘徊基礎範圍
+      const baseDriftRangeZ = 0.06; // Z軸徘徊基礎範圍
+
+      // 如果在說話，增加一些隨機變化和額外的運動強度
+      const speakingMultiplier = isSpeakingRef.current ? 1.3 : 1.0; // 說話時運動倍數也稍微降低
+      const randomFactor = isSpeakingRef.current ? (0.8 + Math.random() * 0.4) : 1.0; // 說話時加入隨機因子
+
+      // 添加音樂強度影響
+      const musicIntensity = bgmIntensityRef.current;
+      const musicSpeedBoost = 1.0 + musicIntensity * 1.5; // 音樂強度可以增加最多1.5倍的速度
+      const musicRandomBoost = musicIntensity > 0.3 ? (0.9 + Math.random() * 0.2) : 1.0; // 強音樂時增加隨機性
+
+      // 計算實際的運動參數（結合基礎速度、隨機變化、說話狀態和音樂強度）
+      const waveSpeedX = baseWaveSpeedX * randomSpeedVariationX * speakingMultiplier * randomFactor * musicSpeedBoost * musicRandomBoost;
+      const waveSpeedY = baseWaveSpeedY * randomSpeedVariationY * speakingMultiplier * randomFactor * musicSpeedBoost * musicRandomBoost;
+      const waveSpeedZ = baseWaveSpeedZ * randomSpeedVariationZ * speakingMultiplier * musicSpeedBoost;
+      
+      // 音樂強度也影響運動範圍
+      const musicRangeBoost = 1.0 + musicIntensity * 0.8; // 音樂強度可以增加最多80%的運動範圍
+      const driftRangeX = baseDriftRangeX * speakingMultiplier * musicRangeBoost;
+      const driftRangeY = baseDriftRangeY * speakingMultiplier * musicRangeBoost;
+      const driftRangeZ = baseDriftRangeZ * speakingMultiplier * musicRangeBoost;
+
+      // 計算徘徊偏移
+      const driftX = Math.sin(time * waveSpeedX) * driftRangeX;
+      const driftY = Math.sin(time * waveSpeedY + Math.PI/3) * driftRangeY; // 加上相位差
+      const driftZ = Math.sin(time * waveSpeedZ + Math.PI/6) * driftRangeZ + driftRangeZ * 0.6; // 讓它偏向前面
+
+      // 旋轉變化受音樂強度影響
+      const rotationIntensity = (isSpeakingRef.current ? 1.8 : 1.0) * (1.0 + musicIntensity * 0.6);
+      const musicRotationSpeedBoost = 1.0 + musicIntensity * 1.2; // 音樂影響旋轉速度
+      const rotationVariationY = Math.sin(time * 0.3 * randomFactor * musicRotationSpeedBoost) * 0.05 * rotationIntensity; // 輕微左右搖擺
+      const rotationVariationX = Math.sin(time * 0.4 * randomFactor * musicRotationSpeedBoost + Math.PI/4) * 0.03 * rotationIntensity; // 輕微上下點頭
+
+      // 說話時可能添加一些瞬間的位置跳躍
+      let extraOffsetX = 0, extraOffsetY = 0, extraOffsetZ = 0;
       if (isSpeakingRef.current) {
-        // 只有在說話時才執行頭部動畫
-        
-        // --- 薛丁格瞬移邏輯 ---
-        const teleportIntervalMin = 0.08; // 秒 - 更快
-        const teleportIntervalMax = 1.5;  // 秒 - 更慢
-        const teleportRangeX = 0.07; 
-        const teleportRangeY = 0.07; 
-        const teleportRangeZ = 0.04;
-
+        // 每隔一段時間添加小幅度的隨機偏移
         teleportTimer.current += delta;
-
         if (teleportTimer.current >= nextTeleportTime.current) {
-          const newX = initialPosition.current.x + (Math.random() - 0.5) * 2 * teleportRangeX;
-          const newY = initialPosition.current.y + (Math.random() - 0.5) * 2 * teleportRangeY;
-          const newZ = initialPosition.current.z + (Math.random() - 0.5) * 2 * teleportRangeZ;
-          group.current.position.set(newX, newY, newZ);
-
+          extraOffsetX = (Math.random() - 0.5) * 0.02;
+          extraOffsetY = (Math.random() - 0.5) * 0.02;
+          extraOffsetZ = (Math.random() - 0.5) * 0.01;
+          
           teleportTimer.current = 0;
-          const teleportIntervalMin = 0.08; // 更快
-          const teleportIntervalMax = 1.5;  // 更慢
-          nextTeleportTime.current = Math.random() * (teleportIntervalMax - teleportIntervalMin) + teleportIntervalMin;
+          nextTeleportTime.current = Math.random() * 0.5 + 0.1; // 0.1-0.6秒隨機間隔
         }
-        // --- 瞬移邏輯結束 ---
-
-      } else {
-        // 不說話時，重設頭部姿態和移動狀態
-        group.current.rotation.set(initialRotation.current.x, initialRotation.current.y, initialRotation.current.z);
-        group.current.position.copy(initialPosition.current);
-        
-        // 重設瞬移計時器
-        teleportTimer.current = 0;
-        const teleportIntervalMin = 0.08; // 更快
-        const teleportIntervalMax = 1.5;  // 更慢
-        nextTeleportTime.current = Math.random() * (teleportIntervalMax - teleportIntervalMin) + teleportIntervalMin;
       }
+
+      // 音樂高潮時的特殊效果
+      if (musicIntensity > 0.7) {
+        // 強音樂時增加軌道式運動
+        const orbitRadius = musicIntensity * 0.03;
+        const orbitSpeed = time * (2.0 + musicIntensity * 3.0);
+        extraOffsetX += Math.cos(orbitSpeed) * orbitRadius;
+        extraOffsetY += Math.sin(orbitSpeed * 1.3) * orbitRadius * 0.6;
+        extraOffsetZ += Math.sin(orbitSpeed * 0.7) * orbitRadius * 0.4;
+      }
+
+      // 設置最終位置（基於初始位置加上所有偏移）
+      group.current.position.set(
+        initialPosition.current.x + driftX + extraOffsetX,
+        initialPosition.current.y + driftY + extraOffsetY,
+        initialPosition.current.z + driftZ + extraOffsetZ
+      );
+
+      // 設置旋轉變化（基於初始旋轉加上變化）
+      group.current.rotation.set(
+        initialRotation.current.x + rotationVariationX,
+        initialRotation.current.y + rotationVariationY,
+        initialRotation.current.z
+      );
     }
 
     if (!meshRef.current?.morphTargetInfluences || !localMorphTargetDictionary || Object.keys(localMorphTargetDictionary).length === 0) {
