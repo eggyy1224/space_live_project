@@ -1,6 +1,7 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Group } from 'three';
+import { Group, MathUtils } from 'three';
+import { useStore } from '../store';
 import BodyModel from './BodyModel';
 
 interface DanceGroupProps {
@@ -18,6 +19,10 @@ interface DanceGroupProps {
   forceCircular?: boolean;
   /** Radius for circular layout */
   circleRadius?: number;
+  /** Enable dynamic radius based on bgm intensity */
+  dynamicRadius?: boolean;
+  /** Scale factor for radius when dynamicRadius is true */
+  radiusFactor?: number;
 }
 
 // 生成圓形或網格佈局的位置
@@ -89,15 +94,27 @@ interface FloatingDancerProps {
   scale: number;
   index: number;
   enableFloating: boolean;
+  dynamicRadius?: boolean;
+  radiusFactor: number;
 }
 
-const FloatingDancer: React.FC<FloatingDancerProps> = ({ 
-  position, 
-  scale, 
-  index, 
-  enableFloating 
+const FloatingDancer: React.FC<FloatingDancerProps> = ({
+  position,
+  scale,
+  index,
+  enableFloating,
+  dynamicRadius,
+  radiusFactor
 }) => {
   const groupRef = useRef<Group>(null);
+
+  const baseRadiusRef = useRef(Math.sqrt(position[0] * position[0] + position[2] * position[2]));
+  const angleRef = useRef(Math.atan2(position[2], position[0]));
+
+  const bgmRef = useRef(useStore.getState().bgmIntensity);
+  useEffect(() => useStore.subscribe((s) => (bgmRef.current = s.bgmIntensity)), []);
+
+  const currentRadiusRef = useRef(baseRadiusRef.current);
   
   // 為每個舞者生成不同的漂浮參數
   const floatingParams = {
@@ -114,25 +131,36 @@ const FloatingDancer: React.FC<FloatingDancerProps> = ({
   };
 
   useFrame((state) => {
-    if (!groupRef.current || !enableFloating) return;
-    
+    if (!groupRef.current) return;
+
     const time = state.clock.getElapsedTime();
-    
-    // Y軸漂浮動畫
-    const yOffset = Math.sin(time * floatingParams.yFrequency + floatingParams.yPhase) * floatingParams.yAmplitude;
-    
-    // 輕微的旋轉動畫，模擬失重漂浮
-    const rotationY = Math.sin(time * floatingParams.rotationFrequency + floatingParams.rotationPhase) * floatingParams.rotationAmplitude;
-    const rotationX = Math.cos(time * floatingParams.rotationFrequency * 0.7 + floatingParams.rotationPhase) * floatingParams.rotationAmplitude * 0.5;
-    const rotationZ = Math.sin(time * floatingParams.rotationFrequency * 1.3 + floatingParams.rotationPhase) * floatingParams.rotationAmplitude * 0.3;
-    
-    // 應用位置和旋轉
-    groupRef.current.position.set(
-      position[0],
-      position[1] + yOffset,
-      position[2]
-    );
-    
+
+    let yOffset = 0;
+    let rotationX = 0;
+    let rotationY = 0;
+    let rotationZ = 0;
+
+    if (enableFloating) {
+      // Y軸漂浮動畫
+      yOffset = Math.sin(time * floatingParams.yFrequency + floatingParams.yPhase) * floatingParams.yAmplitude;
+
+      // 輕微旋轉模擬失重
+      rotationY = Math.sin(time * floatingParams.rotationFrequency + floatingParams.rotationPhase) * floatingParams.rotationAmplitude;
+      rotationX = Math.cos(time * floatingParams.rotationFrequency * 0.7 + floatingParams.rotationPhase) * floatingParams.rotationAmplitude * 0.5;
+      rotationZ = Math.sin(time * floatingParams.rotationFrequency * 1.3 + floatingParams.rotationPhase) * floatingParams.rotationAmplitude * 0.3;
+    }
+
+    // 動態半徑計算
+    let x = position[0];
+    let z = position[2];
+    if (dynamicRadius) {
+      const target = baseRadiusRef.current * (1 + bgmRef.current * radiusFactor);
+      currentRadiusRef.current = MathUtils.lerp(currentRadiusRef.current, target, 0.1);
+      x = Math.cos(angleRef.current) * currentRadiusRef.current;
+      z = Math.sin(angleRef.current) * currentRadiusRef.current;
+    }
+
+    groupRef.current.position.set(x, position[1] + yOffset, z);
     groupRef.current.rotation.set(rotationX, rotationY, rotationZ);
   });
 
@@ -143,13 +171,15 @@ const FloatingDancer: React.FC<FloatingDancerProps> = ({
   );
 };
 
-const DanceGroup: React.FC<DanceGroupProps> = ({ 
-  positions, 
-  scale = 5, 
+const DanceGroup: React.FC<DanceGroupProps> = ({
+  positions,
+  scale = 5,
   count = 30,
   enableFloating = true,
   forceCircular,
-  circleRadius
+  circleRadius,
+  dynamicRadius = false,
+  radiusFactor = 0.5
 }) => {
   const finalPositions = positions || generatePositions(count, forceCircular, circleRadius);
   
@@ -162,6 +192,8 @@ const DanceGroup: React.FC<DanceGroupProps> = ({
           scale={scale}
           index={idx}
           enableFloating={enableFloating}
+          dynamicRadius={dynamicRadius}
+          radiusFactor={radiusFactor}
         />
       ))}
     </>

@@ -111,3 +111,21 @@ import DanceGroup from '@/components/DanceGroup';
 
 `SceneContainer.tsx` 已改為使用 `DanceGroup` 取代單一 `BodyModel`，預設會顯示30個具有漂浮效果的舞者圓形佈局。
 
+### 音樂反應的動態半徑
+
+`dynamicRadius` 屬性允許圓形舞群依據背景音樂強度自動調整半徑，形成隨節奏擴張與收縮的視覺效果：
+
+```tsx
+<DanceGroup
+  count={100}
+  scale={8}
+  forceCircular
+  dynamicRadius
+  radiusFactor={0.8}
+  circleRadius={60}
+  enableFloating={false}
+/>
+```
+
+`radiusFactor` 控制音量對半徑的影響幅度，值越大，變化越明顯。
+

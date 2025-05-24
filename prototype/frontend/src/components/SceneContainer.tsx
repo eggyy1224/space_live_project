@@ -89,12 +89,14 @@ const SceneContainer: React.FC<SceneContainerProps> = ({
           const armyPosition: [number, number, number] = [0, -25, 0]; // 再往下移動更多
           return (
             <group position={armyPosition}>
-              <DanceGroup 
-                count={100} 
-                scale={8} 
-                enableFloating={false} 
+              <DanceGroup
+                count={100}
+                scale={8}
+                enableFloating={false}
                 forceCircular={true}
                 circleRadius={60}
+                dynamicRadius
+                radiusFactor={0.8}
               />
             </group>
           );
