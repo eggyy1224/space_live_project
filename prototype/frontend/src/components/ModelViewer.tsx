@@ -106,7 +106,14 @@ const ModelViewer: React.FC<ModelViewerProps> = React.memo(({
             setMorphTargetData={setMorphTargetData}
           />
         </Suspense>
-        <OrbitControls />
+        <OrbitControls
+          makeDefault
+          mouseButtons={{
+            LEFT: THREE.MOUSE.PAN,
+            MIDDLE: THREE.MOUSE.DOLLY,
+            RIGHT: THREE.MOUSE.ROTATE,
+          }}
+        />
         <Stats />
       </Canvas>
     </div>

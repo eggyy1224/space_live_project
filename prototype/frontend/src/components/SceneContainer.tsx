@@ -100,11 +100,17 @@ const SceneContainer: React.FC<SceneContainerProps> = ({
           );
         })()}
       </Suspense>
-      <OrbitControls 
-        enablePan={true} 
-        enableZoom={true} 
-        enableRotate={true} 
+      <OrbitControls
+        makeDefault
+        enablePan
+        enableZoom
+        enableRotate
         target={[0, 0.8, 0]}
+        mouseButtons={{
+          LEFT: THREE.MOUSE.PAN,
+          MIDDLE: THREE.MOUSE.DOLLY,
+          RIGHT: THREE.MOUSE.ROTATE,
+        }}
       />
     </Canvas>
   );

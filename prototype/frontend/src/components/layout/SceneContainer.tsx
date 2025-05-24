@@ -2,6 +2,7 @@ import React, { Suspense } from 'react';
 import { HeadModel } from '../HeadModel'; // 直接使用 Model 組件
 import { Canvas } from '@react-three/fiber';
 import { Html, OrbitControls, Stars } from '@react-three/drei';
+import * as THREE from 'three';
 
 interface SceneContainerProps {
   headModelUrl: string;
@@ -31,7 +32,14 @@ const SceneContainer: React.FC<SceneContainerProps> = React.memo(({
           rotation={modelRotation}
           position={modelPosition}
         />
-        <OrbitControls />
+        <OrbitControls
+          makeDefault
+          mouseButtons={{
+            LEFT: THREE.MOUSE.PAN,
+            MIDDLE: THREE.MOUSE.DOLLY,
+            RIGHT: THREE.MOUSE.ROTATE,
+          }}
+        />
         {showSpaceBackground && <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />}
       </Suspense>
     </Canvas>
