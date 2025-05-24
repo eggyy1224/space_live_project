@@ -14,11 +14,13 @@ export interface HeadSlice {
   morphTargets: Record<string, number>; // 用戶手動/預設的目標
   audioLipsyncTargets: Record<string, number>; // <-- 新增：語音驅動的口型目標
   audioAverageVolume: number; // <-- 新增：音訊平均音量
+  audioPitch: number; // <-- 新增：音高(頻譜重心)
   morphTargetDictionary: Record<string, number> | null;
   // availableAnimations: string[]; // 移除動畫狀態
   // currentAnimation: string | null;
   headModelLoaded: boolean; // 重命名
   showSpaceBackground: boolean; // 保留場景狀態
+  enableMoire: boolean; // <-- 新增：是否啟用莫爾條紋著色器
   
   // 操作：模型基本資訊
   setHeadModelUrl: (url: string) => void; // 重命名
@@ -42,6 +44,7 @@ export interface HeadSlice {
   // 操作：語音口型 Morph Targets
   setAudioLipsyncTarget: (key: string, value: number) => void; // <-- 新增 Action
   setAudioAverageVolume: (volume: number) => void; // <-- 新增 Action
+  setAudioPitch: (pitch: number) => void; // <-- 新增 Action
   
   // 操作：動畫相關 (移除)
   // setAvailableAnimations: (animations: string[]) => void;
@@ -49,6 +52,7 @@ export interface HeadSlice {
   
   // 操作：場景相關
   setShowSpaceBackground: (show: boolean) => void;
+  setEnableMoire: (enable: boolean) => void;
 }
 
 // 創建 Head Slice (原 createModelSlice)
@@ -61,11 +65,13 @@ export const createHeadSlice: StateCreator<HeadSlice> = (set) => ({
   morphTargets: {},
   audioLipsyncTargets: {}, // <-- 初始化新狀態
   audioAverageVolume: 0, // <-- 初始化新狀態
+  audioPitch: 0, // <-- 初始化新狀態
   morphTargetDictionary: null,
   // availableAnimations: [], // 移除
   // currentAnimation: null, // 移除
   headModelLoaded: false, // 重命名
   showSpaceBackground: true,
+  enableMoire: false,
   
   // 操作實現
   setHeadModelUrl: (url) => set({ // 重命名 Action
@@ -123,6 +129,7 @@ export const createHeadSlice: StateCreator<HeadSlice> = (set) => ({
   
   // --- 新增音訊平均音量 Action 實現 ---
   setAudioAverageVolume: (volume) => set({ audioAverageVolume: volume }),
+  setAudioPitch: (pitch) => set({ audioPitch: pitch }),
   // --- 新增結束 ---
   
   // 移除動畫相關 Actions
@@ -130,4 +137,5 @@ export const createHeadSlice: StateCreator<HeadSlice> = (set) => ({
   // setCurrentAnimation: (animation) => set({ currentAnimation: animation }),
   
   setShowSpaceBackground: (show) => set({ showSpaceBackground: show }),
+  setEnableMoire: (enable) => set({ enableMoire: enable }),
 }); 

@@ -58,9 +58,11 @@ interface SettingsPanelProps {
   scaleModel: (factor: number) => void;
   resetModel: () => void;
   toggleBackground: () => void;
+  toggleMoire: () => void;
   selectAnimation: (animationName: string) => void;
   applyPresetExpression: (expression: string) => Promise<boolean>;
   showSpaceBackground: boolean;
+  enableMoire: boolean;
   // Emotion State Props (optional display)
   currentEmotion: string;
   emotionConfidence: number;
@@ -93,9 +95,11 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   scaleModel,
   resetModel,
   toggleBackground,
+  toggleMoire,
   selectAnimation,
   applyPresetExpression,
   showSpaceBackground,
+  enableMoire,
   // Emotion State Props
   currentEmotion,
   emotionConfidence,
@@ -288,6 +292,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               <button onClick={() => scaleModel(0.9)} disabled={!isModelLoaded} className={buttonClasses(false, !isModelLoaded)}>縮小</button>
               <button onClick={resetModel} disabled={!isModelLoaded} className={buttonClasses(false, !isModelLoaded)}>重置</button>
               <button onClick={toggleBackground} className={buttonClasses(showSpaceBackground)}> {showSpaceBackground ? '顯示背景' : '隱藏背景'} </button>
+              <button onClick={toggleMoire} className={buttonClasses(enableMoire)}> {enableMoire ? '關閉 Moiré' : '開啟 Moiré'} </button>
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400">
               縮放: {typeof currentModelScale === 'number' ? currentModelScale.toFixed(2) : 'N/A'} | 狀態: {isModelLoaded ? '已載入' : '載入中...'}

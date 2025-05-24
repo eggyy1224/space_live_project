@@ -109,10 +109,12 @@ function App() {
     scaleModel,
     resetModel,
     toggleBackground,
+    toggleMoire,
     updateMorphTargetInfluence,
     resetAllMorphTargets,
     applyPresetExpression,
-    switchHeadModel
+    switchHeadModel,
+    enableMoire
   } = useHeadService();
   // --- 結束 --- 
   
@@ -493,8 +495,10 @@ function App() {
           scaleModel={scaleModel}
           resetModel={resetModel}
           toggleBackground={toggleBackground}
+          toggleMoire={toggleMoire}
           applyPresetExpression={applyPresetExpression}
           showSpaceBackground={showSpaceBackground}
+          enableMoire={enableMoire}
           // Pass body animation props
           availableAnimations={availableAnimations} 
           currentAnimation={currentAnimation} 

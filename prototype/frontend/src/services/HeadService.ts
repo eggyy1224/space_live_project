@@ -242,6 +242,12 @@ class HeadService {
     this.setShowSpaceBackground(!this.getShowSpaceBackground());
   }
 
+  // 切換莫爾條紋著色器
+  public toggleMoire(): void {
+    const current = useStore.getState().enableMoire;
+    useStore.getState().setEnableMoire(!current);
+  }
+
   // 應用預設表情 (保持不變，操作 Morph Targets)
   public async applyPresetExpression(expression: string): Promise<boolean> {
     logger.info(`應用表情預設 (前端): ${expression}`, LogCategory.MODEL);
@@ -343,6 +349,7 @@ export function useHeadService() { // <-- 保留這個定義
   const modelRotation = useStore((state) => state.modelRotation);
   const modelPosition = useStore((state) => state.modelPosition);
   const showSpaceBackground = useStore((state) => state.showSpaceBackground);
+  const enableMoire = useStore((state) => state.enableMoire);
   const morphTargets = useStore((state) => state.morphTargets);
   const morphTargetDictionary = useStore((state) => state.morphTargetDictionary);
 
@@ -372,6 +379,10 @@ export function useHeadService() { // <-- 保留這個定義
 
   const toggleBackground = useCallback(() => {
     headService.current.toggleBackground();
+  }, []);
+
+  const toggleMoire = useCallback(() => {
+    headService.current.toggleMoire();
   }, []);
 
   const updateMorphTargetInfluence = useCallback((name: string, value: number) => {
@@ -408,7 +419,9 @@ export function useHeadService() { // <-- 保留這個定義
     updateMorphTargetInfluence,
     resetAllMorphTargets,
     applyPresetExpression,
-    switchHeadModel
+    switchHeadModel,
+    toggleMoire,
+    enableMoire
   };
 }
 

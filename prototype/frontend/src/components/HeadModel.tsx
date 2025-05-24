@@ -6,6 +6,7 @@ import logger, { LogCategory } from '../utils/LogManager'; // Import logger
 import { Mesh } from 'three'; // Import Mesh type
 import { useStore } from '../store'; // 導入 Zustand store
 import { useEmotionalSpeaking } from '../hooks/useEmotionalSpeaking'; // <-- 導入新的 Hook
+import { MoireShaderMaterial } from './MoireShaderMaterial';
 // --- 移除模型設定導入 ---
 // import { EXTERNAL_ANIMATION_PATHS } from '../config/modelConfig';
 // --- 移除結束 ---
@@ -113,6 +114,7 @@ export const HeadModel: React.FC<HeadModelProps> = ({
   // --- 結束 ---
 
   const [localMorphTargetDictionary, setLocalMorphTargetDictionary] = useState<Record<string, number>>({});
+  const [moireGeometry, setMoireGeometry] = useState<THREE.BufferGeometry | null>(null);
 
   const { calculateCurrentTrajectoryWeights } = useEmotionalSpeaking();
 
@@ -131,11 +133,21 @@ export const HeadModel: React.FC<HeadModelProps> = ({
   // -- 新增：讀取語音音量強度 --
   const audioAverageVolumeFromStore = useStore((state) => state.audioAverageVolume);
   const audioAverageVolumeRef = useRef(audioAverageVolumeFromStore);
+  const enableMoire = useStore((state) => state.enableMoire);
   // -- 新增結束 --
 
   useEffect(() => {
     manualOrPresetTargetsRef.current = manualOrPresetTargetsFromStore;
   }, [manualOrPresetTargetsFromStore]);
+
+  // Clean up moir\u00e9 geometry when model URL changes
+  useEffect(() => {
+    return () => {
+      if (moireGeometry) {
+        moireGeometry.dispose();
+      }
+    };
+  }, [headModelUrl]);
   // -- 新增：更新語音口型 Ref -- 
   useEffect(() => {
     audioLipsyncTargetsRef.current = audioLipsyncTargetsFromStore;
@@ -181,6 +193,7 @@ export const HeadModel: React.FC<HeadModelProps> = ({
           foundMeshWithMorphs = true;
           finalDict = meshWithMorphs.morphTargetDictionary || null;
           setLocalMorphTargetDictionary(finalDict || {});
+          setMoireGeometry(meshWithMorphs.geometry.clone());
           logger.info('HeadModel: Found mesh with morph targets.', LogCategory.MODEL, JSON.stringify(finalDict));
           meshWithMorphs.morphTargetInfluences.fill(0);
           logger.info('HeadModel: Initialized morphTargetInfluences to 0.', LogCategory.MODEL);
@@ -471,10 +484,12 @@ export const HeadModel: React.FC<HeadModelProps> = ({
     <group ref={group} position={position} rotation={rotation}>
       {/* 使用drei的Center組件包裹scene，讓模型以視覺中心點進行縮放 */}
       <Center scale={scale} position={[0, 0, 0]}>
-        <primitive 
-          object={scene} 
-          key={headModelUrl} 
-        />
+        <primitive object={scene} key={headModelUrl} />
+        {enableMoire && moireGeometry && (
+          <mesh geometry={moireGeometry}>
+            <MoireShaderMaterial />
+          </mesh>
+        )}
       </Center>
     </group>
   );

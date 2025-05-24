@@ -421,6 +421,19 @@ class AudioService {
     }
     const rms = Math.sqrt(sumOfSquares / this.playbackDataArray.length);
 
+    // 計算頻譜重心 (用於音高估計)
+    const freqData = new Uint8Array(this.playbackAnalyserNode.frequencyBinCount);
+    this.playbackAnalyserNode.getByteFrequencyData(freqData);
+    let weightedSum = 0;
+    let magSum = 0;
+    const hzPerBin = (this.audioContext?.sampleRate || 44100) / this.playbackAnalyserNode.fftSize;
+    for (let i = 0; i < freqData.length; i++) {
+        const mag = freqData[i];
+        weightedSum += mag * i * hzPerBin;
+        magSum += mag;
+    }
+    const centroid = magSum ? weightedSum / magSum : 0;
+
     // 將 RMS 值映射到 jawOpen (需要調整映射函數和閾值)
     const sensitivity = 4.0; // 靈敏度調整
     const threshold = 0.01; // 音量閾值，低於此值視為靜音
@@ -433,6 +446,7 @@ class AudioService {
     // useStore.getState().updateMorphTarget('jawOpen', jawOpenValue);
     useStore.getState().setAudioLipsyncTarget('jawOpen', jawOpenValue); // <-- 使用新 Action
     useStore.getState().setAudioAverageVolume(rms); // <-- 新增：設定平均音量
+    useStore.getState().setAudioPitch(centroid); // <-- 新增：設定音高
     
     // 移除之前的調試日誌
     // logger.debug(`[AnalyseFrame] RMS: ${rms.toFixed(3)}, jawOpen: ${jawOpenValue.toFixed(3)}`, LogCategory.AUDIO);
