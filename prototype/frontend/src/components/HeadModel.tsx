@@ -334,14 +334,14 @@ export const HeadModel: React.FC<HeadModelProps> = ({
         // 語音驅動的瞬移效果 - 根據語音強度調整
         teleportTimer.current += delta;
         const voiceBasedInterval = Math.max(0.05, 0.3 - voiceIntensity * 0.25); // 語音越強，間隔越短
-        
+
         if (teleportTimer.current >= nextTeleportTime.current) {
           // 瞬移強度根據語音音量調整
           const voiceOffsetMultiplier = 0.5 + voiceIntensity * 1.5; // 0.5-2.0倍
           extraOffsetX = (Math.random() - 0.5) * 0.025 * voiceOffsetMultiplier;
           extraOffsetY = (Math.random() - 0.5) * 0.025 * voiceOffsetMultiplier;
           extraOffsetZ = (Math.random() - 0.5) * 0.015 * voiceOffsetMultiplier;
-          
+
           teleportTimer.current = 0;
           nextTeleportTime.current = voiceBasedInterval + Math.random() * voiceBasedInterval;
         }

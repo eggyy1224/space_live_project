@@ -200,7 +200,7 @@ const SpeechBackground: React.FC = () => {
   const screenHeight = viewport.height * 0.6;
 
   return (
-    <group position={[0, 50, -30]}>
+    <group position={[0, 50, -70]}>
       <mesh ref={meshRef}>
         <planeGeometry args={[viewport.width * 1.5, viewport.height * 1.5]} />
         <meshStandardMaterial
