@@ -3,10 +3,13 @@ import SpeechBackground from './SpeechBackground';
 import MusicBackground from './MusicBackground';
 import EffectBackground from './EffectBackground';
 import P5SpaceEffect from './P5SpaceEffect';
+import VideoPlayer from './VideoPlayer';
 
 const DynamicAudioBackgrounds: React.FC = () => (
   <>
     <SpeechBackground />
+    {/* Video player positioned next to the big screen */}
+    <VideoPlayer />
     <MusicBackground />
     <EffectBackground />
     <P5SpaceEffect />

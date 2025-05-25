@@ -11,6 +11,7 @@
 | 07 | EffectBackground | ./prototype/frontend/src/components/EffectBackground.tsx | R3F/Three.js | `useFrame` | `effectTrigger` |
 | 08 | DynamicAudioBackgrounds | ./prototype/frontend/src/components/DynamicAudioBackgrounds.tsx | R3F/Three.js | None | composite |
 | 09 | P5SpaceEffect | ./prototype/frontend/src/components/P5SpaceEffect.tsx | R3F/Three.js | `useFrame` | `bgmIntensity` |
+| 10 | VideoPlayer | ./prototype/frontend/src/components/VideoPlayer.tsx | R3F/Three.js | `video events` | `playlist` |
 
 ```mermaid
 sequenceDiagram
@@ -66,3 +67,4 @@ sequenceDiagram
 - `EffectBackground` 的粒子效果已增強，具有更長的持續時間和更誇張的效果。
 - `P5SpaceEffect` 提供 p5.js 風格的粒子系統，創建太空中漂浮的粒子效果。
 - 所有音頻驅動的背景系統現在通過 `DynamicAudioBackgrounds` 組件整合在一起，使管理更加集中和模塊化。
+- `VideoPlayer` 於大螢幕旁顯示影片，播放清單中的檔案並自動輪播，若瀏覽器阻擋自動播放需手動點擊啟動。
