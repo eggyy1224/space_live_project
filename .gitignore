@@ -125,3 +125,5 @@ dev-debug.log
 # OS specific
 
 Audio_Temp/
+
+prototype/frontend/public/videos/
