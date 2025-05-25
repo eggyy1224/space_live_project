@@ -254,8 +254,10 @@ class AudioService {
         audioUrl = audioData;
       }
 
-      this.playbackAudio = new Audio(audioUrl);
-      this.playbackAudio.crossOrigin = "anonymous"; // 允許跨域加載，如果需要的話
+      // 為避免跨域限制造成分析失敗，需在設置 src 之前指定 crossOrigin
+      this.playbackAudio = new Audio();
+      this.playbackAudio.crossOrigin = "anonymous"; // 允許跨域加載
+      this.playbackAudio.src = audioUrl;
       this.playbackAudio.volume = useStore.getState().ttsVolume;
 
       // --- 獲取精確時長 --- 
