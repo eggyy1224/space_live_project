@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { useThree } from '@react-three/fiber';
+import { useThree, useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 
@@ -31,43 +31,57 @@ const DEFAULT_PLAYLIST = [
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
   playlist = DEFAULT_PLAYLIST,
-  position = [35, 50, -70],
+  position = [25, 10, -20],
   width = 20
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const textureRef = useRef<THREE.VideoTexture>();
+  const [texture, setTexture] = useState<THREE.VideoTexture | null>(null);
   const [index, setIndex] = useState(0);
   const [autoplayFailed, setAutoplayFailed] = useState(false);
-  const { gl } = useThree();
 
   const height = useMemo(() => (width * 3) / 2, [width]);
 
+  // Update texture every frame when video is playing
+  useFrame(() => {
+    if (texture && videoRef.current && !videoRef.current.paused) {
+      texture.needsUpdate = true;
+    }
+  });
+
   // load current video
   useEffect(() => {
-    const video = videoRef.current ?? document.createElement('video');
+    const video = document.createElement('video');
     videoRef.current = video;
     video.src = playlist[index];
     video.crossOrigin = 'anonymous';
     video.loop = false;
-    video.preload = 'auto';
+    video.muted = true; // Start muted to allow autoplay
     video.playsInline = true;
-    video.load();
-
-    const texture = textureRef.current ?? new THREE.VideoTexture(video);
-    textureRef.current = texture;
-    texture.needsUpdate = true;
-    texture.minFilter = THREE.LinearFilter;
-    texture.magFilter = THREE.LinearFilter;
-    texture.generateMipmaps = false;
-
-    const attempt = video
-      .play()
-      .catch(() => {
+    
+    // Create texture when video metadata is loaded
+    video.addEventListener('loadedmetadata', () => {
+      const videoTexture = new THREE.VideoTexture(video);
+      videoTexture.minFilter = THREE.LinearFilter;
+      videoTexture.magFilter = THREE.LinearFilter;
+      videoTexture.generateMipmaps = false;
+      videoTexture.colorSpace = THREE.SRGBColorSpace;
+      setTexture(videoTexture);
+      
+      // Try to play
+      video.play().catch(() => {
         setAutoplayFailed(true);
+        video.muted = false; // Unmute if autoplay fails
       });
+    });
+
+    video.load();
 
     return () => {
       video.pause();
+      video.src = '';
+      if (texture) {
+        texture.dispose();
+      }
     };
   }, [index, playlist]);
 
@@ -85,29 +99,42 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   }, [playlist.length]);
 
   const handlePlay = () => {
-    videoRef.current?.play();
-    setAutoplayFailed(false);
+    if (videoRef.current) {
+      videoRef.current.muted = false;
+      videoRef.current.play();
+      setAutoplayFailed(false);
+    }
   };
+  
   const handlePause = () => videoRef.current?.pause();
+  
   const handleRestart = () => {
     if (videoRef.current) {
       videoRef.current.currentTime = 0;
       videoRef.current.play();
     }
   };
+  
   const handleVolume = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (videoRef.current) {
       videoRef.current.volume = parseFloat(e.target.value);
     }
   };
 
+  // Only render mesh when texture is ready
+  if (!texture) {
+    return null;
+  }
+
   return (
     <group position={position}>
       <mesh onClick={handlePlay}>
         <planeGeometry args={[width, height]} />
-        <meshBasicMaterial toneMapped={false}>
-          {textureRef.current && <primitive attach="map" object={textureRef.current} />}
-        </meshBasicMaterial>
+        <meshBasicMaterial 
+          map={texture}
+          toneMapped={false}
+          side={THREE.DoubleSide}
+        />
       </mesh>
       {/* HTML controls overlay */}
       <Html position={[0, -height / 2 - 2, 0]} center>

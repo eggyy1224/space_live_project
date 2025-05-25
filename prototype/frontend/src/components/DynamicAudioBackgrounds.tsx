@@ -9,7 +9,7 @@ const DynamicAudioBackgrounds: React.FC = () => (
   <>
     <SpeechBackground />
     {/* Video player positioned next to the big screen */}
-    <VideoPlayer />
+    <VideoPlayer position={[25, 10, -20]} />
     <MusicBackground />
     <EffectBackground />
     <P5SpaceEffect />
