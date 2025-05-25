@@ -16,40 +16,29 @@ import * as THREE from 'three';
  * single HTMLVideoElement and THREE.VideoTexture.
  */
 interface VideoPlayerProps {
-  /** playlist of video file names relative to /public/videos */
-  playlist?: string[];
-  /** position of the video plane in the scene */
+  playlist: string[];
+  initialVideoIndex?: number;
   position?: [number, number, number];
-  /** width of the plane; height is derived from 2:3 aspect ratio */
   width?: number;
 }
 
-const DEFAULT_PLAYLIST = [
-  '/videos/space_live.mp4',
-  '/videos/Drive_in_stormy.mp4',
-  '/videos/BirdmanTalk.mp4',
-  '/videos/Birds.mp4',
-  '/videos/Club_Scene.mp4',
-  '/videos/fireworks.mp4',
-  '/videos/grass_man.mp4',
-  '/videos/Horse.mp4'
-];
-
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
-  playlist = DEFAULT_PLAYLIST,
+  playlist,
+  initialVideoIndex = 0,
   position = [25, 10, -20],
   width = 20
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [texture, setTexture] = useState<THREE.VideoTexture | null>(null);
-  const [index, setIndex] = useState(0);
+  const [index, setIndex] = useState(() => {
+    return playlist && playlist.length > 0 ? initialVideoIndex % playlist.length : 0;
+  });
   const [autoplayFailed, setAutoplayFailed] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const height = useMemo(() => (width * 3) / 2, [width]);
 
-  // Handle hover with delay
   const handleMouseEnter = () => {
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
@@ -63,63 +52,66 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
     hoverTimeoutRef.current = setTimeout(() => {
       setIsHovered(false);
-    }, 1500); // 800ms delay before hiding
+    }, 800);
   };
 
-  // Update texture every frame when video is playing
   useFrame(() => {
     if (texture && videoRef.current && !videoRef.current.paused) {
       texture.needsUpdate = true;
     }
   });
 
-  // load current video
   useEffect(() => {
-    // Clean up previous texture
-    if (texture) {
-      texture.dispose();
-      setTexture(null);
+    if (!playlist || playlist.length === 0) {
+      return;
     }
-
+    
     const video = document.createElement('video');
     videoRef.current = video;
     video.src = playlist[index];
     video.crossOrigin = 'anonymous';
     video.loop = false;
     video.playsInline = true;
+    video.volume = 0;
+    video.muted = true;
     
-    // Create texture when video metadata is loaded
-    video.addEventListener('loadedmetadata', () => {
+    let localTextureInstance: THREE.VideoTexture | null = null;
+
+    const onLoadedMetadata = () => {
       const videoTexture = new THREE.VideoTexture(video);
+      localTextureInstance = videoTexture;
       videoTexture.minFilter = THREE.LinearFilter;
       videoTexture.magFilter = THREE.LinearFilter;
       videoTexture.generateMipmaps = false;
       videoTexture.colorSpace = THREE.SRGBColorSpace;
       setTexture(videoTexture);
       
-      // Set initial volume
-      video.volume = 0.6;
-      
-      // Try to play
       video.play().catch(() => {
         setAutoplayFailed(true);
       });
-    });
+    };
 
-    // Handle video end
-    const handleEnded = () => {
+    const onVideoEnded = () => {
       setTimeout(() => {
         setIndex((prevIndex) => (prevIndex + 1) % playlist.length);
-      }, 5000);
+      }, 2000);
     };
     
-    video.addEventListener('ended', handleEnded);
+    video.addEventListener('loadedmetadata', onLoadedMetadata);
+    video.addEventListener('ended', onVideoEnded);
     video.load();
 
     return () => {
-      video.removeEventListener('ended', handleEnded);
+      video.removeEventListener('loadedmetadata', onLoadedMetadata);
+      video.removeEventListener('ended', onVideoEnded);
       video.pause();
       video.src = '';
+      if (videoRef.current === video) {
+          videoRef.current = null;
+      }
+      if (localTextureInstance) {
+        localTextureInstance.dispose();
+      }
     };
   }, [index, playlist]);
 
@@ -145,8 +137,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   };
 
-  // Only render mesh when texture is ready
-  if (!texture) {
+  if (!texture || !playlist || playlist.length === 0) {
     return null;
   }
 
@@ -164,7 +155,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           side={THREE.DoubleSide}
         />
       </mesh>
-      {/* Invisible interaction area for controls */}
       <mesh
         position={[0, 0, 0.2]}
         onPointerEnter={handleMouseEnter}
@@ -174,7 +164,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         <planeGeometry args={[width, height * 0.6]} />
         <meshBasicMaterial transparent opacity={0} />
       </mesh>
-      {/* HTML controls overlay - positioned on the video */}
       <Html position={[0, 0, 0.1]} center>
         <div 
           style={{ 
@@ -268,7 +257,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             min="0"
             max="1"
             step="0.01"
-            defaultValue="0.6"
+            defaultValue="0"
             onChange={handleVolume}
             style={{
               width: '80px',
