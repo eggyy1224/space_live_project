@@ -26,7 +26,13 @@ interface VideoPlayerProps {
 
 const DEFAULT_PLAYLIST = [
   '/videos/space_live.mp4',
-  '/videos/Drive_in_stormy.mp4'
+  '/videos/Drive_in_stormy.mp4',
+  '/videos/BirdmanTalk.mp4',
+  '/videos/Birds.mp4',
+  '/videos/Club_Scene.mp4',
+  '/videos/fireworks.mp4',
+  '/videos/grass_man.mp4',
+  '/videos/Horse.mp4'
 ];
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -38,8 +44,27 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [texture, setTexture] = useState<THREE.VideoTexture | null>(null);
   const [index, setIndex] = useState(0);
   const [autoplayFailed, setAutoplayFailed] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const height = useMemo(() => (width * 3) / 2, [width]);
+
+  // Handle hover with delay
+  const handleMouseEnter = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    setIsHovered(true);
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    hoverTimeoutRef.current = setTimeout(() => {
+      setIsHovered(false);
+    }, 1500); // 800ms delay before hiding
+  };
 
   // Update texture every frame when video is playing
   useFrame(() => {
@@ -50,12 +75,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   // load current video
   useEffect(() => {
+    // Clean up previous texture
+    if (texture) {
+      texture.dispose();
+      setTexture(null);
+    }
+
     const video = document.createElement('video');
     videoRef.current = video;
     video.src = playlist[index];
     video.crossOrigin = 'anonymous';
     video.loop = false;
-    video.muted = true; // Start muted to allow autoplay
     video.playsInline = true;
     
     // Create texture when video metadata is loaded
@@ -67,40 +97,34 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       videoTexture.colorSpace = THREE.SRGBColorSpace;
       setTexture(videoTexture);
       
+      // Set initial volume
+      video.volume = 0.6;
+      
       // Try to play
       video.play().catch(() => {
         setAutoplayFailed(true);
-        video.muted = false; // Unmute if autoplay fails
       });
     });
 
+    // Handle video end
+    const handleEnded = () => {
+      setTimeout(() => {
+        setIndex((prevIndex) => (prevIndex + 1) % playlist.length);
+      }, 5000);
+    };
+    
+    video.addEventListener('ended', handleEnded);
     video.load();
 
     return () => {
+      video.removeEventListener('ended', handleEnded);
       video.pause();
       video.src = '';
-      if (texture) {
-        texture.dispose();
-      }
     };
   }, [index, playlist]);
 
-  // handle video end -> next video after delay
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    const handleEnded = () => {
-      setTimeout(() => {
-        setIndex((i) => (i + 1) % playlist.length);
-      }, 5000);
-    };
-    video.addEventListener('ended', handleEnded);
-    return () => video.removeEventListener('ended', handleEnded);
-  }, [playlist.length]);
-
   const handlePlay = () => {
     if (videoRef.current) {
-      videoRef.current.muted = false;
       videoRef.current.play();
       setAutoplayFailed(false);
     }
@@ -128,7 +152,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   return (
     <group position={position}>
-      <mesh onClick={handlePlay}>
+      <mesh 
+        onClick={handlePlay}
+        onPointerEnter={handleMouseEnter}
+        onPointerLeave={handleMouseLeave}
+      >
         <planeGeometry args={[width, height]} />
         <meshBasicMaterial 
           map={texture}
@@ -136,22 +164,124 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           side={THREE.DoubleSide}
         />
       </mesh>
-      {/* HTML controls overlay */}
-      <Html position={[0, -height / 2 - 2, 0]} center>
-        <div style={{ display: 'flex', gap: '0.5rem', background: '#0008', padding: '0.5rem', borderRadius: '4px' }}>
-          <button onClick={handlePlay}>Play</button>
-          <button onClick={handlePause}>Pause</button>
-          <button onClick={handleRestart}>Restart</button>
+      {/* Invisible interaction area for controls */}
+      <mesh
+        position={[0, 0, 0.2]}
+        onPointerEnter={handleMouseEnter}
+        onPointerLeave={handleMouseLeave}
+        visible={false}
+      >
+        <planeGeometry args={[width, height * 0.6]} />
+        <meshBasicMaterial transparent opacity={0} />
+      </mesh>
+      {/* HTML controls overlay - positioned on the video */}
+      <Html position={[0, 0, 0.1]} center>
+        <div 
+          style={{ 
+            display: 'flex',
+            gap: '0.75rem',
+            background: 'rgba(0, 0, 0, 0.7)',
+            padding: '0.75rem 1rem',
+            borderRadius: '8px',
+            opacity: isHovered ? 1 : 0,
+            transition: 'opacity 0.3s ease',
+            pointerEvents: isHovered ? 'auto' : 'none',
+            backdropFilter: 'blur(10px)',
+            alignItems: 'center'
+          }}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        >
+          <button 
+            onClick={handlePlay}
+            style={{
+              padding: '0.4rem 0.8rem',
+              background: 'rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              borderRadius: '4px',
+              color: 'white',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              fontSize: '0.9rem'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+          >
+            ▶️
+          </button>
+          <button 
+            onClick={handlePause}
+            style={{
+              padding: '0.4rem 0.8rem',
+              background: 'rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              borderRadius: '4px',
+              color: 'white',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              fontSize: '0.9rem'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+          >
+            ⏸️
+          </button>
+          <button 
+            onClick={handleRestart}
+            style={{
+              padding: '0.4rem 0.8rem',
+              background: 'rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              borderRadius: '4px',
+              color: 'white',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              fontSize: '0.9rem'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+          >
+            🔄
+          </button>
+          <div style={{ width: '1px', height: '20px', background: 'rgba(255, 255, 255, 0.3)' }} />
+          <span style={{ color: 'white', fontSize: '0.9rem' }}>🔊</span>
           <input
             type="range"
             min="0"
             max="1"
             step="0.01"
-            defaultValue="1"
+            defaultValue="0.6"
             onChange={handleVolume}
+            style={{
+              width: '80px',
+              cursor: 'pointer',
+              height: '4px'
+            }}
           />
+          {autoplayFailed && (
+            <div style={{ color: 'white', fontSize: '0.8rem', marginLeft: '1rem' }}>
+              Click to play
+            </div>
+          )}
         </div>
-        {autoplayFailed && <div>Click video to start</div>}
       </Html>
     </group>
   );
