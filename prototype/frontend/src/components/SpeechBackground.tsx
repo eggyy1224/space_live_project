@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
+import VideoPlayer from './VideoPlayer';
 import { useStore } from '../store';
 import * as THREE from 'three';
 import logger, { LogCategory } from '../utils/LogManager';
@@ -198,6 +199,8 @@ const SpeechBackground: React.FC = () => {
   // 定義背景「大螢幕」區域
   const screenWidth = viewport.width * 0.8;
   const screenHeight = viewport.height * 0.6;
+  const videoWidth = viewport.width * 0.4;
+  const videoX = screenWidth / 2 + videoWidth / 2 + viewport.width * 0.1;
 
   return (
     <group position={[0, 50, -70]}>
@@ -245,6 +248,12 @@ const SpeechBackground: React.FC = () => {
           )}
         </Text>
       )}
+
+      {/* Video player positioned next to the big screen */}
+      <VideoPlayer
+        playlist={["/videos/space_live.mp4"]}
+        position={[videoX, 0, 0]}
+      />
     </group>
   );
 };
