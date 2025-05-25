@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useMemo } from 'react';
+import { useFrame } from '@react-three/fiber';
 import { useGLTF, useAnimations } from '@react-three/drei';
 import { Group } from 'three';
 import * as THREE from 'three';
@@ -88,7 +89,15 @@ export function BodyModel() {
   // logger.info(`[BodyModel] Loaded ${externalAnimations.length} external animations from ${ANIMATION_PATHS.length} files.`, LogCategory.ANIMATION); // 註釋掉
   
   // 3. 使用合併後的外部動畫獲取 mixer
-  const { mixer } = useAnimations(externalAnimations, group); 
+  const { mixer } = useAnimations(externalAnimations, group);
+
+  // --- Manual blending state ---
+  const transitionRef = useRef<{
+    from: THREE.AnimationAction;
+    to: THREE.AnimationAction;
+    start: number;
+    duration: number;
+  } | null>(null);
 
   // --- 創建友好名稱到精確 Action 的映射 --- 
   const friendlyToActionMap = useMemo(() => {
@@ -251,51 +260,33 @@ export function BodyModel() {
             }
         }
         
-        // 3. 如果之前有動畫，並且目標動畫不同，則使用更高級的過渡
+        // 3. 如果之前有動畫，並且目標動畫不同，則使用手動補間過渡
         if (previousAnimation && previousAnimation !== targetAction && targetAction) {
-            // 使用混合器的 crossFadeTo 進行更高品質的過渡
-            logger.debug(`[BodyModel] CrossFade from ${previousAnimation.getClip().name} to ${targetAction.getClip().name} over ${transitionDuration}s`, LogCategory.ANIMATION);
-            
-            try {
-                // 確保目標動畫已經正確設置
-                targetAction
-                    .reset()
-                    .setEffectiveTimeScale(1)
-                    .setEffectiveWeight(0); // 初始權重為 0，由 crossFadeTo 漸變到 1
-                
-                // 啟用循環播放標誌檢查
-                const isLoop = animSequence.length > 0 && 
-                               currentIndex >= 0 && 
-                               currentIndex < animSequence.length && 
-                               animSequence[currentIndex].loop === true;
-                
-                // 設置目標動畫循環模式
-                targetAction.loop = isLoop ? THREE.LoopRepeat : THREE.LoopOnce;
-                
-                // 若為非循環，確保完成後不停止
-                if (!isLoop) {
-                    targetAction.clampWhenFinished = true;
-                }
-                
-                // 執行交叉淡入，這將自動開始播放 targetAction
-                previousAnimation.crossFadeTo(targetAction, transitionDuration, true);
-                
-                // 記錄日誌
-                logger.debug(`[BodyModel] CrossFade configured with loop=${isLoop ? 'LoopRepeat' : 'LoopOnce'} and clampWhenFinished=${!isLoop}`, LogCategory.ANIMATION);
-                
-            } catch (error) {
-                // 如果 crossFadeTo 失敗，回退到基本方法
-                logger.warn(`[BodyModel] CrossFadeTo failed, falling back to basic fade: ${error instanceof Error ? error.message : String(error)}`, LogCategory.ANIMATION);
-                previousAnimation.fadeOut(transitionDuration);
-                if (targetAction) {
-                    targetAction
-                      .reset()
-                      .setEffectiveTimeScale(1)
-                      .setEffectiveWeight(1)
-                      .fadeIn(transitionDuration)
-                      .play();
-                }
+            logger.debug(`[BodyModel] Manual blend from ${previousAnimation.getClip().name} to ${targetAction.getClip().name} over ${transitionDuration}s`, LogCategory.ANIMATION);
+
+            // 檢查循環配置
+            const isLoop = animSequence.length > 0 &&
+                           currentIndex >= 0 &&
+                           currentIndex < animSequence.length &&
+                           animSequence[currentIndex].loop === true;
+
+            targetAction.reset().setEffectiveWeight(0).setEffectiveTimeScale(1);
+            targetAction.loop = isLoop ? THREE.LoopRepeat : THREE.LoopOnce;
+            if (!isLoop) {
+                targetAction.clampWhenFinished = true;
             }
+
+            previousAnimation.play();
+            targetAction.play();
+
+            transitionRef.current = {
+                from: previousAnimation,
+                to: targetAction,
+                start: performance.now() / 1000,
+                duration: transitionDuration,
+            };
+
+            logger.debug(`[BodyModel] Manual blend initialized`, LogCategory.ANIMATION);
         } else if (targetAction && !previousAnimation) {
             // 無需過渡，直接播放
             logger.debug(`[BodyModel] Direct play for friendly name: ${currentAnimation} (Clip: ${targetAction.getClip().name})`, LogCategory.ANIMATION);
@@ -335,8 +326,26 @@ export function BodyModel() {
     }
 
   // 依賴項包含 currentAnimation (友好名稱) 和 精確的 map
-  }, [currentAnimation, friendlyToActionMap]); 
+  }, [currentAnimation, friendlyToActionMap]);
   // ----------------------------------
+
+  // --- update manual blend each frame ---
+  useFrame((state) => {
+    if (!transitionRef.current) return;
+
+    const { from, to, start, duration } = transitionRef.current;
+    const t = Math.min((state.clock.elapsedTime - start) / duration, 1);
+    // Cubic ease for smoother feel
+    const blend = t * t * (3 - 2 * t);
+
+    from.setEffectiveWeight(1 - blend);
+    to.setEffectiveWeight(blend);
+
+    if (t >= 1) {
+      from.stop();
+      transitionRef.current = null;
+    }
+  });
 
   // scene 應該總是存在，因為 useGLTF 會 suspend 直到加載完成或錯誤
   // 如果 useGLTF 拋出錯誤，會被 Suspense fallback 捕獲，不會執行到這裡
