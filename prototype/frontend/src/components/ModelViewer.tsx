@@ -82,16 +82,59 @@ const ModelViewer: React.FC<ModelViewerProps> = React.memo(({
     <div className="canvas-container">
       {isLoading && <LoadingIndicator />}
       
-      <Canvas camera={{ position: [0, 1, 5], fov: 50 }}>
+      <Canvas 
+        camera={{ position: [0, 1, 5], fov: 50 }}
+        gl={{ 
+          toneMapping: THREE.ACESFilmicToneMapping,
+          toneMappingExposure: 2.5,
+          outputColorSpace: THREE.SRGBColorSpace
+        }}
+      >
         {showSpaceBackground ? (
           <SpaceBackground />
         ) : (
           <color attach="background" args={['#121212']} />
         )}
         
-        <ambientLight intensity={0.5} />
-        <directionalLight position={[10, 10, 5]} intensity={1} />
-        <directionalLight position={[-10, -10, -5]} intensity={0.5} />
+        {/* 環境光照 - 從根本解決亮度問題 */}
+        <Environment preset="studio" background={false} />
+        <ambientLight intensity={3} />
+        <directionalLight position={[100, 100, 50]} intensity={5} castShadow />
+        <directionalLight position={[-100, -100, -50]} intensity={3} />
+        <directionalLight position={[0, 100, 0]} intensity={4} />
+        <pointLight position={[50, 50, 50]} intensity={50} decay={1} />
+        <pointLight position={[-50, 50, 50]} intensity={50} decay={1} />
+        
+        {/* 聚光燈專門打在臉上 - 調整為大型模型 */}
+        <spotLight
+          position={[0, 40, 60]}
+          angle={0.8}
+          penumbra={0.6}
+          intensity={50}
+          distance={200}
+          castShadow
+          target-position={[0, 0, 0]}
+          color="#ffffff"
+        />
+        <spotLight
+          position={[40, 20, 40]}
+          angle={0.7}
+          penumbra={0.5}
+          intensity={40}
+          distance={150}
+          target-position={[0, 0, 0]}
+          color="#fff5f0"
+        />
+        {/* 額外的大範圍補光 */}
+        <spotLight
+          position={[-40, 30, 50]}
+          angle={0.9}
+          penumbra={0.7}
+          intensity={35}
+          distance={150}
+          target-position={[0, 0, 0]}
+          color="#fffefc"
+        />
         
         <Suspense fallback={null}>
           <HeadModel 

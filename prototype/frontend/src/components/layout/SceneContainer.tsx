@@ -1,7 +1,7 @@
 import React, { Suspense } from 'react';
 import { HeadModel } from '../HeadModel'; // 直接使用 Model 組件
 import { Canvas } from '@react-three/fiber';
-import { Html, OrbitControls, Stars } from '@react-three/drei';
+import { Html, OrbitControls, Stars, Environment } from '@react-three/drei';
 import * as THREE from 'three';
 
 interface SceneContainerProps {
@@ -22,10 +22,55 @@ const SceneContainer: React.FC<SceneContainerProps> = React.memo(({
   morphTargetDictionary,
 }) => {
   return (
-    <Canvas className="scene-canvas" camera={{ position: [0, 0, 2], fov: 50 }}>
+    <Canvas 
+      className="scene-canvas" 
+      camera={{ position: [0, 0, 2], fov: 50 }}
+      gl={{ 
+        toneMapping: THREE.ACESFilmicToneMapping,
+        toneMappingExposure: 3.0,
+        outputColorSpace: THREE.SRGBColorSpace
+      }}
+    >
       <Suspense fallback={<Html center>加載模型中...</Html>}>
-        <ambientLight intensity={0.5} />
-        <directionalLight position={[5, 5, 5]} intensity={1} />
+        {/* 環境光照 - 從根本解決亮度問題 */}
+        <Environment preset="studio" background={false} />
+        <ambientLight intensity={4} />
+        <directionalLight position={[50, 50, 50]} intensity={6} castShadow />
+        <directionalLight position={[-50, 50, 50]} intensity={4} />
+        <directionalLight position={[0, 100, 0]} intensity={5} />
+        <pointLight position={[30, 30, 30]} intensity={60} decay={1} />
+        <pointLight position={[-30, 30, 30]} intensity={60} decay={1} />
+        
+        {/* 聚光燈專門打在臉上 - 調整為大型模型 */}
+        <spotLight
+          position={[0, 20, 40]}
+          angle={0.8}
+          penumbra={0.6}
+          intensity={50}
+          distance={200}
+          castShadow
+          target-position={[0, -10, 0]}
+          color="#ffffff"
+        />
+        <spotLight
+          position={[30, 10, 30]}
+          angle={0.7}
+          penumbra={0.5}
+          intensity={40}
+          distance={150}
+          target-position={[0, -10, 0]}
+          color="#fff5f0"
+        />
+        {/* 額外的大範圍補光 */}
+        <spotLight
+          position={[-30, 20, 35]}
+          angle={0.9}
+          penumbra={0.7}
+          intensity={35}
+          distance={150}
+          target-position={[0, -10, 0]}
+          color="#fffefc"
+        />
         <HeadModel
           headModelUrl={headModelUrl}
           scale={modelScale}

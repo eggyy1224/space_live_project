@@ -186,6 +186,31 @@ export const HeadModel: React.FC<HeadModelProps> = ({
       const foundMeshes: MorphTargetMesh[] = [];
       
       scene.traverse((object) => {
+        // 增強所有材質的亮度
+        if (object instanceof THREE.Mesh || object instanceof THREE.SkinnedMesh) {
+          if (object.material) {
+            const material = Array.isArray(object.material) ? object.material : [object.material];
+            material.forEach((mat: any) => {
+              if (mat.isMeshStandardMaterial || mat.isMeshPhysicalMaterial) {
+                // 增加材質的亮度
+                mat.emissive = new THREE.Color(0x111111); // 添加自發光
+                mat.emissiveIntensity = 0.3;
+                // 調整材質屬性讓它更容易被照亮
+                mat.roughness = Math.min(mat.roughness * 0.7, 1);
+                mat.metalness = Math.max(mat.metalness * 0.5, 0);
+                mat.needsUpdate = true;
+              }
+              if (mat.isMeshLambertMaterial || mat.isMeshPhongMaterial) {
+                // 對於舊式材質，直接增加亮度
+                if (mat.color) {
+                  mat.color.multiplyScalar(1.5);
+                }
+                mat.needsUpdate = true;
+              }
+            });
+          }
+        }
+        
         // 檢查標準 Mesh
         if (object instanceof THREE.Mesh && object.morphTargetInfluences && object.morphTargetDictionary) {
           const meshWithMorphs = object as MeshWithMorphs;
