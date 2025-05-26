@@ -7,14 +7,15 @@ import VideoPlayer from './VideoPlayer';
 
 // Define the full playlist here
 const FULL_PLAYLIST = [
-  '/videos/space_live.mp4',
-  '/videos/Drive_in_stormy.mp4',
-  '/videos/BirdmanTalk.mp4',
-  '/videos/Birds.mp4',
-  '/videos/Club_Scene.mp4',
-  '/videos/fireworks.mp4',
-  '/videos/grass_man.mp4',
-  '/videos/Horse.mp4'
+  '/videos/太空打卡.mp4',
+  '/videos/太空打卡2.mp4',
+  '/videos/太空走秀.mp4',
+  '/videos/太空走秀2.mp4',
+  '/videos/火箭發射.mp4',
+  '/videos/模擬星雲圖.mp4',
+  '/videos/daily_life_1.mp4',
+  '/videos/space_live_video_1.mp4',
+  '/videos/space_live.mp4'
 ];
 
 // Define configurations for multiple screens
@@ -31,20 +32,20 @@ const getRandomVideoIndex = () => Math.floor(Math.random() * FULL_PLAYLIST.lengt
 const screenConfigs: ScreenConfig[] = [
   { 
     id: 'screen1', 
-    position: [-40, 25, -60], 
-    width: 30, 
+    position: [-50, 25, -60],
+    width: 30,
     initialVideoIndex: getRandomVideoIndex() 
   },
   { 
     id: 'screen2', 
     position: [0, 35, -50],
-    width: 40, 
+    width: 30,
     initialVideoIndex: getRandomVideoIndex() 
   },
   { 
     id: 'screen3', 
-    position: [40, 20, -55],
-    width: 25, 
+    position: [50, 20, -55],
+    width: 30,
     initialVideoIndex: getRandomVideoIndex() 
   },
 ];
