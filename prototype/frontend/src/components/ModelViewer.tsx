@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Stars, useProgress, Environment, Stats } from '@react-three/drei';
 import * as THREE from 'three';
-import { Model } from './HeadModel';
+import { HeadModel } from './HeadModel';
 
 // 加載進度組件
 function LoadingIndicator() {
@@ -94,16 +94,11 @@ const ModelViewer: React.FC<ModelViewerProps> = React.memo(({
         <directionalLight position={[-10, -10, -5]} intensity={0.5} />
         
         <Suspense fallback={null}>
-          <Model 
-            url={modelUrl} 
+          <HeadModel 
+            headModelUrl={modelUrl} 
             scale={modelScale}
             rotation={modelRotation}
             position={modelPosition}
-            currentAnimation={currentAnimation === null ? undefined : currentAnimation}
-            morphTargetDictionary={morphTargetDictionary} 
-            morphTargets={morphTargets} 
-            getManualMorphTargets={getManualMorphTargets} 
-            setMorphTargetData={setMorphTargetData}
           />
         </Suspense>
         <OrbitControls

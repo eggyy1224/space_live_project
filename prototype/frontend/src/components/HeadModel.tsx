@@ -29,11 +29,19 @@ const MOUTH_MORPH_TARGET_KEYS = new Set([
 ]);
 // --- 新增結束 ---
 
-// 擴展的網格類型，包含morphTargets屬性
+// 擴展的網格類型，包含morphTargets屬性 - 支持 Mesh 和 SkinnedMesh
 interface MeshWithMorphs extends THREE.Mesh {
   morphTargetDictionary?: {[key: string]: number};
   morphTargetInfluences?: number[];
 }
+
+interface SkinnedMeshWithMorphs extends THREE.SkinnedMesh {
+  morphTargetDictionary?: {[key: string]: number};
+  morphTargetInfluences?: number[];
+}
+
+// 聯合類型，支持兩種網格類型
+type MorphTargetMesh = MeshWithMorphs | SkinnedMeshWithMorphs;
 
 // 更新 Props 接口
 interface HeadModelProps { // <-- 重命名
@@ -53,7 +61,9 @@ export const HeadModel: React.FC<HeadModelProps> = ({
   // currentAnimation, // 移除
 }) => {
   const group = useRef<THREE.Group>(null);
-  const meshRef = useRef<MeshWithMorphs | null>(null);
+  const meshRef = useRef<MorphTargetMesh | null>(null);
+  // 新增：支持多個 mesh 的引用數組
+  const meshRefs = useRef<MorphTargetMesh[]>([]);
   // const headService = HeadService.getInstance(); // <-- 不再需要實例
 
   // 儲存初始位置的 Ref
@@ -168,37 +178,59 @@ export const HeadModel: React.FC<HeadModelProps> = ({
 
   // --- 更新設置加載狀態和提取 Morph 字典的 useEffect ---
   useEffect(() => {
-    let foundMeshWithMorphs = false;
     meshRef.current = null;
-    let finalDict: Record<string, number> | null = null;
+    meshRefs.current = [];
+    let combinedDict: Record<string, number> = {};
 
     if (scene) {
+      const foundMeshes: MorphTargetMesh[] = [];
+      
       scene.traverse((object) => {
-        if (!foundMeshWithMorphs && object instanceof THREE.Mesh && object.morphTargetInfluences && object.morphTargetDictionary) {
+        // 檢查標準 Mesh
+        if (object instanceof THREE.Mesh && object.morphTargetInfluences && object.morphTargetDictionary) {
           const meshWithMorphs = object as MeshWithMorphs;
-          if (!meshWithMorphs.morphTargetInfluences) return;
-          meshRef.current = meshWithMorphs;
-          foundMeshWithMorphs = true;
-          finalDict = meshWithMorphs.morphTargetDictionary || null;
-          setLocalMorphTargetDictionary(finalDict || {});
-          logger.info('HeadModel: Found mesh with morph targets.', LogCategory.MODEL, JSON.stringify(finalDict));
-          meshWithMorphs.morphTargetInfluences.fill(0);
-          logger.info('HeadModel: Initialized morphTargetInfluences to 0.', LogCategory.MODEL);
+          if (meshWithMorphs.morphTargetInfluences && meshWithMorphs.morphTargetDictionary) {
+            foundMeshes.push(meshWithMorphs);
+            // 合併 morph target 字典
+            Object.assign(combinedDict, meshWithMorphs.morphTargetDictionary);
+            // 初始化 morph target influences
+            meshWithMorphs.morphTargetInfluences.fill(0);
+            logger.info(`HeadModel: Found Mesh with morph targets: ${object.name}`, LogCategory.MODEL, JSON.stringify(meshWithMorphs.morphTargetDictionary));
+          }
+        }
+        
+        // 檢查 SkinnedMesh
+        if (object instanceof THREE.SkinnedMesh && object.morphTargetInfluences && object.morphTargetDictionary) {
+          const skinnedMeshWithMorphs = object as SkinnedMeshWithMorphs;
+          if (skinnedMeshWithMorphs.morphTargetInfluences && skinnedMeshWithMorphs.morphTargetDictionary) {
+            foundMeshes.push(skinnedMeshWithMorphs);
+            // 合併 morph target 字典
+            Object.assign(combinedDict, skinnedMeshWithMorphs.morphTargetDictionary);
+            // 初始化 morph target influences
+            skinnedMeshWithMorphs.morphTargetInfluences.fill(0);
+            logger.info(`HeadModel: Found SkinnedMesh with morph targets: ${object.name}`, LogCategory.MODEL, JSON.stringify(skinnedMeshWithMorphs.morphTargetDictionary));
+          }
         }
       });
 
-      // 只要 scene 存在，就設置 headModelLoaded 為 true
-      setHeadModelLoaded(true); // <-- 使用重命名後的 action
-      logger.info('HeadModel: Scene loaded, setting headModelLoaded state to true in Zustand.', LogCategory.MODEL);
-
-      if (!foundMeshWithMorphs) {
+      // 設置引用
+      meshRefs.current = foundMeshes;
+      if (foundMeshes.length > 0) {
+        meshRef.current = foundMeshes[0]; // 保持向後兼容性
+        setLocalMorphTargetDictionary(combinedDict);
+        logger.info(`HeadModel: Found ${foundMeshes.length} meshes with morph targets. Combined dictionary:`, LogCategory.MODEL, JSON.stringify(combinedDict));
+      } else {
         setLocalMorphTargetDictionary({});
         logger.warn('HeadModel: No mesh with morph targets found, but scene loaded.', LogCategory.MODEL, `URL: ${headModelUrl}`);
       }
 
+      // 只要 scene 存在，就設置 headModelLoaded 為 true
+      setHeadModelLoaded(true);
+      logger.info('HeadModel: Scene loaded, setting headModelLoaded state to true in Zustand.', LogCategory.MODEL);
+
     } else {
       setLocalMorphTargetDictionary({});
-      setHeadModelLoaded(false); // <-- 使用重命名後的 action
+      setHeadModelLoaded(false);
       logger.error('HeadModel: Scene failed to load.', LogCategory.MODEL, `URL: ${headModelUrl}`);
     }
     // 依賴項更新為 headModelUrl
@@ -414,12 +446,9 @@ export const HeadModel: React.FC<HeadModelProps> = ({
       );
     }
 
-    if (!meshRef.current?.morphTargetInfluences || !localMorphTargetDictionary || Object.keys(localMorphTargetDictionary).length === 0) {
+    if (meshRefs.current.length === 0 || !localMorphTargetDictionary || Object.keys(localMorphTargetDictionary).length === 0) {
       return; 
     }
-    
-    const influences = meshRef.current.morphTargetInfluences;
-    const dictionary = localMorphTargetDictionary;
     
     // --- 新的權重計算邏輯 --- 
     const trajectoryWeights = calculateCurrentTrajectoryWeights(); // 1. 情緒軌跡權重 (直接計算)
@@ -448,19 +477,26 @@ export const HeadModel: React.FC<HeadModelProps> = ({
     // logger.debug("[useFrame] Final Weights:", LogCategory.MODEL, finalTargetWeights);
     // --- 權重計算結束 ---
     
-    // --- Apply final weights with Lerp (保持不變) --- 
-    Object.keys(dictionary).forEach(name => {
-      const index = dictionary[name];
-      if (index !== undefined && index < influences.length) {
-        const targetValue = finalTargetWeights[name] ?? 0;
-        const currentValue = influences[index];
-        if (Math.abs(currentValue - targetValue) > 0.01) { 
-          const lerpFactor = Math.min(delta * 25, 1); 
-          influences[index] = THREE.MathUtils.lerp(currentValue, targetValue, lerpFactor);
-        } else if (currentValue !== targetValue) {
-          influences[index] = targetValue;
-        } 
-      }
+    // --- Apply final weights with Lerp - 支持多個 mesh --- 
+    meshRefs.current.forEach((mesh) => {
+      if (!mesh.morphTargetInfluences || !mesh.morphTargetDictionary) return;
+      
+      const influences = mesh.morphTargetInfluences;
+      const dictionary = mesh.morphTargetDictionary;
+      
+      Object.keys(dictionary).forEach(name => {
+        const index = dictionary[name];
+        if (index !== undefined && index < influences.length) {
+          const targetValue = finalTargetWeights[name] ?? 0;
+          const currentValue = influences[index];
+          if (Math.abs(currentValue - targetValue) > 0.01) { 
+            const lerpFactor = Math.min(delta * 25, 1); 
+            influences[index] = THREE.MathUtils.lerp(currentValue, targetValue, lerpFactor);
+          } else if (currentValue !== targetValue) {
+            influences[index] = targetValue;
+          } 
+        }
+      });
     });
     // --- Apply End ---
   });

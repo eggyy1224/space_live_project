@@ -5,7 +5,7 @@
 /**
  * The URL for the head model.
  */
-export const HEAD_MODEL_URL = '/models/headonly.glb';
+export const HEAD_MODEL_URL = '/models/新頭.glb';
 
 /**
  * The URL for the body model.
