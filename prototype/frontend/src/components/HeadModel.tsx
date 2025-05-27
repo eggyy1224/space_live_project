@@ -64,6 +64,25 @@ export const HeadModel: React.FC<HeadModelProps> = ({
   const meshRef = useRef<MorphTargetMesh | null>(null);
   // 新增：支持多個 mesh 的引用數組
   const meshRefs = useRef<MorphTargetMesh[]>([]);
+  
+  // === 量子機率雲系統 - 三頭效果 ===
+  const quantumGroup1 = useRef<THREE.Group>(null); // 中心頭部
+  const quantumGroup2 = useRef<THREE.Group>(null); // 左側機率位置
+  const quantumGroup3 = useRef<THREE.Group>(null); // 右側機率位置
+  
+  // 量子機率雲參數
+  const quantumCloudRef = useRef({
+    positions: [
+      { x: 0, y: 0, z: 0, probability: 1.0 },     // 中心位置 - 總是存在
+      { x: -0.3, y: 0.1, z: -0.1, probability: 0 }, // 左側位置
+      { x: 0.3, y: -0.1, z: 0.1, probability: 0 }   // 右側位置
+    ],
+         targetProbabilities: [1.0, 0, 0], // 目標機率
+     transitionSpeed: 12.0, // 提高轉換速度讓反應更快
+    coherencePhase: 0,
+    entanglementFactor: 0
+  });
+  
   // const headService = HeadService.getInstance(); // <-- 不再需要實例
 
   // 儲存初始位置的 Ref
@@ -163,6 +182,59 @@ export const HeadModel: React.FC<HeadModelProps> = ({
     audioAverageVolumeRef.current = audioAverageVolumeFromStore;
   }, [audioAverageVolumeFromStore]);
   // -- 新增結束 --
+
+  // === 量子頭透明度控制 ===
+  useEffect(() => {
+    const updateQuantumOpacity = () => {
+      const quantumCloud = quantumCloudRef.current;
+      
+             // 更新量子頭2的透明度 - 更高的透明度和對比
+       if (quantumGroup2.current) {
+         const probability = quantumCloud.positions[1].probability;
+         const opacity = Math.max(0.05, probability); // 降低最小透明度
+         quantumGroup2.current.traverse((child) => {
+           if (child instanceof THREE.Mesh || child instanceof THREE.SkinnedMesh) {
+             if (child.material) {
+               const materials = Array.isArray(child.material) ? child.material : [child.material];
+               materials.forEach((mat: any) => {
+                 if (mat) {
+                   mat.transparent = true;
+                   // 更高的透明度：說話時接近不透明
+                   mat.opacity = opacity * 0.85; // 從 0.6 提升到 0.85
+                   mat.needsUpdate = true;
+                 }
+               });
+             }
+           }
+         });
+       }
+       
+       // 更新量子頭3的透明度 - 更高的透明度和對比
+       if (quantumGroup3.current) {
+         const probability = quantumCloud.positions[2].probability;
+         const opacity = Math.max(0.05, probability); // 降低最小透明度
+         quantumGroup3.current.traverse((child) => {
+           if (child instanceof THREE.Mesh || child instanceof THREE.SkinnedMesh) {
+             if (child.material) {
+               const materials = Array.isArray(child.material) ? child.material : [child.material];
+               materials.forEach((mat: any) => {
+                 if (mat) {
+                   mat.transparent = true;
+                   // 更高的透明度：說話時接近不透明
+                   mat.opacity = opacity * 0.85; // 從 0.6 提升到 0.85
+                   mat.needsUpdate = true;
+                 }
+               });
+             }
+           }
+         });
+       }
+    };
+
+    // 定期更新透明度
+    const interval = setInterval(updateQuantumOpacity, 50); // 20fps 更新
+    return () => clearInterval(interval);
+  }, [scene]);
 
   // --- 移除舊的設置可用動畫的 useEffect ---
   // useEffect(() => {
@@ -267,12 +339,52 @@ export const HeadModel: React.FC<HeadModelProps> = ({
     const time = state.clock.elapsedTime; 
 
     if (group.current) {
-      // === 量子徘徊系統 ===
-      
-      // 1. 重新設計動態映射 - 語音為主，背景音樂為輔
+      // === 量子機率雲系統 ===
       const musicIntensity = bgmIntensityRef.current;
       const voiceVolume = audioAverageVolumeRef.current;
       const isSpeaking = isSpeakingRef.current;
+      
+      // 量子機率雲控制 - 說話時激活三頭效果
+      const quantumCloud = quantumCloudRef.current;
+      
+      if (isSpeaking && voiceVolume > 0.02) {
+        // 說話時：激活量子疊加態 - 三個位置同時存在
+        const speechIntensity = Math.min(voiceVolume * 12, 1.0); // 提高敏感度
+        
+                 // 根據語音強度決定機率分布 - 更敏感的門檻
+         if (speechIntensity > 0.4) {
+           // 強烈說話：三頭完全顯現 (降低門檻從 0.7 到 0.4)
+           quantumCloud.targetProbabilities = [1.0, 0.9, 0.9];
+           quantumCloud.entanglementFactor = speechIntensity;
+         } else if (speechIntensity > 0.15) {
+           // 中等說話：明顯的三頭效果 (降低門檻從 0.3 到 0.15)
+           quantumCloud.targetProbabilities = [1.0, 0.6, 0.6];
+           quantumCloud.entanglementFactor = speechIntensity * 0.7;
+         } else {
+           // 輕微說話：輕微的量子分裂 (門檻 0.02-0.15)
+           quantumCloud.targetProbabilities = [1.0, 0.3, 0.3];
+           quantumCloud.entanglementFactor = speechIntensity * 0.5;
+         }
+        
+        // 量子相位同步 - 讓三個頭的動作有關聯性
+        quantumCloud.coherencePhase += delta * (5 + speechIntensity * 10);
+        
+             } else {
+         // 不說話時：回到單一狀態（量子坍縮）
+         quantumCloud.targetProbabilities = [1.0, 0, 0];
+         quantumCloud.entanglementFactor *= 0.98; // 更慢的消失速度，避免閃爍
+         quantumCloud.coherencePhase += delta * 2;
+       }
+      
+      // 平滑過渡機率值
+      quantumCloud.positions.forEach((pos, i) => {
+        const target = quantumCloud.targetProbabilities[i];
+        const current = pos.probability;
+        const lerpSpeed = quantumCloud.transitionSpeed * delta;
+        pos.probability = THREE.MathUtils.lerp(current, target, lerpSpeed);
+      });
+      
+      // === 原有的量子徘徊系統（現在應用到每個機率位置）===
       
       // 語音強度處理 - 主要驅動因素（80%權重）
       const voiceIntensity = isSpeaking ? Math.min(voiceVolume * 8, 1.0) : 0; // 放大語音敏感度
@@ -311,164 +423,202 @@ export const HeadModel: React.FC<HeadModelProps> = ({
       chaos.y += (chaos.x * (rho - chaos.z) - chaos.y) * dt;
       chaos.z += (chaos.x * chaos.y - beta * chaos.z) * dt;
       
-      // 將混沌值歸一化到合理範圍
-      const chaosNormalized = {
-        x: Math.tanh(chaos.x * 0.05) * 0.02,
-        y: Math.tanh(chaos.y * 0.05) * 0.02,
-        z: Math.tanh(chaos.z * 0.05) * 0.01
-      };
+      // 將混沌值歸一化到合理範圍 (移除，在下面重新定義)
 
-      // 始終執行繞原點的徘徊動畫
-      // 使用正弦波創造自然的飄浮效果
-      const baseWaveSpeedX = 0.3; // X軸徘徊基礎速度
-      const baseWaveSpeedY = 0.5; // Y軸徘徊基礎速度
-      const baseWaveSpeedZ = 0.2; // Z軸徘徊基礎速度
+      // === 新的「中心清晰，四周殘像」系統 ===
       
-      // 4. 多重現實疊加
-      const realities = realityLayersRef.current;
-      let realityOffsetX = 0, realityOffsetY = 0, realityOffsetZ = 0;
+      // 1. 微妙的中心徘徊 - 大幅縮小範圍，保持在中心
+      const centerWaveSpeedX = 0.8; // 提高頻率但縮小範圍
+      const centerWaveSpeedY = 1.2; 
+      const centerWaveSpeedZ = 0.6;
       
-      realities.forEach((reality, i) => {
-        reality.phase += delta * (0.1 + i * 0.05) * timeWarpFactorsRef.current.fast;
-        reality.intensity = Math.sin(reality.phase) * Math.cos(reality.phase * 1.7) * finalDynamicRange;
-        
-        const layerWeight = 1 / (i + 1); // 越高層影響越小
-        realityOffsetX += Math.sin(reality.phase * (i + 1)) * reality.intensity * layerWeight * 0.01;
-        realityOffsetY += Math.cos(reality.phase * (i + 1.3)) * reality.intensity * layerWeight * 0.008;
-        realityOffsetZ += Math.sin(reality.phase * (i + 0.7)) * reality.intensity * layerWeight * 0.005;
-      });
+      // 極小的中心徘徊範圍 - 讓主體保持在中心
+      const centerDriftRangeX = 0.008; // 從 0.04 縮小到 0.008
+      const centerDriftRangeY = 0.006; // 從 0.025 縮小到 0.006
+      const centerDriftRangeZ = 0.012; // 從 0.06 縮小到 0.012
       
-      // 5. 量子不確定性 - 微觀隨機擾動
-      const quantumUncertainty = {
-        x: (Math.random() - 0.5) * 0.001 * Math.sqrt(finalDynamicRange),
-        y: (Math.random() - 0.5) * 0.001 * Math.sqrt(finalDynamicRange),
-        z: (Math.random() - 0.5) * 0.0005 * Math.sqrt(finalDynamicRange)
-      };
-
-      // 添加隨機速度變化 - 現在受時間扭曲影響
+      // 2. 視覺殘像效果 - 通過快速微振動創造殘像感
       const warpedTime = time * timeWarpFactorsRef.current.slow + time * timeWarpFactorsRef.current.fast * 0.1;
-      const randomSpeedVariationX = 0.8 + Math.sin(warpedTime * 0.1) * 0.4 + Math.cos(warpedTime * 0.07) * 0.3;
-      const randomSpeedVariationY = 0.8 + Math.sin(warpedTime * 0.13 + Math.PI/3) * 0.5 + Math.cos(warpedTime * 0.09) * 0.2;
-      const randomSpeedVariationZ = 0.8 + Math.sin(warpedTime * 0.08 + Math.PI/6) * 0.3 + Math.cos(warpedTime * 0.12) * 0.4;
       
-      const baseDriftRangeX = 0.04; // X軸徘徊基礎範圍
-      const baseDriftRangeY = 0.025; // Y軸徘徊基礎範圍
-      const baseDriftRangeZ = 0.06; // Z軸徘徊基礎範圍
-
-      // 如果在說話，增加一些隨機變化和額外的運動強度
-      const speakingMultiplier = isSpeaking ? 1.4 : 1.0; // 增加說話時的運動倍數
-      const randomFactor = isSpeaking ? (0.7 + Math.random() * 0.6) : 1.0; // 增加隨機變化範圍
-
-      // 音樂強度影響 - 現在使用非線性映射
-      const musicSpeedBoost = 1.0 + finalDynamicRange; // 使用新的動態範圍
-      const musicRandomBoost = voiceIntensity > 0.3 ? (0.9 + Math.random() * 0.2) : 1.0;
-
-      // 計算實際的運動參數
-      const waveSpeedX = baseWaveSpeedX * randomSpeedVariationX * speakingMultiplier * randomFactor * musicSpeedBoost * musicRandomBoost;
-      const waveSpeedY = baseWaveSpeedY * randomSpeedVariationY * speakingMultiplier * randomFactor * musicSpeedBoost * musicRandomBoost;
-      const waveSpeedZ = baseWaveSpeedZ * randomSpeedVariationZ * speakingMultiplier * musicSpeedBoost;
+      // 高頻微振動 - 創造視覺殘像
+      const afterimageFreqX = 15 + finalDynamicRange * 25; // 高頻振動
+      const afterimageFreqY = 18 + finalDynamicRange * 30;
+      const afterimageFreqZ = 12 + finalDynamicRange * 20;
       
-      // 音樂強度也影響運動範圍 - 使用非線性映射
-      const musicRangeBoost = 1.0 + finalDynamicRange * 0.8;
-      const driftRangeX = baseDriftRangeX * speakingMultiplier * musicRangeBoost;
-      const driftRangeY = baseDriftRangeY * speakingMultiplier * musicRangeBoost;
-      const driftRangeZ = baseDriftRangeZ * speakingMultiplier * musicRangeBoost;
+      // 微振動幅度 - 很小但足以創造視覺效果
+      const afterimageAmpX = 0.003 + finalDynamicRange * 0.007; // 微小振動
+      const afterimageAmpY = 0.002 + finalDynamicRange * 0.005;
+      const afterimageAmpZ = 0.001 + finalDynamicRange * 0.003;
+      
+      // 3. 多層殘像疊加 - 不同頻率的微振動
+      let afterimageOffsetX = 0, afterimageOffsetY = 0, afterimageOffsetZ = 0;
+      
+      // 第一層：基礎殘像
+      afterimageOffsetX += Math.sin(warpedTime * afterimageFreqX) * afterimageAmpX;
+      afterimageOffsetY += Math.sin(warpedTime * afterimageFreqY + Math.PI/4) * afterimageAmpY;
+      afterimageOffsetZ += Math.sin(warpedTime * afterimageFreqZ + Math.PI/6) * afterimageAmpZ;
+      
+      // 第二層：高頻殘像
+      afterimageOffsetX += Math.sin(warpedTime * afterimageFreqX * 2.3) * afterimageAmpX * 0.6;
+      afterimageOffsetY += Math.sin(warpedTime * afterimageFreqY * 1.7 + Math.PI/3) * afterimageAmpY * 0.6;
+      afterimageOffsetZ += Math.sin(warpedTime * afterimageFreqZ * 2.1 + Math.PI/2) * afterimageAmpZ * 0.6;
+      
+      // 第三層：超高頻殘像（說話時更明顯）
+      if (isSpeaking) {
+        const speechAfterimageBoost = 1.0 + voiceIntensity * 2.0;
+        afterimageOffsetX += Math.sin(warpedTime * afterimageFreqX * 4.1) * afterimageAmpX * 0.4 * speechAfterimageBoost;
+        afterimageOffsetY += Math.sin(warpedTime * afterimageFreqY * 3.7 + Math.PI/5) * afterimageAmpY * 0.4 * speechAfterimageBoost;
+        afterimageOffsetZ += Math.sin(warpedTime * afterimageFreqZ * 3.9 + Math.PI/7) * afterimageAmpZ * 0.4 * speechAfterimageBoost;
+      }
+      
+      // 4. 量子不確定性 - 更微妙的隨機擾動
+      const quantumUncertainty = {
+        x: (Math.random() - 0.5) * 0.0005 * Math.sqrt(finalDynamicRange), // 縮小一半
+        y: (Math.random() - 0.5) * 0.0005 * Math.sqrt(finalDynamicRange),
+        z: (Math.random() - 0.5) * 0.0003 * Math.sqrt(finalDynamicRange)
+      };
+      
+      // 5. 混沌效果 - 保持但縮小範圍
+      const chaosNormalized = {
+        x: Math.tanh(chaosAttractorRef.current.x * 0.05) * 0.005, // 從 0.02 縮小到 0.005
+        y: Math.tanh(chaosAttractorRef.current.y * 0.05) * 0.005, // 從 0.02 縮小到 0.005
+        z: Math.tanh(chaosAttractorRef.current.z * 0.05) * 0.003  // 從 0.01 縮小到 0.003
+      };
+      
+      // 6. 說話時的動態增強
+      const speakingMultiplier = isSpeaking ? 1.2 : 1.0; // 降低說話時的倍數
+      const musicRangeBoost = 1.0 + finalDynamicRange * 0.3; // 降低音樂影響
+      
+      // 最終的中心徘徊範圍
+      const finalDriftRangeX = centerDriftRangeX * speakingMultiplier * musicRangeBoost;
+      const finalDriftRangeY = centerDriftRangeY * speakingMultiplier * musicRangeBoost;
+      const finalDriftRangeZ = centerDriftRangeZ * speakingMultiplier * musicRangeBoost;
+      
+      // 計算最終的中心徘徊偏移
+      const centerDriftX = Math.sin(warpedTime * centerWaveSpeedX) * finalDriftRangeX;
+      const centerDriftY = Math.sin(warpedTime * centerWaveSpeedY + Math.PI/3) * finalDriftRangeY;
+      const centerDriftZ = Math.sin(warpedTime * centerWaveSpeedZ + Math.PI/6) * finalDriftRangeZ;
+      
+      // 合併所有效果 - 主要是殘像效果
+      const driftX = centerDriftX + afterimageOffsetX + chaosNormalized.x + quantumUncertainty.x;
+      const driftY = centerDriftY + afterimageOffsetY + chaosNormalized.y + quantumUncertainty.y;
+      const driftZ = centerDriftZ + afterimageOffsetZ + chaosNormalized.z + quantumUncertainty.z;
 
-      // 計算徘徊偏移 - 融入所有效果
-      const driftX = Math.sin(warpedTime * waveSpeedX) * driftRangeX + chaosNormalized.x + realityOffsetX + quantumUncertainty.x;
-      const driftY = Math.sin(warpedTime * waveSpeedY + Math.PI/3) * driftRangeY + chaosNormalized.y + realityOffsetY + quantumUncertainty.y;
-      const driftZ = Math.sin(warpedTime * waveSpeedZ + Math.PI/6) * driftRangeZ + driftRangeZ * 0.6 + chaosNormalized.z + realityOffsetZ + quantumUncertainty.z;
+      // 旋轉變化 - 配合殘像效果的微妙旋轉
+      const rotationIntensity = (isSpeaking ? 1.3 : 1.0) * (1.0 + finalDynamicRange * 0.4); // 降低旋轉強度
+      const musicRotationSpeedBoost = 1.0 + finalDynamicRange * 0.6; // 降低音樂影響
+      
+      // 微妙的旋轉變化 - 配合中心徘徊
+      const rotationVariationY = Math.sin(warpedTime * 0.4 * musicRotationSpeedBoost) * 0.02 * rotationIntensity; // 縮小旋轉範圍
+      const rotationVariationX = Math.sin(warpedTime * 0.5 * musicRotationSpeedBoost + Math.PI/4) * 0.015 * rotationIntensity; // 縮小旋轉範圍
+      
+      // 添加殘像旋轉效果
+      const afterimageRotationY = Math.sin(warpedTime * afterimageFreqY * 0.1) * 0.005 * finalDynamicRange;
+      const afterimageRotationX = Math.sin(warpedTime * afterimageFreqX * 0.1 + Math.PI/3) * 0.003 * finalDynamicRange;
 
-      // 旋轉變化受量子效應影響
-      const rotationIntensity = (isSpeaking ? 1.8 : 1.0) * (1.0 + finalDynamicRange * 0.6); // 增加說話時的旋轉強度
-      const musicRotationSpeedBoost = 1.0 + finalDynamicRange * 1.2;
-      const rotationVariationY = Math.sin(warpedTime * 0.3 * randomFactor * musicRotationSpeedBoost) * 0.05 * rotationIntensity + realityOffsetY * 2;
-      const rotationVariationX = Math.sin(warpedTime * 0.4 * randomFactor * musicRotationSpeedBoost + Math.PI/4) * 0.03 * rotationIntensity + realityOffsetX * 2;
-
-      // 說話時可能添加一些瞬間的位置跳躍
+      // 說話時的微瞬移效果 - 配合殘像系統
       let extraOffsetX = 0, extraOffsetY = 0, extraOffsetZ = 0;
       if (isSpeaking) {
-        // 語音驅動的瞬移效果 - 根據語音強度調整
+        // 語音驅動的微瞬移效果 - 縮小範圍但增加頻率
         teleportTimer.current += delta;
-        const voiceBasedInterval = Math.max(0.05, 0.3 - voiceIntensity * 0.25); // 語音越強，間隔越短
+        const voiceBasedInterval = Math.max(0.03, 0.15 - voiceIntensity * 0.1); // 更頻繁但更微妙
 
         if (teleportTimer.current >= nextTeleportTime.current) {
-          // 瞬移強度根據語音音量調整
-          const voiceOffsetMultiplier = 0.5 + voiceIntensity * 1.5; // 0.5-2.0倍
-          extraOffsetX = (Math.random() - 0.5) * 0.025 * voiceOffsetMultiplier;
-          extraOffsetY = (Math.random() - 0.5) * 0.025 * voiceOffsetMultiplier;
-          extraOffsetZ = (Math.random() - 0.5) * 0.015 * voiceOffsetMultiplier;
+          // 微瞬移強度 - 大幅縮小但保持效果
+          const voiceOffsetMultiplier = 0.3 + voiceIntensity * 0.7; // 0.3-1.0倍
+          extraOffsetX = (Math.random() - 0.5) * 0.008 * voiceOffsetMultiplier; // 從 0.025 縮小到 0.008
+          extraOffsetY = (Math.random() - 0.5) * 0.006 * voiceOffsetMultiplier; // 從 0.025 縮小到 0.006
+          extraOffsetZ = (Math.random() - 0.5) * 0.004 * voiceOffsetMultiplier; // 從 0.015 縮小到 0.004
 
           teleportTimer.current = 0;
-          nextTeleportTime.current = voiceBasedInterval + Math.random() * voiceBasedInterval;
+          nextTeleportTime.current = voiceBasedInterval + Math.random() * voiceBasedInterval * 0.5;
         }
       }
 
-      // 量子現實撕裂效果 - 語音高潮時的極端視覺
+      // 極端語音時的增強殘像效果 - 保持在中心但增強視覺效果
       if (voiceIntensity > 0.85) {
-        // 6. 現實撕裂 - 不受控的受控
-        const riftIntensity = Math.pow((voiceIntensity - 0.85) / 0.15, 1.5); // 0-1範圍的撕裂強度，更溫和的曲線
+        // 超強殘像效果 - 不移動位置，只增強視覺震動
+        const extremeIntensity = Math.pow((voiceIntensity - 0.85) / 0.15, 1.5);
         
-        // 空間扭曲 - 不同維度的時間流速
-        const dimensionX = Math.sin(warpedTime * 5 + chaos.x * 0.1) * riftIntensity * 0.08;
-        const dimensionY = Math.cos(warpedTime * 7 + chaos.y * 0.1) * riftIntensity * 0.06;
-        const dimensionZ = Math.sin(warpedTime * 3 + chaos.z * 0.1) * riftIntensity * 0.04;
+        // 增強殘像振動頻率和幅度
+        const extremeAfterimageX = Math.sin(warpedTime * afterimageFreqX * 6) * afterimageAmpX * 3 * extremeIntensity;
+        const extremeAfterimageY = Math.sin(warpedTime * afterimageFreqY * 7) * afterimageAmpY * 3 * extremeIntensity;
+        const extremeAfterimageZ = Math.sin(warpedTime * afterimageFreqZ * 5) * afterimageAmpZ * 2 * extremeIntensity;
         
-        // 量子跳躍 - 瞬間位置變化
-        if (Math.random() < riftIntensity * 0.1) {
-          const jumpDistance = riftIntensity * 0.1;
-          extraOffsetX += (Math.random() - 0.5) * jumpDistance;
-          extraOffsetY += (Math.random() - 0.5) * jumpDistance;
-          extraOffsetZ += (Math.random() - 0.5) * jumpDistance * 0.5;
-        }
+        // 添加到額外偏移，但範圍很小
+        extraOffsetX += extremeAfterimageX;
+        extraOffsetY += extremeAfterimageY;
+        extraOffsetZ += extremeAfterimageZ;
         
-        // 時空螺旋 - 極端的軌道運動
-        const spiralRadius = riftIntensity * 0.15;
-        const spiralSpeed = warpedTime * (10 + riftIntensity * 20);
-        const spiralX = Math.cos(spiralSpeed) * spiralRadius * Math.sin(spiralSpeed * 0.3);
-        const spiralY = Math.sin(spiralSpeed * 1.1) * spiralRadius * Math.cos(spiralSpeed * 0.2);
-        const spiralZ = Math.sin(spiralSpeed * 0.7) * spiralRadius * 0.3 * Math.sin(spiralSpeed * 0.1);
-        
-        extraOffsetX += dimensionX + spiralX;
-        extraOffsetY += dimensionY + spiralY;
-        extraOffsetZ += dimensionZ + spiralZ;
-        
-        // 現實分層 - 同時存在多個位置的疊加
-        realityLayersRef.current.forEach((reality, i) => {
-          if (riftIntensity > 0.5) {
-            const layerPhase = reality.phase + warpedTime * (i + 1) * 2;
-            const layerIntensity = riftIntensity * reality.intensity * 0.1;
-            
-            extraOffsetX += Math.sin(layerPhase) * layerIntensity;
-            extraOffsetY += Math.cos(layerPhase * 1.3) * layerIntensity * 0.8;
-            extraOffsetZ += Math.sin(layerPhase * 0.7) * layerIntensity * 0.5;
-          }
-        });
       } else if (musicIntensity > 0.8 && !isSpeaking) {
-        // 僅在不說話且音樂很強時，提供輕微的背景音樂驅動效果
-        const musicRiftIntensity = Math.pow((musicIntensity - 0.8) / 0.2, 1.5) * 0.3; // 降低強度
+        // 音樂驅動的微妙殘像增強
+        const musicAfterimageIntensity = Math.pow((musicIntensity - 0.8) / 0.2, 1.5) * 0.5;
         
-        // 輕微的音樂驅動軌道運動
-        const musicOrbitRadius = musicRiftIntensity * 0.02;
-        const musicOrbitSpeed = warpedTime * (3.0 + musicIntensity * 2.0);
-        extraOffsetX += Math.cos(musicOrbitSpeed) * musicOrbitRadius;
-        extraOffsetY += Math.sin(musicOrbitSpeed * 1.2) * musicOrbitRadius * 0.7;
-        extraOffsetZ += Math.sin(musicOrbitSpeed * 0.8) * musicOrbitRadius * 0.4;
+        // 輕微的音樂殘像效果
+        const musicAfterimageX = Math.sin(warpedTime * afterimageFreqX * 0.5) * afterimageAmpX * musicAfterimageIntensity;
+        const musicAfterimageY = Math.sin(warpedTime * afterimageFreqY * 0.6) * afterimageAmpY * musicAfterimageIntensity;
+        const musicAfterimageZ = Math.sin(warpedTime * afterimageFreqZ * 0.4) * afterimageAmpZ * musicAfterimageIntensity;
+        
+        extraOffsetX += musicAfterimageX;
+        extraOffsetY += musicAfterimageY;
+        extraOffsetZ += musicAfterimageZ;
       }
 
-      // 設置最終位置（基於初始位置加上所有偏移）
-      group.current.position.set(
-        initialPosition.current.x + driftX + extraOffsetX,
-        initialPosition.current.y + driftY + extraOffsetY,
-        initialPosition.current.z + driftZ + extraOffsetZ
-      );
-
-      // 設置旋轉變化（基於初始旋轉加上變化）
-      group.current.rotation.set(
-        initialRotation.current.x + rotationVariationX,
-        initialRotation.current.y + rotationVariationY,
-        initialRotation.current.z
-      );
+      // === 量子機率雲位置更新 ===
+      // 為每個量子頭計算位置和透明度
+      quantumCloud.positions.forEach((quantumPos, i) => {
+        // 基礎機率位置
+        const baseX = initialPosition.current.x + quantumPos.x;
+        const baseY = initialPosition.current.y + quantumPos.y;
+        const baseZ = initialPosition.current.z + quantumPos.z;
+        
+        // 每個量子頭都有相關但略有不同的擾動
+        const phaseOffset = i * Math.PI * 0.67; // 120度相位差
+        const coherentDriftX = driftX * (0.7 + 0.3 * Math.sin(quantumCloud.coherencePhase + phaseOffset));
+        const coherentDriftY = driftY * (0.7 + 0.3 * Math.cos(quantumCloud.coherencePhase + phaseOffset));
+        const coherentDriftZ = driftZ * (0.7 + 0.3 * Math.sin(quantumCloud.coherencePhase * 0.7 + phaseOffset));
+        
+        // 量子糾纏效果 - 說話時三個頭會有相關聯的額外運動
+        let entanglementX = 0, entanglementY = 0, entanglementZ = 0;
+        if (quantumCloud.entanglementFactor > 0.1) {
+          const entanglementPhase = quantumCloud.coherencePhase * 2 + phaseOffset;
+          entanglementX = Math.sin(entanglementPhase) * quantumCloud.entanglementFactor * 0.05;
+          entanglementY = Math.cos(entanglementPhase * 1.3) * quantumCloud.entanglementFactor * 0.03;
+          entanglementZ = Math.sin(entanglementPhase * 0.8) * quantumCloud.entanglementFactor * 0.02;
+        }
+        
+        // 設置每個量子頭的位置
+        const finalX = baseX + coherentDriftX + extraOffsetX + entanglementX;
+        const finalY = baseY + coherentDriftY + extraOffsetY + entanglementY;
+        const finalZ = baseZ + coherentDriftZ + extraOffsetZ + entanglementZ;
+        
+        if (i === 0 && group.current) {
+          // 主要頭部（中心）
+          group.current.position.set(finalX, finalY, finalZ);
+          group.current.rotation.set(
+            initialRotation.current.x + rotationVariationX + afterimageRotationX,
+            initialRotation.current.y + rotationVariationY + afterimageRotationY,
+            initialRotation.current.z
+          );
+        }
+        
+                 // 設置量子頭的位置（量子頭2和3在useFrame中動態更新）
+         if (i === 1 && quantumGroup2.current) {
+           quantumGroup2.current.position.set(finalX, finalY, finalZ);
+           quantumGroup2.current.rotation.set(
+             initialRotation.current.x + rotationVariationX + afterimageRotationX + entanglementX * 2,
+             initialRotation.current.y + rotationVariationY + afterimageRotationY + entanglementY * 2,
+             initialRotation.current.z + entanglementZ
+           );
+         } else if (i === 2 && quantumGroup3.current) {
+           quantumGroup3.current.position.set(finalX, finalY, finalZ);
+           quantumGroup3.current.rotation.set(
+             initialRotation.current.x + rotationVariationX + afterimageRotationX - entanglementX * 2,
+             initialRotation.current.y + rotationVariationY + afterimageRotationY - entanglementY * 2,
+             initialRotation.current.z - entanglementZ
+           );
+         }
+      });
     }
 
     if (meshRefs.current.length === 0 || !localMorphTargetDictionary || Object.keys(localMorphTargetDictionary).length === 0) {
@@ -527,17 +677,51 @@ export const HeadModel: React.FC<HeadModelProps> = ({
   });
   // --- 更新結束 ---
 
-  // 更新返回的 JSX
+  // 更新返回的 JSX - 量子機率雲三頭系統
   return (
-    <group ref={group} position={position} rotation={rotation}>
-      {/* 使用drei的Center組件包裹scene，讓模型以視覺中心點進行縮放 */}
-      <Center scale={scale} position={[0, 0, 0]}>
-        <primitive 
-          object={scene} 
-          key={headModelUrl} 
-        />
-      </Center>
-    </group>
+    <>
+      {/* 主要頭部（中心） - 總是存在 */}
+      <group ref={group} position={position} rotation={rotation}>
+        <Center scale={scale} position={[0, 0, 0]}>
+          <primitive 
+            object={scene} 
+            key={`${headModelUrl}-main`} 
+          />
+        </Center>
+      </group>
+      
+      {/* 量子機率頭部 1（左側） - 說話時出現 */}
+      {quantumCloudRef.current.positions[1].probability > 0.02 && scene && (
+        <group 
+          ref={quantumGroup2} 
+          position={position} 
+          rotation={rotation}
+        >
+          <Center scale={scale} position={[0, 0, 0]}>
+            <primitive 
+              object={scene.clone(true)} 
+              key={`${headModelUrl}-quantum1`}
+            />
+          </Center>
+        </group>
+      )}
+      
+      {/* 量子機率頭部 2（右側） - 說話時出現 */}
+      {quantumCloudRef.current.positions[2].probability > 0.02 && scene && (
+        <group 
+          ref={quantumGroup3} 
+          position={position} 
+          rotation={rotation}
+        >
+          <Center scale={scale} position={[0, 0, 0]}>
+            <primitive 
+              object={scene.clone(true)} 
+              key={`${headModelUrl}-quantum2`}
+            />
+          </Center>
+        </group>
+      )}
+    </>
   );
 };
 
