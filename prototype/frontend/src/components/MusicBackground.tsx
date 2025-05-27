@@ -6,6 +6,108 @@ import * as THREE from 'three';
 // Global origin for particle effects
 const SCENE_CENTER = new THREE.Vector3(0, 0, 0);
 
+// 物理波紋組件 - 替代黃色粒子特效
+interface PhysicalRippleProps {
+  parentPosition: THREE.Vector3;
+  bgmIntensity: number;
+  crazyModeRef?: React.MutableRefObject<boolean>;
+}
+
+const PhysicalRipple: React.FC<PhysicalRippleProps> = ({ parentPosition, bgmIntensity, crazyModeRef }) => {
+  const rippleGroupRef = useRef<THREE.Group>(null);
+  const timeRef = useRef(0);
+  const rippleRefs = useRef<THREE.Mesh[]>([]);
+  const [rippleCount] = useState(5); // 5層波紋
+  
+  // 初始化波紋環
+  const ripples = useMemo(() => {
+    const rings: { radius: number; opacity: number; speed: number }[] = [];
+    for (let i = 0; i < rippleCount; i++) {
+      rings.push({
+        radius: 1 + i * 2,
+        opacity: 1 - (i * 0.15),
+        speed: 0.8 + i * 0.2
+      });
+    }
+    return rings;
+  }, [rippleCount]);
+
+  useFrame((state, delta) => {
+    timeRef.current += delta;
+    const isCrazyMode = crazyModeRef?.current || false;
+    
+    if (rippleGroupRef.current) {
+      // 跟隨父物件位置
+      rippleGroupRef.current.position.copy(parentPosition);
+      
+      // 波紋擴散動畫
+      rippleRefs.current.forEach((ripple, index) => {
+        if (ripple) {
+          const baseRadius = ripples[index].radius;
+          const waveIntensity = 1 + bgmIntensity * (isCrazyMode ? 8 : 4);
+          
+          // 波紋擴散效果
+          const expansionFactor = 1 + Math.sin(timeRef.current * ripples[index].speed) * waveIntensity;
+          const currentRadius = baseRadius * expansionFactor;
+          
+          ripple.scale.set(currentRadius, currentRadius, 1);
+          
+          // 透明度脈動
+          const baseOpacity = ripples[index].opacity;
+          const opacityPulse = Math.abs(Math.sin(timeRef.current * ripples[index].speed * 1.5));
+          const finalOpacity = baseOpacity * (0.3 + opacityPulse * 0.7) * (0.5 + bgmIntensity * 2);
+          
+          if (ripple.material instanceof THREE.MeshStandardMaterial) {
+            ripple.material.opacity = Math.min(1, finalOpacity);
+            
+            // 波紋顏色 - 藍白色調
+            const baseColor = new THREE.Color(0x4488ff);
+            const activeColor = new THREE.Color(0xffffff);
+            const waveColor = baseColor.clone().lerp(activeColor, bgmIntensity * 2);
+            
+            if (isCrazyMode) {
+              // 瘋狂模式下彩虹色
+              const h = (timeRef.current * 0.5 + index * 0.2) % 1;
+              waveColor.setHSL(h, 0.8, 0.6);
+            }
+            
+            ripple.material.color.copy(waveColor);
+            ripple.material.emissive.copy(waveColor);
+            ripple.material.emissiveIntensity = bgmIntensity * (isCrazyMode ? 3 : 1.5);
+          }
+          
+          // 旋轉效果
+          ripple.rotation.z += delta * (0.2 + bgmIntensity * (isCrazyMode ? 2 : 0.5));
+        }
+      });
+    }
+  });
+
+  return (
+    <group ref={rippleGroupRef}>
+      {ripples.map((_, index) => (
+        <mesh
+          key={`ripple-${index}`}
+          ref={(el) => {
+            if (el) rippleRefs.current[index] = el;
+          }}
+          rotation={[Math.PI / 2, 0, 0]} // 水平放置
+        >
+          <ringGeometry args={[0.8, 1.2, 32]} />
+          <meshStandardMaterial
+            color={0x4488ff}
+            emissive={0x4488ff}
+            emissiveIntensity={0.5}
+            transparent
+            opacity={0.7}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+};
+
 // 環繞粒子組件
 interface OrbitingParticleProps {
   radius: number;
@@ -25,7 +127,7 @@ const OrbitingParticle: React.FC<OrbitingParticleProps> = ({
   parentPosition, 
   bgmIntensity,
   particleType = 'sphere',
-  baseColor = new THREE.Color(0xffff00),
+  baseColor = new THREE.Color(0x88aaff), // 改為淡藍色
   crazyModeRef
 }) => {
   const particleRef = useRef<THREE.Mesh>(null);
@@ -528,17 +630,9 @@ const MusicBackground: React.FC = () => {
     return positions;
   }, [driftParams.positionOffset.z]);
 
-  // 新增：隨機生成粒子類型和顏色
+  // 新增：隨機生成粒子類型和顏色（移除黃色球體，改用物理波紋）
   const particleConfigs = useMemo(() => {
     const configs: {type: 'sphere' | 'box' | 'torus' | 'cone', color: THREE.Color}[] = [];
-    
-    // 為球體粒子生成配置
-    for (let i = 0; i < 10; i++) {
-      configs.push({
-        type: 'sphere',
-        color: new THREE.Color(0xffcc00) // 黃色
-      });
-    }
     
     // 為方塊粒子生成配置
     for (let i = 0; i < 6; i++) {
@@ -794,6 +888,13 @@ const MusicBackground: React.FC = () => {
         musicSpeakerPosition={currentPosition}
         outerRadius={driftParams.outerRadius}
         innerRadius={driftParams.innerRadius}
+      />
+      
+      {/* 物理波紋效果 - 替代黃色粒子 */}
+      <PhysicalRipple
+        parentPosition={currentPosition}
+        bgmIntensity={bgmIntensity}
+        crazyModeRef={crazyMode ? {current: true} : undefined}
       />
       
       {/* 多種類型的環繞粒子 */}
