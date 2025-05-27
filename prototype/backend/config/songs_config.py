@@ -269,7 +269,7 @@ SONGS_METADATA = [
             {"name": "Flair", "proportion": 0.2},
             {"name": "DancingTwerk", "proportion": 0.4},
             {"name": "Spin In Place", "proportion": 0.6},
-            {"name": "jumping", "proportion": 0.8},
+            {"name": "Jumping", "proportion": 0.8},
             {"name": "Idle", "proportion": 1.0}
         ]
     },
@@ -303,10 +303,10 @@ SONGS_METADATA = [
         "filename": "11L-A_Taiwanese_teenage_-1747298240041.mp3",
         "duration": 15.0,
         "emotionalKeyframes": [
-            {"tag": "energetic", "proportion": 0.0},
-            {"tag": "confident", "proportion": 0.25},
+            {"tag": "excited", "proportion": 0.0},
+            {"tag": "smug", "proportion": 0.25},
             {"tag": "playful", "proportion": 0.5},
-            {"tag": "cool", "proportion": 0.75},
+            {"tag": "determined", "proportion": 0.75},
             {"tag": "neutral", "proportion": 1.0}
         ],
         "bodyAnimationSequence": [
@@ -322,14 +322,14 @@ SONGS_METADATA = [
         "filename": "11L-A_Taiwanese_teenage_-1747298241002.mp3",
         "duration": 15.0,
         "emotionalKeyframes": [
-            {"tag": "powerful", "proportion": 0.0},
-            {"tag": "assertive", "proportion": 0.25},
-            {"tag": "rhythmic", "proportion": 0.5},
-            {"tag": "focused", "proportion": 0.75},
+            {"tag": "angry", "proportion": 0.0},
+            {"tag": "determined", "proportion": 0.25},
+            {"tag": "excited", "proportion": 0.5},
+            {"tag": "triumphant", "proportion": 0.75},
             {"tag": "neutral", "proportion": 1.0}
         ],
         "bodyAnimationSequence": [
-            {"name": "breakdance", "proportion": 0.0}, # Generic breakdance
+            {"name": "breaking", "proportion": 0.0}, # Generic breakdance
             {"name": "Flair", "proportion": 0.3},
             {"name": "HipHopDancin", "proportion": 0.6},
             {"name": "Idle", "proportion": 1.0}
@@ -341,15 +341,15 @@ SONGS_METADATA = [
         "filename": "11L-A_Taiwanese_teenage_-1747298241942.mp3",
         "duration": 15.0,
         "emotionalKeyframes": [
-            {"tag": "intense", "proportion": 0.0},
-            {"tag": "defiant", "proportion": 0.25},
-            {"tag": "streetwise", "proportion": 0.5},
-            {"tag": "energetic", "proportion": 0.75},
+            {"tag": "angry", "proportion": 0.0},
+            {"tag": "frustrated", "proportion": 0.25},
+            {"tag": "smug", "proportion": 0.5},
+            {"tag": "excited", "proportion": 0.75},
             {"tag": "neutral", "proportion": 1.0}
         ],
         "bodyAnimationSequence": [
-            {"name": "Popping", "proportion": 0.0},
-            {"name": "MaleActionPose", "proportion": 0.3},
+            {"name": "HipHopDancin", "proportion": 0.0},
+            {"name": "MaleDynamicPose", "proportion": 0.3},
             {"name": "Breakdance1990", "proportion": 0.6},
             {"name": "Idle", "proportion": 1.0}
         ]
@@ -360,10 +360,10 @@ SONGS_METADATA = [
         "filename": "11L-A_Taiwanese_teenage_-1747298242725.mp3",
         "duration": 15.0,
         "emotionalKeyframes": [
-            {"tag": "upbeat", "proportion": 0.0},
-            {"tag": "challenging", "proportion": 0.25},
-            {"tag": "smooth", "proportion": 0.5},
-            {"tag": "confident", "proportion": 0.75},
+            {"tag": "joyful", "proportion": 0.0},
+            {"tag": "playful", "proportion": 0.25},
+            {"tag": "content", "proportion": 0.5},
+            {"tag": "smug", "proportion": 0.75},
             {"tag": "neutral", "proportion": 1.0}
         ],
         "bodyAnimationSequence": [
@@ -409,6 +409,210 @@ SONGS_METADATA = [
             {"name": "LookAround", "proportion": 0.2},
             {"name": "FemaleDynamicPose", "proportion": 0.8},
             {"name": "Idle", "proportion": 1.0}
+        ]
+    },
+    {
+        "id": "kuangxi_song",
+        "title": "狂喜",
+        "filename": "狂喜.mp3",
+        "duration": 20.0,  # 實際時長約20秒
+        "emotionalKeyframes": [
+            {"tag": "excited", "proportion": 0.0},      # 開始就很興奮
+            {"tag": "joyful", "proportion": 0.15},      # 轉為狂歡
+            {"tag": "playful", "proportion": 0.3},      # 變得頑皮
+            {"tag": "awe", "proportion": 0.45},         # 達到驚嘆狂喜
+            {"tag": "triumphant", "proportion": 0.6},   # 勝利感
+            {"tag": "amused", "proportion": 0.75},      # 被逗樂了
+            {"tag": "happy", "proportion": 0.9},        # 回到開心
+            {"tag": "content", "proportion": 1.0}       # 最後滿足
+        ],
+        "bodyAnimationSequence": [
+            {"name": "Cheering", "proportion": 0.0},           # 開始歡呼
+            {"name": "DancingTwerk", "proportion": 0.15},      # 扭臀舞蹈
+            {"name": "Spin In Place", "proportion": 0.3},      # 原地旋轉
+            {"name": "JazzDancing", "proportion": 0.45},       # 爵士舞
+            {"name": "Breakdance1990", "proportion": 0.6},     # 霹靂舞頭轉
+            {"name": "Flair", "proportion": 0.75},             # 花式動作
+            {"name": "StandingClap", "proportion": 0.9},       # 站立鼓掌
+            {"name": "Idle", "proportion": 1.0}                # 結束
+        ]
+    },
+    {
+        "id": "electronic_music_song",
+        "title": "電子音樂",
+        "filename": "電子音樂.mp3",
+        "duration": 20.0,  # 實際時長約20秒
+        "emotionalKeyframes": [
+            {"tag": "excited", "proportion": 0.0},      # 開始興奮
+            {"tag": "determined", "proportion": 0.15},  # 堅定節拍
+            {"tag": "interested", "proportion": 0.3},   # 專注律動
+            {"tag": "joyful", "proportion": 0.45},      # 能量爆發
+            {"tag": "smug", "proportion": 0.6},         # 自信滿滿
+            {"tag": "triumphant", "proportion": 0.75},  # 勝利高潮
+            {"tag": "scheming", "proportion": 0.9},     # 酷炫結尾
+            {"tag": "neutral", "proportion": 1.0}       # 回歸平靜
+        ],
+        "bodyAnimationSequence": [
+            {"name": "HipHopDancin", "proportion": 0.0},       # 嘻哈舞蹈開場
+            {"name": "BreakdanceFootwork2", "proportion": 0.15}, # 地板步法
+            {"name": "Flair", "proportion": 0.3},              # 花式動作
+            {"name": "Breakdance1990", "proportion": 0.45},    # 霹靂舞頭轉
+            {"name": "Spin In Place", "proportion": 0.6},      # 原地旋轉
+            {"name": "MaleDynamicPose", "proportion": 0.75},   # 動態姿勢
+            {"name": "Moonwalk", "proportion": 0.9},           # 太空漫步
+            {"name": "Idle", "proportion": 1.0}                # 結束
+        ]
+    },
+    {
+        "id": "tyrannosaurus_roar_song",
+        "title": "暴龍吼叫",
+        "filename": "暴龍吼叫.mp3",
+        "duration": 10.0,  # 實際時長約10秒
+        "emotionalKeyframes": [
+            {"tag": "angry", "proportion": 0.0},        # 開始憤怒
+            {"tag": "frustrated", "proportion": 0.2},   # 挫折感
+            {"tag": "spiteful", "proportion": 0.4},     # 惡意威嚇
+            {"tag": "contemptuous", "proportion": 0.6}, # 輕蔑
+            {"tag": "triumphant", "proportion": 0.8},   # 勝利咆哮
+            {"tag": "neutral", "proportion": 1.0}       # 回歸平靜
+        ],
+        "bodyAnimationSequence": [
+            {"name": "Roar", "proportion": 0.0},               # 怒吼動作
+            {"name": "MaleDynamicPose", "proportion": 0.2},    # 威嚇姿勢
+            {"name": "JumpAttack", "proportion": 0.4},         # 跳躍攻擊
+            {"name": "BrutalAssassination", "proportion": 0.6}, # 兇狠攻擊
+            {"name": "YellingWhileStanding", "proportion": 0.8}, # 站立咆哮
+            {"name": "Idle", "proportion": 1.0}                # 結束
+        ]
+    },
+    {
+        "id": "panting_song",
+        "title": "喘息",
+        "filename": "喘息.mp3",
+        "duration": 20.0,  # 實際時長約20秒
+        "emotionalKeyframes": [
+            {"tag": "worried", "proportion": 0.0},      # 開始擔心
+            {"tag": "nervous", "proportion": 0.15},     # 緊張不安
+            {"tag": "pain", "proportion": 0.3},         # 痛苦表情
+            {"tag": "frustrated", "proportion": 0.45},  # 挫折感
+            {"tag": "relieved", "proportion": 0.6},     # 開始緩解
+            {"tag": "sleepy", "proportion": 0.75},      # 疲憊想睡
+            {"tag": "content", "proportion": 0.9},      # 滿足平靜
+            {"tag": "neutral", "proportion": 1.0}       # 回歸正常
+        ],
+        "bodyAnimationSequence": [
+            {"name": "InjuredWalk", "proportion": 0.0},        # 受傷行走
+            {"name": "PainGesture", "proportion": 0.15},       # 痛苦手勢
+            {"name": "KneelingDown", "proportion": 0.3},       # 跪下
+            {"name": "KneelingIdle", "proportion": 0.45},      # 跪姿待機
+            {"name": "Thinking", "proportion": 0.6},           # 思考恢復
+            {"name": "LayingIdle", "proportion": 0.75},        # 躺下休息
+            {"name": "FemaleLayingPose", "proportion": 0.9},   # 躺臥姿勢
+            {"name": "Idle", "proportion": 1.0}                # 結束
+        ]
+    },
+    {
+        "id": "opera_1_song",
+        "title": "歌劇1",
+        "filename": "歌劇1.mp3",
+        "duration": 20.0,  # 實際時長約20秒
+        "emotionalKeyframes": [
+            {"tag": "serene", "proportion": 0.0},       # 寧靜開場
+            {"tag": "interested", "proportion": 0.15},  # 產生興趣
+            {"tag": "hopeful", "proportion": 0.3},      # 充滿希望
+            {"tag": "joyful", "proportion": 0.45},      # 歡樂高潮
+            {"tag": "triumphant", "proportion": 0.6},   # 勝利感
+            {"tag": "grateful", "proportion": 0.75},    # 感恩
+            {"tag": "content", "proportion": 0.9},      # 滿足
+            {"tag": "neutral", "proportion": 1.0}       # 結束
+        ],
+        "bodyAnimationSequence": [
+            {"name": "FemaleStandingPose", "proportion": 0.0},     # 優雅站姿
+            {"name": "FemaleDancePose", "proportion": 0.15},       # 舞蹈姿勢
+            {"name": "SalsaDancing", "proportion": 0.3},           # 莎莎舞
+            {"name": "JazzDancing", "proportion": 0.45},           # 爵士舞
+            {"name": "ButterflyTwirl", "proportion": 0.6},         # 蝴蝶旋轉
+            {"name": "Cheering", "proportion": 0.75},              # 歡呼
+            {"name": "StandingClap", "proportion": 0.9},           # 鼓掌
+            {"name": "Idle", "proportion": 1.0}                    # 結束
+        ]
+    },
+    {
+        "id": "opera_2_song",
+        "title": "歌劇2",
+        "filename": "歌劇2.mp3",
+        "duration": 20.0,  # 實際時長約20秒
+        "emotionalKeyframes": [
+            {"tag": "sad", "proportion": 0.0},          # 悲傷開場
+            {"tag": "gloomy", "proportion": 0.15},      # 憂鬱
+            {"tag": "worried", "proportion": 0.3},      # 擔憂
+            {"tag": "pain", "proportion": 0.45},        # 痛苦
+            {"tag": "regretful", "proportion": 0.6},    # 後悔
+            {"tag": "relieved", "proportion": 0.75},    # 釋然
+            {"tag": "hopeful", "proportion": 0.9},      # 重燃希望
+            {"tag": "neutral", "proportion": 1.0}       # 結束
+        ],
+        "bodyAnimationSequence": [
+            {"name": "FemaleLayingPose", "proportion": 0.0},       # 躺臥姿勢
+            {"name": "PainGesture", "proportion": 0.15},           # 痛苦手勢
+            {"name": "Crying", "proportion": 0.3},                 # 哭泣
+            {"name": "KneelingDown", "proportion": 0.45},          # 跪下
+            {"name": "Thinking", "proportion": 0.6},               # 思考
+            {"name": "ReachingOut", "proportion": 0.75},           # 伸手觸及
+            {"name": "FemaleDancePose", "proportion": 0.9},        # 舞蹈姿勢
+            {"name": "Idle", "proportion": 1.0}                    # 結束
+        ]
+    },
+    {
+        "id": "opera_3_song",
+        "title": "歌劇3",
+        "filename": "歌劇3.mp3",
+        "duration": 20.0,  # 實際時長約20秒
+        "emotionalKeyframes": [
+            {"tag": "angry", "proportion": 0.0},        # 憤怒開場
+            {"tag": "frustrated", "proportion": 0.15},  # 挫折
+            {"tag": "spiteful", "proportion": 0.3},     # 惡意
+            {"tag": "contemptuous", "proportion": 0.45}, # 輕蔑
+            {"tag": "determined", "proportion": 0.6},   # 決心
+            {"tag": "triumphant", "proportion": 0.75},  # 勝利
+            {"tag": "proud", "proportion": 0.9},        # 驕傲
+            {"tag": "neutral", "proportion": 1.0}       # 結束
+        ],
+        "bodyAnimationSequence": [
+            {"name": "YellingWhileStanding", "proportion": 0.0},   # 站立大喊
+            {"name": "MaleDynamicPose", "proportion": 0.15},       # 動態姿勢
+            {"name": "JumpAttack", "proportion": 0.3},             # 跳躍攻擊
+            {"name": "Flair", "proportion": 0.45},                 # 花式動作
+            {"name": "MaleDynamicPose", "proportion": 0.6},        # 動態姿勢
+            {"name": "Cheering", "proportion": 0.75},              # 歡呼
+            {"name": "StandingClap", "proportion": 0.9},           # 鼓掌
+            {"name": "Idle", "proportion": 1.0}                    # 結束
+        ]
+    },
+    {
+        "id": "opera_4_song",
+        "title": "歌劇4",
+        "filename": "歌劇4.mp3",
+        "duration": 20.0,  # 實際時長約20秒
+        "emotionalKeyframes": [
+            {"tag": "excited", "proportion": 0.0},      # 興奮開場
+            {"tag": "playful", "proportion": 0.15},     # 頑皮
+            {"tag": "amused", "proportion": 0.3},       # 被逗樂
+            {"tag": "joyful", "proportion": 0.45},      # 歡樂
+            {"tag": "affectionate", "proportion": 0.6}, # 深情
+            {"tag": "grateful", "proportion": 0.75},    # 感恩
+            {"tag": "serene", "proportion": 0.9},       # 寧靜
+            {"tag": "neutral", "proportion": 1.0}       # 結束
+        ],
+        "bodyAnimationSequence": [
+            {"name": "CanCan", "proportion": 0.0},                 # 康康舞
+            {"name": "JazzDancing", "proportion": 0.15},           # 爵士舞
+            {"name": "DancingTwerk", "proportion": 0.3},           # 扭臀舞
+            {"name": "ButterflyTwirl", "proportion": 0.45},        # 蝴蝶旋轉
+            {"name": "Kiss", "proportion": 0.6},                   # 親吻
+            {"name": "StandingClap", "proportion": 0.75},          # 鼓掌
+            {"name": "FemaleStandingPose", "proportion": 0.9},     # 優雅站姿
+            {"name": "Idle", "proportion": 1.0}                    # 結束
         ]
     }
 ]
