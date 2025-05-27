@@ -292,6 +292,190 @@ const FloatingCube: React.FC<FloatingCubeProps> = ({ bgmIntensity, initialPositi
 // 核心物體的幾何形狀類型
 type GeometryType = 'torusKnot' | 'octahedron' | 'tetrahedron' | 'icosahedron';
 
+// 語音喇叭組件 - 專門用於角色語音
+interface VoiceSpeakerProps {
+  bgmIntensity: number;
+  musicSpeakerPosition: THREE.Vector3;
+  outerRadius: number;
+  innerRadius: number;
+}
+
+const VoiceSpeaker: React.FC<VoiceSpeakerProps> = ({ bgmIntensity, musicSpeakerPosition, outerRadius, innerRadius }) => {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const materialRef = useRef<THREE.MeshStandardMaterial>(null);
+  const timeRef = useRef(0);
+  const audioAverageVolume = useStore((s) => s.audioAverageVolume); // 語音音量
+  const speechIntensity = Math.min(audioAverageVolume * 8, 1.0); // 將音量轉換為語音強度
+  
+  // 語音喇叭的移動參數
+  const voiceDriftParams = useMemo(() => ({
+    speedX: (Math.random() - 0.5) * 0.015,
+    speedZ: (Math.random() - 0.5) * 0.015,
+    rotationSpeedBase: {
+      x: (Math.random() - 0.5) * 0.002,
+      y: (Math.random() - 0.5) * 0.003,
+      z: (Math.random() - 0.5) * 0.001
+    },
+    basePosition: { x: 0, y: -23, z: 0 }
+  }), []);
+  
+  const positionRef = useRef({ 
+    x: voiceDriftParams.basePosition.x + (Math.random() - 0.5) * 40, 
+    y: voiceDriftParams.basePosition.y, 
+    z: voiceDriftParams.basePosition.z + (Math.random() - 0.5) * 40 
+  });
+
+  // 形狀變化狀態
+  const [geometryType, setGeometryType] = useState<'cylinder' | 'cone' | 'dodecahedron' | 'octahedron'>('cylinder');
+  const morphTimerRef = useRef(0);
+  const lastMorphTimeRef = useRef(0);
+
+  useFrame((state, delta) => {
+    timeRef.current += delta;
+    morphTimerRef.current += delta;
+    
+    // 根據語音強度隨機改變形狀
+    if ((speechIntensity > 0.3 && Math.random() < 0.008) || 
+        (morphTimerRef.current - lastMorphTimeRef.current > 6 + Math.random() * 4)) {
+      const shapes: ('cylinder' | 'cone' | 'dodecahedron' | 'octahedron')[] = ['cylinder', 'cone', 'dodecahedron', 'octahedron'];
+      const newShape = shapes[Math.floor(Math.random() * shapes.length)];
+      setGeometryType(newShape);
+      lastMorphTimeRef.current = morphTimerRef.current;
+    }
+    
+    if (meshRef.current) {
+      // 語音喇叭在圈圈內的移動邏輯
+      const combinedIntensity = Math.max(speechIntensity, bgmIntensity * 0.3);
+      
+      positionRef.current.x += voiceDriftParams.speedX * (1 + combinedIntensity * 0.8);
+      positionRef.current.z += voiceDriftParams.speedZ * (1 + combinedIntensity * 0.6);
+      
+      // 環形邊界檢測：確保在外圓內但不進入內圓禁區
+      const currentDistance = Math.sqrt(positionRef.current.x ** 2 + positionRef.current.z ** 2);
+      
+      // 檢查是否超出外圓邊界
+      if (currentDistance > outerRadius) {
+        const normalizeX = positionRef.current.x / currentDistance;
+        const normalizeZ = positionRef.current.z / currentDistance;
+        
+        voiceDriftParams.speedX = -voiceDriftParams.speedX * 1.2;
+        voiceDriftParams.speedZ = -voiceDriftParams.speedZ * 1.2;
+        
+        positionRef.current.x = normalizeX * outerRadius * 0.9;
+        positionRef.current.z = normalizeZ * outerRadius * 0.9;
+      }
+      
+      // 檢查是否進入內圓禁區（頭部區域）
+      if (currentDistance < innerRadius) {
+        const normalizeX = positionRef.current.x / currentDistance;
+        const normalizeZ = positionRef.current.z / currentDistance;
+        
+        // 強力推出禁區
+        voiceDriftParams.speedX = normalizeX * 0.025;
+        voiceDriftParams.speedZ = normalizeZ * 0.025;
+        
+        positionRef.current.x = normalizeX * innerRadius * 1.15;
+        positionRef.current.z = normalizeZ * innerRadius * 1.15;
+      }
+
+      // 與音樂喇叭的互動 - 相互吸引和排斥
+      const distanceToMusic = musicSpeakerPosition.distanceTo(new THREE.Vector3(positionRef.current.x, positionRef.current.y, positionRef.current.z));
+      const interactionForce = 0.001;
+      
+      if (distanceToMusic < 15) {
+        // 太近時排斥
+        const repelDirection = new THREE.Vector3(positionRef.current.x, 0, positionRef.current.z)
+          .sub(new THREE.Vector3(musicSpeakerPosition.x, 0, musicSpeakerPosition.z))
+          .normalize();
+        positionRef.current.x += repelDirection.x * interactionForce * 20;
+        positionRef.current.z += repelDirection.z * interactionForce * 20;
+      } else if (distanceToMusic > 35) {
+        // 太遠時吸引
+        const attractDirection = new THREE.Vector3(musicSpeakerPosition.x, 0, musicSpeakerPosition.z)
+          .sub(new THREE.Vector3(positionRef.current.x, 0, positionRef.current.z))
+          .normalize();
+        positionRef.current.x += attractDirection.x * interactionForce * 10;
+        positionRef.current.z += attractDirection.z * interactionForce * 10;
+      }
+
+      // 語音響應的跳動效果
+      const voiceJumpFactor = (0.8 + speechIntensity * 3.0);
+      const musicInfluence = bgmIntensity * 0.5;
+      
+      let voiceJumpX = Math.sin(timeRef.current * 2.2) * voiceJumpFactor;
+      let voiceJumpZ = Math.cos(timeRef.current * 1.8) * voiceJumpFactor;
+      let voiceJumpY = Math.sin(timeRef.current * 4.0) * (2 + speechIntensity * 4 + musicInfluence * 2);
+      
+      // 添加高頻語音脈動
+      voiceJumpX += Math.sin(timeRef.current * 6.5) * speechIntensity * 2;
+      voiceJumpZ += Math.cos(timeRef.current * 5.8) * speechIntensity * 2;
+      voiceJumpY += Math.sin(timeRef.current * 8.0) * speechIntensity * 3;
+      
+      meshRef.current.position.set(
+        positionRef.current.x + voiceJumpX,
+        positionRef.current.y + voiceJumpY,
+        positionRef.current.z + voiceJumpZ
+      );
+      
+      // 語音響應的旋轉
+      const rotationMultiplier = 1 + speechIntensity * 3 + musicInfluence;
+      meshRef.current.rotation.x += (voiceDriftParams.rotationSpeedBase.x + speechIntensity * 0.04) * rotationMultiplier;
+      meshRef.current.rotation.y += (voiceDriftParams.rotationSpeedBase.y + speechIntensity * 0.06) * rotationMultiplier;
+      meshRef.current.rotation.z += (voiceDriftParams.rotationSpeedBase.z + speechIntensity * 0.03) * rotationMultiplier;
+      
+      // 語音響應的縮放
+      let baseScale = 1.2;
+      const scaleFactor = baseScale * (1 + speechIntensity * 1.5 + musicInfluence * 0.8);
+      
+      const voicePulse = 1 + Math.sin(timeRef.current * 5.0) * speechIntensity * 0.6;
+      const musicPulse = 1 + Math.cos(timeRef.current * 3.5) * musicInfluence * 0.4;
+      
+      meshRef.current.scale.set(scaleFactor * voicePulse * musicPulse, scaleFactor * voicePulse * musicPulse, scaleFactor * voicePulse * musicPulse);
+    }
+    
+    // 語音喇叭的材質動畫 - 帥氣的藍綠色系
+    if (materialRef.current) {
+      const baseColor = new THREE.Color(0x001133); // 深藍
+      const activeColor = new THREE.Color(0x00ffaa); // 亮青綠
+      const speechColor = new THREE.Color(0x0088ff); // 藍色
+      
+      // 根據語音和音樂強度混合顏色
+      const mixedColor = baseColor.clone()
+        .lerp(speechColor, speechIntensity * 2)
+        .lerp(activeColor, bgmIntensity * 1.5);
+      
+      materialRef.current.color.copy(mixedColor);
+      materialRef.current.emissive.copy(mixedColor);
+      materialRef.current.emissiveIntensity = 0.5 + speechIntensity * 8 + bgmIntensity * 3;
+      
+      // 動態材質屬性
+      materialRef.current.metalness = 0.8 + Math.sin(timeRef.current * 6) * 0.2;
+      materialRef.current.roughness = 0.2 + Math.cos(timeRef.current * 4) * 0.3;
+      
+      // 語音活躍時的wireframe效果
+      materialRef.current.wireframe = speechIntensity > 0.5;
+    }
+  });
+
+  return (
+    <mesh ref={meshRef}>
+      {geometryType === 'cylinder' && <cylinderGeometry args={[0.8, 1.2, 2.5, 12]} />}
+      {geometryType === 'cone' && <coneGeometry args={[1.0, 2.8, 8]} />}
+      {geometryType === 'dodecahedron' && <dodecahedronGeometry args={[1.3, 0]} />}
+      {geometryType === 'octahedron' && <octahedronGeometry args={[1.6, 1]} />}
+      
+      <meshStandardMaterial 
+        ref={materialRef} 
+        color={0x001133} 
+        emissive={0x001133} 
+        emissiveIntensity={0.5}
+        metalness={0.8}
+        roughness={0.2}
+      />
+    </mesh>
+  );
+};
+
 const MusicBackground: React.FC = () => {
   const meshRef = useRef<THREE.Mesh>(null);
   const materialRef = useRef<THREE.MeshStandardMaterial>(null);
@@ -312,17 +496,19 @@ const MusicBackground: React.FC = () => {
   const [crazyMode, setCrazyMode] = useState(false);
   const crazyCooldownRef = useRef(0);
 
-  // 主物件漂流參數
+  // 主物件漂流參數 - 修改為在舞者圈圈內跳動
   const driftParams = useMemo(() => ({
-    speedX: 0,
+    speedX: (Math.random() - 0.5) * 0.02, // 初始化 X 方向速度
     speedY: 0,
-    speedZ: 0,
+    speedZ: (Math.random() - 0.5) * 0.02, // 初始化 Z 方向速度
     rotationSpeedBase: {
       x: (Math.random() - 0.5) * 0.001,
       y: (Math.random() - 0.5) * 0.001,
       z: (Math.random() - 0.5) * 0.001
     },
-    positionOffset: { x: SCENE_CENTER.x, y: SCENE_CENTER.y + 40, z: SCENE_CENTER.z }
+    positionOffset: { x: SCENE_CENTER.x, y: -23, z: SCENE_CENTER.z }, // 移動到舞者圈圈高度
+    outerRadius: 60, // 舞者圈圈的半徑（外圓）
+    innerRadius: 15  // 頭部禁區半徑（內圓）
   }), []);
   
   const positionRef = useRef({ x: driftParams.positionOffset.x, y: driftParams.positionOffset.y, z: driftParams.positionOffset.z });
@@ -418,78 +604,102 @@ const MusicBackground: React.FC = () => {
       // 瘋狂模式下的行為
       const crazyFactor = crazyMode ? 5 : 1;
       
-      // 瘋狂模式下的漂移速度
+      // 在舞者圈圈內跳動的新邏輯
       positionRef.current.x += driftParams.speedX * (1 + bgmIntensity * 0.5 * crazyFactor);
-      positionRef.current.y += driftParams.speedY * (1 + bgmIntensity * 0.5 * crazyFactor);
       positionRef.current.z += driftParams.speedZ * (1 + bgmIntensity * 0.3 * crazyFactor);
       
-      // 邊界反彈，瘋狂模式下反彈更強烈
-      const bounds = { x: 5, y: 5, z: 6 };
-      if (Math.abs(positionRef.current.x) > bounds.x) {
-        driftParams.speedX *= -1 * (1 + (crazyMode ? 0.3 : 0));
+      // 環形邊界檢測：確保在舞者圈圈內但不接近頭部
+      const currentDistance = Math.sqrt(positionRef.current.x ** 2 + positionRef.current.z ** 2);
+      
+      // 檢查是否超出外圓邊界（舞者圈圈）
+      if (currentDistance > driftParams.outerRadius) {
+        const normalizeX = positionRef.current.x / currentDistance;
+        const normalizeZ = positionRef.current.z / currentDistance;
+        
+        // 反射速度
+        driftParams.speedX = -driftParams.speedX * (1 + (crazyMode ? 0.3 : 0));
+        driftParams.speedZ = -driftParams.speedZ * (1 + (crazyMode ? 0.3 : 0));
+        
+        // 將位置拉回外圓邊界內
+        positionRef.current.x = normalizeX * driftParams.outerRadius * 0.95;
+        positionRef.current.z = normalizeZ * driftParams.outerRadius * 0.95;
+        
         if (crazyMode) {
           driftParams.speedX += (Math.random() - 0.5) * 0.02;
-          driftParams.speedY += (Math.random() - 0.5) * 0.02;
+          driftParams.speedZ += (Math.random() - 0.5) * 0.02;
         }
       }
       
-      if (Math.abs(positionRef.current.y) > bounds.y) {
-        driftParams.speedY *= -1 * (1 + (crazyMode ? 0.3 : 0));
-        if (crazyMode) {
-          driftParams.speedX += (Math.random() - 0.5) * 0.02;
-          driftParams.speedY += (Math.random() - 0.5) * 0.02;
-        }
-      }
-      
-      if (Math.abs(positionRef.current.z - driftParams.positionOffset.z) > bounds.z) {
-        driftParams.speedZ *= -1;
+      // 檢查是否進入內圓禁區（頭部區域）
+      if (currentDistance < driftParams.innerRadius) {
+        const normalizeX = positionRef.current.x / currentDistance;
+        const normalizeZ = positionRef.current.z / currentDistance;
+        
+        // 強力反彈出禁區
+        driftParams.speedX = normalizeX * 0.03 * (1 + (crazyMode ? 0.5 : 0));
+        driftParams.speedZ = normalizeZ * 0.03 * (1 + (crazyMode ? 0.5 : 0));
+        
+        // 將位置推出內圓禁區
+        positionRef.current.x = normalizeX * driftParams.innerRadius * 1.1;
+        positionRef.current.z = normalizeZ * driftParams.innerRadius * 1.1;
       }
 
-      // 更強的波動效果
-      const waveFactor = (0.5 + bgmIntensity * 1.5) * (crazyMode ? 2.5 : 1);
-      let waveX = Math.sin(timeRef.current * 0.6) * waveFactor;
-      let waveY = Math.cos(timeRef.current * 0.4) * waveFactor;
+      // 音樂響應的跳動效果 - 增強脈動
+      const jumpFactor = (1.0 + bgmIntensity * 4.0) * (crazyMode ? 5.0 : 1);
+      let musicJumpX = Math.sin(timeRef.current * 1.8) * jumpFactor;
+      let musicJumpZ = Math.cos(timeRef.current * 1.5) * jumpFactor;
+      let musicJumpY = Math.sin(timeRef.current * 3.0) * (3 + bgmIntensity * 6);
       
-      // 瘋狂模式下添加額外的高頻波動
+      // 添加多層次的脈動效果
+      musicJumpX += Math.sin(timeRef.current * 4.5) * jumpFactor * 0.6;
+      musicJumpZ += Math.cos(timeRef.current * 3.8) * jumpFactor * 0.6;
+      musicJumpY += Math.cos(timeRef.current * 5.5) * (1 + bgmIntensity * 4);
+      
+      // 瘋狂模式下添加額外的高頻跳動
       if (crazyMode) {
-        waveX += Math.sin(timeRef.current * 5) * waveFactor * 0.3;
-        waveY += Math.cos(timeRef.current * 4) * waveFactor * 0.3;
+        musicJumpX += Math.sin(timeRef.current * 12) * jumpFactor * 0.5;
+        musicJumpZ += Math.cos(timeRef.current * 10) * jumpFactor * 0.5;
+        musicJumpY += Math.sin(timeRef.current * 15) * bgmIntensity * 3.0;
       }
       
       meshRef.current.position.set(
-        positionRef.current.x + waveX,
-        positionRef.current.y + waveY,
-        positionRef.current.z + (crazyMode ? Math.sin(timeRef.current * 3) * 1.5 : 0)
+        positionRef.current.x + musicJumpX,
+        positionRef.current.y + musicJumpY,
+        positionRef.current.z + musicJumpZ
       );
       
       currentPosition.copy(meshRef.current.position);
       
-      // 瘋狂旋轉
-      const rotationMultiplier = crazyMode ? 3 + Math.sin(timeRef.current * 10) * 2 : 1;
-      meshRef.current.rotation.x += (driftParams.rotationSpeedBase.x + bgmIntensity * 0.015) * rotationMultiplier;
-      meshRef.current.rotation.y += (driftParams.rotationSpeedBase.y + bgmIntensity * 0.02) * rotationMultiplier;
-      meshRef.current.rotation.z += (driftParams.rotationSpeedBase.z + bgmIntensity * 0.03) * rotationMultiplier;
+      // 瘋狂旋轉 - 增強脈動
+      const rotationMultiplier = crazyMode ? 5 + Math.sin(timeRef.current * 15) * 3 : 1 + bgmIntensity * 2;
+      const rotationPulse = 1 + Math.sin(timeRef.current * 8) * bgmIntensity * 2;
       
-      // 更瘋狂的縮放
+      meshRef.current.rotation.x += (driftParams.rotationSpeedBase.x + bgmIntensity * 0.03) * rotationMultiplier * rotationPulse;
+      meshRef.current.rotation.y += (driftParams.rotationSpeedBase.y + bgmIntensity * 0.04) * rotationMultiplier * rotationPulse;
+      meshRef.current.rotation.z += (driftParams.rotationSpeedBase.z + bgmIntensity * 0.05) * rotationMultiplier * rotationPulse;
+      
+      // 更瘋狂的縮放 - 增強脈動
       let baseScale = 1.8;
       if (crazyMode) {
-        baseScale *= 1 + Math.sin(timeRef.current * 8) * 0.3;
+        baseScale *= 1 + Math.sin(timeRef.current * 12) * 0.5;
       }
       
-      const scaleFactor = baseScale * (1 + bgmIntensity * (crazyMode ? 1.2 : 0.6));
+      const scaleFactor = baseScale * (1 + bgmIntensity * (crazyMode ? 2.5 : 1.2));
       meshRef.current.scale.set(scaleFactor, scaleFactor, scaleFactor);
       
-      // 非均勻的脈動效果
+      // 增強的脈動效果 - 多層次縮放
+      const primaryPulse = 1 + Math.sin(timeRef.current * 4.0) * bgmIntensity * 0.8;
+      const secondaryPulse = 1 + Math.cos(timeRef.current * 6.5) * bgmIntensity * 0.4;
+      
       if (crazyMode) {
-        const pulseX = 1 + Math.sin(timeRef.current * 3.5) * bgmIntensity * 0.4;
-        const pulseY = 1 + Math.cos(timeRef.current * 4.2) * bgmIntensity * 0.5;
-        const pulseZ = 1 + Math.sin(timeRef.current * 2.8) * bgmIntensity * 0.3;
-        meshRef.current.scale.x *= pulseX;
-        meshRef.current.scale.y *= pulseY;
-        meshRef.current.scale.z *= pulseZ;
+        const pulseX = 1 + Math.sin(timeRef.current * 5.5) * bgmIntensity * 1.0;
+        const pulseY = 1 + Math.cos(timeRef.current * 7.2) * bgmIntensity * 1.2;
+        const pulseZ = 1 + Math.sin(timeRef.current * 4.8) * bgmIntensity * 0.8;
+        meshRef.current.scale.x *= pulseX * primaryPulse;
+        meshRef.current.scale.y *= pulseY * primaryPulse;
+        meshRef.current.scale.z *= pulseZ * primaryPulse;
       } else {
-        const pulseScale = 1 + Math.sin(timeRef.current * 3.5) * bgmIntensity * 0.15;
-        meshRef.current.scale.multiplyScalar(pulseScale);
+        meshRef.current.scale.multiplyScalar(primaryPulse * secondaryPulse);
       }
     }
     
@@ -578,6 +788,14 @@ const MusicBackground: React.FC = () => {
         />
       </mesh>
       
+      {/* 語音喇叭 - 專門用於角色語音 */}
+      <VoiceSpeaker 
+        bgmIntensity={bgmIntensity}
+        musicSpeakerPosition={currentPosition}
+        outerRadius={driftParams.outerRadius}
+        innerRadius={driftParams.innerRadius}
+      />
+      
       {/* 多種類型的環繞粒子 */}
       {particleConfigs.map((config, i) => (
         <OrbitingParticle 
@@ -649,3 +867,4 @@ const MusicBackground: React.FC = () => {
 };
 
 export default MusicBackground;
+
