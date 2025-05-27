@@ -1,11 +1,12 @@
-import React, { Suspense, useRef } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import React, { Suspense, useRef, useEffect } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
 import { HeadModel } from './HeadModel';
 import DanceGroup from './DanceGroup';
 import DynamicAudioBackgrounds from './DynamicAudioBackgrounds';
 import { useStore } from '../store';
 import * as THREE from 'three';
+import { useCameraManager, CameraPreset } from '../camera';
 
 interface SceneContainerProps {
   headModelUrl: string;
@@ -64,6 +65,60 @@ const SceneContainer: React.FC<SceneContainerProps> = ({
       camera={{ position: [0, 0.5, 3], fov: 50 }}
       style={{ background: showSpaceBackground ? '#000010' : '#111a21' }}
     >
+      <SceneContent
+        headModelUrl={headModelUrl}
+        isHeadModelLoaded={isHeadModelLoaded}
+        showSpaceBackground={showSpaceBackground}
+        modelScale={modelScale}
+      />
+    </Canvas>
+  );
+};
+
+// 將場景內容提取到一個新組件中，以便在 Canvas 內部使用 useThree
+const SceneContent: React.FC<SceneContainerProps> = ({
+  headModelUrl,
+  isHeadModelLoaded,
+  showSpaceBackground,
+  modelScale,
+}) => {
+  const { camera } = useThree();
+  
+  const cameraPresets: CameraPreset[] = [
+    { name: 'overview', position: [0, 20, 100], target: [0, 0, 0], fov: 50 },
+    { name: 'head_close_up', position: [0, 0, 5], target: [0, 0, 0], fov: 40 }, // 假設頭部模型調整後在原點附近
+    { name: 'dance_circle_view', position: [0, 50, 80], target: [0, -25, 0], fov: 60 },
+    { name: 'side_view', position: [-80, 10, 0], target: [0, -10, 0], fov: 55 },
+    { name: 'low_angle_head', position: [0, -3, 7], target: [0, 0, 0], fov: 45 },
+  ];
+
+  const cameraManager = useCameraManager(camera as THREE.PerspectiveCamera, cameraPresets, 'overview');
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const switchView = () => {
+      const presetNames = cameraPresets.map(p => p.name);
+      const randomPresetName = presetNames[Math.floor(Math.random() * presetNames.length)];
+      cameraManager.transitionTo(randomPresetName, 2.5); // 2.5 秒轉場
+
+      // 隨機設定下一次切換的時間 (5 到 10 秒)
+      const randomInterval = Math.random() * 5000 + 5000;
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(switchView, randomInterval);
+    };
+
+    // 初始延遲後開始第一次切換
+    const initialDelay = setTimeout(switchView, 5000); // 5秒後第一次切換
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      clearTimeout(initialDelay);
+    };
+  }, [cameraManager, cameraPresets]);
+
+
+  return (
+    <>
       {showSpaceBackground && (
         <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
       )}
@@ -105,14 +160,14 @@ const SceneContainer: React.FC<SceneContainerProps> = ({
         enablePan
         enableZoom
         enableRotate
-        target={[0, 0.8, 0]}
+        target={[0, 0.8, 0]} // OrbitControls 的 target 可能需要根據當前 cameraManager 的 target 動態調整，或者由 cameraManager 完全接管
         mouseButtons={{
           LEFT: THREE.MOUSE.PAN,
           MIDDLE: THREE.MOUSE.DOLLY,
           RIGHT: THREE.MOUSE.ROTATE,
         }}
       />
-    </Canvas>
+    </>
   );
 };
 
