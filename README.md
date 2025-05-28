@@ -22,6 +22,15 @@ Space Live Project 是一個互動藝術裝置，模擬一名被困於太空艙�
   - **EffectBackground**：對特定事件觸發的粒子效果
   - **P5SpaceEffect**：P5.js風格的粒子系統
 
+## TechLight Rig
+
+新增的 `HeadRigTechLight` 元件在頭部周圍生成可展開的雷射發射器環。透過
+Zustand 的 `showState` 控制四種表演狀態，並可調整發射器數量與半徑。
+
+開發環境啟動後可按鍵盤 `1-4` 觀察不同效果。所有幾何與材質在 `useMemo`
+中建立，卸載時自動 dispose，Bloom 後處理僅在 drop 狀態啟用，以降低性能
+開銷。
+
 ## 快速開始
 
 ### 前端開發

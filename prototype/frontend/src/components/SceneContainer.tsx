@@ -4,7 +4,9 @@ import { OrbitControls, Stars } from '@react-three/drei';
 import { HeadModel } from './HeadModel';
 import DanceGroup from './DanceGroup';
 import DynamicAudioBackgrounds from './DynamicAudioBackgrounds';
+import HeadRigTechLight from './HeadRigTechLight';
 import { useStore } from '../store';
+import { ShowState } from '../store/slices/showSlice';
 import * as THREE from 'three';
 import { useCameraManager, CameraPreset } from '../camera';
 
@@ -110,6 +112,23 @@ const SceneContent: React.FC<SceneContainerProps> = ({
 
   const cameraManager = useCameraManager(camera as THREE.PerspectiveCamera, cameraPresets, 'overview');
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const headGroupRef = useRef<THREE.Group>(null);
+  const setShowState = useStore((s) => s.setShowState);
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      const map: Record<string, ShowState> = {
+        '1': 'idle',
+        '2': 'buildUp',
+        '3': 'drop',
+        '4': 'coolDown',
+      };
+      const state = map[e.key];
+      if (state) setShowState(state);
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [setShowState]);
 
   useEffect(() => {
     const switchView = () => {
@@ -145,13 +164,11 @@ const SceneContent: React.FC<SceneContainerProps> = ({
           // 調整頭部位置：移到圓圈中央
           const baseScale = 10;
           const basePosition: [number, number, number] = [0, -5, 0]; // 中央位置
-          
+
           return (
-            <group position={basePosition} scale={baseScale}>
-              <HeadModel 
-                headModelUrl={headModelUrl}
-                scale={modelScale}
-              />
+            <group ref={headGroupRef} position={basePosition} scale={baseScale}>
+              <HeadModel headModelUrl={headModelUrl} scale={modelScale} />
+              <HeadRigTechLight parentRef={headGroupRef} />
             </group>
           );
         })()}
