@@ -14,7 +14,6 @@ const DirectorMonitorHUD: React.FC = () => {
   const cameraPreset = useStore((s) => s.cameraPreset);
   const fps = useStore((s) => s.fps);
   const cpu = useStore((s) => s.cpu);
-  const gpu = useStore((s) => s.gpu);
 
   const [expanded, setExpanded] = useState(false);
 
@@ -41,7 +40,6 @@ const DirectorMonitorHUD: React.FC = () => {
       <div>camera: {cameraPreset ?? '-'}</div>
       <div>fps: {fps}</div>
       <div>cpu: {cpu.toFixed(2)}</div>
-      <div>gpu: {gpu}</div>
     </motion.div>
   );
 };

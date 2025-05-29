@@ -10,7 +10,6 @@ export interface RuntimeSlice {
   cameraPreset: string | null;
   fps: number;
   cpu: number;
-  gpu: number;
   setRuntime: (partial: Partial<RuntimeSlice>) => void;
 }
 
@@ -24,6 +23,5 @@ export const createRuntimeSlice: StateCreator<RuntimeSlice> = (set) => ({
   cameraPreset: null,
   fps: 0,
   cpu: 0,
-  gpu: 0,
   setRuntime: (partial) => set(partial),
 });
