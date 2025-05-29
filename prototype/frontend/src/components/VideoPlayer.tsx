@@ -19,7 +19,7 @@ import { useStore } from '../store';
  */
 interface VideoPlayerProps {
   screenId: string;
-  playlist: string[];
+  playlist: readonly string[];
   initialVideoIndex?: number;
   position?: [number, number, number];
   width?: number;
