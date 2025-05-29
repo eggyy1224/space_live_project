@@ -92,6 +92,15 @@ const SceneContent: React.FC<SceneContainerProps> = ({
   const cameraManager = useCameraManager(camera as THREE.PerspectiveCamera, CAMERA_PRESETS, 'overview');
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const randomMode = useStore((s) => s.randomMode); // 新增：監聽隨機模式狀態
+  const cameraPreset = useStore((s) => s.cameraPreset); // 新增：監聽手動相機預設變化
+
+  // 監聽手動相機預設變化
+  useEffect(() => {
+    if (!randomMode && cameraPreset && cameraPreset !== 'roam') {
+      console.log('Manual camera preset change:', cameraPreset);
+      cameraManager.transitionTo(cameraPreset, 1.5); // 手動切換使用較短的轉場時間
+    }
+  }, [cameraPreset, randomMode, cameraManager]);
 
   useEffect(() => {
     const switchView = () => {

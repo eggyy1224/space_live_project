@@ -150,6 +150,30 @@ export const CAMERA_PRESET_MAPPING = {
   sideView: 'side_view',
 } as const;
 
+// 相機預設的友善顯示名稱
+export const CAMERA_PRESET_DISPLAY_NAMES: Record<string, string> = {
+  'overview': '總覽',
+  'head_close_up': '頭部特寫',
+  'dance_circle_view': '舞蹈圓圈視角',
+  'side_view': '側面視角',
+  'low_angle_head': '低角度頭部',
+  'center_orbit_high_1': '中心軌道高位1',
+  'center_orbit_high_2': '中心軌道高位2',
+  'center_orbit_low_1': '中心軌道低位1',
+  'center_orbit_low_2': '中心軌道低位2',
+  'top_down_center': '俯視中心',
+  'dramatic_angle_1': '戲劇角度1',
+  'dramatic_angle_2': '戲劇角度2',
+  'behind_head_looking_out': '頭後向外看',
+  'fly_by_left': '左側飛越',
+  'fly_by_right': '右側飛越',
+  'frontal_dynamic_low': '正面動態低位',
+  'frontal_dynamic_high': '正面動態高位',
+  'orbit_head_1': '環繞頭部1',
+  'orbit_head_2': '環繞頭部2',
+  'full_shot_dancers': '舞者全景',
+};
+
 // ==================== 輔助函數 ====================
 
 /**

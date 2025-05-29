@@ -5,7 +5,8 @@ import {
   BGM_FILES, 
   DIRECTOR_VIDEOS, 
   LIGHTING_PRESETS, 
-  CAMERA_PRESET_NAMES,
+  CAMERA_PRESETS,
+  CAMERA_PRESET_DISPLAY_NAMES,
   EFFECT_FILES 
 } from '../config/resources';
 
@@ -212,8 +213,10 @@ const DirectorMonitorHUD: React.FC = () => {
                   className="bg-gray-800 text-white text-xs rounded w-full"
                 >
                   <option value="" disabled>選擇鏡位</option>
-                  {CAMERA_PRESET_NAMES.map((p) => (
-                    <option key={p} value={p}>{p}</option>
+                  {CAMERA_PRESETS.map((preset) => (
+                    <option key={preset.name} value={preset.name}>
+                      {CAMERA_PRESET_DISPLAY_NAMES[preset.name] || preset.name}
+                    </option>
                   ))}
                 </select>
               </div>
