@@ -17,8 +17,6 @@ const DirectorMonitorHUD: React.FC = () => {
   const bgmPlaying = useStore((s) => s.bgmPlaying);
   const bgmTime = useStore((s) => s.bgmTime);
   const sfxActive = useStore((s) => s.sfxActive);
-  const videoId = useStore((s) => s.videoId);
-  const videoVisible = useStore((s) => s.videoVisible);
   const lightingPreset = useStore((s) => s.lightingPreset);
   const cameraPreset = useStore((s) => s.cameraPreset);
   const randomMode = useStore((s) => s.randomMode);
@@ -102,7 +100,7 @@ const DirectorMonitorHUD: React.FC = () => {
       <div>bgm: {bgm ?? '-'}</div>
       <div>time: {bgmTime.toFixed(1)}</div>
       <div>sfx: {sfxActive ? 'on' : 'off'}</div>
-      <div>video: {videoVisible ? videoId?.split('/').pop() : 'hidden'}</div>
+      <div>screens: {videoScreens.filter(s => s.visible).length}/{videoScreens.length} active</div>
       <div>light: {lightingPreset ?? '-'}</div>
       <div>camera: {cameraPreset ?? '-'}</div>
       <div>fps: {fps}</div>
