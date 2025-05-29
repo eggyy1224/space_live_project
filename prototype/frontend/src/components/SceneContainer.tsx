@@ -7,6 +7,7 @@ import DynamicAudioBackgrounds from './DynamicAudioBackgrounds';
 import { useStore } from '../store';
 import * as THREE from 'three';
 import { useCameraManager, CameraPreset } from '../camera';
+import { applyLightingPreset } from '../lighting/lightingRig';
 
 interface SceneContainerProps {
   headModelUrl: string;
@@ -20,6 +21,9 @@ const DynamicLights = () => {
   const ambientLightRef = useRef<THREE.AmbientLight>(null);
   const directionalLightRef = useRef<THREE.DirectionalLight>(null);
   const bgmIntensity = useStore((s) => s.bgmIntensity);
+  useEffect(() => {
+    applyLightingPreset('dynamic');
+  }, []);
   
   useFrame(() => {
     if (ambientLightRef.current) {
@@ -176,6 +180,7 @@ const SceneContent: React.FC<SceneContainerProps> = ({
         enablePan
         enableZoom
         enableRotate
+        onStart={() => useStore.getState().setRuntime({ cameraPreset: 'roam' })}
         target={[0, 0.8, 0]} // OrbitControls 的 target 可能需要根據當前 cameraManager 的 target 動態調整，或者由 cameraManager 完全接管
         mouseButtons={{
           LEFT: THREE.MOUSE.PAN,

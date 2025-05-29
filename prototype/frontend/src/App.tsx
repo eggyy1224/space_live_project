@@ -11,6 +11,8 @@ import { ToastContainer } from './components/Toast'
 import FloatingChatWindow from './components/FloatingChatWindow'
 import SettingsPanel from './components/SettingsPanel'
 import BackgroundSoundSystem from './components/BackgroundSoundSystem'
+import DirectorMonitorHUD from './components/DirectorMonitorHUD'
+import { usePerformanceMetrics } from './hooks/usePerformanceMetrics'
 
 // 引入服務
 import { 
@@ -68,6 +70,7 @@ function App() {
   // === 添加 useWebSocket 調用 ===
   useWebSocket(); // 調用 hook 以建立 WebSocket 連接
   // === 添加結束 ===
+  usePerformanceMetrics();
 
   // 從 Zustand Store 獲取 WebSocket 連接狀態
   const wsConnected = useStore((state) => state.isConnected);
@@ -520,6 +523,7 @@ function App() {
         />
         
         <ToastContainer />
+        <DirectorMonitorHUD />
       </div>
     </ErrorBoundary>
   )

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { useStore } from '../store';
 
 /** Camera preset describing a target position, look at point and field of view. */
 export interface CameraPreset {
@@ -55,6 +56,7 @@ export class CameraManager {
   transitionTo(name: string, duration = 1) {
     const preset = this.presets.get(name);
     if (!preset) return;
+    useStore.getState().setRuntime({ cameraPreset: name });
     this.from = {
       name: 'from',
       position: this.camera.position.clone(),

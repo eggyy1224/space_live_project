@@ -34,6 +34,9 @@ const BackgroundSoundSystem: React.FC = () => {
   const effectVolume = useStore((state) => state.effectVolume);
   const setBgmIntensity = useStore((state) => state.setBgmIntensity);
   const triggerEffect = useStore((state) => state.triggerEffect);
+  const setRuntime = useStore((s) => s.setRuntime);
+
+  const bgmStartRef = useRef<number>(0);
 
   const [isUserInteracted, setIsUserInteracted] = useState(false);
 
@@ -43,6 +46,9 @@ const BackgroundSoundSystem: React.FC = () => {
       if (!bgmAnalyserRef.current || !bgmDataRef.current) return;
       const rms = getRms(bgmAnalyserRef.current, bgmDataRef.current);
       setBgmIntensity(rms);
+      if (audioContext) {
+        setRuntime({ bgmTime: audioContext.currentTime - bgmStartRef.current });
+      }
       bgmRafRef.current = requestAnimationFrame(loop);
     };
     bgmRafRef.current = requestAnimationFrame(loop);
@@ -149,7 +155,6 @@ const BackgroundSoundSystem: React.FC = () => {
       currentBgmIndex = randomIndex;
       const selectedBGM = bgmFiles[randomIndex];
 
-
       try {
         const response = await fetch(`${BGM_PATH}${selectedBGM}`);
         const arrayBuffer = await response.arrayBuffer();
@@ -161,12 +166,14 @@ const BackgroundSoundSystem: React.FC = () => {
         source.connect(bgmGainNodeRef.current);
         source.start();
         bgmSourceRef.current = source;
+        bgmStartRef.current = audioContext.currentTime;
+        setRuntime({ bgm: selectedBGM, bgmTime: 0 });
         startBgmAnalysis();
 
         // 新增：當歌曲播放完畢時，再次呼叫 playBGM 以播放下一首
         source.onended = () => {
-          // 確保 audioContext 仍然存在才繼續播放
           if (audioContext && audioContext.state === 'running') {
+            setRuntime({ bgm: null });
             playBGM();
           }
         };
@@ -189,6 +196,7 @@ const BackgroundSoundSystem: React.FC = () => {
         bgmSourceRef.current.disconnect();
       }
       stopBgmAnalysis();
+      setRuntime({ bgm: null });
     };
   }, [audioContext, isUserInteracted]); // 依賴 audioContext 和 isUserInteracted
 
@@ -230,9 +238,13 @@ const BackgroundSoundSystem: React.FC = () => {
         source.start();
         effectSourceRef.current = source;
         triggerEffect();
+        setRuntime({ sfxActive: true });
 
         // 音效播放完畢後，設定下一次隨機播放
-        source.onended = scheduleNextEffect;
+        source.onended = () => {
+          setRuntime({ sfxActive: false });
+          scheduleNextEffect();
+        };
 
       } catch (error) {
         console.error(`Error loading effect: ${selectedEffect}`, error);
@@ -266,6 +278,7 @@ const BackgroundSoundSystem: React.FC = () => {
           }
         }
       }
+      setRuntime({ sfxActive: false });
     };
   }, [audioContext, isUserInteracted]); // 依賴 audioContext 和 isUserInteracted
 

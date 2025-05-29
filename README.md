@@ -119,6 +119,11 @@ space_live_project/
 └── AGENT.md                   # AI 代理協作指南
 ```
 
+## Runtime Monitoring
+
+`DirectorMonitorHUD` provides real-time state of BGM, SFX, video, lighting, camera and performance.
+Press **d** during runtime to expand the drawer view.
+
 ## AI 代理流程
 
 本專案支援使用 AI 代理（如 Codex、Cursor、TaskMaster）進行自動化開發與維護。詳細的代理協作指南、分支策略、提交規範與自動化工作流程，請參考：

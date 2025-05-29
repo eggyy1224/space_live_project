@@ -46,6 +46,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   // 從 store 獲取音量強度
   const bgmIntensity = useStore((state) => state.bgmIntensity);
+  const setRuntime = useStore((s) => s.setRuntime);
 
   const height = useMemo(() => (width * 3) / 2, [width]);
 
@@ -130,6 +131,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       const initialPlaybackRate = calculatePlaybackRate(bgmIntensity);
       video.playbackRate = initialPlaybackRate;
       console.log('VideoPlayer: Set playback rate to', initialPlaybackRate);
+
+      setRuntime({ videoId: playlist[index], videoVisible: true });
       
       video.play().then(() => {
         console.log('VideoPlayer: Video started playing');
@@ -166,6 +169,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       if (localTextureInstance) {
         localTextureInstance.dispose();
       }
+      setRuntime({ videoVisible: false, videoId: null });
     };
   }, [index, playlist]);
 
