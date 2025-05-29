@@ -52,16 +52,16 @@ const DirectorMonitorHUD: React.FC = () => {
 
   const toggleRandomMode = () => {
     const newRandomMode = !randomMode;
-    setRuntime({ randomMode: newRandomMode });
     
-    // 如果開啟隨機模式，自動開始播放BGM
-    if (newRandomMode && !bgm) {
-      const randomBgm = BGM_FILES[Math.floor(Math.random() * BGM_FILES.length)];
+    if (!newRandomMode) {
+      // 關閉隨機模式時，重置 BGM 播放狀態，讓用戶能重新控制
       setRuntime({ 
-        bgm: randomBgm, 
-        bgmPlaying: true,
-        randomMode: newRandomMode 
+        randomMode: newRandomMode,
+        bgmPlaying: false  // 重置播放狀態，讓播放按鈕可以點擊
       });
+    } else {
+      // 開啟隨機模式時，只設定模式狀態
+      setRuntime({ randomMode: newRandomMode });
     }
   };
 
