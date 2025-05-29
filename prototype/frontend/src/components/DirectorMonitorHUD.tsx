@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useStore } from '../store';
 import { 
   BGM_FILES, 
-  DIRECTOR_VIDEOS, 
+  ALL_VIDEOS,
   LIGHTING_PRESETS, 
   CAMERA_PRESETS,
   CAMERA_PRESET_DISPLAY_NAMES,
@@ -30,8 +30,10 @@ const DirectorMonitorHUD: React.FC = () => {
   const triggerEffect = useStore((s) => s.triggerEffect);
   const fps = useStore((s) => s.fps);
   const cpu = useStore((s) => s.cpu);
+  const videoScreens = useStore((s) => s.videoScreens);
+  const setVideoScreen = useStore((s) => s.setVideoScreen);
 
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const [selectedEffect, setSelectedEffect] = useState<string>(EFFECT_FILES[0]);
 
   useEffect(() => {
@@ -181,25 +183,44 @@ const DirectorMonitorHUD: React.FC = () => {
               </div>
               
               <div className="border-t border-white/30 pt-2">
-                <div className="font-bold mb-1">影片</div>
-                <select 
-                  value={videoId ?? ''} 
-                  onChange={(e) => setRuntime({ videoId: e.target.value })} 
-                  className="bg-gray-800 text-white text-xs rounded w-full mb-1"
-                >
-                  <option value="" disabled>選擇影片</option>
-                  {DIRECTOR_VIDEOS.map((v) => (
-                    <option key={v} value={v}>{v.split('/').pop()?.replace('.mp4', '')}</option>
-                  ))}
-                </select>
-                <label className="flex items-center space-x-1">
-                  <input 
-                    type="checkbox" 
-                    checked={videoVisible} 
-                    onChange={(e) => setRuntime({ videoVisible: e.target.checked })} 
-                  />
-                  <span>顯示影片</span>
-                </label>
+                <div className="font-bold mb-1">視訊牆</div>
+                {videoScreens.map((screen) => (
+                  <div
+                    key={screen.id}
+                    className="mb-2 last:mb-0 border-b last:border-b-0 border-white/20 pb-1"
+                  >
+                    <div className="font-bold mb-1 text-purple-300">{screen.id}</div>
+                    <select
+                      value={screen.currentVideo}
+                      onChange={(e) =>
+                        setVideoScreen(screen.id, { currentVideo: e.target.value })
+                      }
+                      className="bg-gray-800 text-white text-xs rounded w-full mb-1"
+                    >
+                      <option value="" disabled>
+                        選擇影片
+                      </option>
+                      {ALL_VIDEOS.map((v) => (
+                        <option key={v} value={v}>
+                          {v.split('/').pop()?.replace('.mp4', '')}
+                        </option>
+                      ))}
+                    </select>
+                    <label className="flex items-center space-x-1">
+                      <input
+                        type="checkbox"
+                        checked={screen.visible}
+                        onChange={(e) =>
+                          setVideoScreen(screen.id, { visible: e.target.checked })
+                        }
+                      />
+                      <span>顯示</span>
+                    </label>
+                    <div className="mt-1 text-[10px] text-gray-400">
+                      {screen.visible ? screen.currentVideo.split('/').pop() : 'hidden'}
+                    </div>
+                  </div>
+                ))}
               </div>
               
               <div className="border-t border-white/30 pt-2">
