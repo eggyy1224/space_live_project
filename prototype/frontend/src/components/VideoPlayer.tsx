@@ -18,6 +18,7 @@ import { useStore } from '../store';
  * single HTMLVideoElement and THREE.VideoTexture.
  */
 interface VideoPlayerProps {
+  screenId: string;
   playlist: string[];
   initialVideoIndex?: number;
   position?: [number, number, number];
@@ -29,6 +30,7 @@ interface VideoPlayerProps {
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
+  screenId,
   playlist,
   initialVideoIndex = 0,
   position = [25, 10, -20],
@@ -46,9 +48,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   // 從 store 獲取音量強度
   const bgmIntensity = useStore((state) => state.bgmIntensity);
-  const setRuntime = useStore((s) => s.setRuntime);
-  const runtimeVideoId = useStore((s) => s.videoId);
-  const runtimeVisible = useStore((s) => s.videoVisible);
+  const screenState = useStore((s) =>
+    s.videoScreens.find((v) => v.id === screenId)
+  );
+  const setVideoScreen = useStore((s) => s.setVideoScreen);
 
   const height = useMemo(() => (width * 3) / 2, [width]);
 
@@ -102,14 +105,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   // Follow runtime state
   useEffect(() => {
-    if (!runtimeVisible && videoRef.current) {
+    if (!screenState?.visible && videoRef.current) {
       videoRef.current.pause();
     }
-    if (runtimeVideoId) {
-      const idx = playlist.indexOf(runtimeVideoId);
+    if (screenState?.currentVideo) {
+      const idx = playlist.indexOf(screenState.currentVideo);
       if (idx >= 0) setIndex(idx);
     }
-  }, [runtimeVisible, runtimeVideoId]);
+  }, [screenState?.visible, screenState?.currentVideo]);
 
   useEffect(() => {
     if (!playlist || playlist.length === 0) {
@@ -145,7 +148,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       video.playbackRate = initialPlaybackRate;
       console.log('VideoPlayer: Set playback rate to', initialPlaybackRate);
 
-      setRuntime({ videoId: playlist[index], videoVisible: true });
+      setVideoScreen(screenId, {
+        currentVideo: playlist[index],
+        visible: true,
+      });
       
       video.play().then(() => {
         console.log('VideoPlayer: Video started playing');
@@ -182,7 +188,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       if (localTextureInstance) {
         localTextureInstance.dispose();
       }
-      setRuntime({ videoVisible: false, videoId: null });
+      setVideoScreen(screenId, { visible: false, currentVideo: '' });
     };
   }, [index, playlist]);
 
@@ -220,7 +226,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const currentPlaybackRate = calculatePlaybackRate(bgmIntensity);
 
   return (
-    <group position={position} visible={runtimeVisible}>
+    <group position={position} visible={screenState?.visible}>
       <mesh 
         onClick={handlePlay}
         onPointerEnter={handleMouseEnter}

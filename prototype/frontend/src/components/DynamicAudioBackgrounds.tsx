@@ -52,8 +52,9 @@ const DynamicAudioBackgrounds: React.FC = () => (
     <SpeechBackground />
     {/* Render multiple video players based on configs */}
     {screenConfigs.map(config => (
-      <VideoPlayer 
+      <VideoPlayer
         key={config.id}
+        screenId={config.id}
         playlist={config.playlist}
         initialVideoIndex={config.initialVideoIndex}
         position={config.position}

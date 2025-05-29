@@ -10,6 +10,8 @@ Press **D** to toggle the director panel drawer. The panel displays runtime info
 ## Video
 - Choose one of the sample videos from the list.
 - Toggle visibility with the checkbox.
+- Monitor and control the three-screen video wall via **VideoWallControlPanel**.
+  Each screen shows its current clip and allows selecting a new one in real time.
 
 ## Lighting
 - Switch between `idle`, `dramatic` and `calm` presets.

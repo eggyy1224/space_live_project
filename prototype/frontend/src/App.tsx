@@ -12,6 +12,7 @@ import FloatingChatWindow from './components/FloatingChatWindow'
 import SettingsPanel from './components/SettingsPanel'
 import BackgroundSoundSystem from './components/BackgroundSoundSystem'
 import DirectorMonitorHUD from './components/DirectorMonitorHUD'
+import VideoWallControlPanel from './components/VideoWallControlPanel'
 import { usePerformanceMetrics } from './hooks/usePerformanceMetrics'
 
 // 引入服務
@@ -524,6 +525,7 @@ function App() {
         
         <ToastContainer />
         <DirectorMonitorHUD />
+        <VideoWallControlPanel />
       </div>
     </ErrorBoundary>
   )
