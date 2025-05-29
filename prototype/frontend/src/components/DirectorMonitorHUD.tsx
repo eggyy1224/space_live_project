@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useStore } from '../store';
-import { 
-  BGM_FILES, 
+import {
+  BGM_FILES,
   ALL_VIDEOS,
-  LIGHTING_PRESETS, 
+  LIGHTING_PRESETS,
   CAMERA_PRESETS,
   CAMERA_PRESET_DISPLAY_NAMES,
-  EFFECT_FILES 
+  EFFECT_FILES
 } from '../config/resources';
+import DynamicPlayRunner from './DynamicPlayRunner';
+import { DynamicTemplate, PlayPackage } from '../types/dynamic';
 
 const hudStyle = 'fixed top-2 right-2 bg-black/70 text-white text-xs p-2 rounded shadow z-50';
 
@@ -33,6 +35,8 @@ const DirectorMonitorHUD: React.FC = () => {
 
   const [expanded, setExpanded] = useState(true);
   const [selectedEffect, setSelectedEffect] = useState<string>(EFFECT_FILES[0]);
+  const [endpoint, setEndpoint] = useState('');
+  const [runnerData, setRunnerData] = useState<{ template: DynamicTemplate; playPackage: PlayPackage } | null>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -60,6 +64,18 @@ const DirectorMonitorHUD: React.FC = () => {
       triggerEffect();
       console.log('Manual effect triggered:', selectedEffect);
     }, 10);
+  };
+
+  const handleLoadRun = async () => {
+    try {
+      const res = await fetch(endpoint);
+      const data = await res.json();
+      if (data.template && data.playPackage) {
+        setRunnerData({ template: data.template as DynamicTemplate, playPackage: data.playPackage as PlayPackage });
+      }
+    } catch (e) {
+      console.error('Failed to load dynamic play', e);
+    }
   };
 
   const toggleRandomMode = () => {
@@ -237,9 +253,9 @@ const DirectorMonitorHUD: React.FC = () => {
               
               <div className="border-t border-white/30 pt-2">
                 <div className="font-bold mb-1">相機</div>
-                <select 
-                  value={cameraPreset ?? ''} 
-                  onChange={(e) => setRuntime({ cameraPreset: e.target.value })} 
+                <select
+                  value={cameraPreset ?? ''}
+                  onChange={(e) => setRuntime({ cameraPreset: e.target.value })}
                   className="bg-gray-800 text-white text-xs rounded w-full"
                 >
                   <option value="" disabled>選擇鏡位</option>
@@ -249,6 +265,28 @@ const DirectorMonitorHUD: React.FC = () => {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div className="border-t border-white/30 pt-2">
+                <div className="font-bold mb-1">Template Runner</div>
+                <div className="flex items-center space-x-1 mb-1">
+                  <input
+                    type="text"
+                    value={endpoint}
+                    onChange={(e) => setEndpoint(e.target.value)}
+                    placeholder="Endpoint URL"
+                    className="bg-gray-800 text-white text-xs rounded flex-1 px-1"
+                  />
+                  <button
+                    onClick={handleLoadRun}
+                    className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-xs"
+                  >
+                    Load &amp; Run
+                  </button>
+                </div>
+                {runnerData && (
+                  <DynamicPlayRunner template={runnerData.template} playPackage={runnerData.playPackage} />
+                )}
               </div>
             </>
           ) : (
