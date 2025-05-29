@@ -43,12 +43,23 @@ const DirectorMonitorHUD: React.FC = () => {
   }, []);
 
   const handlePlayEffect = () => {
-    // 設定要播放的音效檔案並觸發播放
+    console.log('Manual effect play requested:', selectedEffect);
+    
+    // 先清除之前的音效狀態，確保重新觸發
     setRuntime({ 
-      selectedEffect: selectedEffect,
-      sfxActive: true 
+      selectedEffect: null,
+      sfxActive: false 
     });
-    triggerEffect();
+    
+    // 使用 setTimeout 確保狀態更新後再設定新的音效
+    setTimeout(() => {
+      setRuntime({ 
+        selectedEffect: selectedEffect,
+        sfxActive: true 
+      });
+      triggerEffect();
+      console.log('Manual effect triggered:', selectedEffect);
+    }, 10);
   };
 
   const toggleRandomMode = () => {

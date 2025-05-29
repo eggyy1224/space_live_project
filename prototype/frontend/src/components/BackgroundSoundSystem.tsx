@@ -17,11 +17,14 @@ const BackgroundSoundSystem: React.FC = () => {
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const bgmSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const effectSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const manualEffectSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const bgmGainNodeRef = useRef<GainNode | null>(null);
+  const bgmPauseNodeRef = useRef<GainNode | null>(null);
   const effectGainNodeRef = useRef<GainNode | null>(null);
   const bgmAnalyserRef = useRef<AnalyserNode | null>(null);
   const bgmDataRef = useRef<Uint8Array | null>(null);
   const bgmRafRef = useRef<number | null>(null);
+  const isRandomEffectRef = useRef<boolean>(false);
 
   const bgmVolume = useStore((state) => state.bgmVolume);
   const effectVolume = useStore((state) => state.effectVolume);
@@ -76,13 +79,23 @@ const BackgroundSoundSystem: React.FC = () => {
         // 建立 BGM 的 GainNode
         const bgmGain = context.createGain();
         bgmGain.gain.value = bgmVolume; // 預設 BGM 音量
+        
+        // 建立 BGM 暫停控制節點
+        const bgmPauseGain = context.createGain();
+        bgmPauseGain.gain.value = 1; // 預設不暫停
+        
         const bgmAnalyser = context.createAnalyser();
         bgmAnalyser.fftSize = 256;
-        bgmGain.connect(bgmAnalyser);
+        
+        // BGM 音頻鏈：source -> bgmGain (音量控制) -> bgmPauseGain (暫停控制) -> analyser -> destination
+        bgmGain.connect(bgmPauseGain);
+        bgmPauseGain.connect(bgmAnalyser);
         bgmAnalyser.connect(context.destination);
+        
         bgmAnalyserRef.current = bgmAnalyser;
         bgmDataRef.current = new Uint8Array(bgmAnalyser.frequencyBinCount);
         bgmGainNodeRef.current = bgmGain;
+        bgmPauseNodeRef.current = bgmPauseGain;
 
         // 建立 Effect 的 GainNode
         const effectGain = context.createGain();
@@ -168,11 +181,26 @@ const BackgroundSoundSystem: React.FC = () => {
       return;
     }
 
+    // 使用音量控制實現 BGM 的暫停/播放，而不是操作 AudioContext 或停止 source
     if (bgmPlaying) {
-      audioContext.resume().catch(console.error);
+      console.log('BGM play requested, resuming...');
+      // 確保 AudioContext 正在運行
+      if (audioContext.state === 'suspended') {
+        audioContext.resume().catch(console.error);
+      }
+      // 取消暫停 BGM
+      if (bgmPauseNodeRef.current) {
+        bgmPauseNodeRef.current.gain.value = 1;
+        console.log('BGM pause node set to 1 (playing)');
+      }
       startBgmAnalysis();
     } else {
-      audioContext.suspend().catch(console.error);
+      console.log('BGM pause requested, muting pause node...');
+      // BGM 暫停時將暫停節點音量設為 0，但保持播放源和用戶音量控制不變
+      if (bgmPauseNodeRef.current) {
+        bgmPauseNodeRef.current.gain.value = 0;
+        console.log('BGM pause node set to 0 (paused)');
+      }
       stopBgmAnalysis();
     }
   }, [bgm, bgmPlaying, audioContext, isUserInteracted]);
@@ -200,24 +228,44 @@ const BackgroundSoundSystem: React.FC = () => {
   // 監聽 selectedEffect 變化，手動播放指定音效
   const selectedEffect = useStore((s) => s.selectedEffect);
   useEffect(() => {
-    if (!audioContext || !effectGainNodeRef.current || !isUserInteracted || !selectedEffect) return;
+    if (!audioContext || !effectGainNodeRef.current || !isUserInteracted || !selectedEffect) {
+      if (selectedEffect) {
+        console.log('Manual effect blocked - missing requirements:', {
+          audioContext: !!audioContext,
+          effectGainNode: !!effectGainNodeRef.current,
+          isUserInteracted,
+          selectedEffect
+        });
+      }
+      return;
+    }
+
+    console.log('Manual effect starting:', selectedEffect);
 
     const playSpecificEffect = async (effectFile: string) => {
       if (!audioContext || !effectGainNodeRef.current) return;
 
-      // 停止目前播放的音效 (如果有的話)
-      if (effectSourceRef.current) {
+      console.log('AudioContext state before effect play:', audioContext.state);
+      
+      if (audioContext.state === 'suspended') {
+        console.log('Resuming AudioContext for effect playback...');
+        await audioContext.resume();
+      }
+
+      // 停止目前播放的手動音效 (如果有的話)
+      if (manualEffectSourceRef.current) {
         try {
-          effectSourceRef.current.stop();
-          effectSourceRef.current.disconnect();
+          manualEffectSourceRef.current.stop();
+          manualEffectSourceRef.current.disconnect();
         } catch (e) {
           if ((e as DOMException).name !== 'InvalidStateError') {
-            console.error("Error stopping previous effect:", e);
+            console.error("Error stopping previous manual effect:", e);
           }
         }
       }
 
       try {
+        console.log('Loading manual effect:', effectFile);
         const response = await fetch(getEffectPath(effectFile));
         const arrayBuffer = await response.arrayBuffer();
         const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
@@ -226,11 +274,15 @@ const BackgroundSoundSystem: React.FC = () => {
         source.buffer = audioBuffer;
         source.connect(effectGainNodeRef.current);
         source.start();
-        effectSourceRef.current = source;
+        manualEffectSourceRef.current = source; // 使用 manualEffectSourceRef
+        // isRandomEffectRef.current = false; // 不再需要這個標記
 
-        // 音效播放完畢後重置狀態
+        console.log('Manual effect playing:', effectFile);
+
         source.onended = () => {
+          console.log('Manual effect ended:', effectFile);
           setRuntime({ sfxActive: false, selectedEffect: null });
+          manualEffectSourceRef.current = null;
         };
 
       } catch (error) {
@@ -249,28 +301,61 @@ const BackgroundSoundSystem: React.FC = () => {
   
   useEffect(() => {
     if (!audioContext || !effectGainNodeRef.current || !isUserInteracted) return;
+    
+    if (!randomMode) {
+      console.log('Random mode disabled, clearing random effect timers and stopping current random effect...');
+      if (randomEffectTimerRef.current) {
+        clearTimeout(randomEffectTimerRef.current);
+        randomEffectTimerRef.current = null;
+      }
+      
+      // 停止當前的隨機音效 (如果有的話)
+      if (effectSourceRef.current) {
+        console.log('Stopping current random effect due to random mode OFF...');
+        try {
+          effectSourceRef.current.stop();
+          effectSourceRef.current.disconnect();
+        } catch (e) {
+          if ((e as DOMException).name !== 'InvalidStateError') {
+            console.error("Error stopping random effect:", e);
+          }
+        }
+        effectSourceRef.current = null; // 清理 Ref
+        // sfxActive 狀態由 onended 或手動播放控制，這裡不直接改
+      }
+      return;
+    }
 
     const playRandomEffect = async () => {
-      if (!audioContext || !effectGainNodeRef.current) return;
+      console.log('playRandomEffect called, randomMode:', randomMode);
+      if (!audioContext || !effectGainNodeRef.current || !randomMode) {
+        console.log('Random effect blocked - randomMode:', randomMode, 'audioContext:', !!audioContext, 'effectGainNode:', !!effectGainNodeRef.current);
+        return;
+      }
       
-      // 停止目前播放的音效 (如果有的話)
+      console.log('Playing random effect...');
+      
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
+      
+      // 停止目前播放的隨機音效 (如果有的話)
       if (effectSourceRef.current) {
         try {
           effectSourceRef.current.stop();
           effectSourceRef.current.disconnect();
         } catch (e) {
           if ((e as DOMException).name !== 'InvalidStateError') {
-            console.error("Error stopping previous effect:", e);
+            console.error("Error stopping previous random effect:", e);
           }
         }
       }
 
-      // 隨機選擇一個音效檔案
       const randomIndex = Math.floor(Math.random() * EFFECT_FILES.length);
-      const selectedEffect = EFFECT_FILES[randomIndex];
+      const randomEffectFile = EFFECT_FILES[randomIndex]; // 改名以區分
 
       try {
-        const response = await fetch(getEffectPath(selectedEffect));
+        const response = await fetch(getEffectPath(randomEffectFile));
         const arrayBuffer = await response.arrayBuffer();
         const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
@@ -278,46 +363,64 @@ const BackgroundSoundSystem: React.FC = () => {
         source.buffer = audioBuffer;
         source.connect(effectGainNodeRef.current);
         source.start();
-        effectSourceRef.current = source;
+        effectSourceRef.current = source; // 隨機音效使用 effectSourceRef
         triggerEffect();
         setRuntime({ sfxActive: true });
 
-        // 音效播放完畢後重置狀態並安排下一個
         source.onended = () => {
           setRuntime({ sfxActive: false });
-          scheduleNextRandomEffect();
+          effectSourceRef.current = null;
+          if (randomMode) {
+            scheduleNextRandomEffect();
+          }
         };
 
       } catch (error) {
-        console.error(`Error loading random effect: ${selectedEffect}`, error);
-        scheduleNextRandomEffect();
+        console.error(`Error loading random effect: ${randomEffectFile}`, error);
+        if (randomMode) { // 即使載入失敗也嘗試安排下一個
+            scheduleNextRandomEffect();
+        }
       }
     };
 
     const scheduleNextRandomEffect = () => {
-      if (!randomMode) return; // 如果隨機模式關閉就不安排下一個
+      console.log('scheduleNextRandomEffect called, randomMode:', randomMode);
+      if (!randomMode) {
+        console.log('Random mode off, not scheduling next random effect');
+        return; 
+      }
       
       const randomInterval = Math.random() * 10000 + 5000; // 5-15秒間隔
+      console.log('Scheduling next random effect in', randomInterval / 1000, 'seconds');
       randomEffectTimerRef.current = setTimeout(playRandomEffect, randomInterval);
     };
 
-    if (randomMode) {
-      // 隨機模式開啟：開始隨機播放音效
-      scheduleNextRandomEffect();
-    } else {
-      // 隨機模式關閉：清除定時器
+    // 隨機模式開啟：開始隨機播放音效
+    console.log("Initial schedule for random effect in random mode useEffect")
+    scheduleNextRandomEffect();
+
+    return () => {
+      console.log("Cleaning up random effect useEffect for randomMode:", randomMode);
       if (randomEffectTimerRef.current) {
         clearTimeout(randomEffectTimerRef.current);
         randomEffectTimerRef.current = null;
       }
-    }
-
-    return () => {
-      if (randomEffectTimerRef.current) {
-        clearTimeout(randomEffectTimerRef.current);
+      //組件卸載或 randomMode 變為 false 時，確保停止正在播放的隨機音效
+      if (effectSourceRef.current) {
+         console.log('Stopping current random effect due to cleanup or randomMode change...');
+        try {
+          effectSourceRef.current.stop();
+          effectSourceRef.current.disconnect();
+        } catch (e) {
+          if ((e as DOMException).name !== 'InvalidStateError') {
+            console.error("Error stopping random effect in cleanup:", e);
+          }
+        }
+        effectSourceRef.current = null;
+        setRuntime({ sfxActive: false }); // 確保狀態同步
       }
     };
-  }, [randomMode, audioContext, isUserInteracted]);
+  }, [randomMode, audioContext, isUserInteracted, setRuntime, triggerEffect]); // 添加依賴項
 
   // 監聽隨機模式變化，動態開啟/關閉隨機 BGM 切換
   useEffect(() => {
