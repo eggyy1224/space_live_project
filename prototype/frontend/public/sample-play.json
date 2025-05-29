@@ -1,0 +1,25 @@
+{
+  "template": {
+    "template_name": "使用實際資源的範例表演",
+    "slots": [
+      { "slot_name": "bgm", "percentage": 0 },
+      { "slot_name": "video_intro", "percentage": 5 },
+      { "slot_name": "sfx_效果1", "percentage": 15 },
+      { "slot_name": "video_主要內容", "percentage": 20 },
+      { "slot_name": "sfx_效果2", "percentage": 80 },
+      { "slot_name": "video_結尾", "percentage": 85 }
+    ]
+  },
+  "playPackage": {
+    "play_name": "使用 resources.ts 的第一場表演",
+    "total_duration": 120,
+    "contents": {
+      "bgm": "/audio/BGM/hihi.mp3",
+      "video_intro": "/videos/太空直播中.mp4",
+      "sfx_效果1": "/audio/effects/taiwan_variety_sfx_01.mp3",
+      "video_主要內容": "/videos/太空熱舞.mp4",
+      "sfx_效果2": "/audio/effects/winds_blowing.mp3",
+      "video_結尾": "/videos/火箭發射.mp4"
+    }
+  }
+} 
