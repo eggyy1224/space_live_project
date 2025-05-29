@@ -126,79 +126,63 @@ const BackgroundSoundSystem: React.FC = () => {
     };
   }, [isUserInteracted]); // 當 isUserInteracted 改變時，此 useEffect 不會重新執行，我們只需要它執行一次
 
-  // 載入並播放 BGM
+  // 根據 runtime 狀態控制 BGM
+  const bgm = useStore((s) => s.bgm);
+  const bgmPlaying = useStore((s) => s.bgmPlaying);
+  const currentBgmRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (!audioContext || !bgmGainNodeRef.current || bgmFiles.length === 0 || !isUserInteracted) return;
+    if (!audioContext || !bgmGainNodeRef.current || !isUserInteracted) return;
 
-    let currentBgmIndex = -1; // 雖然 currentBgmIndex 在此處宣告了，但並未在新邏輯中用來防止重複播放。
-
-    const playBGM = async () => {
-      if (!audioContext || !bgmGainNodeRef.current) return;
-
-      // 停止目前播放的 BGM (如果有的話)
+    const stopCurrent = () => {
       if (bgmSourceRef.current) {
-        bgmSourceRef.current.onended = null; // 清除舊的 onended 處理器
         bgmSourceRef.current.stop();
         bgmSourceRef.current.disconnect();
+        bgmSourceRef.current = null;
       }
+      currentBgmRef.current = null;
+      stopBgmAnalysis();
+    };
 
-      // 隨機選擇一個 BGM 檔案
-      // 如果只有一首歌，則 randomIndex 永遠是 0
-      // 如果有多首歌，則隨機選擇
-      let randomIndex = Math.floor(Math.random() * bgmFiles.length);
-      
-      // 如果有多於一首歌，且新選的歌和上一首相同，則重新選擇，直到不同為止
-      // (這個邏輯可以確保下一首歌和當前歌曲不同，但如果歌曲列表只有一首歌，則無效)
-      if (bgmFiles.length > 1 && randomIndex === currentBgmIndex) {
-        randomIndex = (currentBgmIndex + 1 + Math.floor(Math.random() * (bgmFiles.length -1))) % bgmFiles.length;
-      }
-      currentBgmIndex = randomIndex;
-      const selectedBGM = bgmFiles[randomIndex];
-
+    const loadAndPlay = async (track: string) => {
+      stopCurrent();
       try {
-        const response = await fetch(`${BGM_PATH}${selectedBGM}`);
+        const response = await fetch(`${BGM_PATH}${track}`);
         const arrayBuffer = await response.arrayBuffer();
         const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-
         const source = audioContext.createBufferSource();
         source.buffer = audioBuffer;
-        source.loop = false; // 修改：不再循環播放單曲
-        source.connect(bgmGainNodeRef.current);
+        source.loop = true;
+        source.connect(bgmGainNodeRef.current as GainNode);
         source.start();
         bgmSourceRef.current = source;
         bgmStartRef.current = audioContext.currentTime;
-        setRuntime({ bgm: selectedBGM, bgmTime: 0 });
+        currentBgmRef.current = track;
+        setRuntime({ bgm: track, bgmTime: 0, bgmPlaying: true });
         startBgmAnalysis();
-
-        // 新增：當歌曲播放完畢時，再次呼叫 playBGM 以播放下一首
-        source.onended = () => {
-          if (audioContext && audioContext.state === 'running') {
-            setRuntime({ bgm: null });
-            playBGM();
-          }
-        };
-
-      } catch (error) {
-        console.error(`Error loading BGM: ${selectedBGM}`, error);
-        // 如果載入失敗，也可以嘗試在一段時間後播放下一首，避免立即重試相同的錯誤
-        if (audioContext && audioContext.state === 'running') {
-          setTimeout(() => playBGM(), 5000); // 5秒後重試
-        }
+      } catch (e) {
+        console.error('Error loading BGM', e);
       }
     };
 
-    playBGM();
+    if (!bgm) {
+      stopCurrent();
+      return;
+    }
 
-    return () => {
-      if (bgmSourceRef.current) {
-        bgmSourceRef.current.onended = null; // 清除 onended 處理器
-        bgmSourceRef.current.stop();
-        bgmSourceRef.current.disconnect();
-      }
+    if (currentBgmRef.current !== bgm) {
+      loadAndPlay(bgm);
+      return;
+    }
+
+    if (bgmPlaying) {
+      audioContext.resume().catch(console.error);
+      startBgmAnalysis();
+    } else {
+      audioContext.suspend().catch(console.error);
       stopBgmAnalysis();
-      setRuntime({ bgm: null });
-    };
-  }, [audioContext, isUserInteracted]); // 依賴 audioContext 和 isUserInteracted
+    }
+  }, [bgm, bgmPlaying, audioContext, isUserInteracted]);
 
   // 載入並隨機播放音效
   useEffect(() => {

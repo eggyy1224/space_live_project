@@ -47,6 +47,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // 從 store 獲取音量強度
   const bgmIntensity = useStore((state) => state.bgmIntensity);
   const setRuntime = useStore((s) => s.setRuntime);
+  const runtimeVideoId = useStore((s) => s.videoId);
+  const runtimeVisible = useStore((s) => s.videoVisible);
 
   const height = useMemo(() => (width * 3) / 2, [width]);
 
@@ -97,6 +99,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       texture.needsUpdate = true;
     }
   });
+
+  // Follow runtime state
+  useEffect(() => {
+    if (!runtimeVisible && videoRef.current) {
+      videoRef.current.pause();
+    }
+    if (runtimeVideoId) {
+      const idx = playlist.indexOf(runtimeVideoId);
+      if (idx >= 0) setIndex(idx);
+    }
+  }, [runtimeVisible, runtimeVideoId]);
 
   useEffect(() => {
     if (!playlist || playlist.length === 0) {
@@ -207,7 +220,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const currentPlaybackRate = calculatePlaybackRate(bgmIntensity);
 
   return (
-    <group position={position}>
+    <group position={position} visible={runtimeVisible}>
       <mesh 
         onClick={handlePlay}
         onPointerEnter={handleMouseEnter}

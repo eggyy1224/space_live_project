@@ -2,6 +2,7 @@ import { StateCreator } from 'zustand';
 
 export interface RuntimeSlice {
   bgm: string | null;
+  bgmPlaying: boolean;
   bgmTime: number;
   sfxActive: boolean;
   videoId: string | null;
@@ -15,6 +16,7 @@ export interface RuntimeSlice {
 
 export const createRuntimeSlice: StateCreator<RuntimeSlice> = (set) => ({
   bgm: null,
+  bgmPlaying: false,
   bgmTime: 0,
   sfxActive: false,
   videoId: null,
