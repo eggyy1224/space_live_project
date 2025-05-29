@@ -12,7 +12,7 @@ export function useCameraManager(
   presets: CameraPreset[] = [],
   initial?: string,
 ): CameraManager {
-  const managerRef = useRef<CameraManager>();
+  const managerRef = useRef<CameraManager | null>(null);
   if (!managerRef.current) {
     managerRef.current = new CameraManager(camera, presets);
     if (initial) {

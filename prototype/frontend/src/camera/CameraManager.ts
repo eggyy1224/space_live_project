@@ -39,12 +39,16 @@ export class CameraManager {
   /** Add or replace a camera preset. */
   addPreset(preset: CameraPreset) {
     // Normalize to Vector3 for internal use.
-    preset = {
+    const normalizedPreset: CameraPreset = {
       ...preset,
-      position: new THREE.Vector3().fromArray(preset.position as number[]),
-      target: new THREE.Vector3().fromArray(preset.target as number[]),
+      position: Array.isArray(preset.position) 
+        ? new THREE.Vector3(preset.position[0], preset.position[1], preset.position[2])
+        : preset.position,
+      target: Array.isArray(preset.target)
+        ? new THREE.Vector3(preset.target[0], preset.target[1], preset.target[2])
+        : preset.target,
     };
-    this.presets.set(preset.name, preset);
+    this.presets.set(normalizedPreset.name, normalizedPreset);
   }
 
   /** Remove a preset by name. */
@@ -86,11 +90,18 @@ export class CameraManager {
       this.elapsed += delta;
       const t = Math.min(this.elapsed / this.duration, 1);
       const eased = easeInOutQuad(t);
-      this.camera.position.lerpVectors(this.from.position, this.to.position, eased);
+      
+      // Ensure position and target are Vector3
+      const fromPos = this.from.position instanceof THREE.Vector3 ? this.from.position : new THREE.Vector3().fromArray(this.from.position);
+      const toPos = this.to.position instanceof THREE.Vector3 ? this.to.position : new THREE.Vector3().fromArray(this.to.position);
+      const fromTarget = this.from.target instanceof THREE.Vector3 ? this.from.target : new THREE.Vector3().fromArray(this.from.target);
+      const toTarget = this.to.target instanceof THREE.Vector3 ? this.to.target : new THREE.Vector3().fromArray(this.to.target);
+      
+      this.camera.position.lerpVectors(fromPos, toPos, eased);
       this.camera.fov = THREE.MathUtils.lerp(this.from.fov, this.to.fov, eased);
       this.camera.updateProjectionMatrix();
 
-      const look = new THREE.Vector3().lerpVectors(this.from.target, this.to.target, eased);
+      const look = new THREE.Vector3().lerpVectors(fromTarget, toTarget, eased);
       this.camera.lookAt(look);
 
       if (t === 1) {

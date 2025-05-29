@@ -8,6 +8,7 @@ import { useStore } from '../store';
 import * as THREE from 'three';
 import { useCameraManager, CameraPreset } from '../camera';
 import { applyLightingPreset } from '../lighting/lightingRig';
+import { CAMERA_PRESETS } from '../config/resources';
 
 interface SceneContainerProps {
   headModelUrl: string;
@@ -88,36 +89,16 @@ const SceneContent: React.FC<SceneContainerProps> = ({
 }) => {
   const { camera } = useThree();
   
-  const cameraPresets: CameraPreset[] = [
-    { name: 'overview', position: [0, 20, 100], target: [0, 0, 0], fov: 50 },
-    { name: 'head_close_up', position: [0, -3, 8], target: [0, -5, 0], fov: 40 }, // Y target 調整為 -5
-    { name: 'dance_circle_view', position: [0, 50, 80], target: [0, -25, 0], fov: 60 },
-    { name: 'side_view', position: [-80, 10, 0], target: [0, -10, 0], fov: 55 },
-    { name: 'low_angle_head', position: [0, -7, 7], target: [0, -5, 0], fov: 45 }, // Y target 調整為 -5, position 微調
-    // 新增鏡位
-    { name: 'center_orbit_high_1', position: [15, 10, 15], target: [0, 0, 0], fov: 50 },
-    { name: 'center_orbit_high_2', position: [-15, 10, 15], target: [0, 0, 0], fov: 50 },
-    { name: 'center_orbit_low_1', position: [10, -2, 10], target: [0, 0, 0], fov: 45 },
-    { name: 'center_orbit_low_2', position: [-10, -2, -10], target: [0, 0, 0], fov: 45 },
-    { name: 'top_down_center', position: [0, 25, 0.1], target: [0, 0, 0], fov: 50 }, // 0.1 Z to avoid gimbal lock issues with lookAt if exactly on axis
-    { name: 'dramatic_angle_1', position: [20, -5, -20], target: [0, -2, 0], fov: 60 },
-    { name: 'dramatic_angle_2', position: [-20, 5, 20], target: [0, 0, 0], fov: 60 },
-    { name: 'behind_head_looking_out', position: [0, -3, -5], target: [0, -3, 20], fov: 50 }, // 假設頭部在 [0,-5,0]
-    { name: 'fly_by_left', position: [-50, 0, 10], target: [50, 0, 0], fov: 70 },
-    { name: 'fly_by_right', position: [50, 0, 10], target: [-50, 0, 0], fov: 70 },
-    { name: 'frontal_dynamic_low', position: [0, -10, 30], target: [0, 0, 0], fov: 50},
-    { name: 'frontal_dynamic_high', position: [0, 15, 25], target: [0, 0, 0], fov: 45},
-    { name: 'orbit_head_1', position: [10, -5, 3], target: [0, -5, 0], fov: 40},
-    { name: 'orbit_head_2', position: [-10, -5, 3], target: [0, -5, 0], fov: 40},
-    { name: 'full_shot_dancers', position: [0, 10, 120], target: [0, -20, 0], fov: 55},
-  ];
-
-  const cameraManager = useCameraManager(camera as THREE.PerspectiveCamera, cameraPresets, 'overview');
+  const cameraManager = useCameraManager(camera as THREE.PerspectiveCamera, CAMERA_PRESETS, 'overview');
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const randomMode = useStore((s) => s.randomMode); // 新增：監聽隨機模式狀態
 
   useEffect(() => {
     const switchView = () => {
-      const presetNames = cameraPresets.map(p => p.name);
+      // 只在隨機模式開啟時才自動切換相機
+      if (!randomMode) return;
+      
+      const presetNames = CAMERA_PRESETS.map(p => p.name);
       const randomPresetName = presetNames[Math.floor(Math.random() * presetNames.length)];
       cameraManager.transitionTo(randomPresetName, 2.5); // 2.5 秒轉場
 
@@ -127,14 +108,18 @@ const SceneContent: React.FC<SceneContainerProps> = ({
       timerRef.current = setTimeout(switchView, randomInterval);
     };
 
-    // 初始延遲後開始第一次切換
-    const initialDelay = setTimeout(switchView, 5000); // 5秒後第一次切換
-
-    return () => {
+    if (randomMode) {
+      // 隨機模式開啟時，初始延遲後開始第一次切換
+      const initialDelay = setTimeout(switchView, 5000); // 5秒後第一次切換
+      return () => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+        clearTimeout(initialDelay);
+      };
+    } else {
+      // 隨機模式關閉時，清除所有定時器
       if (timerRef.current) clearTimeout(timerRef.current);
-      clearTimeout(initialDelay);
-    };
-  }, [cameraManager, cameraPresets]);
+    }
+  }, [cameraManager, randomMode]); // 新增 randomMode 依賴
 
 
   return (

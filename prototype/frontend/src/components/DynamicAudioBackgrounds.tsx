@@ -1,113 +1,13 @@
 import React from 'react';
 import SpeechBackground from './SpeechBackground';
+import VideoPlayer from './VideoPlayer';
 import MusicBackground from './MusicBackground';
 import EffectBackground from './EffectBackground';
 import P5SpaceEffect from './P5SpaceEffect';
-import VideoPlayer from './VideoPlayer';
+import { DANCE_VIDEOS, LIFESTYLE_VIDEOS, SPACE_EFFECT_VIDEOS, createMixedPlaylist } from '../config/resources';
 
-// 將影片分類，讓不同螢幕播放不同類型的內容
-const DANCE_VIDEOS = [
-  '/videos/太空熱舞3.mp4',
-  '/videos/太空熱舞2.mp4',
-  '/videos/太空熱舞.mp4',
-  '/videos/太空辣妹跳舞.mp4',
-  '/videos/太空走秀.mp4',
-  '/videos/太空走秀2.mp4'
-];
+// ==================== 螢幕配置 ====================
 
-const LIFESTYLE_VIDEOS = [
-  '/videos/太空瑜伽3.mp4',
-  '/videos/太空瑜伽2.mp4',
-  '/videos/太空瑜伽.mp4',
-  '/videos/太空直播中.mp4',
-  '/videos/太空泡水.mp4',
-  '/videos/太空化妝.mp4',
-  '/videos/太空打卡.mp4',
-  '/videos/太空打卡2.mp4',
-  '/videos/daily_life_1.mp4'
-];
-
-const SPACE_EFFECT_VIDEOS = [
-  '/videos/火箭發射.mp4',
-  '/videos/星際小可愛.mp4',
-  '/videos/星際小籠包.mp4',
-  '/videos/星際聽音樂.mp4',
-  '/videos/黑洞.mp4',
-  '/videos/模擬星雲圖.mp4',
-  '/videos/太空巨乳.mp4',
-  '/videos/太空史萊姆.mp4',
-  '/videos/space_live_video_1.mp4',
-  '/videos/space_live.mp4'
-];
-
-// 隨機打亂陣列的函數
-const shuffleArray = (array: string[]) => {
-  const shuffled = [...array];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
-};
-
-// 混合不同類型影片的函數
-const createMixedPlaylist = (categories: string[][], weights: number[]) => {
-  const mixed: string[] = [];
-  const shuffledCategories = categories.map(cat => shuffleArray(cat));
-  
-  // 根據權重比例混合影片
-  const totalWeight = weights.reduce((sum, w) => sum + w, 0);
-  const targetLength = Math.max(...shuffledCategories.map(cat => cat.length)) * 2;
-  
-  for (let i = 0; i < targetLength; i++) {
-    const randomValue = Math.random() * totalWeight;
-    let currentWeight = 0;
-    let videoAdded = false;
-    
-    for (let j = 0; j < categories.length; j++) {
-      currentWeight += weights[j];
-      if (randomValue <= currentWeight && shuffledCategories[j].length > 0) {
-        const video = shuffledCategories[j].shift();
-        if (video) {
-          mixed.push(video);
-          videoAdded = true;
-          // 如果該類別用完了，重新打亂並補充
-          if (shuffledCategories[j].length === 0) {
-            shuffledCategories[j] = shuffleArray(categories[j]);
-          }
-        }
-        break;
-      }
-    }
-    
-    // 如果沒有成功加入影片，從第一個有影片的類別中取一個
-    if (!videoAdded) {
-      for (let j = 0; j < shuffledCategories.length; j++) {
-        if (shuffledCategories[j].length > 0) {
-          const video = shuffledCategories[j].shift();
-          if (video) {
-            mixed.push(video);
-            if (shuffledCategories[j].length === 0) {
-              shuffledCategories[j] = shuffleArray(categories[j]);
-            }
-            break;
-          }
-        }
-      }
-    }
-  }
-  
-  // 確保至少有一些影片
-  if (mixed.length === 0) {
-    // 如果混合失敗，直接使用第一個類別的所有影片
-    mixed.push(...shuffleArray(categories[0]));
-  }
-  
-  console.log('Generated playlist:', mixed.slice(0, 5)); // 只顯示前5個
-  return mixed;
-};
-
-// Define configurations for multiple screens with different logic
 interface ScreenConfig {
   id: string;
   position: [number, number, number];

@@ -15,7 +15,7 @@ export function usePerformanceMetrics() {
       lastFrame.current = now;
       const cpu = delta;
       if (now - lastFpsUpdate.current >= 1000) {
-        setRuntime({ fps: frames.current, cpu, gpu: 0 });
+        setRuntime({ fps: frames.current, cpu });
         frames.current = 0;
         lastFpsUpdate.current = now;
       }
