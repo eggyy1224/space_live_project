@@ -11,6 +11,7 @@ export interface RuntimeSlice {
   randomMode: boolean;
   fps: number;
   cpu: number;
+  events: { slotName: string; startedAtMs: number }[];
   videoScreens: {
     id: string;
     currentVideo: string;
@@ -21,6 +22,7 @@ export interface RuntimeSlice {
     partial: Partial<{ id: string; currentVideo: string; visible: boolean }>
   ) => void;
   setRuntime: (partial: Partial<RuntimeSlice>) => void;
+  addEvent: (event: { slotName: string; startedAtMs: number }) => void;
 }
 
 export const createRuntimeSlice: StateCreator<RuntimeSlice> = (set) => ({
@@ -34,6 +36,7 @@ export const createRuntimeSlice: StateCreator<RuntimeSlice> = (set) => ({
   randomMode: true,
   fps: 0,
   cpu: 0,
+  events: [],
   videoScreens: [
     { id: 'screen1', currentVideo: '', visible: false },
     { id: 'screen2', currentVideo: '', visible: false },
@@ -46,4 +49,6 @@ export const createRuntimeSlice: StateCreator<RuntimeSlice> = (set) => ({
       ),
     })),
   setRuntime: (partial) => set(partial),
+  addEvent: (event) =>
+    set((state) => ({ events: [...state.events, event] })),
 });
