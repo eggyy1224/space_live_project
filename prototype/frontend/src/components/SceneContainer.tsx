@@ -163,7 +163,7 @@ const SceneContent: React.FC<SceneContainerProps> = ({
                 scale={8} 
                 enableFloating={false} 
                 forceCircular={true}
-                circleRadius={60}
+                circleRadius={180}
               />
             </group>
           );
