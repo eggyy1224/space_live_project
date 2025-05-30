@@ -11,6 +11,11 @@ export interface RuntimeSlice {
   randomMode: boolean;
   fps: number;
   cpu: number;
+  videoPlaying: boolean;
+  videoVolume: number;
+  videoCurrentTime: number;
+  videoDuration: number;
+  videoPlaybackRate: number;
   videoScreens: {
     id: string;
     currentVideo: string;
@@ -34,6 +39,11 @@ export const createRuntimeSlice: StateCreator<RuntimeSlice> = (set) => ({
   randomMode: true,
   fps: 0,
   cpu: 0,
+  videoPlaying: false,
+  videoVolume: 1,
+  videoCurrentTime: 0,
+  videoDuration: 0,
+  videoPlaybackRate: 1,
   videoScreens: [
     { id: 'screen1', currentVideo: '', visible: false },
     { id: 'screen2', currentVideo: '', visible: false },

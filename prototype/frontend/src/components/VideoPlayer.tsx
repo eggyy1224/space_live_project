@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { useThree, useFrame } from '@react-three/fiber';
-import { Html } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useStore } from '../store';
 
@@ -43,8 +42,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     return playlist && playlist.length > 0 ? initialVideoIndex % playlist.length : 0;
   });
   const [autoplayFailed, setAutoplayFailed] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
-  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // 從 store 獲取音量強度
   const bgmIntensity = useStore((state) => state.bgmIntensity);
@@ -52,6 +49,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     s.videoScreens.find((v) => v.id === screenId)
   );
   const setVideoScreen = useStore((s) => s.setVideoScreen);
+  const videoPlaying = useStore((s) => s.videoPlaying);
+  const videoVolume = useStore((s) => s.videoVolume);
+  const videoCurrentTime = useStore((s) => s.videoCurrentTime);
+  const videoPlaybackRateStore = useStore((s) => s.videoPlaybackRate);
+  const setRuntime = useStore((s) => s.setRuntime);
 
   const height = useMemo(() => (width * 3) / 2, [width]);
 
@@ -81,21 +83,33 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   }, [bgmIntensity]);
 
-  const handleMouseEnter = () => {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
+  useEffect(() => {
+    if (!videoRef.current) return;
+    if (videoPlaying) {
+      videoRef.current.play().catch(() => {});
+    } else {
+      videoRef.current.pause();
     }
-    setIsHovered(true);
-  };
+  }, [videoPlaying]);
 
-  const handleMouseLeave = () => {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.volume = videoVolume;
     }
-    hoverTimeoutRef.current = setTimeout(() => {
-      setIsHovered(false);
-    }, 800);
-  };
+  }, [videoVolume]);
+
+  useEffect(() => {
+    if (videoRef.current && Math.abs(videoRef.current.currentTime - videoCurrentTime) > 0.3) {
+      videoRef.current.currentTime = videoCurrentTime;
+    }
+  }, [videoCurrentTime]);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.playbackRate = videoPlaybackRateStore;
+    }
+  }, [videoPlaybackRateStore]);
+
 
   useFrame(() => {
     if (texture && videoRef.current && !videoRef.current.paused) {
@@ -142,6 +156,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       videoTexture.generateMipmaps = false;
       videoTexture.colorSpace = THREE.SRGBColorSpace;
       setTexture(videoTexture);
+      setRuntime({ videoDuration: video.duration, videoCurrentTime: 0 });
       
       // 設定初始播放速度
       const initialPlaybackRate = calculatePlaybackRate(bgmIntensity);
@@ -155,6 +170,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       
       video.play().then(() => {
         console.log('VideoPlayer: Video started playing');
+        setRuntime({ videoPlaying: true });
       }).catch((error) => {
         console.log('VideoPlayer: Autoplay failed', error);
         setAutoplayFailed(true);
@@ -166,6 +182,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         setIndex((prevIndex) => (prevIndex + 1) % playlist.length);
       }, 2000);
     };
+
+    const onTimeUpdate = () => {
+      setRuntime({ videoCurrentTime: video.currentTime });
+    };
     
     const onError = (error: Event) => {
       console.error('VideoPlayer: Video load error for', video.src, error);
@@ -174,12 +194,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     video.addEventListener('loadedmetadata', onLoadedMetadata);
     video.addEventListener('ended', onVideoEnded);
     video.addEventListener('error', onError);
+    video.addEventListener('timeupdate', onTimeUpdate);
     video.load();
 
     return () => {
       video.removeEventListener('loadedmetadata', onLoadedMetadata);
       video.removeEventListener('ended', onVideoEnded);
       video.removeEventListener('error', onError);
+      video.removeEventListener('timeupdate', onTimeUpdate);
       video.pause();
       video.src = '';
       if (videoRef.current === video) {
@@ -198,26 +220,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       const currentPlaybackRate = calculatePlaybackRate(bgmIntensity);
       videoRef.current.playbackRate = currentPlaybackRate;
       videoRef.current.play();
+      setRuntime({ videoPlaying: true });
       setAutoplayFailed(false);
     }
   };
   
-  const handlePause = () => videoRef.current?.pause();
-  
-  const handleRestart = () => {
-    if (videoRef.current) {
-      videoRef.current.currentTime = 0;
-      const currentPlaybackRate = calculatePlaybackRate(bgmIntensity);
-      videoRef.current.playbackRate = currentPlaybackRate;
-      videoRef.current.play();
-    }
-  };
-  
-  const handleVolume = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (videoRef.current) {
-      videoRef.current.volume = parseFloat(e.target.value);
-    }
-  };
 
   if (!texture || !playlist || playlist.length === 0) {
     return null;
@@ -227,11 +234,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   return (
     <group position={position} visible={screenState?.visible}>
-      <mesh 
-        onClick={handlePlay}
-        onPointerEnter={handleMouseEnter}
-        onPointerLeave={handleMouseLeave}
-      >
+      <mesh onClick={handlePlay}>
         <planeGeometry args={[width, height]} />
         <meshBasicMaterial 
           map={texture}
@@ -239,163 +242,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           side={THREE.DoubleSide}
         />
       </mesh>
-      <mesh
-        position={[0, 0, 0.2]}
-        onPointerEnter={handleMouseEnter}
-        onPointerLeave={handleMouseLeave}
-        visible={false}
-      >
+      <mesh position={[0, 0, 0.2]} visible={false}>
         <planeGeometry args={[width, height * 0.6]} />
         <meshBasicMaterial transparent opacity={0} />
       </mesh>
-      <Html position={[0, 0, 0.1]} center>
-        <div 
-          style={{ 
-            display: 'flex',
-            gap: '0.75rem',
-            background: 'rgba(0, 0, 0, 0.7)',
-            padding: '0.75rem 1rem',
-            borderRadius: '8px',
-            opacity: isHovered ? 1 : 0,
-            transition: 'opacity 0.3s ease',
-            pointerEvents: isHovered ? 'auto' : 'none',
-            backdropFilter: 'blur(10px)',
-            alignItems: 'center',
-            flexDirection: 'column'
-          }}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
-        >
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-            <button 
-              onClick={handlePlay}
-              style={{
-                padding: '0.4rem 0.8rem',
-                background: 'rgba(255, 255, 255, 0.1)',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                borderRadius: '4px',
-                color: 'white',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                fontSize: '0.9rem'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
-                e.currentTarget.style.transform = 'scale(1.05)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                e.currentTarget.style.transform = 'scale(1)';
-              }}
-            >
-              ▶️
-            </button>
-            <button 
-              onClick={handlePause}
-              style={{
-                padding: '0.4rem 0.8rem',
-                background: 'rgba(255, 255, 255, 0.1)',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                borderRadius: '4px',
-                color: 'white',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                fontSize: '0.9rem'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
-                e.currentTarget.style.transform = 'scale(1.05)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                e.currentTarget.style.transform = 'scale(1)';
-              }}
-            >
-              ⏸️
-            </button>
-            <button 
-              onClick={handleRestart}
-              style={{
-                padding: '0.4rem 0.8rem',
-                background: 'rgba(255, 255, 255, 0.1)',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                borderRadius: '4px',
-                color: 'white',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                fontSize: '0.9rem'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
-                e.currentTarget.style.transform = 'scale(1.05)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                e.currentTarget.style.transform = 'scale(1)';
-              }}
-            >
-              🔄
-            </button>
-            <div style={{ width: '1px', height: '20px', background: 'rgba(255, 255, 255, 0.3)' }} />
-            <span style={{ color: 'white', fontSize: '0.9rem' }}>🔊</span>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              defaultValue="0"
-              onChange={handleVolume}
-              style={{
-                width: '80px',
-                cursor: 'pointer',
-                height: '4px'
-              }}
-            />
-          </div>
-          
-          {/* 顯示當前播放速度和音量強度 */}
-          <div style={{ 
-            display: 'flex', 
-            gap: '1rem', 
-            fontSize: '0.8rem', 
-            color: 'rgba(255, 255, 255, 0.8)',
-            marginTop: '0.5rem',
-            flexDirection: 'column',
-            alignItems: 'center'
-          }}>
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <span style={{ 
-                color: currentPlaybackRate < 0.5 ? '#ff6b6b' : 
-                       currentPlaybackRate > 2.0 ? '#4ecdc4' : '#ffd93d',
-                fontWeight: 'bold'
-              }}>
-                速度: {currentPlaybackRate.toFixed(1)}x
-              </span>
-              <span>音量: {(bgmIntensity * 100).toFixed(0)}%</span>
-            </div>
-            <div style={{ 
-              fontSize: '0.7rem', 
-              color: 'rgba(255, 255, 255, 0.6)',
-              textAlign: 'center'
-            }}>
-              {currentPlaybackRate <= 0.5 ? '🐌 慢動作' : 
-               currentPlaybackRate <= 1.0 ? '🚶 正常' :
-               currentPlaybackRate <= 1.5 ? '🏃 快速' :
-               currentPlaybackRate <= 2.0 ? '🚀 高速' : '⚡ 超高速'}
-              <br />
-              <span style={{ fontSize: '0.6rem', opacity: 0.7 }}>
-                範圍: {speedRange?.min || 0.3}x - {speedRange?.max || 1.5}x
-              </span>
-            </div>
-          </div>
-          
-          {autoplayFailed && (
-            <div style={{ color: 'white', fontSize: '0.8rem', marginTop: '0.5rem' }}>
-              Click to play
-            </div>
-          )}
-        </div>
-      </Html>
     </group>
   );
 };

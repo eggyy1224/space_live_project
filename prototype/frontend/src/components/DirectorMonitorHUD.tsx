@@ -30,6 +30,11 @@ const DirectorMonitorHUD: React.FC = () => {
   const cpu = useStore((s) => s.cpu);
   const videoScreens = useStore((s) => s.videoScreens);
   const setVideoScreen = useStore((s) => s.setVideoScreen);
+  const videoPlaying = useStore((s) => s.videoPlaying);
+  const videoVolume = useStore((s) => s.videoVolume);
+  const videoCurrentTime = useStore((s) => s.videoCurrentTime);
+  const videoDuration = useStore((s) => s.videoDuration);
+  const videoPlaybackRate = useStore((s) => s.videoPlaybackRate);
 
   const [expanded, setExpanded] = useState(true);
   const [selectedEffect, setSelectedEffect] = useState<string>(EFFECT_FILES[0]);
@@ -77,6 +82,14 @@ const DirectorMonitorHUD: React.FC = () => {
     }
   };
 
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  };
+
   if (import.meta.env.VITE_DIRECTOR !== 'true') return null;
 
   return (
@@ -105,10 +118,62 @@ const DirectorMonitorHUD: React.FC = () => {
       <div>camera: {cameraPreset ?? '-'}</div>
       <div>fps: {fps}</div>
       <div>cpu: {cpu.toFixed(2)}</div>
+      <div>
+        video: {videoPlaying ? '▶' : '⏸'} {videoCurrentTime.toFixed(1)}/{
+        videoDuration.toFixed(1)}
+      </div>
       {expanded && (
         <div className="mt-2 space-y-2">
           {!randomMode ? (
             <>
+              <div className="border-t border-white/30 pt-2">
+                <div className="font-bold mb-1">影片播放</div>
+                <div className="flex items-center space-x-1 mb-1">
+                  <button
+                    onClick={() => setRuntime({ videoPlaying: !videoPlaying })}
+                    className="px-1 bg-gray-600 hover:bg-gray-500 rounded text-xs"
+                  >
+                    {videoPlaying ? '⏸' : '▶'}
+                  </button>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={videoDuration ? (videoCurrentTime / videoDuration) * 100 : 0}
+                    onChange={(e) =>
+                      setRuntime({ videoCurrentTime: (Number(e.target.value) / 100) * videoDuration })
+                    }
+                    className="flex-1 h-1"
+                  />
+                </div>
+                <div className="text-xs text-gray-300 mb-1">音量: {Math.round(videoVolume * 100)}%</div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={videoVolume * 100}
+                  onChange={(e) => setRuntime({ videoVolume: Number(e.target.value) / 100 })}
+                  className="w-full h-1"
+                />
+                <div className="flex items-center mt-1 space-x-1">
+                  <span className="text-xs">速度 {videoPlaybackRate.toFixed(1)}x</span>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="2"
+                    step="0.1"
+                    value={videoPlaybackRate}
+                    onChange={(e) => setRuntime({ videoPlaybackRate: Number(e.target.value) })}
+                    className="flex-1 h-1"
+                  />
+                </div>
+                <button
+                  onClick={toggleFullscreen}
+                  className="mt-1 px-1 py-0.5 bg-gray-600 hover:bg-gray-500 rounded text-xs w-full"
+                >
+                  全螢幕
+                </button>
+              </div>
               <div className="border-t border-white/30 pt-2">
                 <div className="font-bold mb-1">BGM</div>
                 <div className="flex items-center space-x-1 mb-1">
