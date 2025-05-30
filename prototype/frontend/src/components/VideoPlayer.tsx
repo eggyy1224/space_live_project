@@ -10,7 +10,6 @@ import { useStore } from '../store';
  * - Automatically cycles through the playlist with a 5s delay between items.
  * - If autoplay is blocked, user must click the screen once to start playback.
  * - Basic controls (play, pause, restart, volume) are exposed via on-screen HTML controls.
- * - Playback speed is controlled by BGM intensity: higher volume = slower playback
  *
  * This component is designed to be lightweight. For performance, keep video
  * resolutions modest (720p or lower). Videos are preloaded and reused via a
@@ -43,73 +42,50 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   });
   const [autoplayFailed, setAutoplayFailed] = useState(false);
 
-  // 從 store 獲取音量強度
-  const bgmIntensity = useStore((state) => state.bgmIntensity);
   const screenState = useStore((s) =>
     s.videoScreens.find((v) => v.id === screenId)
   );
   const setVideoScreen = useStore((s) => s.setVideoScreen);
-  const videoPlaying = useStore((s) => s.videoPlaying);
-  const videoVolume = useStore((s) => s.videoVolume);
-  const videoCurrentTime = useStore((s) => s.videoCurrentTime);
-  const videoPlaybackRateStore = useStore((s) => s.videoPlaybackRate);
-  const setRuntime = useStore((s) => s.setRuntime);
 
   const height = useMemo(() => (width * 3) / 2, [width]);
 
-  // 計算播放速度：音量大時播放慢，音量小時播放快
-  const calculatePlaybackRate = (intensity: number) => {
-    // intensity 通常在 0-1 之間
-    // 使用傳入的速度範圍，如果沒有則使用預設值
-    const defaultSpeedRange = { min: 0.3, max: 1.5 };
-    const currentSpeedRange = speedRange || defaultSpeedRange;
-    
-    const minSpeed = currentSpeedRange.min;
-    const maxSpeed = currentSpeedRange.max;
-    
-    // 反向映射：intensity 越大，速度越慢
-    const normalizedIntensity = Math.min(Math.max(intensity, 0), 1);
-    const speed = maxSpeed - (normalizedIntensity * (maxSpeed - minSpeed));
-    
-    // 加入一些平滑處理，避免速度變化太突兀
-    return Math.round(speed * 10) / 10; // 四捨五入到小數點後一位
-  };
-
-  // 監聽音量變化並調整播放速度
+  // 監聽螢幕播放狀態變化
   useEffect(() => {
-    if (videoRef.current && !videoRef.current.paused) {
-      const newPlaybackRate = calculatePlaybackRate(bgmIntensity);
-      videoRef.current.playbackRate = newPlaybackRate;
-    }
-  }, [bgmIntensity]);
-
-  useEffect(() => {
-    if (!videoRef.current) return;
-    if (videoPlaying) {
-      videoRef.current.play().catch(() => {});
+    if (!videoRef.current || !screenState) return;
+    
+    if (screenState.playing) {
+      videoRef.current.play().catch((error) => {
+        console.log('VideoPlayer: Play failed', error);
+        setVideoScreen(screenId, { playing: false });
+      });
     } else {
       videoRef.current.pause();
     }
-  }, [videoPlaying]);
+  }, [screenState?.playing, screenId, setVideoScreen]);
 
+  // 監聽螢幕音量變化
   useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.volume = videoVolume;
+    if (videoRef.current && screenState) {
+      videoRef.current.volume = screenState.volume;
+      console.log(`VideoPlayer ${screenId}: Volume set to ${screenState.volume}`);
     }
-  }, [videoVolume]);
+  }, [screenState?.volume, screenId]);
 
+  // 監聽螢幕時間跳轉
   useEffect(() => {
-    if (videoRef.current && Math.abs(videoRef.current.currentTime - videoCurrentTime) > 0.3) {
-      videoRef.current.currentTime = videoCurrentTime;
+    if (videoRef.current && screenState && Math.abs(videoRef.current.currentTime - screenState.currentTime) > 1.0) {
+      videoRef.current.currentTime = screenState.currentTime;
+      console.log(`VideoPlayer ${screenId}: Time jumped to ${screenState.currentTime}`);
     }
-  }, [videoCurrentTime]);
+  }, [screenState?.currentTime, screenId]);
 
+  // 監聽螢幕播放速度變化
   useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.playbackRate = videoPlaybackRateStore;
+    if (videoRef.current && screenState) {
+      videoRef.current.playbackRate = screenState.playbackRate;
+      console.log(`VideoPlayer ${screenId}: Playback rate set to ${screenState.playbackRate}`);
     }
-  }, [videoPlaybackRateStore]);
-
+  }, [screenState?.playbackRate, screenId]);
 
   useFrame(() => {
     if (texture && videoRef.current && !videoRef.current.paused) {
@@ -121,12 +97,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   useEffect(() => {
     if (!screenState?.visible && videoRef.current) {
       videoRef.current.pause();
+      setVideoScreen(screenId, { playing: false });
     }
     if (screenState?.currentVideo) {
       const idx = playlist.indexOf(screenState.currentVideo);
       if (idx >= 0) setIndex(idx);
     }
-  }, [screenState?.visible, screenState?.currentVideo]);
+  }, [screenState?.visible, screenState?.currentVideo, screenId, setVideoScreen]);
 
   useEffect(() => {
     if (!playlist || playlist.length === 0) {
@@ -134,7 +111,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       return;
     }
     
-    console.log('VideoPlayer: Loading video', playlist[index], 'from playlist of', playlist.length, 'videos');
+    console.log(`VideoPlayer ${screenId}: Loading video`, playlist[index]);
     
     const video = document.createElement('video');
     videoRef.current = video;
@@ -142,13 +119,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     video.crossOrigin = 'anonymous';
     video.loop = false;
     video.playsInline = true;
-    video.volume = 0;
-    video.muted = true;
+    video.volume = screenState?.volume || 1;
+    video.muted = false;
     
     let localTextureInstance: THREE.VideoTexture | null = null;
 
     const onLoadedMetadata = () => {
-      console.log('VideoPlayer: Video metadata loaded for', video.src);
+      console.log(`VideoPlayer ${screenId}: Video metadata loaded for`, video.src);
       const videoTexture = new THREE.VideoTexture(video);
       localTextureInstance = videoTexture;
       videoTexture.minFilter = THREE.LinearFilter;
@@ -156,45 +133,65 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       videoTexture.generateMipmaps = false;
       videoTexture.colorSpace = THREE.SRGBColorSpace;
       setTexture(videoTexture);
-      setRuntime({ videoDuration: video.duration, videoCurrentTime: 0 });
       
-      // 設定初始播放速度
-      const initialPlaybackRate = calculatePlaybackRate(bgmIntensity);
-      video.playbackRate = initialPlaybackRate;
-      console.log('VideoPlayer: Set playback rate to', initialPlaybackRate);
-
-      setVideoScreen(screenId, {
+      // 更新螢幕的 duration 和重置 currentTime
+      setVideoScreen(screenId, { 
+        duration: video.duration, 
+        currentTime: 0,
         currentVideo: playlist[index],
-        visible: true,
+        visible: true
       });
       
+      // 設定播放參數
+      video.playbackRate = screenState?.playbackRate || 1;
+      video.volume = screenState?.volume || 1;
+      
+      console.log(`VideoPlayer ${screenId}: Initial settings - rate: ${video.playbackRate}, volume: ${video.volume}`);
+      
+      // 嘗試自動播放
       video.play().then(() => {
-        console.log('VideoPlayer: Video started playing');
-        setRuntime({ videoPlaying: true });
+        console.log(`VideoPlayer ${screenId}: Video started playing`);
+        setVideoScreen(screenId, { playing: true });
       }).catch((error) => {
-        console.log('VideoPlayer: Autoplay failed', error);
+        console.log(`VideoPlayer ${screenId}: Autoplay failed`, error);
         setAutoplayFailed(true);
+        setVideoScreen(screenId, { playing: false });
       });
     };
 
     const onVideoEnded = () => {
+      console.log(`VideoPlayer ${screenId}: Video ended`);
+      setVideoScreen(screenId, { playing: false });
       setTimeout(() => {
         setIndex((prevIndex) => (prevIndex + 1) % playlist.length);
       }, 2000);
     };
 
     const onTimeUpdate = () => {
-      setRuntime({ videoCurrentTime: video.currentTime });
+      // 更新螢幕的 currentTime
+      setVideoScreen(screenId, { currentTime: video.currentTime });
+    };
+
+    const onPlay = () => {
+      console.log(`VideoPlayer ${screenId}: Video play event`);
+      setVideoScreen(screenId, { playing: true });
+    };
+
+    const onPause = () => {
+      console.log(`VideoPlayer ${screenId}: Video pause event`);
+      setVideoScreen(screenId, { playing: false });
     };
     
     const onError = (error: Event) => {
-      console.error('VideoPlayer: Video load error for', video.src, error);
+      console.error(`VideoPlayer ${screenId}: Video load error for`, video.src, error);
     };
     
     video.addEventListener('loadedmetadata', onLoadedMetadata);
     video.addEventListener('ended', onVideoEnded);
     video.addEventListener('error', onError);
     video.addEventListener('timeupdate', onTimeUpdate);
+    video.addEventListener('play', onPlay);
+    video.addEventListener('pause', onPause);
     video.load();
 
     return () => {
@@ -202,6 +199,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       video.removeEventListener('ended', onVideoEnded);
       video.removeEventListener('error', onError);
       video.removeEventListener('timeupdate', onTimeUpdate);
+      video.removeEventListener('play', onPlay);
+      video.removeEventListener('pause', onPause);
       video.pause();
       video.src = '';
       if (videoRef.current === video) {
@@ -210,18 +209,18 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       if (localTextureInstance) {
         localTextureInstance.dispose();
       }
-      setVideoScreen(screenId, { visible: false, currentVideo: '' });
+      setVideoScreen(screenId, { visible: false, currentVideo: '', playing: false });
     };
-  }, [index, playlist]);
+  }, [index, playlist, screenId, setVideoScreen, screenState?.playbackRate, screenState?.volume]);
 
   const handlePlay = () => {
     if (videoRef.current) {
-      // 播放時也要設定正確的播放速度
-      const currentPlaybackRate = calculatePlaybackRate(bgmIntensity);
-      videoRef.current.playbackRate = currentPlaybackRate;
-      videoRef.current.play();
-      setRuntime({ videoPlaying: true });
-      setAutoplayFailed(false);
+      videoRef.current.play().then(() => {
+        setVideoScreen(screenId, { playing: true });
+        setAutoplayFailed(false);
+      }).catch((error) => {
+        console.log(`VideoPlayer ${screenId}: Manual play failed`, error);
+      });
     }
   };
   
@@ -229,8 +228,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   if (!texture || !playlist || playlist.length === 0) {
     return null;
   }
-
-  const currentPlaybackRate = calculatePlaybackRate(bgmIntensity);
 
   return (
     <group position={position} visible={screenState?.visible}>
@@ -242,10 +239,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           side={THREE.DoubleSide}
         />
       </mesh>
-      <mesh position={[0, 0, 0.2]} visible={false}>
-        <planeGeometry args={[width, height * 0.6]} />
-        <meshBasicMaterial transparent opacity={0} />
-      </mesh>
+      {autoplayFailed && (
+        <mesh position={[0, 0, 0.1]}>
+          <planeGeometry args={[width * 0.3, height * 0.1]} />
+          <meshBasicMaterial color="red" transparent opacity={0.8} />
+        </mesh>
+      )}
     </group>
   );
 };

@@ -30,11 +30,6 @@ const DirectorMonitorHUD: React.FC = () => {
   const cpu = useStore((s) => s.cpu);
   const videoScreens = useStore((s) => s.videoScreens);
   const setVideoScreen = useStore((s) => s.setVideoScreen);
-  const videoPlaying = useStore((s) => s.videoPlaying);
-  const videoVolume = useStore((s) => s.videoVolume);
-  const videoCurrentTime = useStore((s) => s.videoCurrentTime);
-  const videoDuration = useStore((s) => s.videoDuration);
-  const videoPlaybackRate = useStore((s) => s.videoPlaybackRate);
 
   const [expanded, setExpanded] = useState(true);
   const [selectedEffect, setSelectedEffect] = useState<string>(EFFECT_FILES[0]);
@@ -95,7 +90,7 @@ const DirectorMonitorHUD: React.FC = () => {
   return (
     <motion.div
       className={hudStyle}
-      animate={{ width: expanded ? 280 : 120 }}
+      animate={{ width: expanded ? 320 : 120 }}
     >
       <div className="flex items-center justify-between mb-1">
         <span className="text-xs font-bold">隨機模式</span>
@@ -118,62 +113,125 @@ const DirectorMonitorHUD: React.FC = () => {
       <div>camera: {cameraPreset ?? '-'}</div>
       <div>fps: {fps}</div>
       <div>cpu: {cpu.toFixed(2)}</div>
-      <div>
-        video: {videoPlaying ? '▶' : '⏸'} {videoCurrentTime.toFixed(1)}/{
-        videoDuration.toFixed(1)}
-      </div>
       {expanded && (
         <div className="mt-2 space-y-2">
           {!randomMode ? (
             <>
               <div className="border-t border-white/30 pt-2">
-                <div className="font-bold mb-1">影片播放</div>
-                <div className="flex items-center space-x-1 mb-1">
-                  <button
-                    onClick={() => setRuntime({ videoPlaying: !videoPlaying })}
-                    className="px-1 bg-gray-600 hover:bg-gray-500 rounded text-xs"
+                <div className="font-bold mb-2">視訊牆控制</div>
+                {videoScreens.map((screen) => (
+                  <div
+                    key={screen.id}
+                    className="mb-3 last:mb-0 border border-purple-500/30 rounded p-2 bg-gray-900/50"
                   >
-                    {videoPlaying ? '⏸' : '▶'}
-                  </button>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={videoDuration ? (videoCurrentTime / videoDuration) * 100 : 0}
-                    onChange={(e) =>
-                      setRuntime({ videoCurrentTime: (Number(e.target.value) / 100) * videoDuration })
-                    }
-                    className="flex-1 h-1"
-                  />
-                </div>
-                <div className="text-xs text-gray-300 mb-1">音量: {Math.round(videoVolume * 100)}%</div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={videoVolume * 100}
-                  onChange={(e) => setRuntime({ videoVolume: Number(e.target.value) / 100 })}
-                  className="w-full h-1"
-                />
-                <div className="flex items-center mt-1 space-x-1">
-                  <span className="text-xs">速度 {videoPlaybackRate.toFixed(1)}x</span>
-                  <input
-                    type="range"
-                    min="0.5"
-                    max="2"
-                    step="0.1"
-                    value={videoPlaybackRate}
-                    onChange={(e) => setRuntime({ videoPlaybackRate: Number(e.target.value) })}
-                    className="flex-1 h-1"
-                  />
-                </div>
+                    <div className="font-bold mb-2 text-purple-300 flex items-center justify-between">
+                      <span>{screen.id}</span>
+                      <span className="text-xs">
+                        {screen.playing ? '▶' : '⏸'} {screen.currentTime.toFixed(1)}/{screen.duration.toFixed(1)}
+                      </span>
+                    </div>
+                    
+                    {/* 影片選擇 */}
+                    <select
+                      value={screen.currentVideo}
+                      onChange={(e) =>
+                        setVideoScreen(screen.id, { currentVideo: e.target.value })
+                      }
+                      className="bg-gray-800 text-white text-xs rounded w-full mb-2"
+                    >
+                      <option value="" disabled>
+                        選擇影片
+                      </option>
+                      {ALL_VIDEOS.map((v) => (
+                        <option key={v} value={v}>
+                          {v.split('/').pop()?.replace('.mp4', '')}
+                        </option>
+                      ))}
+                    </select>
+
+                    {/* 播放控制 */}
+                    <div className="flex items-center space-x-1 mb-2">
+                      <button
+                        onClick={() => setVideoScreen(screen.id, { playing: !screen.playing })}
+                        className="px-2 py-1 bg-gray-600 hover:bg-gray-500 rounded text-xs"
+                        disabled={!screen.currentVideo}
+                      >
+                        {screen.playing ? '⏸' : '▶'}
+                      </button>
+                      
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={screen.duration ? (screen.currentTime / screen.duration) * 100 : 0}
+                        onChange={(e) =>
+                          setVideoScreen(screen.id, { 
+                            currentTime: (Number(e.target.value) / 100) * screen.duration 
+                          })
+                        }
+                        className="flex-1 h-1"
+                        disabled={!screen.currentVideo}
+                      />
+                      
+                      <label className="flex items-center space-x-1">
+                        <input
+                          type="checkbox"
+                          checked={screen.visible}
+                          onChange={(e) =>
+                            setVideoScreen(screen.id, { visible: e.target.checked })
+                          }
+                        />
+                        <span className="text-xs">顯示</span>
+                      </label>
+                    </div>
+
+                    {/* 音量控制 */}
+                    <div className="mb-2">
+                      <div className="text-xs text-gray-300 mb-1">音量: {Math.round(screen.volume * 100)}%</div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={screen.volume * 100}
+                        onChange={(e) => 
+                          setVideoScreen(screen.id, { volume: Number(e.target.value) / 100 })
+                        }
+                        className="w-full h-1"
+                      />
+                    </div>
+
+                    {/* 播放速度控制 */}
+                    <div className="mb-2">
+                      <div className="flex items-center space-x-1">
+                        <span className="text-xs">速度 {screen.playbackRate.toFixed(1)}x</span>
+                        <input
+                          type="range"
+                          min="0.5"
+                          max="2"
+                          step="0.1"
+                          value={screen.playbackRate}
+                          onChange={(e) => 
+                            setVideoScreen(screen.id, { playbackRate: Number(e.target.value) })
+                          }
+                          className="flex-1 h-1"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-1 text-[10px] text-gray-400">
+                      {screen.visible ? screen.currentVideo.split('/').pop() || 'no video' : 'hidden'}
+                    </div>
+                  </div>
+                ))}
+                
                 <button
                   onClick={toggleFullscreen}
-                  className="mt-1 px-1 py-0.5 bg-gray-600 hover:bg-gray-500 rounded text-xs w-full"
+                  className="mt-2 px-2 py-1 bg-gray-600 hover:bg-gray-500 rounded text-xs w-full"
                 >
                   全螢幕
                 </button>
               </div>
+              
               <div className="border-t border-white/30 pt-2">
                 <div className="font-bold mb-1">BGM</div>
                 <div className="flex items-center space-x-1 mb-1">
@@ -243,47 +301,6 @@ const DirectorMonitorHUD: React.FC = () => {
                   onChange={(e) => setEffectVolume(Number(e.target.value) / 100)} 
                   className="w-full h-1" 
                 />
-              </div>
-              
-              <div className="border-t border-white/30 pt-2">
-                <div className="font-bold mb-1">視訊牆</div>
-                {videoScreens.map((screen) => (
-                  <div
-                    key={screen.id}
-                    className="mb-2 last:mb-0 border-b last:border-b-0 border-white/20 pb-1"
-                  >
-                    <div className="font-bold mb-1 text-purple-300">{screen.id}</div>
-                    <select
-                      value={screen.currentVideo}
-                      onChange={(e) =>
-                        setVideoScreen(screen.id, { currentVideo: e.target.value })
-                      }
-                      className="bg-gray-800 text-white text-xs rounded w-full mb-1"
-                    >
-                      <option value="" disabled>
-                        選擇影片
-                      </option>
-                      {ALL_VIDEOS.map((v) => (
-                        <option key={v} value={v}>
-                          {v.split('/').pop()?.replace('.mp4', '')}
-                        </option>
-                      ))}
-                    </select>
-                    <label className="flex items-center space-x-1">
-                      <input
-                        type="checkbox"
-                        checked={screen.visible}
-                        onChange={(e) =>
-                          setVideoScreen(screen.id, { visible: e.target.checked })
-                        }
-                      />
-                      <span>顯示</span>
-                    </label>
-                    <div className="mt-1 text-[10px] text-gray-400">
-                      {screen.visible ? screen.currentVideo.split('/').pop() : 'hidden'}
-                    </div>
-                  </div>
-                ))}
               </div>
               
               <div className="border-t border-white/30 pt-2">
