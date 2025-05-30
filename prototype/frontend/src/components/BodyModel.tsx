@@ -81,11 +81,11 @@ export function BodyModel() {
     // 使用 SkeletonUtils.clone 來正確處理骨骼動畫
     const cloned = SkeletonUtils.clone(scene);
 
-    // 黑色金屬材質設定
-    const blackMetal = new THREE.MeshPhysicalMaterial({
-      color: '#111111',
+    // 銀色金屬材質設定
+    const silverMetal = new THREE.MeshPhysicalMaterial({
+      color: '#E0E0E0', // 改成更淺的銀色
       metalness: 1.0,
-      roughness: 0.3,
+      roughness: 0.2, // 降低粗糙度，使其更亮
       clearcoat: 0.1,
       clearcoatRoughness: 0.4
     });
@@ -94,7 +94,7 @@ export function BodyModel() {
       // isMesh 兼容 SkinnedMesh
       if ((obj as THREE.Mesh).isMesh) {
         const mesh = obj as THREE.Mesh;
-        mesh.material = blackMetal;
+        mesh.material = silverMetal; // 套用銀色材質
         mesh.castShadow = true;
         mesh.receiveShadow = true;
       }

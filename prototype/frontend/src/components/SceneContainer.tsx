@@ -29,7 +29,7 @@ const DynamicLights = () => {
   useFrame(() => {
     if (ambientLightRef.current) {
       // 讓環境光隨音樂強度變化（增加幅度）
-      ambientLightRef.current.intensity = 0.3 + bgmIntensity * 5;
+      ambientLightRef.current.intensity = 2 + bgmIntensity * 10;
     }
     if (directionalLightRef.current) {
       // 讓方向光隨音樂強度變化（增加幅度）
