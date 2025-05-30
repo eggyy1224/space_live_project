@@ -75,11 +75,32 @@ export function BodyModel() {
   const { scene } = useGLTF(bodyModelUrl);
   // logger.info(`[BodyModel] Body scene loaded from ${bodyModelUrl}`, LogCategory.MODEL); // 註釋掉
 
-  // 克隆場景以允許多個實例
+  // 克隆場景以允許多個實例，並調整材質與陰影
   const clonedScene = useMemo(() => {
     if (!scene) return null;
     // 使用 SkeletonUtils.clone 來正確處理骨骼動畫
-    return SkeletonUtils.clone(scene);
+    const cloned = SkeletonUtils.clone(scene);
+
+    // 黑色金屬材質設定
+    const blackMetal = new THREE.MeshPhysicalMaterial({
+      color: '#111111',
+      metalness: 1.0,
+      roughness: 0.3,
+      clearcoat: 0.1,
+      clearcoatRoughness: 0.4
+    });
+
+    cloned.traverse((obj: THREE.Object3D) => {
+      // isMesh 兼容 SkinnedMesh
+      if ((obj as THREE.Mesh).isMesh) {
+        const mesh = obj as THREE.Mesh;
+        mesh.material = blackMetal;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+      }
+    });
+
+    return cloned;
   }, [scene]);
 
   // 2. 加載所有外部動畫 (使用新的 ANIMATION_PATHS)
