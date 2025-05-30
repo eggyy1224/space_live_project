@@ -20,24 +20,24 @@ interface ScreenConfig {
 const screenConfigs: ScreenConfig[] = [
   { 
     id: 'screen1', 
-    position: [-50, 25, -60],
-    width: 30,
+    position: [-55, 30, -75],
+    width: 50,
     playlist: ALL_VIDEOS,
     initialVideoIndex: Math.floor(Math.random() * ALL_VIDEOS.length),
     speedRange: { min: 0.2, max: 1.0 }
   },
   { 
     id: 'screen2', 
-    position: [0, 35, -50],
-    width: 30,
+    position: [0, 30, -75],
+    width: 50,
     playlist: ALL_VIDEOS,
     initialVideoIndex: Math.floor(Math.random() * ALL_VIDEOS.length),
     speedRange: { min: 0.6, max: 1.8 }
   },
   { 
     id: 'screen3', 
-    position: [50, 20, -55],
-    width: 30,
+    position: [55, 30, -75],
+    width: 50,
     playlist: ALL_VIDEOS,
     initialVideoIndex: Math.floor(Math.random() * ALL_VIDEOS.length),
     speedRange: { min: 1.2, max: 3.0 }
