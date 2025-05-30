@@ -15,7 +15,9 @@ const getRms = (analyser: AnalyserNode, dataArray: Uint8Array) => {
 
 const BackgroundSoundSystem: React.FC = () => {
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
-  const bgmSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const bgmAudioRef = useRef<HTMLAudioElement | null>(null);
+  const bgmSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const bgmEndedHandlerRef = useRef<((() => void) | null)>(null);
   const effectSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const manualEffectSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const bgmGainNodeRef = useRef<GainNode | null>(null);
@@ -79,23 +81,31 @@ const BackgroundSoundSystem: React.FC = () => {
         // 建立 BGM 的 GainNode
         const bgmGain = context.createGain();
         bgmGain.gain.value = bgmVolume; // 預設 BGM 音量
-        
+
         // 建立 BGM 暫停控制節點
         const bgmPauseGain = context.createGain();
         bgmPauseGain.gain.value = 1; // 預設不暫停
-        
+
         const bgmAnalyser = context.createAnalyser();
         bgmAnalyser.fftSize = 256;
-        
-        // BGM 音頻鏈：source -> bgmGain (音量控制) -> bgmPauseGain (暫停控制) -> analyser -> destination
+
+        // 準備 HTMLAudioElement 以便監聽 ended 事件
+        const audioEl = new Audio();
+        audioEl.crossOrigin = 'anonymous';
+        bgmAudioRef.current = audioEl;
+
+        // BGM 音頻鏈：element -> bgmGain (音量控制) -> bgmPauseGain (暫停控制) -> analyser -> destination
+        const bgmSrc = context.createMediaElementSource(audioEl);
+        bgmSrc.connect(bgmGain);
         bgmGain.connect(bgmPauseGain);
         bgmPauseGain.connect(bgmAnalyser);
         bgmAnalyser.connect(context.destination);
-        
+
         bgmAnalyserRef.current = bgmAnalyser;
         bgmDataRef.current = new Uint8Array(bgmAnalyser.frequencyBinCount);
         bgmGainNodeRef.current = bgmGain;
         bgmPauseNodeRef.current = bgmPauseGain;
+        bgmSourceRef.current = bgmSrc;
 
         // 建立 Effect 的 GainNode
         const effectGain = context.createGain();
@@ -129,6 +139,11 @@ const BackgroundSoundSystem: React.FC = () => {
       if (audioContext) {
         audioContext.close().catch(console.error);
       }
+      if (bgmAudioRef.current) {
+        bgmAudioRef.current.pause();
+        bgmAudioRef.current.src = '';
+        bgmAudioRef.current = null;
+      }
     };
   }, [isUserInteracted]);
 
@@ -141,10 +156,13 @@ const BackgroundSoundSystem: React.FC = () => {
     if (!audioContext || !bgmGainNodeRef.current || !isUserInteracted) return;
 
     const stopCurrent = () => {
-      if (bgmSourceRef.current) {
-        bgmSourceRef.current.stop();
-        bgmSourceRef.current.disconnect();
-        bgmSourceRef.current = null;
+      if (bgmAudioRef.current) {
+        bgmAudioRef.current.pause();
+        bgmAudioRef.current.currentTime = 0;
+        if (bgmEndedHandlerRef.current) {
+          bgmAudioRef.current.removeEventListener('ended', bgmEndedHandlerRef.current);
+          bgmEndedHandlerRef.current = null;
+        }
       }
       currentBgmRef.current = null;
       stopBgmAnalysis();
@@ -153,15 +171,16 @@ const BackgroundSoundSystem: React.FC = () => {
     const loadAndPlay = async (track: string) => {
       stopCurrent();
       try {
-        const response = await fetch(getBgmPath(track));
-        const arrayBuffer = await response.arrayBuffer();
-        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-        const source = audioContext.createBufferSource();
-        source.buffer = audioBuffer;
-        source.loop = true;
-        source.connect(bgmGainNodeRef.current as GainNode);
-        source.start();
-        bgmSourceRef.current = source;
+        if (!bgmAudioRef.current) return;
+        bgmAudioRef.current.src = getBgmPath(track);
+        bgmAudioRef.current.load();
+        const endedHandler = () => {
+          setRuntime({ bgmPlaying: false });
+          bgmEndedHandlerRef.current = null;
+        };
+        bgmAudioRef.current.addEventListener('ended', endedHandler, { once: true });
+        bgmEndedHandlerRef.current = endedHandler;
+        await bgmAudioRef.current.play();
         bgmStartRef.current = audioContext.currentTime;
         currentBgmRef.current = track;
         setRuntime({ bgm: track, bgmTime: 0, bgmPlaying: true });
