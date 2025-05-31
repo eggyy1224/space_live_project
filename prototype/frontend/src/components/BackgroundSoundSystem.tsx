@@ -158,7 +158,8 @@ const BackgroundSoundSystem: React.FC = () => {
         const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
         const source = audioContext.createBufferSource();
         source.buffer = audioBuffer;
-        source.loop = true;
+        const random = useStore.getState().randomMode; // check if random mode is on
+        source.loop = !random; // disable loop in random mode so ended event fires
         source.connect(bgmGainNodeRef.current as GainNode);
         source.start();
         bgmSourceRef.current = source;
@@ -166,6 +167,15 @@ const BackgroundSoundSystem: React.FC = () => {
         currentBgmRef.current = track;
         setRuntime({ bgm: track, bgmTime: 0, bgmPlaying: true });
         startBgmAnalysis();
+
+        // in random mode, pick next track after current ends
+        if (random) {
+          source.onended = () => {
+            const available = BGM_FILES.filter((b) => b !== track);
+            const next = available[Math.floor(Math.random() * available.length)];
+            setRuntime({ bgm: next, bgmPlaying: true });
+          };
+        }
       } catch (e) {
         console.error('Error loading BGM', e);
       }
@@ -297,7 +307,6 @@ const BackgroundSoundSystem: React.FC = () => {
   // 監聽隨機模式變化，動態開啟/關閉隨機音效
   const randomMode = useStore((s) => s.randomMode);
   const randomEffectTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const randomBgmTimerRef = useRef<NodeJS.Timeout | null>(null); // 新增：隨機 BGM 計時器
   
   useEffect(() => {
     if (!audioContext || !effectGainNodeRef.current || !isUserInteracted) return;
@@ -422,89 +431,15 @@ const BackgroundSoundSystem: React.FC = () => {
     };
   }, [randomMode, audioContext, isUserInteracted, setRuntime, triggerEffect]); // 添加依賴項
 
-  // 監聽隨機模式變化，動態開啟/關閉隨機 BGM 切換
+  // 監聽隨機模式變化，決定是否啟動隨機 BGM
   useEffect(() => {
     if (!audioContext || !isUserInteracted) return;
 
-    const startRandomBgm = () => {
-      // 隨機選擇一個 BGM 並開始播放
+    if (randomMode && !useStore.getState().bgm) {
       const randomBgm = BGM_FILES[Math.floor(Math.random() * BGM_FILES.length)];
       console.log('Starting random BGM:', randomBgm);
-      setRuntime({ 
-        bgm: randomBgm, 
-        bgmPlaying: true 
-      });
-    };
-
-    const switchToNextRandomBgm = () => {
-      if (!randomMode) return;
-
-      // 選擇一個不同的 BGM
-      const currentBgm = useStore.getState().bgm;
-      const availableBgms = BGM_FILES.filter((bgm: string) => bgm !== currentBgm);
-      
-      if (availableBgms.length > 0) {
-        const randomBgm = availableBgms[Math.floor(Math.random() * availableBgms.length)];
-        console.log('Switching to next random BGM:', randomBgm);
-        setRuntime({ 
-          bgm: randomBgm, 
-          bgmPlaying: true 
-        });
-      }
-
-      // 安排下一次切換
-      scheduleNextBgmSwitch();
-    };
-
-    const scheduleNextBgmSwitch = () => {
-      if (!randomMode) return;
-      
-      const randomInterval = Math.random() * 60000 + 60000; // 60-120秒間隔
-      console.log('Scheduling next BGM switch in', randomInterval / 1000, 'seconds');
-      randomBgmTimerRef.current = setTimeout(switchToNextRandomBgm, randomInterval);
-    };
-
-    if (randomMode) {
-      console.log('Random mode enabled, initializing BGM...');
-      
-      // 清除任何現有的定時器
-      if (randomBgmTimerRef.current) {
-        clearTimeout(randomBgmTimerRef.current);
-        randomBgmTimerRef.current = null;
-      }
-      
-      // 檢查當前 BGM 狀態
-      const currentState = useStore.getState();
-      
-      if (!currentState.bgm || !currentState.bgmPlaying) {
-        // 沒有 BGM 在播放，立即開始
-        console.log('No BGM playing, starting immediately...');
-        startRandomBgm();
-      } else {
-        // 有 BGM 在播放，確保它在播放狀態
-        console.log('BGM already playing, ensuring play state...');
-        setRuntime({ bgmPlaying: true });
-      }
-      
-      // 安排自動切換
-      const initialDelay = Math.random() * 30000 + 30000; // 30-60秒後第一次切換
-      console.log('Scheduling first BGM switch in', initialDelay / 1000, 'seconds');
-      randomBgmTimerRef.current = setTimeout(switchToNextRandomBgm, initialDelay);
-    } else {
-      console.log('Random mode disabled, clearing BGM timers...');
-      
-      // 隨機模式關閉：清除定時器
-      if (randomBgmTimerRef.current) {
-        clearTimeout(randomBgmTimerRef.current);
-        randomBgmTimerRef.current = null;
-      }
+      setRuntime({ bgm: randomBgm, bgmPlaying: true });
     }
-
-    return () => {
-      if (randomBgmTimerRef.current) {
-        clearTimeout(randomBgmTimerRef.current);
-      }
-    };
   }, [randomMode, audioContext, isUserInteracted]);
 
   // 這個組件本身不渲染任何 UI，它只在背景運作
