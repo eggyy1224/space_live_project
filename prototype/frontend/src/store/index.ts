@@ -11,6 +11,7 @@ import { AudioSettingsSlice, createAudioSettingsSlice } from './slices/audioSett
 import { BackgroundAudioSlice, createBackgroundAudioSlice } from './slices/backgroundAudioSlice';
 import { SpeechTextSlice, createSpeechTextSlice } from './slices/speechTextSlice';
 import { RuntimeSlice, createRuntimeSlice } from './slices/runtimeSlice';
+import { RoomSlice, createRoomSlice } from './slices/roomSlice';
 // import { EmotionSlice, createEmotionSlice } from './slices/emotionSlice';
 // import { AudioSlice, createAudioSlice } from './slices/audioSlice';
 
@@ -25,7 +26,8 @@ export type Store =
   AudioSettingsSlice &
   BackgroundAudioSlice &
   SpeechTextSlice &
-  RuntimeSlice;
+  RuntimeSlice &
+  RoomSlice;
 
 // 創建 Zustand Store
 export const useStore = create<Store>()(
@@ -41,6 +43,7 @@ export const useStore = create<Store>()(
       ...createBackgroundAudioSlice(set, get, api),
       ...createSpeechTextSlice(set, get, api),
       ...createRuntimeSlice(set, get, api),
+      ...createRoomSlice(set, get, api),
     }),
     { name: 'AppStore' } // Optional: Name for Redux DevTools
   )

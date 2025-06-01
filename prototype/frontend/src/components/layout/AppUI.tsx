@@ -54,6 +54,8 @@ interface AppUIProps {
   toggleChatWindow: () => void;
   // 設定面板控制
   toggleSettingsPanel: () => void;
+  // 房間控制面板控制
+  toggleRoomControlPanel: () => void;
 }
 
 const AppUI: React.FC<AppUIProps> = ({
@@ -66,6 +68,8 @@ const AppUI: React.FC<AppUIProps> = ({
   toggleChatWindow,
   // 設定面板控制
   toggleSettingsPanel,
+  // 房間控制面板控制
+  toggleRoomControlPanel,
 }) => {
   // // REMOVED micPermission logic
   // const micPermissionBool: boolean | null = ...
@@ -118,6 +122,17 @@ const AppUI: React.FC<AppUIProps> = ({
           aria-label="開啟/關閉設定面板"
         >
           ⚙️
+        </button>
+
+        {/* Trigger Room Control Panel Button */}
+        <button
+          onClick={toggleRoomControlPanel}
+          // Apply Tailwind classes
+          className="w-12 h-12 rounded-full bg-purple-600 hover:bg-purple-700 text-white text-2xl shadow-md flex items-center justify-center cursor-pointer transition-colors duration-200"
+          title="開啟/關閉房間場景控制"
+          aria-label="開啟/關閉房間場景控制"
+        >
+          🏠
         </button>
       </div>
     </>

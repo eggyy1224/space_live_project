@@ -4,6 +4,7 @@ import { OrbitControls, Stars } from '@react-three/drei';
 import { HeadModel } from './HeadModel';
 import DanceGroup from './DanceGroup';
 import DynamicAudioBackgrounds from './DynamicAudioBackgrounds';
+import RoomScene from './RoomScene';
 import { useStore } from '../store';
 import * as THREE from 'three';
 import { useCameraManager, CameraPreset } from '../camera';
@@ -93,6 +94,13 @@ const SceneContent: React.FC<SceneContainerProps> = ({
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const randomMode = useStore((s) => s.randomMode); // 新增：監聽隨機模式狀態
   const cameraPreset = useStore((s) => s.cameraPreset); // 新增：監聽手動相機預設變化
+  
+  // 房間場景狀態
+  const showRoomScene = useStore((s) => s.showRoomScene);
+  const roomSceneUrl = useStore((s) => s.roomSceneUrl);
+  const roomPosition = useStore((s) => s.roomPosition);
+  const roomRotation = useStore((s) => s.roomRotation);
+  const roomScale = useStore((s) => s.roomScale);
 
   // 監聽手動相機預設變化
   useEffect(() => {
@@ -139,6 +147,16 @@ const SceneContent: React.FC<SceneContainerProps> = ({
       <DynamicAudioBackgrounds />
       <DynamicLights />
       <Suspense fallback={null}>
+        {/* 房間場景 */}
+        {showRoomScene && (
+          <RoomScene 
+            roomModelUrl={roomSceneUrl}
+            position={roomPosition}
+            rotation={roomRotation}
+            scale={roomScale}
+          />
+        )}
+        
         {(() => {
           // 調整頭部位置：移到圓圈中央
           const baseScale = 10;

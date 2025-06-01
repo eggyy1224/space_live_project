@@ -12,6 +12,7 @@ import FloatingChatWindow from './components/FloatingChatWindow'
 import SettingsPanel from './components/SettingsPanel'
 import BackgroundSoundSystem from './components/BackgroundSoundSystem'
 import DirectorMonitorHUD from './components/DirectorMonitorHUD'
+import RoomControlPanel from './components/RoomControlPanel'
 import { usePerformanceMetrics } from './hooks/usePerformanceMetrics'
 
 // 引入服務
@@ -515,11 +516,15 @@ function App() {
         />
         {/* <--- 結束 ---> */}
         
+        {/* 房間控制面板 */}
+        <RoomControlPanel isVisible={useStore((state) => state.isRoomControlPanelVisible)} />
+        
         {/* 渲染 AppUI (只傳遞必要 props) */}
         <AppUI
           wsConnected={wsConnected}
           toggleChatWindow={toggleChatWindow}
           toggleSettingsPanel={toggleSettingsPanel}
+          toggleRoomControlPanel={useStore((state) => state.toggleRoomControlPanel)}
         />
         
         <ToastContainer />
