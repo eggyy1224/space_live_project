@@ -3,6 +3,7 @@ import { useGLTF } from '@react-three/drei';
 import { Group } from 'three';
 import * as THREE from 'three';
 import logger, { LogCategory } from '../utils/LogManager';
+import { AVAILABLE_SCENES } from '../config/sceneConfig';
 
 interface RoomSceneProps {
   roomModelUrl: string;
@@ -62,13 +63,14 @@ export const RoomScene: React.FC<RoomSceneProps> = ({
   );
 };
 
-// 預加載房間場景
-const ROOM_SCENE_URL = '/scenes/6面房間A.glb';
-try {
-  logger.info(`[RoomScene] Preloading room scene: ${ROOM_SCENE_URL}`, LogCategory.MODEL);
-  useGLTF.preload(ROOM_SCENE_URL);
-} catch (error) {
-  logger.error(`[RoomScene] Failed to preload room scene: ${error instanceof Error ? error.message : String(error)}`, LogCategory.MODEL);
-}
+// 預加載所有房間場景
+AVAILABLE_SCENES.forEach((scene) => {
+  try {
+    logger.info(`[RoomScene] Preloading scene: ${scene.name} (${scene.url})`, LogCategory.MODEL);
+    useGLTF.preload(scene.url);
+  } catch (error) {
+    logger.error(`[RoomScene] Failed to preload scene ${scene.name}: ${error instanceof Error ? error.message : String(error)}`, LogCategory.MODEL);
+  }
+});
 
 export default RoomScene; 

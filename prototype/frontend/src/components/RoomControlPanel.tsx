@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useStore } from '../store';
+import { AVAILABLE_SCENES, getSceneById } from '../config/sceneConfig';
+import SceneManager from './SceneManager';
 
 interface RoomControlPanelProps {
   isVisible: boolean;
@@ -7,16 +9,24 @@ interface RoomControlPanelProps {
 
 const RoomControlPanel: React.FC<RoomControlPanelProps> = ({ isVisible }) => {
   const showRoomScene = useStore((state) => state.showRoomScene);
+  const currentSceneId = useStore((state) => state.currentSceneId);
   const roomSceneUrl = useStore((state) => state.roomSceneUrl);
   const roomPosition = useStore((state) => state.roomPosition);
   const roomRotation = useStore((state) => state.roomRotation);
   const roomScale = useStore((state) => state.roomScale);
   const toggleRoomScene = useStore((state) => state.toggleRoomScene);
+  const switchScene = useStore((state) => state.switchScene);
   const setRoomPosition = useStore((state) => state.setRoomPosition);
   const setRoomRotation = useStore((state) => state.setRoomRotation);
   const setRoomScale = useStore((state) => state.setRoomScale);
   const resetRoomTransform = useStore((state) => state.resetRoomTransform);
   const toggleRoomControlPanel = useStore((state) => state.toggleRoomControlPanel);
+  
+  // 獲取當前場景信息
+  const currentScene = getSceneById(currentSceneId);
+  
+  // 場景管理器狀態
+  const [showSceneManager, setShowSceneManager] = useState(false);
 
   if (!isVisible) return null;
 
@@ -76,20 +86,65 @@ const RoomControlPanel: React.FC<RoomControlPanelProps> = ({ isVisible }) => {
         <span style={{ fontSize: '18px', transition: 'transform 0.2s' }}>×</span>
       </div>
       
-      <div style={{ padding: '15px' }}>
-      
-      {/* 顯示/隱藏控制 */}
-      <div style={{ marginBottom: '15px' }}>
-        <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-          <input
-            type="checkbox"
-            checked={showRoomScene}
-            onChange={toggleRoomScene}
-            style={{ marginRight: '8px' }}
-          />
-          顯示房間場景
-        </label>
-      </div>
+            <div style={{ padding: '15px' }}>
+        
+        {/* 場景選擇器 */}
+        <div style={{ marginBottom: '15px' }}>
+          <h4 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>選擇場景</h4>
+          <select
+            value={currentSceneId}
+            onChange={(e) => switchScene(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '8px',
+              borderRadius: '4px',
+              border: '1px solid #555',
+              background: '#333',
+              color: 'white',
+              fontSize: '14px'
+            }}
+          >
+            {AVAILABLE_SCENES.map((scene) => (
+              <option key={scene.id} value={scene.id}>
+                {scene.name}
+              </option>
+            ))}
+          </select>
+          {currentScene?.description && (
+            <div style={{ fontSize: '12px', color: '#aaa', marginTop: '5px' }}>
+              {currentScene.description}
+            </div>
+          )}
+          <button
+            onClick={() => setShowSceneManager(true)}
+            style={{
+              background: '#4CAF50',
+              border: 'none',
+              borderRadius: '4px',
+              color: 'white',
+              padding: '6px 10px',
+              cursor: 'pointer',
+              fontSize: '12px',
+              marginTop: '8px',
+              width: '100%'
+            }}
+          >
+            🎬 管理場景
+          </button>
+        </div>
+        
+        {/* 顯示/隱藏控制 */}
+        <div style={{ marginBottom: '15px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={showRoomScene}
+              onChange={toggleRoomScene}
+              style={{ marginRight: '8px' }}
+            />
+            顯示房間場景
+          </label>
+        </div>
 
       {showRoomScene && (
         <>
@@ -214,6 +269,12 @@ const RoomControlPanel: React.FC<RoomControlPanelProps> = ({ isVisible }) => {
         </>
       )}
       </div>
+      
+      {/* 場景管理器 */}
+      <SceneManager 
+        isVisible={showSceneManager}
+        onClose={() => setShowSceneManager(false)}
+      />
     </div>
   );
 };
