@@ -6,6 +6,7 @@ from .base import create_app
 from .endpoints import websocket
 from .endpoints import speech
 from .endpoints import health
+from .endpoints import control
 from .middleware.cors import setup_cors
 import os
 import logging
@@ -35,6 +36,7 @@ def init_app() -> FastAPI:
     # 註冊常規API路由
     app.include_router(speech.router, prefix="/api", tags=["speech"])
     app.include_router(health.router, prefix="/api", tags=["system"])
+    app.include_router(control.router, prefix="/api", tags=["control"])
     
     # 創建音頻目錄（如果不存在）
     audio_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "audio")

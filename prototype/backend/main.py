@@ -9,7 +9,13 @@ from fastapi.staticfiles import StaticFiles
 import os
 
 # 設定日誌
+import logging
 logger = setup_logging()
+
+# 為了減少控制台日誌干擾，調整特定模組的日誌級別
+logging.getLogger("api.endpoints.websocket").setLevel(logging.WARNING)  # WebSocket 模組只顯示警告以上
+logging.getLogger("services").setLevel(logging.INFO)  # 服務模組只顯示資訊以上
+
 logger.info("啟動虛擬太空人後端服務")
 
 # 建立應用

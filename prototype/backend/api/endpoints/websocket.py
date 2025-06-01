@@ -297,15 +297,15 @@ async def websocket_endpoint(websocket: WebSocket):
         if speaking_state == SpeakingState.IDLE:
             can_process_now = True
         elif speaking_state == SpeakingState.PLAYING_MURMUR and next_message_priority > MESSAGE_PRIORITY["murmur"]:
-            logger.info(f"High priority message ({next_message_type}, P:{next_message_priority}) waiting. Current state: PLAYING_MURMUR (P:{MESSAGE_PRIORITY['murmur']}). Attempting to interrupt.")
+            logger.debug(f"High priority message ({next_message_type}, P:{next_message_priority}) waiting. Current state: PLAYING_MURMUR (P:{MESSAGE_PRIORITY['murmur']}). Attempting to interrupt.")
             interrupt_current_murmur = True
             can_process_now = True # 允許處理，但需要先打斷
         elif speaking_state == SpeakingState.FINISHING:
-            logger.info(f"Currently in FINISHING state. Will process queue once IDLE. Next message: {next_message_type}")
+            logger.debug(f"Currently in FINISHING state. Will process queue once IDLE. Next message: {next_message_type}")
             # 不立即處理，等待 reset_speaking_after_duration 完成後在其 finally 中觸發 process_message_queue
             return 
         else: # PLAYING_USER_RESPONSE or PLAYING_SYSTEM
-            logger.info(f"Cannot process queue now. Speaking_state is {speaking_state}. Next message: {next_message_type}")
+            logger.debug(f"Cannot process queue now. Speaking_state is {speaking_state}. Next message: {next_message_type}")
             return
 
         if not can_process_now:
@@ -329,31 +329,31 @@ async def websocket_endpoint(websocket: WebSocket):
             if speaking_state == SpeakingState.PLAYING_MURMUR and current_top_priority > MESSAGE_PRIORITY["murmur"]:
                 should_interrupt_now = True
             elif speaking_state != SpeakingState.IDLE and not should_interrupt_now: # 如果不是IDLE且不能打斷
-                 logger.info(f"Re-check inside lock: Cannot process. Speaking_state: {speaking_state}, Top message priority: {current_top_priority}")
-                 return
+                logger.debug(f"Re-check inside lock: Cannot process. Speaking_state: {speaking_state}, Top message priority: {current_top_priority}")
+                return
             
             if should_interrupt_now:
                 if current_audio_task and not current_audio_task.done():
                     task_name = current_audio_task.get_name() if hasattr(current_audio_task, 'get_name') else 'Unnamed Task'
-                    logger.info(f"Interrupting current murmur audio task [{task_name}] for higher priority message [{current_top_message['message'].get('type')}]")
+                    logger.debug(f"Interrupting current murmur audio task [{task_name}] for higher priority message [{current_top_message['message'].get('type')}]")
                     current_audio_task.cancel()
                     try:
                         await current_audio_task # 等待任務實際取消完成
                     except asyncio.CancelledError:
-                        logger.info(f"Murmur audio task [{task_name}] successfully cancelled.")
+                        logger.debug(f"Murmur audio task [{task_name}] successfully cancelled.")
                     except Exception as e:
                         logger.error(f"Error awaiting cancelled task [{task_name}]: {e}")
                     
                     current_audio_task = None # 清除被取消的任務引用
                     # 打斷後，立即將狀態設為IDLE，讓新消息的 handler 可以設定正確的播放狀態
                     speaking_state = SpeakingState.IDLE 
-                    logger.info(f"Speaking_state set to IDLE after interrupting murmur for message type {current_top_message['message'].get('type')}.")
+                    logger.debug(f"Speaking_state set to IDLE after interrupting murmur for message type {current_top_message['message'].get('type')}.")
                 else:
-                    logger.warning("Attempted to interrupt murmur, but no current_audio_task found or task already done.")
+                    logger.debug("Attempted to interrupt murmur, but no current_audio_task found or task already done.")
                     # 如果沒有活動的 murmur 任務，但狀態仍是 PLAYING_MURMUR，也強制設為 IDLE
                     if speaking_state == SpeakingState.PLAYING_MURMUR:
                         speaking_state = SpeakingState.IDLE
-                        logger.info("Forcing speaking_state to IDLE as no active murmur task was found during interruption.")
+                        logger.debug("Forcing speaking_state to IDLE as no active murmur task was found during interruption.")
             
             # 確保在實際處理前，狀態允許 (IDLE 或剛打斷 murmur 後變為 IDLE)
             if speaking_state != SpeakingState.IDLE:
@@ -367,7 +367,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 message_content = message_to_process_info["message"]
                 message_type_to_process = message_content.get("type")
                 
-                logger.info(f"Processing message from queue: Type: {message_type_to_process}, Priority: {message_to_process_info['priority']}")
+                logger.debug(f"Processing message from queue: Type: {message_type_to_process}, Priority: {message_to_process_info['priority']}")
 
                 if message_type_to_process == "user_message":
                     await handle_user_message(message_content.get("content"))
@@ -400,14 +400,14 @@ async def websocket_endpoint(websocket: WebSocket):
         user_responded = True
         speaking_state = SpeakingState.PLAYING_USER_RESPONSE
         
-        logger.info(f"Processing user message, setting speaking_state to {speaking_state}")
+        logger.debug(f"Processing user message, setting speaking_state to {speaking_state}")
         
         try:
             # 確保會話歷史不為空，如果是第一次消息，添加一個初始消息
             if not conversation_history:
                 # 添加一個初始化的系統消息，與murmur生成時的初始化方式保持一致
                 await add_to_history("bot", "你好！我是星宅妹。", is_murmur=False)
-                logger.info("初始化對話歷史")
+                logger.debug("初始化對話歷史")
             
             # 先將用戶消息添加到歷史
             await add_to_history("user", content)
@@ -557,7 +557,7 @@ async def websocket_endpoint(websocket: WebSocket):
         
         # --- 以下是原有的 murmur 生成邏輯 ---
         speaking_state = SpeakingState.PLAYING_MURMUR
-        logger.info(f"Generating standard murmur, setting speaking_state to {speaking_state}")
+        logger.debug(f"Generating standard murmur, setting speaking_state to {speaking_state}")
 
         # (此處省略了原有 murmur 的生成、TTS、訊息發送等邏輯，應保留)
         # 確保 if not conversation_history: block 和 ai_service.generate_response, tts_service.synthesize_speech, 
@@ -567,10 +567,10 @@ async def websocket_endpoint(websocket: WebSocket):
             available_themes = [t for t in THINKING_THEMES if t != current_thinking_topic and THINKING_THEMES] if THINKING_THEMES else ["default_topic"]
             current_thinking_topic = random.choice(available_themes) if available_themes else "default_topic"
             thinking_thread_continuity = 0
-            logger.info(f"重置思考主題為: {current_thinking_topic}")
+            logger.debug(f"重置思考主題為: {current_thinking_topic}")
         else:
             thinking_thread_continuity += 1
-            logger.info(f"繼續思考主題 {current_thinking_topic}，連續第 {thinking_thread_continuity} 次")
+            logger.debug(f"繼續思考主題 {current_thinking_topic}，連續第 {thinking_thread_continuity} 次")
 
         context_prompt = ""
         thinking_thread = ""
@@ -747,6 +747,12 @@ async def websocket_endpoint(websocket: WebSocket):
             if message_type == "playback_ack":
                 ack_id = message.get("id")
                 await handle_playback_ack(ack_id)
+            elif message_type == "director-state":
+                # 處理導演模式狀態更新 (靜默處理，不產生日誌)
+                payload = message.get("payload", {})
+                # 靜默處理狀態更新，保持前端正常運作但不干擾後端除錯
+                # 如需除錯此類訊息，可臨時啟用: logger.debug(f"Director state: {payload}")
+                pass
             elif message_type == "message" or message_type == "chat-message":
                 content = message.get("content", message.get("message", ""))
                 if content:
@@ -759,7 +765,8 @@ async def websocket_endpoint(websocket: WebSocket):
                         {"type": "user_message", "content": content},
                         priority=MESSAGE_PRIORITY["user"]
                     )
-                    logger.info(f"User message added to queue. Current queue size: {len(message_queue.queue)}")
+                    # 靜默處理用戶消息加入隊列，避免控制台干擾
+                    # logger.debug(f"User message added to queue. Current queue size: {len(message_queue.queue)}")
                     
                     # 用戶消息到達時，總是嘗試處理隊列 (process_message_queue 內部會判斷是否能打斷或立即執行)
                     asyncio.create_task(process_message_queue()) # 使用 create_task
