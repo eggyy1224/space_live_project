@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import logger, { LogCategory } from '../utils/LogManager';
 import { useStore } from '../store';
+import { directorBus } from '../director/bus';
+import { DirectorStateMessage } from '../../shared/director/types';
 
 // WebSocket連接配置
 const WS_URL = `ws://${window.location.hostname}:8000/ws`;
@@ -22,6 +24,9 @@ class WebSocketService {
   private retryCount = 0;
   private messageHandlers: { [type: string]: MessageHandler[] } = {};
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private directorHandler = (payload: Partial<DirectorState>) => {
+    this.sendMessage({ type: 'director-state', payload } as DirectorStateMessage);
+  };
 
   // 添加防抖動和批量處理的函數
   private _debounceMap: Map<string, {
@@ -74,6 +79,8 @@ class WebSocketService {
       this.ws.onclose = this.handleClose.bind(this);
       logger.debug("WebSocket event handlers attached.", LogCategory.WEBSOCKET);
 
+      directorBus.on('stateUpdate', this.directorHandler);
+
     } catch (error) {
       logger.error('Error during WebSocket object creation or handler attachment:', LogCategory.WEBSOCKET, error);
       this.ws = null;
@@ -88,6 +95,8 @@ class WebSocketService {
       this.ws.close();
       this.ws = null;
     }
+
+    directorBus.off('stateUpdate', this.directorHandler);
     
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
@@ -162,7 +171,12 @@ class WebSocketService {
   private handleMessage(event: MessageEvent): void {
     try {
       const data = JSON.parse(event.data) as WebSocketMessage;
-      // --- 從高頻類型中移除 morph_update --- 
+      if (data.type === 'director-state') {
+        directorBus.emit('stateUpdate', (data as DirectorStateMessage).payload);
+        useStore.getState().setRuntime((data as DirectorStateMessage).payload);
+        return;
+      }
+      // --- 從高頻類型中移除 morph_update ---
       const highFrequencyTypes = ['animation_update']; // Remove 'morph_update'
 
       // Log received message (conditionally based on frequency)

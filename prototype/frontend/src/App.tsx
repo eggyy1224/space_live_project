@@ -12,6 +12,7 @@ import FloatingChatWindow from './components/FloatingChatWindow'
 import SettingsPanel from './components/SettingsPanel'
 import BackgroundSoundSystem from './components/BackgroundSoundSystem'
 import DirectorMonitorHUD from './components/DirectorMonitorHUD'
+import DirectorLogPanel from './components/DirectorLogPanel'
 import RoomControlPanel from './components/RoomControlPanel'
 import { usePerformanceMetrics } from './hooks/usePerformanceMetrics'
 
@@ -529,6 +530,7 @@ function App() {
         
         <ToastContainer />
         <DirectorMonitorHUD />
+        <DirectorLogPanel />
       </div>
     </ErrorBoundary>
   )

@@ -1,4 +1,6 @@
 import { StateCreator } from 'zustand';
+import { directorBus } from '../../director/bus';
+import { DirectorState } from '../../../../shared/director/types';
 
 export interface VideoScreen {
   id: string;
@@ -84,10 +86,15 @@ export const createRuntimeSlice: StateCreator<RuntimeSlice> = (set) => ({
     },
   ],
   setVideoScreen: (id, partial) =>
-    set((state) => ({
-      videoScreens: state.videoScreens.map((s) =>
+    set((state) => {
+      const screens = state.videoScreens.map((s) =>
         s.id === id ? { ...s, ...partial } : s
-      ),
-    })),
-  setRuntime: (partial) => set(partial),
+      );
+      directorBus.emit('stateUpdate', { videoScreens: screens });
+      return { videoScreens: screens };
+    }),
+  setRuntime: (partial) => {
+    directorBus.emit('stateUpdate', partial as Partial<DirectorState>);
+    set(partial);
+  },
 });
