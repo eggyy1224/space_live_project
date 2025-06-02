@@ -27,6 +27,10 @@ class PlayAudioRequest(BaseModel):
     url: str
     interrupt: Optional[bool] = False
 
+class BackgroundAudioRequest(BaseModel):
+    bgmUrl: Optional[str] = None
+    sfxUrl: Optional[str] = None
+
 class EmotionalTrajectoryRequest(BaseModel):
     duration: float
     keyframes: List[Dict[str, Any]]
@@ -133,6 +137,30 @@ async def play_audio_on_frontend(request: PlayAudioRequest):
     except Exception as e:
         logger.error(f"API 播放音頻失敗: {e}")
         raise HTTPException(status_code=500, detail=f"播放音頻失敗: {str(e)}")
+
+
+@router.post("/control/background-audio")
+async def background_audio_control(request: BackgroundAudioRequest):
+    """透過 API 控制背景音樂或音效"""
+    try:
+        if not manager.active_connections:
+            raise HTTPException(status_code=503, detail="沒有活動的前端連接")
+
+        audio_data: Dict[str, Any] = {"type": "audio-control"}
+        if request.bgmUrl:
+            audio_data["bgmUrl"] = request.bgmUrl
+        if request.sfxUrl:
+            audio_data["sfxUrl"] = request.sfxUrl
+
+        await manager.broadcast(json.dumps(audio_data))
+
+        logger.info(f"API 發送背景音訊控制: {audio_data}")
+
+        return {"success": True, "message": "背景音訊控制已發送"}
+
+    except Exception as e:
+        logger.error(f"API 發送背景音訊控制失敗: {e}")
+        raise HTTPException(status_code=500, detail=f"背景音訊控制失敗: {str(e)}")
 
 @router.post("/control/emotion-trajectory")
 async def send_emotion_trajectory(request: EmotionalTrajectoryRequest):
