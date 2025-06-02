@@ -1,0 +1,13 @@
+- time: 0
+  action:
+    type: director-state
+    payload:
+      lightingPreset: dramatic
+- time: 5
+  action:
+    type: audio-control
+    bgmUrl: /songs-assets/spacelive_theme.mp3
+- time: 10
+  action:
+    type: play-audio
+    url: /audio/sample_voice.mp3

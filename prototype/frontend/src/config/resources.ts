@@ -205,10 +205,22 @@ export function createMixedPlaylist(categories: readonly (readonly string[])[], 
  * 取得完整的音頻檔案路徑
  */
 export function getBgmPath(filename: string): string {
+  if (filename.startsWith('http://') || filename.startsWith('https://')) {
+    return filename;
+  }
+  if (filename.startsWith('/')) {
+    return filename;
+  }
   return `${AUDIO_PATHS.BGM}${filename}`;
 }
 
 export function getEffectPath(filename: string): string {
+  if (filename.startsWith('http://') || filename.startsWith('https://')) {
+    return filename;
+  }
+  if (filename.startsWith('/')) {
+    return filename;
+  }
   return `${AUDIO_PATHS.EFFECTS}${filename}`;
 }
 
