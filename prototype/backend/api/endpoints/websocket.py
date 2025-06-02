@@ -705,6 +705,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     should_wait_after_speaking = time_since_last_reset_seconds < 1.0  # 減少等待時間
                 
                 murmur_condition_met = (
+                    murmur_service.enabled and  # 檢查 murmur 服務是否啟用
                     idle_duration > timedelta(seconds=IDLE_TIMEOUT_SECONDS) and
                     (last_murmur_timestamp is None or 
                      current_time - last_murmur_timestamp > timedelta(seconds=MURMUR_MIN_INTERVAL_SECONDS)) and

@@ -71,8 +71,18 @@ curl -X POST "$BASE_URL/control/broadcast" \
   }' | jq .
 echo
 
-# 7. 切換 murmur 模式
-echo "7. 切換 murmur 模式："
+# 7. 控制背景音訊
+echo "7. 控制背景音訊："
+curl -X POST "$BASE_URL/control/background-audio" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "bgmUrl": "/audio-file/example.mp3",
+    "sfxUrl": "/audio-file/example.mp3"
+  }' | jq .
+echo
+
+# 8. 切換 murmur 模式
+echo "8. 切換 murmur 模式："
 curl -X POST "$BASE_URL/control/murmur-mode" \
   -H "Content-Type: application/json" \
   -d '{
@@ -80,8 +90,8 @@ curl -X POST "$BASE_URL/control/murmur-mode" \
   }' | jq .
 echo
 
-# 8. 健康檢查
-echo "8. 健康檢查："
+# 9. 健康檢查
+echo "9. 健康檢查："
 curl -X GET "$BASE_URL/health" \
   -H "Content-Type: application/json" | jq .
 echo
