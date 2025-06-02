@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Space Live Admin</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css" />
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+    #console { padding: 1em; }
+    #ws-log { height: 200px; overflow: auto; border: 1px solid #ccc; }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <div id="console">
+    <h2>WebSocket Console</h2>
+    <input id="ws-input" type="text" placeholder="Message" />
+    <button id="ws-send">Send</button>
+    <button id="ws-clear">Clear</button>
+    <button id="ws-download">Download Log</button>
+    <pre id="ws-log"></pre>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script>
+    SwaggerUIBundle({
+      url: '/openapi.json',
+      dom_id: '#swagger-ui'
+    });
+  </script>
+  <script src="/admin-static/admin.js"></script>
+</body>
+</html>

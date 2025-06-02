@@ -9,7 +9,12 @@ def create_app() -> FastAPI:
     Returns:
         已配置的FastAPI應用
     """
-    app = FastAPI(title="太空人虛擬人物API")
+    app = FastAPI(
+        title="太空人虛擬人物API",
+        version="1.0.0",
+        description="Space Live Project - 虛擬太空人互動系統 API",
+        openapi_version="3.0.2"
+    )
     
     # 設置CORS
     app.add_middleware(

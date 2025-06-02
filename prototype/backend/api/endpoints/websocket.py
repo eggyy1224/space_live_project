@@ -141,6 +141,76 @@ class MessageQueue:
         return len(self.queue) == 0
 # --- 結束新增 ---
 
+# === 將 save_audio_and_set_url 移動到模組頂層 ===
+async def save_audio_and_set_url(audio_base64: str, message_obj: Dict[str, Any], is_murmur: bool = False):
+    """保存音頻到文件並設置URL - 優化版本"""
+    prefix = "murmur-" if is_murmur else ""
+    # 使用 uuid 確保檔名唯一性，避免僅依賴時間戳可能導致的衝突
+    audio_filename = f"{prefix}{uuid.uuid4().hex[:10]}.mp3"
+    
+    # 構建保存路徑 - 確保路徑相對於專案或一個可配置的靜態目錄
+    # 假設 FastAPI 的靜態目錄是 'static'，並且音訊存在 'static/audio_cache'
+    # 我們需要確保這個路徑是正確的，並且 FastAPI 有設定這個靜態路徑
+    try:
+        # 獲取專案的 backend 目錄
+        # __file__ 指向 websocket.py，位於 .../prototype/backend/api/endpoints/
+        # 需要向上兩層才能到達 backend 目錄
+        current_dir = os.path.dirname(os.path.abspath(__file__))  # .../api/endpoints
+        api_dir = os.path.dirname(current_dir)  # .../api
+        backend_root = os.path.dirname(api_dir)  # .../backend
+        # static_dir_name = "static" # 通常 FastAPI 的靜態目錄名稱
+        audio_cache_dir_name = "audio_cache" # 實際儲存音訊的子目錄
+        
+        # 這裡的 audio_dir 應該指向 FastAPI 提供服務的靜態目錄中的 audio_cache
+        # 例如: /app/prototype/backend/static/audio_cache
+        # 在 websocket.py 中，原來的路徑是 audio_dir = os.path.join(backend_root, "audio")
+        # 這似乎不是指向 'static/audio_cache'，需要確認！
+        # 暫時沿用原邏輯，但標註這裡可能需要與 FastAPI 的靜態設定對齊
+        # 如果 save_audio_and_set_url 是在 websocket.py 中定义的，它的 os.path.abspath(__file__) 會指向 websocket.py
+        # os.path.dirname(os.path.abspath(__file__)) -> .../endpoints/
+        # os.path.dirname(os.path.dirname(os.path.abspath(__file__))) -> .../api/
+        # os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) -> .../backend/
+        # 所以 backend_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) 是正確的
+
+        # 修正：確保 audio_dir 指向一個前端可訪問的靜態路徑下的子目錄
+        # 通常 FastAPI 會在 main.py 中設定 app.mount("/static", StaticFiles(directory="static"), name="static")
+        # 那麼音訊應該存在 'static/audio_cache' 中，URL 才是 '/static/audio_cache/filename.mp3'
+        # 但原 websocket.py 中的 save_audio_and_set_url 將 URL 設為 '/audio-file/filename.mp3'
+        # 這意味著 FastAPI 可能有一個特定的路由 '/audio-file' 指向 'prototype/backend/audio'
+        # 我將遵循原有的URL格式和儲存邏輯
+
+        audio_dir_name_for_saving = "audio" # 儲存音訊的目錄名 (相對於 backend_root)
+        audio_dir_for_url = "audio-file"    # URL 中使用的路徑部分
+
+        save_directory = os.path.join(backend_root, audio_dir_name_for_saving)
+        os.makedirs(save_directory, exist_ok=True)
+        audio_filepath = os.path.join(save_directory, audio_filename)
+
+    except Exception as e:
+        # 路徑處理錯誤也應記錄並可能導致無法保存
+        logger.error(f"Error constructing audio save path: {e}", exc_info=True)
+        message_obj["audioUrl"] = None # 確保出錯時 audioUrl 為 None
+        return # 提前返回，不進行後續保存
+
+    try:
+        # 解碼並保存音頻
+        if isinstance(audio_base64, str):
+            # 處理可能存在的 data URI scheme (e.g., "data:audio/mp3;base64,...")
+            audio_base64_data = audio_base64.split(",", 1)[-1] # 取最後一部分以兼容有無scheme的情況
+            audio_data = base64.b64decode(audio_base64_data)
+            with open(audio_filepath, 'wb') as f:
+                f.write(audio_data)
+            # 如果成功保存，設置 audioUrl
+            message_obj["audioUrl"] = f"/{audio_dir_for_url}/{audio_filename}" # 使用定義的URL路徑
+            logger.info(f"Audio saved: {audio_filepath}, URL: {message_obj['audioUrl']}")
+        else:
+            logger.error(f"Audio data is not a valid base64 string: {type(audio_base64)}")
+            message_obj["audioUrl"] = None
+    except Exception as e:
+        logger.error(f"Error saving audio file '{audio_filepath}': {e}", exc_info=True)
+        message_obj["audioUrl"] = None
+# === 移動結束 ===
+
 # WebSocket端點
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
@@ -635,7 +705,7 @@ async def websocket_endpoint(websocket: WebSocket):
             }
 
             if audio_base64:
-                await save_audio_and_set_url(audio_base64, bot_message, is_murmur=True) # 確保 save_audio_and_set_url 可用
+                await save_audio_and_set_url(audio_base64, bot_message, is_murmur=True)
             
             await websocket.send_json({"type": "chat-message", "message": bot_message})
 
@@ -664,31 +734,6 @@ async def websocket_endpoint(websocket: WebSocket):
             logger.error(f"Error generating standard murmur: {e}", exc_info=True)
             speaking_state = SpeakingState.IDLE
         
-    async def save_audio_and_set_url(audio_base64: str, message_obj: Dict[str, Any], is_murmur: bool = False):
-        """保存音頻到文件並設置URL - 優化版本"""
-        prefix = "murmur-" if is_murmur else ""
-        audio_filename = f"{prefix}{int(asyncio.get_event_loop().time() * 1000)}.mp3"
-        
-        # 構建保存路徑
-        backend_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        audio_dir = os.path.join(backend_root, "audio")
-        os.makedirs(audio_dir, exist_ok=True)
-        audio_filepath = os.path.join(audio_dir, audio_filename)
-
-        try:
-            # 解碼並保存音頻
-            if isinstance(audio_base64, str):
-                audio_base64_data = audio_base64.split(",", 1)[1] if "," in audio_base64 else audio_base64
-                audio_data = base64.b64decode(audio_base64_data)
-                with open(audio_filepath, 'wb') as f:
-                    f.write(audio_data)
-                # 如果成功保存，設置 audioUrl
-                message_obj["audioUrl"] = f"/audio-file/{audio_filename}"
-            else:
-                logger.error(f"Audio data is not a valid string: {type(audio_base64)}")
-        except Exception as e:
-            logger.error(f"Error saving audio file: {e}")
-
     async def idle_checker():
         """背景任務，定期檢查閒置狀態並觸發 murmur。優化版本，減少日誌輸出"""
         nonlocal last_activity_timestamp, current_emotion, last_murmur_timestamp, recent_murmurs, user_responded, speaking_state, last_speaking_reset_timestamp

@@ -11,6 +11,8 @@ from pydantic import BaseModel
 from ..endpoints.websocket import (  # 導入 WebSocket 連接管理器和 MurmurService
     manager,
     murmur_service,
+    tts_service,
+    save_audio_and_set_url as save_websocket_audio,
 )
 
 # 設置日誌
@@ -59,17 +61,33 @@ async def send_message_to_frontend(request: SendMessageRequest):
         if not manager.active_connections:
             raise HTTPException(status_code=503, detail="沒有活動的前端連接")
 
-        # 構建消息
+        audio_url_for_message = None
+        if request.content:
+            logger.info(f"API /send-message: 正在為內容進行 TTS: '{request.content[:30]}...'")
+            tts_result = await tts_service.synthesize_speech(request.content)
+            if tts_result and tts_result.get("audio"):
+                audio_base64 = tts_result.get("audio")
+                temp_message_obj_for_audio = {
+                    "id": f"api-tts-{uuid.uuid4().hex[:8]}",
+                }
+                await save_websocket_audio(audio_base64, temp_message_obj_for_audio, is_murmur=False)
+                audio_url_for_message = temp_message_obj_for_audio.get("audioUrl")
+                if audio_url_for_message:
+                    logger.info(f"API /send-message: TTS 成功，音訊 URL: {audio_url_for_message}")
+                else:
+                    logger.warning("API /send-message: save_websocket_audio 未能生成 audioUrl")
+            else:
+                logger.warning(f"API /send-message: TTS 失敗或未返回音訊內容 for: '{request.content[:30]}...'")
+
         bot_message = {
             "id": f"api-bot-{int(asyncio.get_event_loop().time() * 1000)}",
             "role": "bot",
             "content": request.content,
             "timestamp": datetime.utcnow().isoformat(),
-            "audioUrl": None,
-            "isFromAPI": True,  # 標記這是來自 API 的消息
+            "audioUrl": audio_url_for_message,
+            "isFromAPI": True,
         }
 
-        # 發送到所有連接的前端
         message_data = {"type": request.message_type, "message": bot_message}
 
         await manager.broadcast(json.dumps(message_data))
