@@ -71,8 +71,17 @@ curl -X POST "$BASE_URL/control/broadcast" \
   }' | jq .
 echo
 
-# 7. 健康檢查
-echo "7. 健康檢查："
+# 7. 切換 murmur 模式
+echo "7. 切換 murmur 模式："
+curl -X POST "$BASE_URL/control/murmur-mode" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "enabled": false
+  }' | jq .
+echo
+
+# 8. 健康檢查
+echo "8. 健康檢查："
 curl -X GET "$BASE_URL/health" \
   -H "Content-Type: application/json" | jq .
 echo

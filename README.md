@@ -124,6 +124,18 @@ space_live_project/
 `DirectorMonitorHUD` provides real-time state of BGM, SFX, video, lighting, camera and performance.
 Press **d** during runtime to expand the drawer view.
 
+### Murmur Mode
+
+Use the `murmur-mode` API to temporarily disable the self-talk feature when testing other functions.
+
+```bash
+curl -X POST http://localhost:8000/api/control/murmur-mode \
+  -H 'Content-Type: application/json' \
+  -d '{"enabled": false}'
+```
+
+Send `true` to re-enable murmurs.
+
 ## AI 代理流程
 
 本專案支援使用 AI 代理（如 Codex、Cursor、TaskMaster）進行自動化開發與維護。詳細的代理協作指南、分支策略、提交規範與自動化工作流程，請參考：

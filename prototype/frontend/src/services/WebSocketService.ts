@@ -176,6 +176,16 @@ class WebSocketService {
         useStore.getState().setRuntime((data as DirectorStateMessage).payload);
         return;
       }
+      if (data.type === 'audio-control') {
+        const payload = data as any;
+        if (payload.bgmUrl) {
+          useStore.getState().setRuntime({ bgm: payload.bgmUrl, bgmPlaying: true });
+        }
+        if (payload.sfxUrl) {
+          useStore.getState().setRuntime({ selectedEffect: payload.sfxUrl });
+        }
+        return;
+      }
       // --- 從高頻類型中移除 morph_update ---
       const highFrequencyTypes = ['animation_update']; // Remove 'morph_update'
 

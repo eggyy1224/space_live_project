@@ -33,3 +33,13 @@ export interface DirectorStateMessage {
   type: 'director-state';
   payload: Partial<DirectorState>;
 }
+
+export interface AudioControlMessage {
+  type: 'audio-control';
+  bgmUrl?: string;
+  sfxUrl?: string;
+}
+
+export type DirectorWebSocketMessage =
+  | DirectorStateMessage
+  | AudioControlMessage;
