@@ -22,6 +22,7 @@ export interface RuntimeSlice {
   lightingPreset: string | null;
   cameraPreset: string | null;
   cameraAngles: [number, number, number] | null;
+  cameraTransitionDuration: number;
   randomMode: boolean;
   fps: number;
   cpu: number;
@@ -44,6 +45,7 @@ export const createRuntimeSlice: StateCreator<RuntimeSlice> = (set) => ({
   lightingPreset: null,
   cameraPreset: null,
   cameraAngles: null,
+  cameraTransitionDuration: 1,
   randomMode: true,
   fps: 0,
   cpu: 0,

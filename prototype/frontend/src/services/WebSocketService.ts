@@ -280,7 +280,10 @@ class WebSocketService {
         const p = (data as any).payload;
         useStore
           .getState()
-          .setRuntime({ cameraAngles: [p.pitch, p.yaw, p.roll] });
+          .setRuntime({ 
+            cameraAngles: [p.pitch, p.yaw, p.roll],
+            cameraTransitionDuration: p.duration || 1
+          });
       } else if (data.type === "emotionalTrajectory") {
         // --- 添加日誌記錄 ---
         console.log(

@@ -101,6 +101,8 @@ const SceneContent: React.FC<SceneContainerProps> = ({
   const randomMode = useStore((s) => s.randomMode); // 新增：監聽隨機模式狀態
   const cameraPreset = useStore((s) => s.cameraPreset); // 新增：監聽手動相機預設變化
   const cameraAngles = useStore((s) => s.cameraAngles);
+  const cameraTransitionDuration = useStore((s) => s.cameraTransitionDuration);
+  const orbitControlsRef = useRef<any>(null);
 
   // 房間場景狀態
   const showRoomScene = useStore((s) => s.showRoomScene);
@@ -119,14 +121,26 @@ const SceneContent: React.FC<SceneContainerProps> = ({
 
   useEffect(() => {
     if (cameraAngles) {
+      // 暫時禁用OrbitControls以避免衝突
+      if (orbitControlsRef.current) {
+        orbitControlsRef.current.enabled = false;
+      }
+      
       cameraManager.transitionAngles(
         cameraAngles[0],
         cameraAngles[1],
         cameraAngles[2],
-        1,
+        cameraTransitionDuration,
       );
+
+      // 在轉換完成後重新啟用OrbitControls（加500ms緩衝）
+      setTimeout(() => {
+        if (orbitControlsRef.current) {
+          orbitControlsRef.current.enabled = true;
+        }
+      }, (cameraTransitionDuration * 1000) + 500);
     }
-  }, [cameraAngles, cameraManager]);
+  }, [cameraAngles, cameraTransitionDuration, cameraManager]);
 
   useEffect(() => {
     const switchView = () => {
@@ -211,6 +225,7 @@ const SceneContent: React.FC<SceneContainerProps> = ({
         })()}
       </Suspense>
       <OrbitControls
+        ref={orbitControlsRef}
         makeDefault
         enablePan
         enableZoom
