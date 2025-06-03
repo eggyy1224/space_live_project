@@ -248,6 +248,9 @@ class WebSocketService {
             .getState()
             .setRuntime({ bgm: payload.bgmUrl, bgmPlaying: true });
         }
+        if (payload.bgmPlaying !== undefined) {
+          useStore.getState().setRuntime({ bgmPlaying: payload.bgmPlaying });
+        }
         if (payload.sfxUrl) {
           useStore.getState().setRuntime({ selectedEffect: payload.sfxUrl });
         }

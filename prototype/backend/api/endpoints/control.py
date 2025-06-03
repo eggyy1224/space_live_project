@@ -45,6 +45,7 @@ class PlayAudioRequest(BaseModel):
 class BackgroundAudioRequest(BaseModel):
     bgmUrl: Optional[str] = None
     sfxUrl: Optional[str] = None
+    bgmPlaying: Optional[bool] = None  # 新增：控制BGM播放/暫停
 
 
 class MurmurModeRequest(BaseModel):
@@ -230,9 +231,22 @@ async def background_audio_control(request: BackgroundAudioRequest):
             raise HTTPException(status_code=503, detail="沒有活動的前端連接")
 
         audio_data: Dict[str, Any] = {"type": "audio-control"}
-        if request.bgmUrl:
+        
+        # 處理 BGM URL（包含空字串停止功能）
+        if request.bgmUrl is not None:  # 使用 is not None 來包含空字串
             audio_data["bgmUrl"] = request.bgmUrl
-        if request.sfxUrl:
+            # 如果是空字串，表示停止BGM
+            if request.bgmUrl == "":
+                audio_data["bgmPlaying"] = False
+            else:
+                audio_data["bgmPlaying"] = True
+        
+        # 處理明確的播放/暫停控制
+        if request.bgmPlaying is not None:
+            audio_data["bgmPlaying"] = request.bgmPlaying
+            
+        # 處理音效 URL
+        if request.sfxUrl is not None:
             audio_data["sfxUrl"] = request.sfxUrl
 
         await manager.broadcast(json.dumps(audio_data))
