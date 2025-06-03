@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.responses import FileResponse
 
 from .base import create_app
-from .endpoints import control, health, speech, websocket
+from .endpoints import control, health, monitors, speech, websocket
 from .middleware.cors import setup_cors
 
 # 設置日誌
@@ -38,6 +38,7 @@ def init_app() -> FastAPI:
     app.include_router(speech.router, prefix="/api", tags=["speech"])
     app.include_router(health.router, prefix="/api", tags=["system"])
     app.include_router(control.router, prefix="/api", tags=["control"])
+    app.include_router(monitors.router, prefix="/api", tags=["monitor"])
 
     # 創建音頻目錄（如果不存在）
     audio_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "audio")
