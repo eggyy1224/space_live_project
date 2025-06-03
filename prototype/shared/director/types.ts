@@ -25,6 +25,7 @@ export interface DirectorState {
   effectVolume: number;
   lightingPreset: LightingPreset | null;
   cameraPreset: CameraPresetName | null;
+  cameraAngles?: [number, number, number];
   randomMode: boolean;
   videoScreens: VideoScreenState[];
 }

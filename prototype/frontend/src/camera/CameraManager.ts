@@ -1,5 +1,5 @@
-import * as THREE from 'three';
-import { useStore } from '../store';
+import * as THREE from "three";
+import { useStore } from "../store";
 
 /** Camera preset describing a target position, look at point and field of view. */
 export interface CameraPreset {
@@ -29,6 +29,10 @@ export class CameraManager {
   private to?: CameraPreset;
   private duration = 0;
   private elapsed = 0;
+  private angleFrom?: THREE.Euler;
+  private angleTo?: THREE.Euler;
+  private angleDuration = 0;
+  private angleElapsed = 0;
   private targetObject?: THREE.Object3D;
 
   constructor(camera: THREE.PerspectiveCamera, presets: CameraPreset[] = []) {
@@ -41,11 +45,19 @@ export class CameraManager {
     // Normalize to Vector3 for internal use.
     const normalizedPreset: CameraPreset = {
       ...preset,
-      position: Array.isArray(preset.position) 
-        ? new THREE.Vector3(preset.position[0], preset.position[1], preset.position[2])
+      position: Array.isArray(preset.position)
+        ? new THREE.Vector3(
+            preset.position[0],
+            preset.position[1],
+            preset.position[2],
+          )
         : preset.position,
       target: Array.isArray(preset.target)
-        ? new THREE.Vector3(preset.target[0], preset.target[1], preset.target[2])
+        ? new THREE.Vector3(
+            preset.target[0],
+            preset.target[1],
+            preset.target[2],
+          )
         : preset.target,
     };
     this.presets.set(normalizedPreset.name, normalizedPreset);
@@ -62,7 +74,7 @@ export class CameraManager {
     if (!preset) return;
     useStore.getState().setRuntime({ cameraPreset: name });
     this.from = {
-      name: 'from',
+      name: "from",
       position: this.camera.position.clone(),
       target: this.getCurrentTarget(),
       fov: this.camera.fov,
@@ -75,6 +87,27 @@ export class CameraManager {
   /** Follow an object each frame, keeping the lookAt on it. */
   track(object: THREE.Object3D | undefined) {
     this.targetObject = object;
+  }
+
+  /** Instantly set camera rotation using degrees. */
+  setAngles(pitch: number, yaw: number, roll: number) {
+    this.camera.rotation.set(
+      THREE.MathUtils.degToRad(pitch),
+      THREE.MathUtils.degToRad(yaw),
+      THREE.MathUtils.degToRad(roll),
+    );
+  }
+
+  /** Smoothly transition to target rotation in degrees. */
+  transitionAngles(pitch: number, yaw: number, roll: number, duration = 1) {
+    this.angleFrom = this.camera.rotation.clone();
+    this.angleTo = new THREE.Euler(
+      THREE.MathUtils.degToRad(pitch),
+      THREE.MathUtils.degToRad(yaw),
+      THREE.MathUtils.degToRad(roll),
+    );
+    this.angleDuration = Math.max(0.001, duration);
+    this.angleElapsed = 0;
   }
 
   /** Get current camera target. */
@@ -90,13 +123,25 @@ export class CameraManager {
       this.elapsed += delta;
       const t = Math.min(this.elapsed / this.duration, 1);
       const eased = easeInOutQuad(t);
-      
+
       // Ensure position and target are Vector3
-      const fromPos = this.from.position instanceof THREE.Vector3 ? this.from.position : new THREE.Vector3().fromArray(this.from.position);
-      const toPos = this.to.position instanceof THREE.Vector3 ? this.to.position : new THREE.Vector3().fromArray(this.to.position);
-      const fromTarget = this.from.target instanceof THREE.Vector3 ? this.from.target : new THREE.Vector3().fromArray(this.from.target);
-      const toTarget = this.to.target instanceof THREE.Vector3 ? this.to.target : new THREE.Vector3().fromArray(this.to.target);
-      
+      const fromPos =
+        this.from.position instanceof THREE.Vector3
+          ? this.from.position
+          : new THREE.Vector3().fromArray(this.from.position);
+      const toPos =
+        this.to.position instanceof THREE.Vector3
+          ? this.to.position
+          : new THREE.Vector3().fromArray(this.to.position);
+      const fromTarget =
+        this.from.target instanceof THREE.Vector3
+          ? this.from.target
+          : new THREE.Vector3().fromArray(this.from.target);
+      const toTarget =
+        this.to.target instanceof THREE.Vector3
+          ? this.to.target
+          : new THREE.Vector3().fromArray(this.to.target);
+
       this.camera.position.lerpVectors(fromPos, toPos, eased);
       this.camera.fov = THREE.MathUtils.lerp(this.from.fov, this.to.fov, eased);
       this.camera.updateProjectionMatrix();
@@ -112,6 +157,21 @@ export class CameraManager {
       const targetPos = new THREE.Vector3();
       this.targetObject.getWorldPosition(targetPos);
       this.camera.lookAt(targetPos);
+    }
+
+    if (this.angleTo && this.angleFrom) {
+      this.angleElapsed += delta;
+      const t = Math.min(this.angleElapsed / this.angleDuration, 1);
+      const eased = easeInOutQuad(t);
+      this.camera.rotation.set(
+        THREE.MathUtils.lerp(this.angleFrom.x, this.angleTo.x, eased),
+        THREE.MathUtils.lerp(this.angleFrom.y, this.angleTo.y, eased),
+        THREE.MathUtils.lerp(this.angleFrom.z, this.angleTo.z, eased),
+      );
+      if (t === 1) {
+        this.angleFrom = undefined;
+        this.angleTo = undefined;
+      }
     }
   }
 }

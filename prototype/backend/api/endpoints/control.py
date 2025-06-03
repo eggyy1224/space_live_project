@@ -14,12 +14,16 @@ from ..endpoints.websocket import (  # 導入 WebSocket 連接管理器和 Murmu
     tts_service,
     save_audio_and_set_url as save_websocket_audio,
 )
+from services.camera_control import CameraControlService
 
 # 設置日誌
 logger = logging.getLogger(__name__)
 
 # 創建路由
 router = APIRouter()
+
+# Service instance to manage camera presets
+camera_service = CameraControlService()
 
 
 # 定義請求模型
@@ -50,6 +54,23 @@ class MurmurModeRequest(BaseModel):
 class EmotionalTrajectoryRequest(BaseModel):
     duration: float
     keyframes: List[Dict[str, Any]]
+
+
+class CameraAngles(BaseModel):
+    """Camera orientation specified in degrees."""
+
+    pitch: float
+    yaw: float
+    roll: float
+    fov: Optional[float] = None
+
+
+class CameraTransitionRequest(CameraAngles):
+    duration: float = 1.0
+
+
+class CameraPresetRequest(CameraAngles):
+    name: str
 
 
 @router.post("/control/send-message")
@@ -269,3 +290,56 @@ async def broadcast_custom_message(message: Dict[str, Any]):
     except Exception as e:
         logger.error(f"API 廣播消息失敗: {e}")
         raise HTTPException(status_code=500, detail=f"廣播消息失敗: {str(e)}")
+
+
+@router.post("/control/camera/set-angle")
+async def set_camera_angle(request: CameraAngles):
+    """Set camera orientation instantly on the frontend."""
+    if not manager.active_connections:
+        raise HTTPException(status_code=503, detail="沒有活動的前端連接")
+    message = {"type": "camera-angle", "payload": request.dict()}
+    await manager.broadcast(json.dumps(message))
+    logger.info(f"Set camera angle: {request.dict()}")
+    return {"success": True}
+
+
+@router.post("/control/camera/transition")
+async def transition_camera_angle(request: CameraTransitionRequest):
+    """Smoothly transition the camera to the given orientation."""
+    if not manager.active_connections:
+        raise HTTPException(status_code=503, detail="沒有活動的前端連接")
+    message = {
+        "type": "camera-transition",
+        "payload": request.dict(),
+    }
+    await manager.broadcast(json.dumps(message))
+    logger.info(
+        f"Transition camera to {request.pitch},{request.yaw},{request.roll} in {request.duration}s"
+    )
+    return {"success": True}
+
+
+@router.post("/control/camera/save-preset")
+async def save_camera_preset(request: CameraPresetRequest):
+    """Save or update a camera preset on the server."""
+    camera_service.save_preset(
+        request.name, request.pitch, request.yaw, request.roll, request.fov
+    )
+    logger.info(f"Saved camera preset: {request.name}")
+    return {"success": True}
+
+
+@router.post("/control/camera/load-preset")
+async def load_camera_preset(name: str, duration: float = 1.0):
+    """Recall a stored camera preset and broadcast to frontend."""
+    preset = camera_service.get_preset(name)
+    if not preset:
+        raise HTTPException(status_code=404, detail="Preset not found")
+    payload = {
+        **preset,
+        "duration": duration,
+    }
+    message = {"type": "camera-transition", "payload": payload}
+    await manager.broadcast(json.dumps(message))
+    logger.info(f"Loaded camera preset: {name}")
+    return {"success": True}

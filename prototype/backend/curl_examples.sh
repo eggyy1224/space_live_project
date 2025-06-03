@@ -90,8 +90,49 @@ curl -X POST "$BASE_URL/control/murmur-mode" \
   }' | jq .
 echo
 
-# 9. 健康檢查
-echo "9. 健康檢查："
+# 9. 設定相機角度
+echo "9. 設定相機角度："
+curl -X POST "$BASE_URL/control/camera/set-angle" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "pitch": 10,
+    "yaw": 45,
+    "roll": 0
+  }' | jq .
+echo
+
+# 10. 相機角度平滑轉場
+echo "10. 相機角度平滑轉場："
+curl -X POST "$BASE_URL/control/camera/transition" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "pitch": 0,
+    "yaw": 90,
+    "roll": 0,
+    "duration": 2
+  }' | jq .
+echo
+
+# 11. 儲存相機預設
+echo "11. 儲存相機預設："
+curl -X POST "$BASE_URL/control/camera/save-preset" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "demo",
+    "pitch": 0,
+    "yaw": 0,
+    "roll": 0
+  }' | jq .
+echo
+
+# 12. 載入相機預設
+echo "12. 載入相機預設："
+curl -X POST "$BASE_URL/control/camera/load-preset?name=demo&duration=1" \
+  -H "Content-Type: application/json" | jq .
+echo
+
+# 13. 健康檢查
+echo "13. 健康檢查："
 curl -X GET "$BASE_URL/health" \
   -H "Content-Type: application/json" | jq .
 echo
