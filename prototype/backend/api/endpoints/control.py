@@ -8,13 +8,13 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from ..endpoints.websocket import (  # 導入 WebSocket 連接管理器和 MurmurService
-    manager,
-    murmur_service,
-    tts_service,
-    save_audio_and_set_url as save_websocket_audio,
-)
 from services.camera_control import CameraControlService
+
+from ..endpoints.websocket import manager, murmur_service
+from ..endpoints.websocket import (
+    save_audio_and_set_url as save_websocket_audio,
+)  # 導入 WebSocket 連接管理器和 MurmurService
+from ..endpoints.websocket import tts_service
 
 # 設置日誌
 logger = logging.getLogger(__name__)
@@ -73,6 +73,18 @@ class CameraPresetRequest(CameraAngles):
     name: str
 
 
+class BodyAnimationCommand(BaseModel):
+    """Request model for controlling body animations."""
+
+    state: Optional[str] = "play"
+    animation: Optional[str] = None
+    sequence: Optional[List[Dict[str, Any]]] = None
+    loop: Optional[bool] = None
+    loopCount: Optional[int] = None
+    speed: Optional[float] = None
+    transitionDuration: Optional[float] = None
+
+
 @router.post("/control/send-message")
 async def send_message_to_frontend(request: SendMessageRequest):
     """
@@ -84,21 +96,31 @@ async def send_message_to_frontend(request: SendMessageRequest):
 
         audio_url_for_message = None
         if request.content:
-            logger.info(f"API /send-message: 正在為內容進行 TTS: '{request.content[:30]}...'")
+            logger.info(
+                f"API /send-message: 正在為內容進行 TTS: '{request.content[:30]}...'"
+            )
             tts_result = await tts_service.synthesize_speech(request.content)
             if tts_result and tts_result.get("audio"):
                 audio_base64 = tts_result.get("audio")
                 temp_message_obj_for_audio = {
                     "id": f"api-tts-{uuid.uuid4().hex[:8]}",
                 }
-                await save_websocket_audio(audio_base64, temp_message_obj_for_audio, is_murmur=False)
+                await save_websocket_audio(
+                    audio_base64, temp_message_obj_for_audio, is_murmur=False
+                )
                 audio_url_for_message = temp_message_obj_for_audio.get("audioUrl")
                 if audio_url_for_message:
-                    logger.info(f"API /send-message: TTS 成功，音訊 URL: {audio_url_for_message}")
+                    logger.info(
+                        f"API /send-message: TTS 成功，音訊 URL: {audio_url_for_message}"
+                    )
                 else:
-                    logger.warning("API /send-message: save_websocket_audio 未能生成 audioUrl")
+                    logger.warning(
+                        "API /send-message: save_websocket_audio 未能生成 audioUrl"
+                    )
             else:
-                logger.warning(f"API /send-message: TTS 失敗或未返回音訊內容 for: '{request.content[:30]}...'")
+                logger.warning(
+                    f"API /send-message: TTS 失敗或未返回音訊內容 for: '{request.content[:30]}...'"
+                )
 
         bot_message = {
             "id": f"api-bot-{int(asyncio.get_event_loop().time() * 1000)}",
@@ -342,4 +364,17 @@ async def load_camera_preset(name: str, duration: float = 1.0):
     message = {"type": "camera-transition", "payload": payload}
     await manager.broadcast(json.dumps(message))
     logger.info(f"Loaded camera preset: {name}")
+    return {"success": True}
+
+
+@router.post("/control/body-animation")
+async def control_body_animation(command: BodyAnimationCommand):
+    """Broadcast body animation commands to the frontend."""
+    if not manager.active_connections:
+        raise HTTPException(status_code=503, detail="沒有活動的前端連接")
+
+    payload = {k: v for k, v in command.dict().items() if v is not None}
+    message = {"type": "body-animation", "payload": payload}
+    await manager.broadcast(json.dumps(message))
+    logger.info(f"Broadcast body animation command: {payload}")
     return {"success": True}

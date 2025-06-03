@@ -292,6 +292,24 @@ class WebSocketService {
         );
         // --- 日誌記錄結束 ---
         // (可以保留特定處理邏輯，但狀態已更新)
+      } else if (data.type === "body-animation") {
+        const payload: any = (data as any).payload || {};
+        if (Array.isArray(payload.sequence)) {
+          useStore.getState().setAnimationSequence(payload.sequence);
+          if (!payload.state || payload.state === "play") {
+            useStore.getState().startSequencePlayback();
+          }
+        } else if (payload.animation) {
+          useStore.getState().setCurrentAnimation(payload.animation);
+        }
+
+        if (payload.state === "stop") {
+          useStore.getState().stopSequencePlayback();
+        } else if (payload.state === "pause") {
+          useStore.getState().pauseSequencePlayback();
+        } else if (payload.state === "resume") {
+          useStore.getState().resumeSequencePlayback();
+        }
       } else if (data.type && highFrequencyTypes.includes(data.type)) {
         this._handleHighFrequencyMessage(data.type, data);
       } else {
