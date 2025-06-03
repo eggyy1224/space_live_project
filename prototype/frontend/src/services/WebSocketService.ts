@@ -211,6 +211,11 @@ class WebSocketService {
     return useStore.getState().isConnected;
   }
 
+  // 檢查 WebSocket 實例狀態
+  public getWebSocketState(): number | null {
+    return this.ws ? this.ws.readyState : null;
+  }
+
   // 處理WebSocket打開事件
   private handleOpen(): void {
     logger.info("WebSocket已連接", LogCategory.WEBSOCKET);
@@ -510,12 +515,19 @@ export function useWebSocket() {
   const isConnected = useStore((state) => state.isConnected);
 
   useEffect(() => {
-    // 獲取 WebSocketService 實例並連接
+    // 獲取 WebSocketService 實例
     const wsService = WebSocketService.getInstance();
-    wsService.connect();
+    
+    // 只有在未連接時才連接，避免重複連接
+    const wsState = wsService.getWebSocketState();
+    if (!wsService.isConnected() && (wsState === null || wsState === WebSocket.CLOSED || wsState === WebSocket.CLOSING)) {
+      wsService.connect();
+    }
 
     // 在組件卸載時斷開連接
     return () => {
+      // 注意：在 StrictMode 下，這個清理函數會被調用兩次
+      // 但 disconnect 方法應該是安全的
       wsService.disconnect();
     };
   }, []);

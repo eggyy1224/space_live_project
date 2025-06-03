@@ -8,7 +8,5 @@ import logger, { LogLevel } from './utils/LogManager'
 logger.setLogLevel(window.location.hostname !== 'localhost' ? LogLevel.WARN : LogLevel.INFO);
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
+  <App />
 )
