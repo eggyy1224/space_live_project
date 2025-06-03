@@ -35,20 +35,24 @@ async def main() -> None:
     async with websockets.connect(WS_URL) as ws:
         print("\n🚀 Testing /camera/set-angle")
         # Expected: frontend camera instantly snaps to these angles
-        requests.post(f"{API_BASE}/api/control/camera/set-angle", json={"pitch": 5, "yaw": 10, "roll": 0})
+        requests.post(f"{API_BASE}/api/control/camera/set-angle", json={"pitch": 30, "yaw": 45, "roll": 0})
         data = await wait_for_type(ws, "camera-angle")
         assert data, "No camera-angle message received"
         print("✅ camera-angle:", data)
+        print("⏳ Pausing to observe instant angle change...")
+        time.sleep(2)
 
         print("\n🚀 Testing /camera/transition")
-        # Expected: camera smoothly transitions over 1 second
+        # Expected: camera smoothly transitions over 6 seconds
         requests.post(
             f"{API_BASE}/api/control/camera/transition",
-            json={"pitch": 0, "yaw": 0, "roll": 0, "duration": 1},
+            json={"pitch": -20, "yaw": -30, "roll": 15, "duration": 6},
         )
         data = await wait_for_type(ws, "camera-transition")
         assert data, "No camera-transition message received"
         print("✅ camera-transition:", data)
+        print("⏳ Waiting for 6-second transition to complete...")
+        time.sleep(6)
 
         print("\n🚀 Testing preset save/load")
         # Expected: loading the preset moves the camera using stored angles
@@ -58,11 +62,13 @@ async def main() -> None:
         )
         requests.post(
             f"{API_BASE}/api/control/camera/load-preset",
-            params={"name": "test-preset", "duration": 1},
+            params={"name": "test-preset", "duration": 5},
         )
         data = await wait_for_type(ws, "camera-transition")
         assert data and data.get("payload", {}).get("pitch") == 15, "Preset not applied"
         print("✅ preset loaded:", data)
+        print("⏳ Waiting for 5-second preset transition to complete...")
+        time.sleep(5)
 
 
 if __name__ == "__main__":
