@@ -124,6 +124,11 @@ space_live_project/
 `DirectorMonitorHUD` provides real-time state of BGM, SFX, video, lighting, camera and performance.
 Press **d** during runtime to expand the drawer view.
 
+## Dynamic Director Mode
+More details in [director_mode_overview](docs/backend/director_mode_overview.md).
+
+The new `DirectorGraph` automatically analyzes text input and orchestrates cinematic camera moves, BGM and emotional cues using backend control APIs.
+
 ### Murmur Mode
 
 Use the `murmur-mode` API to temporarily disable the self-talk feature when testing other functions.
