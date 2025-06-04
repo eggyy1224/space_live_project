@@ -136,12 +136,16 @@ const BackgroundSoundSystem: React.FC = () => {
   const bgm = useStore((s) => s.bgm);
   const bgmPlaying = useStore((s) => s.bgmPlaying);
   const currentBgmRef = useRef<string | null>(null);
+  // 標記手動停止 BGM，以避免觸發 onended 邏輯
+  const manualStopRef = useRef(false);
 
   useEffect(() => {
     if (!audioContext || !bgmGainNodeRef.current || !isUserInteracted) return;
 
     const stopCurrent = () => {
       if (bgmSourceRef.current) {
+        manualStopRef.current = true;
+        bgmSourceRef.current.onended = null;
         bgmSourceRef.current.stop();
         bgmSourceRef.current.disconnect();
         bgmSourceRef.current = null;
@@ -171,6 +175,10 @@ const BackgroundSoundSystem: React.FC = () => {
         // in random mode, pick next track after current ends
         if (random) {
           source.onended = () => {
+            if (manualStopRef.current) {
+              manualStopRef.current = false;
+              return;
+            }
             const available = BGM_FILES.filter((b) => b !== track);
             const next = available[Math.floor(Math.random() * available.length)];
             setRuntime({ bgm: next, bgmPlaying: true });
