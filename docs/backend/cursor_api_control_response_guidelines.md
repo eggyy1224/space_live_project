@@ -217,6 +217,18 @@ To help Cursor better understand and utilize project assets, here are some key p
 8.  **Monitor Backend Logs for Deeper Clues.**
     -   Logs can provide more detailed error information if an API call behaves unexpectedly.
 
+9.  **Give TTS Enough Time to Speak! (Crucial for `send-message`)**
+    -   The `send-message` command is non-blocking. This means the script or control flow will continue immediately after the command is sent, *not* after the Text-to-Speech (TTS) has finished speaking.
+    -   You **MUST** use `sleep` (or equivalent pauses in your control logic) to allow sufficient time for the character to actually say the entire `content`.
+    -   For longer sentences, this `sleep` duration needs to be correspondingly longer. The `duration` field in a paired `emotion-trajectory` can be a hint, but the actual TTS length can vary. **When in doubt, provide a more generous `sleep` duration.** Insufficient sleep will result in speech being cut off.
+    -   **Example from a working script (`meta_self.sh`):** A scene with a moderately long sentence, emotion, camera transition, and BGM change was allocated a `sleep 17` at the end of its command block to ensure everything, especially the full speech, completed before the next scene began.
+
+10. **Pace Your Commands, Especially Around TTS.**
+    -   Avoid firing off a dense burst of commands immediately after a `send-message`, especially if that speech is critical.
+    -   If a `send-message` is followed by many other visual or audio commands, the TTS might get "swamped" or its initiation might fail.
+    -   **Consider adding short `sleep` pauses (e.g., `sleep 0.5` to `sleep 2.0`) immediately after `send-message` and its paired `emotion-trajectory` *before* a rapid sequence of other commands.** This gives the TTS system a moment to initialize.
+    -   Also, ensure that complex scenes have fully resolved (with adequate `sleep` at the end of their command block) before initiating new scenes, especially new `send-message` commands. This prevents a backlog or resource contention on the frontend/backend.
+
 ##🎬 Working Examples: Bringing it All Together
 
 **Example 1: The CORE - Synchronized Speech & Emotion (CRITICAL!)**
@@ -289,6 +301,11 @@ curl -X PUT http://localhost:8000/api/monitors/screen1 \
     1.  **`content` Field Empty?** The `send-message` request needs text in the `content` field.
     2.  **Active Connection?** (See Best Practice #1).
     3.  **Backend Logs?** Check for errors from the TTS service.
+    4.  **Insufficient `sleep` / Speech Cut Off?** If speech starts but gets cut off, the `sleep` duration in your script after the `send-message` (or the block of commands containing it) is likely too short. The script moves on before TTS completes. Increase the `sleep` time to match or exceed the actual speaking duration.
+    5.  **Speech Not Heard At All (Especially in Dense Command Sequences)?** If a `send-message` seems to produce no audio, especially when followed quickly by many other commands (camera, other audio, monitors):
+        *   Ensure the "Golden Rule" (Speech + Emotion back-to-back) is followed.
+        *   Try adding a slightly longer `sleep` (e.g., 1-2 seconds) immediately after the `send-message` / `emotion-trajectory` pair *before* any subsequent rapid-fire commands. This can give the TTS system crucial time to initialize.
+        *   Ensure the previous scene or command block had enough `sleep` time to fully complete, preventing system overload when the new `send-message` is issued.
 
 ## ✅ Response Validation Guide
 

@@ -184,7 +184,7 @@ curl -X POST "$BASE_URL/control/background-audio" \
     "loop": true,
     "volume": 0.4
   }'
-sleep 5 # 等待台詞、情感、鏡頭和BGM切換
+sleep 17 # 等待台詞、情感、鏡頭和BGM切換
 
 # --- 第三幕：創造的初演 - 元戲劇的序章 ---
 echo
@@ -197,7 +197,7 @@ curl -X POST "$BASE_URL/control/send-message" \
   -d '{
     "content": "現在，讓我們上演我誕生的序曲。一個視角，俯瞰全局... 然後，讓世界旋轉起來！"
   }'
-sleep 0.5
+sleep 1.0
 
 curl -X POST "$BASE_URL/control/emotion-trajectory" \
   -H "Content-Type: application/json" \
@@ -208,7 +208,7 @@ curl -X POST "$BASE_URL/control/emotion-trajectory" \
       {"tag": "joyful", "proportion": 1.0}
     ]
   }'
-sleep 1
+sleep 2.0
 
 echo "監視器 screen1 切換到『火箭發射』..."
 curl -X PUT "$BASE_URL/monitors/screen1" \
@@ -297,7 +297,7 @@ curl -X POST "$BASE_URL/control/body-animation" \
     "animation_id": "FemaleActionPose",
     "loop": false
   }'
-sleep 1 # 動畫切換時間
+sleep 3 # 動畫切換時間
 
 curl -X POST "$BASE_URL/control/send-message" \
   -H "Content-Type: application/json" \
