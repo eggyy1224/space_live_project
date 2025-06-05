@@ -32,8 +32,15 @@ export interface RuntimeSlice {
   videoDuration: number;
   videoPlaybackRate: number;
   videoScreens: VideoScreen[];
-  setVideoScreen: (id: string, partial: Partial<VideoScreen>) => void;
-  setRuntime: (partial: Partial<RuntimeSlice>) => void;
+  setVideoScreen: (
+    id: string,
+    partial: Partial<VideoScreen>,
+    options?: { silent?: boolean },
+  ) => void;
+  setRuntime: (
+    partial: Partial<RuntimeSlice>,
+    options?: { silent?: boolean },
+  ) => void;
 }
 
 export const createRuntimeSlice: StateCreator<RuntimeSlice> = (set) => ({
@@ -46,7 +53,7 @@ export const createRuntimeSlice: StateCreator<RuntimeSlice> = (set) => ({
   cameraPreset: null,
   cameraAngles: null,
   cameraTransitionDuration: 1,
-  randomMode: true,
+  randomMode: false,
   fps: 0,
   cpu: 0,
   videoPlaying: false,
@@ -86,16 +93,20 @@ export const createRuntimeSlice: StateCreator<RuntimeSlice> = (set) => ({
       playbackRate: 1,
     },
   ],
-  setVideoScreen: (id, partial) =>
+  setVideoScreen: (id, partial, options?: { silent?: boolean }) =>
     set((state) => {
       const screens = state.videoScreens.map((s) =>
         s.id === id ? { ...s, ...partial } : s,
       );
-      directorBus.emit("stateUpdate", { videoScreens: screens });
+      if (!options?.silent) {
+        directorBus.emit("stateUpdate", { videoScreens: screens });
+      }
       return { videoScreens: screens };
     }),
-  setRuntime: (partial) => {
-    directorBus.emit("stateUpdate", partial as Partial<DirectorState>);
+  setRuntime: (partial, options?: { silent?: boolean }) => {
+    if (!options?.silent) {
+      directorBus.emit("stateUpdate", partial as Partial<DirectorState>);
+    }
     set(partial);
   },
 });

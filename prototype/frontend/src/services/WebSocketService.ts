@@ -237,8 +237,9 @@ class WebSocketService {
     try {
       const data = JSON.parse(event.data) as WebSocketMessage;
       if (data.type === "director-state") {
-        directorBus.emit("stateUpdate", (data as DirectorStateMessage).payload);
-        useStore.getState().setRuntime((data as DirectorStateMessage).payload);
+        const payload = (data as DirectorStateMessage).payload;
+        directorBus.emit("stateUpdate", payload);
+        useStore.getState().setRuntime(payload, { silent: true });
         return;
       }
       if (data.type === "audio-control") {
@@ -246,13 +247,13 @@ class WebSocketService {
         if (payload.bgmUrl) {
           useStore
             .getState()
-            .setRuntime({ bgm: payload.bgmUrl, bgmPlaying: true });
+            .setRuntime({ bgm: payload.bgmUrl, bgmPlaying: true }, { silent: true });
         }
         if (payload.bgmPlaying !== undefined) {
-          useStore.getState().setRuntime({ bgmPlaying: payload.bgmPlaying });
+          useStore.getState().setRuntime({ bgmPlaying: payload.bgmPlaying }, { silent: true });
         }
         if (payload.sfxUrl) {
-          useStore.getState().setRuntime({ selectedEffect: payload.sfxUrl });
+          useStore.getState().setRuntime({ selectedEffect: payload.sfxUrl }, { silent: true });
         }
         return;
       }
