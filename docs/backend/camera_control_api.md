@@ -14,6 +14,31 @@
 
 所有角度以 **度** 為單位。`transition` 與 `load-preset` 端點可透過 `duration` 參數調整過渡時間。
 
+## 可用的前端相機預設
+
+以下是前端 `resources.ts` 中定義的可用相機預設名稱列表，可供 `/api/control/camera/set-frontend-preset` 端點使用：
+
+- `overview`
+- `head_close_up`
+- `dance_circle_view`
+- `side_view`
+- `low_angle_head`
+- `center_orbit_high_1`
+- `center_orbit_high_2`
+- `center_orbit_low_1`
+- `center_orbit_low_2`
+- `top_down_center`
+- `dramatic_angle_1`
+- `dramatic_angle_2`
+- `behind_head_looking_out`
+- `fly_by_left`
+- `fly_by_right`
+- `frontal_dynamic_low`
+- `frontal_dynamic_high`
+- `orbit_head_1`
+- `orbit_head_2`
+- `full_shot_dancers`
+
 ### 範例請求
 
 ```bash
@@ -23,11 +48,11 @@ curl -X POST \
   -d '{"pitch": 0, "yaw": 45, "roll": 0}'
 ```
 
-切換前端至名為 `overview` 的鏡位：
+命令前端切換至名為 `head_close_up` 的鏡位，過渡時間 2.5 秒：
 
 ```bash
 curl -X POST \
   http://localhost:8000/api/control/camera/set-frontend-preset \
   -H 'Content-Type: application/json' \
-  -d '{"name": "overview", "duration": 5.0}'
+  -d '{"name": "head_close_up", "duration": 2.5}'
 ```

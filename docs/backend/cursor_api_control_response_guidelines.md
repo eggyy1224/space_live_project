@@ -30,6 +30,7 @@ The application registers these routes in `prototype/backend/api/__init__.py`.
 |`POST`|`/api/control/camera/transition`|Smoothly transition the camera orientation.|
 |`POST`|`/api/control/camera/save-preset`|Save a camera preset on the server.|
 |`POST`|`/api/control/camera/load-preset`|Load a stored camera preset.|
+|`POST`|`/api/control/camera/set-frontend-preset`|Command frontend to switch to a named camera preset.|
 |`POST`|`/api/control/body-animation`|Control body animation states.|
 
 The request models for these routes are defined at the top of `control.py` and include fields such as `content`, `url`, `duration`, `keyframes`, and camera angles.
@@ -56,7 +57,7 @@ The request models for these routes are defined at the top of `control.py` and i
 A websocket endpoint at `/ws` provides real-time conversation handling. It manages queues, playback acknowledgements and murmur logic.
 
 ## Mapping User Instructions
-1. **Direct control commands** – map explicit directives such as "play this audio" or "set camera angle" to the corresponding control endpoint.
+1. **Direct control commands** – map explicit directives such as "play this audio", "set camera angle", or "switch to overview camera" to the corresponding control endpoint (e.g., `/api/control/camera/set-frontend-preset` for named camera views).
 2. **Monitor operations** – interpret requests about changing monitor visibility, content or volume and call the monitor endpoints.
 3. **Speech processing** – when users supply audio to convert or ask for generated speech, use the speech endpoints.
 4. **Status queries** – requests for availability or connection information should call `/api/control/status` or `/api/health`.
@@ -186,6 +187,14 @@ To help Cursor better understand and utilize project assets, here are some key p
 }
 ```
 
+**8. Set Frontend Camera Preset (`/api/control/camera/set-frontend-preset`)**
+```json
+{
+  "name": "string (Name of the camera preset defined in frontend, e.g., 'overview', 'head_close_up', required)",
+  "duration": "float (Optional, transition duration in seconds, default by backend implementation, e.g., 5.0s)"
+}
+```
+
 ## 🎉 Best Practices for a Smooth Show! 🎉
 
 1.  **Always Verify Connection Status First!**
@@ -228,6 +237,10 @@ To help Cursor better understand and utilize project assets, here are some key p
     -   If a `send-message` is followed by many other visual or audio commands, the TTS might get "swamped" or its initiation might fail.
     -   **Consider adding short `sleep` pauses (e.g., `sleep 0.5` to `sleep 2.0`) immediately after `send-message` and its paired `emotion-trajectory` *before* a rapid sequence of other commands.** This gives the TTS system a moment to initialize.
     -   Also, ensure that complex scenes have fully resolved (with adequate `sleep` at the end of their command block) before initiating new scenes, especially new `send-message` commands. This prevents a backlog or resource contention on the frontend/backend.
+
+11. **Validate Frontend Preset Names:**
+    -   When using `/api/control/camera/set-frontend-preset`, ensure the `name` provided corresponds to a camera preset defined in the frontend's configuration (e.g., in `prototype/frontend/src/config/resources.ts`). Sending an unknown preset name will likely result in no camera change or an error/warning on the frontend side.
+    -   Refer to `docs/backend/camera_control_api.md` for a list of known presets populated from the frontend configuration.
 
 ##🎬 Working Examples: Bringing it All Together
 
@@ -276,6 +289,15 @@ curl -X POST http://localhost:8000/api/control/camera/transition \
 curl -X PUT http://localhost:8000/api/monitors/screen1 \
   -H "Content-Type: application/json" \
   -d '{"content": "/videos/太空瑜伽.mp4", "visible": true, "playing": true, "volume": 0.8}'
+```
+
+**Example 4: Command Frontend to Switch Camera Preset**
+```bash
+# This tells the frontend to use its own 'side_view' preset definition,
+# with a 2-second transition.
+curl -X POST http://localhost:8000/api/control/camera/set-frontend-preset \\
+  -H "Content-Type: application/json" \\
+  -d '{"name": "side_view", "duration": 2.0}'
 ```
 
 ## 🔍 Troubleshooting Common Issues

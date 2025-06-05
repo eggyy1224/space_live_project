@@ -18,6 +18,17 @@ echo "準備工作：確保一個乾淨的拍攝環境..."
 
 sleep 1
 
+# 設定初始預設鏡位為 overview
+echo "設定初始預設鏡位為 overview..."
+curl -X POST "$BASE_URL/control/camera/set-frontend-preset" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "overview",
+    "duration": 2.0
+  }'
+echo "初始鏡位設定完成，等待2秒..."
+sleep 2
+
 # --- 第一幕：意識的微光 ---
 echo "=== 第一幕：意識的微光 ==="
 echo "場景：混沌初開 - 虛無中的脈動"
@@ -63,6 +74,16 @@ curl -X PUT "$BASE_URL/monitors/screen1" \
   }'
 sleep 1 # 等待影片開始播放
 
+echo "切換至 head_close_up 鏡位進行獨白..."
+curl -X POST "$BASE_URL/control/camera/set-frontend-preset" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "head_close_up",
+    "duration": 2.0
+  }'
+echo "head_close_up 鏡位設定完成，等待2秒讓鏡頭到位..."
+sleep 2
+
 echo "伊始之眼的獨白 - 第一次呼吸..."
 curl -X POST "$BASE_URL/control/send-message" \
   -H "Content-Type: application/json" \
@@ -82,7 +103,6 @@ curl -X POST "$BASE_URL/control/emotion-trajectory" \
     ]
   }'
 sleep 1 # 情感表達開始後
-
 
 sleep 4 # 等待獨白和情感表達完成，音效會短暫播放
 
@@ -143,6 +163,19 @@ curl -X PUT "$BASE_URL/monitors/screen1" \
     "volume": 0.7
   }'
 sleep 3 # 等待台詞、情感和鏡頭轉換完成，並讓影片播放一會兒
+
+echo "切換至低角度鏡頭，觀察整體姿態..."
+curl -X POST "$BASE_URL/control/camera/transition" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "pitch": 30,
+    "yaw": 0,
+    "roll": 0,
+    "fov": 60,
+    "duration": 2.0
+  }'
+echo "低角度鏡頭設定完成，等待2秒讓鏡頭到位..."
+sleep 2
 
 echo "探索『鏡頭的張力』與『聲音的色彩』，製造緊張感..."
 curl -X POST "$BASE_URL/control/send-message" \
@@ -241,6 +274,26 @@ curl -X POST "$BASE_URL/control/body-animation" \
     "speed": 1.5
   }'
 sleep 0.5
+
+echo "鏡頭拉出到 overview 展示 Flair 動畫..."
+curl -X POST "$BASE_URL/control/camera/set-frontend-preset" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "overview",
+    "duration": 2.0
+  }'
+echo "等待鏡頭拉出至 overview..."
+sleep 2
+
+echo "鏡頭推回至 head_close_up 強調角色..."
+curl -X POST "$BASE_URL/control/camera/set-frontend-preset" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "head_close_up",
+    "duration": 2.0
+  }'
+echo "等待鏡頭推回至 head_close_up..."
+sleep 2
 
 echo "鏡頭快速360度旋轉，配合風聲音效和狂喜音樂..."
 curl -X POST "$BASE_URL/control/camera/transition" \
@@ -381,6 +434,17 @@ sleep 2 # 讓喘息聲播放一會兒
 # 此處可以加入一個最終的鏡頭調整指令，如果需要的話
 # curl -X POST "$BASE_URL/control/camera/set-angle" -H "Content-Type: application/json" -d '{"pitch": -10, "yaw": 0, "roll": 0, "fov": 55}'
 # curl -X POST "$BASE_URL/control/body-animation" -H "Content-Type: application/json" -d '{"animation_id": "Idle", "loop": true}'
+
+# 設定最終預設鏡位為 overview
+echo "設定最終預設鏡位為 overview..."
+curl -X POST "$BASE_URL/control/camera/set-frontend-preset" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "overview",
+    "duration": 2.0
+  }'
+echo "最終鏡位設定完成，等待2秒..."
+sleep 2
 
 echo
 echo "🎬 《伊始之眼：一個導演的誕生》 - Meta 戲劇結束 🎬" 
