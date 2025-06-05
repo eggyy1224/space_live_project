@@ -319,9 +319,14 @@ const DirectorMonitorHUD: React.FC = () => {
               
               <div className="border-t border-white/30 pt-2">
                 <div className="font-bold mb-1">相機</div>
-                <select 
-                  value={cameraPreset ?? ''} 
-                  onChange={(e) => setRuntime({ cameraPreset: e.target.value })} 
+                <select
+                  value={cameraPreset ?? ''}
+                  onChange={(e) =>
+                    setRuntime({
+                      cameraPreset: e.target.value,
+                      cameraTransitionDuration: 1.5,
+                    })
+                  }
                   className="bg-gray-800 text-white text-xs rounded w-full"
                 >
                   <option value="" disabled>選擇鏡位</option>

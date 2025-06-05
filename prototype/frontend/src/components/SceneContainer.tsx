@@ -115,9 +115,12 @@ const SceneContent: React.FC<SceneContainerProps> = ({
   useEffect(() => {
     if (!randomMode && cameraPreset && cameraPreset !== "roam") {
       console.log("Manual camera preset change:", cameraPreset);
-      cameraManager.transitionTo(cameraPreset, 1.5); // 手動切換使用較短的轉場時間
+      cameraManager.transitionTo(
+        cameraPreset,
+        cameraTransitionDuration || 1.5,
+      );
     }
-  }, [cameraPreset, randomMode, cameraManager]);
+  }, [cameraPreset, randomMode, cameraTransitionDuration, cameraManager]);
 
   useEffect(() => {
     if (cameraAngles) {

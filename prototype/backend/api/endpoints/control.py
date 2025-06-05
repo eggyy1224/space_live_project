@@ -74,6 +74,13 @@ class CameraPresetRequest(CameraAngles):
     name: str
 
 
+class FrontendPresetRequest(BaseModel):
+    """Request model for directly loading a frontend camera preset."""
+
+    name: str
+    duration: float = 5.0
+
+
 class BodyAnimationCommand(BaseModel):
     """Request model for controlling body animations."""
 
@@ -378,6 +385,21 @@ async def load_camera_preset(name: str, duration: float = 1.0):
     message = {"type": "camera-transition", "payload": payload}
     await manager.broadcast(json.dumps(message))
     logger.info(f"Loaded camera preset: {name}")
+    return {"success": True}
+
+
+@router.post("/control/camera/set-frontend-preset")
+async def set_frontend_camera_preset(request: FrontendPresetRequest):
+    """Broadcast a preset name to the frontend for direct loading."""
+    if not request.name:
+        raise HTTPException(status_code=422, detail="Preset name required")
+    if not manager.active_connections:
+        raise HTTPException(status_code=503, detail="沒有活動的前端連接")
+
+    payload = {"name": request.name, "duration": request.duration}
+    message = {"type": "set-frontend-camera-preset", "payload": payload}
+    await manager.broadcast(json.dumps(message))
+    logger.info(f"Broadcast frontend camera preset: {payload}")
     return {"success": True}
 
 

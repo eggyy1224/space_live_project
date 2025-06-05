@@ -288,9 +288,17 @@ class WebSocketService {
         const p = (data as any).payload;
         useStore
           .getState()
-          .setRuntime({ 
+          .setRuntime({
             cameraAngles: [p.pitch, p.yaw, p.roll],
             cameraTransitionDuration: p.duration || 1
+          });
+      } else if (data.type === "set-frontend-camera-preset") {
+        const p = (data as any).payload;
+        useStore
+          .getState()
+          .setRuntime({
+            cameraPreset: p.name,
+            cameraTransitionDuration: p.duration || 1,
           });
       } else if (data.type === "emotionalTrajectory") {
         // --- 添加日誌記錄 ---
