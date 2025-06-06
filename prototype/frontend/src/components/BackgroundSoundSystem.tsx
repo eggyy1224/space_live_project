@@ -293,7 +293,9 @@ const BackgroundSoundSystem: React.FC = () => {
         source.connect(effectGainNodeRef.current);
         source.start();
         manualEffectSourceRef.current = source; // 使用 manualEffectSourceRef
-        // isRandomEffectRef.current = false; // 不再需要這個標記
+
+        triggerEffect();
+        setRuntime({ sfxActive: true });
 
         console.log('Manual effect playing:', effectFile);
 
@@ -330,6 +332,7 @@ const BackgroundSoundSystem: React.FC = () => {
       if (effectSourceRef.current) {
         console.log('Stopping current random effect due to random mode OFF...');
         try {
+          effectSourceRef.current.onended = null;
           effectSourceRef.current.stop();
           effectSourceRef.current.disconnect();
         } catch (e) {
@@ -387,7 +390,7 @@ const BackgroundSoundSystem: React.FC = () => {
         source.onended = () => {
           setRuntime({ sfxActive: false });
           effectSourceRef.current = null;
-          if (randomMode) {
+          if (useStore.getState().randomMode) {
             scheduleNextRandomEffect();
           }
         };
@@ -401,12 +404,13 @@ const BackgroundSoundSystem: React.FC = () => {
     };
 
     const scheduleNextRandomEffect = () => {
-      console.log('scheduleNextRandomEffect called, randomMode:', randomMode);
-      if (!randomMode) {
+      const currentRandom = useStore.getState().randomMode;
+      console.log('scheduleNextRandomEffect called, randomMode:', currentRandom);
+      if (!currentRandom) {
         console.log('Random mode off, not scheduling next random effect');
-        return; 
+        return;
       }
-      
+
       const randomInterval = Math.random() * 10000 + 5000; // 5-15秒間隔
       console.log('Scheduling next random effect in', randomInterval / 1000, 'seconds');
       randomEffectTimerRef.current = setTimeout(playRandomEffect, randomInterval);
@@ -426,6 +430,7 @@ const BackgroundSoundSystem: React.FC = () => {
       if (effectSourceRef.current) {
          console.log('Stopping current random effect due to cleanup or randomMode change...');
         try {
+          effectSourceRef.current.onended = null;
           effectSourceRef.current.stop();
           effectSourceRef.current.disconnect();
         } catch (e) {
