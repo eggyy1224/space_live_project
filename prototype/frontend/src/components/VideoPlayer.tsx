@@ -110,6 +110,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       console.log('VideoPlayer: No playlist or empty playlist');
       return;
     }
+
+    // Reset overlay state whenever a new video loads
+    setAutoplayFailed(false);
     
     console.log(`VideoPlayer ${screenId}: Loading video`, playlist[index]);
     
@@ -152,6 +155,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       video.play().then(() => {
         console.log(`VideoPlayer ${screenId}: Video started playing`);
         setVideoScreen(screenId, { playing: true });
+        setAutoplayFailed(false);
       }).catch((error) => {
         console.log(`VideoPlayer ${screenId}: Autoplay failed`, error);
         setAutoplayFailed(true);
@@ -175,6 +179,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const onPlay = () => {
       console.log(`VideoPlayer ${screenId}: Video play event`);
       setVideoScreen(screenId, { playing: true });
+      setAutoplayFailed(false);
     };
 
     const onPause = () => {
