@@ -14,7 +14,7 @@ Space Live Project 是一個互動藝術裝置，模擬一名被困於太空艙�
 - **語音互動**：整合 Speech-to-Text 與 Text-to-Speech 實現雙向語音交流
 - **長期記憶**：使用 LangChain 與 ChromaDB 向量資料庫建立角色記憶系統
 - **音訊反應**：透過 Web Audio API 實現音訊分析與視覺反饋
-- **自發行為**：閒置時的自言自語與情緒變化，增強角色真實感
+- **自言自語**：僅在前端指令下啟動的 murmur 效果
 - **語音播放握手機制**：前後端確認每段語音播放完成，避免順序錯亂
 - **音頻驅動的3D背景系統**：包含語音反應背景、音樂反應粒子效果和事件觸發特效，提供沉浸式視覺體驗
   - **SpeechBackground**：對用戶語音輸入做出反應的背景牆
@@ -126,7 +126,8 @@ Press **d** during runtime to expand the drawer view.
 
 ### Murmur Mode
 
-Use the `murmur-mode` API to temporarily disable the self-talk feature when testing other functions.
+Automated murmurs are disabled in the backend. Use the `murmur-mode` API if you
+need to enable or disable manual murmur handling on the frontend.
 
 ```bash
 curl -X POST http://localhost:8000/api/control/murmur-mode \

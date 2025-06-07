@@ -56,7 +56,7 @@ The request models for these routes are defined at the top of `control.py` and i
 |`GET`|`/api/health`|Return a simple service health status.|
 
 ### WebSocket
-A websocket endpoint at `/ws` provides real-time conversation handling. It manages queues, playback acknowledgements and murmur logic.
+A websocket endpoint at `/ws` provides real-time conversation handling. It manages queues and playback acknowledgements. Murmur generation now only occurs when explicitly commanded by the frontend or API.
 
 ## Mapping User Instructions
 1. **Direct control commands** – map explicit directives such as "play this audio", "set camera angle", or "switch to overview camera" to the corresponding control endpoint (e.g., `/api/control/camera/set-frontend-preset` for named camera views).

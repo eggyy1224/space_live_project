@@ -279,7 +279,7 @@ async def websocket_endpoint(websocket: WebSocket):
     user_responded = False
 
     # 記錄當前表情狀態，用於實現平滑過渡
-    idle_check_task = None # <--- 新增：閒置檢查任務
+    # idle_check_task = None  # 自動 murmur 已停用
 
     async def add_to_history(role: str, content: str, is_murmur: bool = False):
         """安全地添加記錄到對話歷史並進行修剪。"""
@@ -734,54 +734,49 @@ async def websocket_endpoint(websocket: WebSocket):
             logger.error(f"Error generating standard murmur: {e}", exc_info=True)
             speaking_state = SpeakingState.IDLE
         
-    async def idle_checker():
-        """背景任務，定期檢查閒置狀態並觸發 murmur。優化版本，減少日誌輸出"""
-        nonlocal last_activity_timestamp, current_emotion, last_murmur_timestamp, recent_murmurs, user_responded, speaking_state, last_speaking_reset_timestamp
-        while True:
-            await asyncio.sleep(IDLE_CHECK_INTERVAL_SECONDS)
-            try:
-                current_time = datetime.utcnow()
-                idle_duration = current_time - last_activity_timestamp
-
-                # --- 簡化的murmur觸發條件檢查 ---
-                should_wait_after_speaking = False
-                if last_speaking_reset_timestamp:
-                    time_since_last_reset_seconds = (current_time - last_speaking_reset_timestamp).total_seconds()
-                    should_wait_after_speaking = time_since_last_reset_seconds < 1.0  # 減少等待時間
-                
-                murmur_condition_met = (
-                    murmur_service.enabled and  # 檢查 murmur 服務是否啟用
-                    idle_duration > timedelta(seconds=IDLE_TIMEOUT_SECONDS) and
-                    (last_murmur_timestamp is None or 
-                     current_time - last_murmur_timestamp > timedelta(seconds=MURMUR_MIN_INTERVAL_SECONDS)) and
-                    speaking_state == SpeakingState.IDLE and
-                    not should_wait_after_speaking
-                )
-                
-                # 只在條件滿足時記錄日誌，減少I/O開銷
-                if murmur_condition_met:
-                    logger.info("Murmur conditions met, adding murmur to queue.")
-                    
-                    message_queue.add_message({"type": "murmur"}, priority=MESSAGE_PRIORITY["murmur"])
-                    
-                    # 只有在系統完全閒置且隊列不在處理中時，才由 idle_checker 主動觸發處理
-                    # 主要依賴 reset_speaking_after_duration 的 finally 或新用戶消息來驅動隊列
-                    if speaking_state == SpeakingState.IDLE and not message_queue.is_processing:
-                        logger.info("Idle checker triggering queue processing as system is IDLE.")
-                        asyncio.create_task(process_message_queue()) # 使用 create_task 避免阻塞 idle_checker
-
-            except WebSocketDisconnect:
-                logger.info(f"Idle checker detected disconnection. Stopping checker.")
-                break
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                logger.error(f"Error in idle_checker loop: {e}")
-                await asyncio.sleep(IDLE_CHECK_INTERVAL_SECONDS * 2)
+    # async def idle_checker():
+    #     """背景任務，定期檢查閒置狀態並觸發 murmur。已停用自動 murmur 功能"""
+    #     nonlocal last_activity_timestamp, current_emotion, last_murmur_timestamp, recent_murmurs, user_responded, speaking_state, last_speaking_reset_timestamp
+    #     while True:
+    #         await asyncio.sleep(IDLE_CHECK_INTERVAL_SECONDS)
+    #         try:
+    #             current_time = datetime.utcnow()
+    #             idle_duration = current_time - last_activity_timestamp
+    #
+    #             # --- 簡化的murmur觸發條件檢查 ---
+    #             should_wait_after_speaking = False
+    #             if last_speaking_reset_timestamp:
+    #                 time_since_last_reset_seconds = (current_time - last_speaking_reset_timestamp).total_seconds()
+    #                 should_wait_after_speaking = time_since_last_reset_seconds < 1.0
+    #
+    #             murmur_condition_met = (
+    #                 murmur_service.enabled and
+    #                 idle_duration > timedelta(seconds=IDLE_TIMEOUT_SECONDS) and
+    #                 (last_murmur_timestamp is None or
+    #                  current_time - last_murmur_timestamp > timedelta(seconds=MURMUR_MIN_INTERVAL_SECONDS)) and
+    #                 speaking_state == SpeakingState.IDLE and
+    #                 not should_wait_after_speaking
+    #             )
+    #
+    #             if murmur_condition_met:
+    #                 logger.info("Murmur conditions met, adding murmur to queue.")
+    #                 message_queue.add_message({"type": "murmur"}, priority=MESSAGE_PRIORITY["murmur"])
+    #                 if speaking_state == SpeakingState.IDLE and not message_queue.is_processing:
+    #                     logger.info("Idle checker triggering queue processing as system is IDLE.")
+    #                     asyncio.create_task(process_message_queue())
+    #
+    #         except WebSocketDisconnect:
+    #             logger.info("Idle checker detected disconnection. Stopping checker.")
+    #             break
+    #         except asyncio.CancelledError:
+    #             break
+    #         except Exception as e:
+    #             logger.error(f"Error in idle_checker loop: {e}")
+    #             await asyncio.sleep(IDLE_CHECK_INTERVAL_SECONDS * 2)
 
     try:
-        idle_check_task = asyncio.create_task(idle_checker())
-        logger.info(f"Started idle checker task for client {websocket.client}")
+        # idle_check_task = asyncio.create_task(idle_checker())
+        # logger.info(f"Started idle checker task for client {websocket.client}")
 
         while True:
             data = await websocket.receive_text()
@@ -829,13 +824,13 @@ async def websocket_endpoint(websocket: WebSocket):
         logger.error(f"Unexpected error in websocket_endpoint for {websocket.client}: {e}", exc_info=True)
     finally:
         logger.info(f"Cleaning up connection for {websocket.client}")
-        if idle_check_task and not idle_check_task.done():
-            idle_check_task.cancel()
-            try:
-                await asyncio.wait_for(idle_check_task, timeout=1.0)
-            except (asyncio.TimeoutError, asyncio.CancelledError):
-                pass
-            logger.info(f"Cancelled idle checker task for client {websocket.client}")
+        # if idle_check_task and not idle_check_task.done():
+        #     idle_check_task.cancel()
+        #     try:
+        #         await asyncio.wait_for(idle_check_task, timeout=1.0)
+        #     except (asyncio.TimeoutError, asyncio.CancelledError):
+        #         pass
+        #     logger.info(f"Cancelled idle checker task for client {websocket.client}")
         
         # 安全地斷開連接
         try:
