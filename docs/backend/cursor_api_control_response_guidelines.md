@@ -300,6 +300,89 @@ curl -X POST http://localhost:8000/api/control/camera/set-frontend-preset \\
   -d '{"name": "side_view", "duration": 2.0}'
 ```
 
+## 🎬 Director's Cut: The Art of the 3-Command Combo (導演進階：三連擊的藝術)
+
+While individual API calls are powerful, the true art of directing lies in weaving them into a seamless narrative. Since most API calls are **non-blocking** (they return `success` immediately, without waiting for the action to complete), crafting complex scenes requires a method to control timing and order.
+
+The most effective way to do this is with a **Command Sequence**, and the foundational building block of any good sequence is the **3-Command Combo**. While longer chains are possible, thinking in terms of 3-step, cause-and-effect combos is the key to creating clear and impactful moments.
+
+**The Philosophy: Action → Reaction → Emphasis**
+A "3-Command Combo" typically follows this narrative structure:
+1.  **Action:** An event occurs. (e.g., a sound is heard)
+2.  **Reaction:** The character reacts to the event. (e.g., their body language changes)
+3.  **Emphasis:** The camera moves to highlight the reaction. (e.g., a close-up on the character's face)
+
+**The Tools:**
+-   `curl -X ...`: Your API command.
+-   `&&`: The "AND" operator. It links commands, ensuring the next one runs only if the previous one was successful.
+-   `sleep <seconds>`: The key to pacing. It pauses execution for a specified duration to create a natural rhythm between actions.
+
+**Example: The "Sudden Noise" Combo**
+
+This is a classic directorial combo. A sudden noise grabs the character's attention, they react, and the camera immediately focuses on them to capture their expression. This creates a powerful, focused moment of drama.
+
+```bash
+# This 3-Command Combo creates a classic "What was that?" moment.
+# 1. (Action) Play a sharp, attention-grabbing sound.
+# 2. (Reaction) Character looks around in surprise.
+# 3. (Emphasis) Camera zooms in on the character.
+
+curl -X POST http://localhost:8000/api/control/play-audio -H "Content-Type: application/json" -d '{"url": "/audio/effects/taiwan_variety_sfx_01.mp3", "interrupt": true}' && \
+sleep 0.5 && \
+curl -X POST http://localhost:8000/api/control/body-animation -H "Content-Type: application/json" -d '{"animation": "LookAround"}' && \
+sleep 0.2 && \
+curl -X POST http://localhost:8000/api/control/camera/set-frontend-preset -H "Content-Type: application/json" -d '{"name": "head_close_up", "duration": 0.8}'
+```
+Mastering the 3-Command Combo is the key to unlocking a higher level of narrative direction. It places the power of pacing and choreography firmly in the hands of you, the director, allowing you to build complex scenes from clear, effective, and manageable blocks.
+
+## 🎭 Staging a Full Scene: From Combos to Choreography (編排長戲：從三連擊到完整編舞)
+
+A single combo creates a moment; a series of linked combos creates a **scene**. To build a longer, more engaging experience, we must learn to choreograph these combos into a sequence that tells a story.
+
+A well-structured scene follows a simple narrative arc:
+1.  **Opening:** An initial command or combo to set the stage and establish the baseline mood.
+2.  **Development:** One or more combos that build on the opening, introducing conflict or new information. This is where the story unfolds.
+3.  **Climax:** The peak of the scene—the most dramatic combo that serves as the turning point.
+4.  **Closing:** A final command or a moment of `sleep` to let the impact of the climax sink in, before transitioning to the next scene.
+
+By thinking in these four parts, you can transform simple building blocks into a compelling narrative sequence.
+
+**Full Scene Example: "The Anomaly"**
+
+This scene demonstrates how to link combos to tell a story of discovery and shock.
+
+```bash
+# Scene: The Anomaly
+# A full scene built from multiple command combos, telling a short story.
+
+# Part 1: Opening - Establish the routine
+# A single command to set a calm, neutral stage.
+echo "### SCENE START: The Anomaly ###" && \
+curl -X POST http://localhost:8000/api/control/camera/set-frontend-preset -H "Content-Type: application/json" -d '{"name": "overview", "duration": 2.5}' && \
+curl -X POST http://localhost:8000/api/control/body-animation -H "Content-Type: application/json" -d '{"animation": "Idle", "loop": true}' && \
+sleep 3 && \
+
+# Part 2: Development - The first sign of trouble (A 3-Command Combo)
+echo "### COMBO 1: The Discovery ###" && \
+curl -X PUT http://localhost:8000/api/monitors/screen1 -H "Content-Type: application/json" -d '{"content": "/videos/太空瑜伽.mp4", "visible": true, "playing": true}' && \
+sleep 1 && \
+curl -X POST http://localhost:8000/api/control/body-animation -H "Content-Type: application/json" -d '{"animation": "LookAround"}' && \
+sleep 0.5 && \
+curl -X POST http://localhost:8000/api/control/camera/transition -H "Content-Type: application/json" -d '{"pitch": 5, "yaw": -5, "roll": 0, "fov": 70, "duration": 2.0}' && \
+sleep 4 && \
+
+# Part 3: Climax - The shocking escalation (A 3-Command Combo)
+echo "### COMBO 2: The Shock ###" && \
+curl -X POST http://localhost:8000/api/control/play-audio -H "Content-Type: application/json" -d '{"url": "/songs-file/暴龍吼叫.mp3", "interrupt": true}' && \
+sleep 0.1 && \
+curl -X POST http://localhost:8000/api/control/emotion-trajectory -H "Content-Type: application/json" -d '{"duration": 2, "keyframes": [{"tag": "fear", "proportion": 0.0}]}' && \
+curl -X POST http://localhost:8000/api/control/camera/set-frontend-preset -H "Content-Type: application/json" -d '{"name": "head_close_up", "duration": 0.5}' && \
+
+# Part 4: Closing - Let the shock register
+echo "### SCENE END ###" && \
+sleep 5
+```
+
 ## 🔍 Troubleshooting Common Issues
 
 -   **Audio Not Playing?**
