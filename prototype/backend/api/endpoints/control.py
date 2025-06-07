@@ -7,13 +7,12 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-
 from services.camera_control import CameraControlService
 
 from ..endpoints.websocket import manager, murmur_service
-from ..endpoints.websocket import (
-    save_audio_and_set_url as save_websocket_audio,
-)  # 導入 WebSocket 連接管理器和 MurmurService
+from ..endpoints.websocket import \
+    save_audio_and_set_url as \
+    save_websocket_audio  # 導入 WebSocket 連接管理器和 MurmurService
 from ..endpoints.websocket import tts_service
 
 # 設置日誌
@@ -238,7 +237,7 @@ async def background_audio_control(request: BackgroundAudioRequest):
             raise HTTPException(status_code=503, detail="沒有活動的前端連接")
 
         audio_data: Dict[str, Any] = {"type": "audio-control"}
-        
+
         # 處理 BGM URL（包含空字串停止功能）
         if request.bgmUrl is not None:  # 使用 is not None 來包含空字串
             audio_data["bgmUrl"] = request.bgmUrl
@@ -247,11 +246,11 @@ async def background_audio_control(request: BackgroundAudioRequest):
                 audio_data["bgmPlaying"] = False
             else:
                 audio_data["bgmPlaying"] = True
-        
+
         # 處理明確的播放/暫停控制
         if request.bgmPlaying is not None:
             audio_data["bgmPlaying"] = request.bgmPlaying
-            
+
         # 處理音效 URL
         if request.sfxUrl is not None:
             audio_data["sfxUrl"] = request.sfxUrl
@@ -413,4 +412,49 @@ async def control_body_animation(command: BodyAnimationCommand):
     message = {"type": "body-animation", "payload": payload}
     await manager.broadcast(json.dumps(message))
     logger.info(f"Broadcast body animation command: {payload}")
+    return {"success": True}
+
+
+# --- 新增：頭部大小與場景顯示控制 ---
+
+
+class HeadSizeRequest(BaseModel):
+    scaleFactor: float
+
+
+class SceneDisplayRequest(BaseModel):
+    displayScene: bool
+    sceneName: Optional[str] = None
+
+
+VALID_SCENES = {"room-a", "room-b"}
+
+
+@router.post("/control/head-size")
+async def set_head_size(request: HeadSizeRequest):
+    """Set the scale of the head model on the frontend."""
+    if not manager.active_connections:
+        raise HTTPException(status_code=503, detail="沒有活動的前端連接")
+    if request.scaleFactor <= 0 or request.scaleFactor > 5:
+        raise HTTPException(status_code=400, detail="Invalid scaleFactor")
+
+    message = {"type": "head-size", "scaleFactor": request.scaleFactor}
+    await manager.broadcast(json.dumps(message))
+    logger.info(f"Set head size: {request.scaleFactor}")
+    return {"success": True, "scaleFactor": request.scaleFactor}
+
+
+@router.post("/control/scene-display")
+async def control_scene_display(request: SceneDisplayRequest):
+    """Toggle or change the active 3D scene on the frontend."""
+    if not manager.active_connections:
+        raise HTTPException(status_code=503, detail="沒有活動的前端連接")
+
+    if request.sceneName and request.sceneName not in VALID_SCENES:
+        raise HTTPException(status_code=404, detail="Scene not found")
+
+    payload = {"displayScene": request.displayScene, "sceneName": request.sceneName}
+    message = {"type": "scene-display", "payload": payload}
+    await manager.broadcast(json.dumps(message))
+    logger.info(f"Scene display control: {payload}")
     return {"success": True}
