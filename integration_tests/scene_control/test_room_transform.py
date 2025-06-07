@@ -13,6 +13,28 @@ API_BASE = "http://localhost:8000"
 WS_URL = "ws://localhost:8000/ws"
 
 
+async def wait_for_scene_display_with_position(
+    ws: websockets.WebSocketClientProtocol, expected_position: list, timeout: float = 10.0
+) -> Dict[str, Any] | None:
+    """等待包含特定 position 的 scene-display 訊息"""
+    start = time.time()
+    while time.time() - start < timeout:
+        try:
+            msg = await asyncio.wait_for(
+                ws.recv(), timeout=timeout - (time.time() - start)
+            )
+            data = json.loads(msg)
+            print(f"   🔍 WebSocket received: {data.get('type')} - {data}")
+            if (data.get("type") == "scene-display" and 
+                data.get("payload", {}).get("position") == expected_position):
+                return data
+            else:
+                payload = data.get("payload", {})
+                print(f"   ⏭️  Skipping - type: {data.get('type')}, position: {payload.get('position')}")
+        except asyncio.TimeoutError:
+            pass
+    return None
+
 async def wait_for_type(
     ws: websockets.WebSocketClientProtocol, expected: str, timeout: float = 5.0
 ) -> Dict[str, Any] | None:
@@ -23,8 +45,11 @@ async def wait_for_type(
                 ws.recv(), timeout=timeout - (time.time() - start)
             )
             data = json.loads(msg)
+            print(f"   🔍 WebSocket received: {data.get('type')} - {data}")
             if data.get("type") == expected:
                 return data
+            else:
+                print(f"   ⏭️  Skipping message type: {data.get('type')}, waiting for: {expected}")
         except asyncio.TimeoutError:
             pass
     return None
@@ -93,8 +118,7 @@ async def main() -> None:
             },
         )
         assert resp.status_code == 200, f"Unexpected status {resp.status_code}"
-        data = await wait_for_type(ws, "scene-display")
-        assert data and data.get("payload", {}).get("position") == [1.0, 2.0, 3.0]
+        data = await wait_for_scene_display_with_position(ws, [1.0, 2.0, 3.0])
         print("✅ room position:", data)
         
         requests.post(f"{API_BASE}/api/control/send-message", json={"content": "看到了嗎？房間移動了！"})
