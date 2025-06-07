@@ -225,7 +225,11 @@ To help Cursor better understand and utilize project assets, here are some key p
 **11. Image Generation (`/api/generate-image`)**
 ```json
 {
-  "description": "string (Text description of the image to generate, required. Can be in Chinese or English. Examples: '一隻可愛的橘貓在花園裡', 'a beautiful sunset over mountains')"
+  "description": "string (Text description of the image to generate, required. Can be in Chinese or English. Examples: '一隻可愛的橘貓在花園裡', 'a beautiful sunset over mountains')",
+  "position": "string (Optional, position preset: 'center-right'(default), 'center-left', 'top-right', 'top-left', 'bottom-right', 'bottom-left', 'center')",
+  "size": "string (Optional, size preset: 'small', 'medium'(default), 'large')",
+  "custom_position": "object (Optional, custom CSS position properties, overrides 'position'. Example: {'top': '50%', 'right': '50px', 'transform': 'translateY(-50%)'})",
+  "custom_size": "object (Optional, custom CSS size properties, overrides 'size'. Example: {'width': '400px', 'height': '300px'})"
 }
 ```
 
@@ -234,9 +238,24 @@ To help Cursor better understand and utilize project assets, here are some key p
 {
   "success": "boolean (true if generation succeeded)",
   "url": "string (Relative URL path to the generated image, e.g., '/generated-images/image_1234567890.png')",
-  "caption": "string (AI-generated description of the image, may be in Chinese or English)"
+  "caption": "string (AI-generated description of the image, may be in Chinese or English)",
+  "display_config": "object (Configuration for frontend display positioning and sizing)"
 }
 ```
+
+**Position Presets:**
+- `center-right` (default): Middle right, vertically centered
+- `center-left`: Middle left, vertically centered  
+- `top-right`: Top right corner
+- `top-left`: Top left corner
+- `bottom-right`: Bottom right corner
+- `bottom-left`: Bottom left corner
+- `center`: Absolute center of screen
+
+**Size Presets:**
+- `small`: 250px × 200px
+- `medium` (default): 350px × 280px
+- `large`: 450px × 360px
 
 **Generated Images Access:**
 - Generated images are automatically saved to `prototype/backend/generated_images/` directory
@@ -480,28 +499,47 @@ curl -X POST http://localhost:8000/api/control/head-size \
 
 **Example 9: AI Image Generation**
 ```bash
-# Generate a simple image (Chinese description)
+# Basic image generation (default: center-right, medium)
 curl -X POST http://localhost:8000/api/generate-image \
   -H "Content-Type: application/json" \
   -d '{"description": "一隻可愛的橘貓在花園裡玩耍"}'
 
-# Generate a space-themed image (English description)
+# Position control - left side, large size
 curl -X POST http://localhost:8000/api/generate-image \
   -H "Content-Type: application/json" \
-  -d '{"description": "astronaut floating in space with beautiful nebula background"}'
+  -d '{"description": "台灣辣妹在太空夜市吃小籠包", "position": "center-left", "size": "large"}'
 
-# Generate a Taiwan influencer style image
+# Position control - top corner, small size
 curl -X POST http://localhost:8000/api/generate-image \
   -H "Content-Type: application/json" \
-  -d '{"description": "台灣辣妹網紅在太空站內自拍直播，穿著粉色太空服，做出比愛心手勢"}'
+  -d '{"description": "迷你太空機器人修理衛星", "position": "top-right", "size": "small"}'
 
-# Generate artistic scene
+# Center large image for dramatic effect
 curl -X POST http://localhost:8000/api/generate-image \
   -H "Content-Type: application/json" \
-  -d '{"description": "futuristic space city with neon lights and flying cars at sunset"}'
+  -d '{"description": "銀河中央的太空女王跳舞", "position": "center", "size": "large"}'
+
+# Custom positioning and sizing
+curl -X POST http://localhost:8000/api/generate-image \
+  -H "Content-Type: application/json" \
+  -d '{
+    "description": "太空花園裡的蝴蝶仙子",
+    "custom_position": {"bottom": "30px", "left": "30px"},
+    "custom_size": {"width": "300px", "height": "400px"}
+  }'
+
+# Multiple position presets available:
+# - center-right (default): Middle right, vertically centered
+# - center-left: Middle left, vertically centered
+# - top-right, top-left: Corner positions
+# - bottom-right, bottom-left: Bottom corner positions  
+# - center: Absolute center (dramatic effect)
+
+# Size presets: small (250x200), medium (350x280), large (450x360)
+# Custom sizes and positions override presets
 
 # Note: Generated images will automatically appear in the frontend ImageOverlay
-# and are accessible at the returned URL path (e.g., /generated-images/image_xxx.png)
+# with the specified position, size, and appropriate entrance animation
 ```
 
 ## 🎬 Director's Cut: The Art of the 3-Command Combo (導演進階：三連擊的藝術)
@@ -637,6 +675,10 @@ sleep 5
     6.  **Image File Access?** Verify that generated images are accessible at `http://localhost:8000/generated-images/`.
     7.  **WebSocket Connection?** Images are broadcast via WebSocket, ensure frontend is connected.
     8.  **Static File Serving?** Confirm `/generated-images/` static route is mounted in backend `__init__.py`.
+    9.  **Position/Size Not Working?** Check `display_config` in WebSocket message and frontend style application.
+    10. **Invalid Position/Size Values?** Ensure position presets match: 'center-right', 'center-left', 'top-right', 'top-left', 'bottom-right', 'bottom-left', 'center'. Size presets: 'small', 'medium', 'large'.
+    11. **Custom CSS Not Applied?** Verify `custom_position` and `custom_size` objects contain valid CSS properties.
+    12. **Animation Issues?** Check frontend CSS classes for proper animation based on position (left/right/center).
 
 ## ✅ Response Validation Guide
 
@@ -677,4 +719,8 @@ sleep 5
 -   Storage location: `prototype/backend/generated_images/`
 -   Accessible via: `http://localhost:8000/generated-images/{filename}`
 -   Frontend display: Automatically shown in `ImageOverlay` component for 10 seconds
--   WebSocket broadcast: Images are broadcasted with type `generated-image` including URL and caption
+-   WebSocket broadcast: Images are broadcasted with type `generated-image` including URL, caption, and display_config
+-   Position control: 7 preset positions (center-right default) plus custom positioning
+-   Size control: 3 preset sizes (medium default) plus custom sizing
+-   Animation support: Different entrance animations based on position (slide from right/left, fade for center)
+-   Display config: Backend controls frontend positioning via `display_config` object in WebSocket message

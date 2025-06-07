@@ -4,6 +4,7 @@ import logging
 import os
 import time
 from io import BytesIO
+from typing import Optional
 
 from google import genai
 from google.genai.types import GenerateContentConfig
@@ -28,6 +29,14 @@ os.makedirs(GENERATED_DIR, exist_ok=True)
 
 class ImageGenerationRequest(BaseModel):
     description: str
+    # 位置控制 (可選)
+    position: Optional[str] = "center-right"  # center-right, top-right, bottom-right, center-left, top-left, bottom-left, center
+    # 大小控制 (可選)
+    size: Optional[str] = "medium"  # small, medium, large
+    # 自定義位置 (可選，優先於 position)
+    custom_position: Optional[dict] = None  # {"top": "50%", "right": "50px", "transform": "translateY(-50%)"}
+    # 自定義大小 (可選，優先於 size)
+    custom_size: Optional[dict] = None  # {"width": "350px", "height": "280px"}
 
 
 @router.post("/generate-image")
@@ -65,15 +74,57 @@ async def generate_image(request: ImageGenerationRequest):
         
         url = f"/generated-images/{filename}"
         
-        # 透過WebSocket廣播結果
+        # 處理位置和大小設定
+        display_config = _get_display_config(request)
+        
+        # 透過WebSocket廣播結果，包含顯示配置
         await manager.broadcast(json.dumps({
             "type": "generated-image", 
             "url": url,
-            "caption": caption
+            "caption": caption,
+            "display_config": display_config
         }))
         
-        return {"success": True, "url": url, "caption": caption}
+        return {
+            "success": True, 
+            "url": url, 
+            "caption": caption,
+            "display_config": display_config
+        }
         
     except Exception as e:
         logging.error(f"Image generation failed: {e}")
         raise HTTPException(status_code=500, detail="Image generation failed")
+
+
+def _get_display_config(request: ImageGenerationRequest) -> dict:
+    """根據請求參數生成顯示配置"""
+    config = {}
+    
+    # 處理位置
+    if request.custom_position:
+        config["position"] = request.custom_position
+    else:
+        position_presets = {
+            "center-right": {"top": "50%", "right": "50px", "transform": "translateY(-50%)"},
+            "top-right": {"top": "20px", "right": "20px"},
+            "bottom-right": {"bottom": "20px", "right": "20px"},
+            "center-left": {"top": "50%", "left": "50px", "transform": "translateY(-50%)"},
+            "top-left": {"top": "20px", "left": "20px"},
+            "bottom-left": {"bottom": "20px", "left": "20px"},
+            "center": {"top": "50%", "left": "50%", "transform": "translate(-50%, -50%)"}
+        }
+        config["position"] = position_presets.get(request.position, position_presets["center-right"])
+    
+    # 處理大小
+    if request.custom_size:
+        config["size"] = request.custom_size
+    else:
+        size_presets = {
+            "small": {"width": "250px", "height": "200px"},
+            "medium": {"width": "350px", "height": "280px"},
+            "large": {"width": "450px", "height": "360px"}
+        }
+        config["size"] = size_presets.get(request.size, size_presets["medium"])
+    
+    return config
