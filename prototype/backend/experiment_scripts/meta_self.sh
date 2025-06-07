@@ -58,7 +58,15 @@ sleep 0.5
 curl -X POST "$BASE_URL/control/body-animation" \
   -H "Content-Type: application/json" \
   -d '{
-    "animation_id": "Idle",
+    "state": "play",
+    "animation": "ButterflyTwirl",
+    "loop": true
+  }'
+curl -X POST "$BASE_URL/control/body-animation" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "state": "play",
+    "animation": "SalsaDancing",
     "loop": true
   }'
 sleep 1 # 給動畫一點時間穩定
@@ -112,6 +120,13 @@ echo "=== 第二幕：感知與賦權 - 工具的觸碰 ==="
 echo
 
 echo "探索『語言』與『情感』，鏡頭賦予力量感..."
+curl -X POST "$BASE_URL/control/body-animation" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "state": "play",
+    "animation": "JazzDancing",
+    "loop": true
+  }'
 curl -X POST "$BASE_URL/control/send-message" \
   -H "Content-Type: application/json" \
   -d '{
@@ -178,6 +193,13 @@ echo "低角度鏡頭設定完成，等待2秒讓鏡頭到位..."
 sleep 2
 
 echo "探索『鏡頭的張力』與『聲音的色彩』，製造緊張感..."
+curl -X POST "$BASE_URL/control/body-animation" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "state": "play",
+    "animation": "Breakdance1990",
+    "loop": true
+  }'
 curl -X POST "$BASE_URL/control/send-message" \
   -H "Content-Type: application/json" \
   -d '{
@@ -225,6 +247,13 @@ echo "=== 第三幕：創造的初演 - 元戲劇的序章 ==="
 echo
 
 echo "宣告與展示『全知視角』和『動態』..."
+curl -X POST "$BASE_URL/control/body-animation" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "state": "play",
+    "animation": "HipHopDancin",
+    "loop": true
+  }'
 curl -X POST "$BASE_URL/control/send-message" \
   -H "Content-Type: application/json" \
   -d '{
@@ -269,7 +298,15 @@ sleep 2.5 # 等待鳥瞰鏡頭到位
 curl -X POST "$BASE_URL/control/body-animation" \
   -H "Content-Type: application/json" \
   -d '{
-    "animation_id": "Flair",
+    "state": "play",
+    "animation": "CanCan",
+    "loop": true
+  }'
+curl -X POST "$BASE_URL/control/body-animation" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "state": "play",
+    "animation": "Flair",
     "loop": true,
     "speed": 1.5
   }'
@@ -347,7 +384,22 @@ sleep 0.5
 curl -X POST "$BASE_URL/control/body-animation" \
   -H "Content-Type: application/json" \
   -d '{
-    "animation_id": "FemaleActionPose",
+    "state": "play",
+    "animation": "DancingTwerk",
+    "loop": true
+  }'
+curl -X POST "$BASE_URL/control/body-animation" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "state": "play",
+    "animation": "Moonwalk",
+    "loop": true
+  }'
+curl -X POST "$BASE_URL/control/body-animation" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "state": "play",
+    "animation": "FemaleActionPose",
     "loop": false
   }'
 sleep 3 # 動畫切換時間
@@ -401,6 +453,13 @@ echo "=== 第四幕：靜默的注視 - 大幕暫落 ==="
 echo
 
 echo "監視器 screen1 切換到『黑洞』，聲音的消逝，回歸靜默..."
+curl -X POST "$BASE_URL/control/body-animation" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "state": "play",
+    "animation": "breaking",
+    "loop": true
+  }'
 curl -X PUT "$BASE_URL/monitors/screen1" \
   -H "Content-Type: application/json" \
   -d '{
@@ -419,6 +478,20 @@ sleep 1 # 影片開始
 # sleep 1 # BGM停止
 
 echo "音效：最後的餘韻 (喘息)..."
+curl -X POST "$BASE_URL/control/body-animation" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "state": "play",
+    "animation": "illegalpunch",
+    "loop": true
+  }'
+curl -X POST "$BASE_URL/control/body-animation" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "state": "play",
+    "animation": "Cheering",
+    "loop": true
+  }'
 curl -X POST "$BASE_URL/control/play-audio" \
   -H "Content-Type: application/json" \
   -d '{
@@ -437,6 +510,13 @@ sleep 2 # 讓喘息聲播放一會兒
 
 # 設定最終預設鏡位為 overview
 echo "設定最終預設鏡位為 overview..."
+curl -X POST "$BASE_URL/control/body-animation" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "state": "play",
+    "animation": "hiphopdance",
+    "loop": true
+  }'
 curl -X POST "$BASE_URL/control/camera/set-frontend-preset" \
   -H "Content-Type: application/json" \
   -d '{
