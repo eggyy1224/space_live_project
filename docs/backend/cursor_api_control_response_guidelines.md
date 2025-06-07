@@ -208,7 +208,10 @@ To help Cursor better understand and utilize project assets, here are some key p
 ```json
 {
   "displayScene": "boolean (Whether to show or hide the 3D scene, required)",
-  "sceneName": "string (Optional, scene ID to load. Available: '6面房間', '6面房間A')"
+  "sceneName": "string (Optional, scene ID to load. Available: '6面房間', '6面房間A')",
+  "position": "array (Optional, room position [x, y, z] coordinates in 3D space)",
+  "rotation": "array (Optional, room rotation [x, y, z] in degrees)",
+  "scale": "array (Optional, room scale [x, y, z] or [uniform] for equal scaling, must be positive)"
 }
 ```
 
@@ -258,6 +261,21 @@ To help Cursor better understand and utilize project assets, here are some key p
 11. **Validate Frontend Preset Names:**
     -   When using `/api/control/camera/set-frontend-preset`, ensure the `name` provided corresponds to a camera preset defined in the frontend's configuration (e.g., in `prototype/frontend/src/config/resources.ts`). Sending an unknown preset name will likely result in no camera change or an error/warning on the frontend side.
     -   Refer to `docs/backend/camera_control_api.md` for a list of known presets populated from the frontend configuration.
+
+12. **Head Size Effects for Storytelling:**
+    -   Use head scaling (`scaleFactor` range: 0.1 to 20.0) for dramatic and comedic effects. Normal size is 1.0.
+    -   **Dramatic emphasis**: Scale 1.5-3.0x during important speeches or emotional moments.
+    -   **Comedy/surreal effects**: Use extreme scales (0.2x tiny, 5.0x+ huge) for visual gags.
+    -   **Gradual transitions**: Change head size progressively (e.g., 1.0 → 1.5 → 2.0 → 1.0) for smooth effects.
+    -   Always consider returning to normal size (1.0) unless maintaining the effect is intentional.
+
+13. **Room/Scene Transformation for Visual Impact:**
+    -   **Position**: Use `[x, y, z]` coordinates to move rooms. Negative values move in opposite directions.
+    -   **Rotation**: Specify in degrees `[x, y, z]`. Use Y-axis rotation (middle value) for left/right turning.
+    -   **Scale**: Single value `[2.0]` for uniform scaling, or three values `[x, y, z]` for distortion effects.
+    -   **Scene switching**: Available scenes are "6面房間" and "6面房間A". Can combine with transforms.
+    -   **Hiding scenes**: Use `"displayScene": false` to completely hide the 3D environment.
+    -   **Reset transforms**: Use `[0, 0, 0]` for position/rotation and `[1, 1, 1]` for scale to return to defaults.
 
 ##🎬 Working Examples: Bringing it All Together
 
@@ -355,7 +373,7 @@ curl -X POST http://localhost:8000/api/control/scene-display \
 
 **Example 7: Room Transform Control (Position, Rotation, Scale)**
 ```bash
-# Move room to a new position
+# Basic room positioning
 curl -X POST http://localhost:8000/api/control/scene-display \
   -H "Content-Type: application/json" \
   -d '{"displayScene": true, "position": [1.0, 2.0, 3.0]}'
@@ -370,12 +388,12 @@ curl -X POST http://localhost:8000/api/control/scene-display \
   -H "Content-Type: application/json" \
   -d '{"displayScene": true, "scale": [1.5]}'
 
-# Scale room differently on each axis
+# Scale room differently on each axis (create distortion effects)
 curl -X POST http://localhost:8000/api/control/scene-display \
   -H "Content-Type: application/json" \
   -d '{"displayScene": true, "scale": [2.0, 1.0, 0.8]}'
 
-# Combine multiple transformations
+# Combine multiple transformations with scene switching
 curl -X POST http://localhost:8000/api/control/scene-display \
   -H "Content-Type: application/json" \
   -d '{
@@ -386,15 +404,49 @@ curl -X POST http://localhost:8000/api/control/scene-display \
     "scale": [1.2, 1.2, 1.2]
   }'
 
-# Reset room to default transform
+# Hide room completely
+curl -X POST http://localhost:8000/api/control/scene-display \
+  -H "Content-Type: application/json" \
+  -d '{"displayScene": false}'
+
+# Reset room to default transforms
 curl -X POST http://localhost:8000/api/control/scene-display \
   -H "Content-Type: application/json" \
   -d '{
     "displayScene": true,
+    "sceneName": "6面房間",
     "position": [0.0, 0.0, 0.0],
     "rotation": [0.0, 0.0, 0.0],
-    "scale": [2.0, 2.0, 2.0]
+    "scale": [1.0, 1.0, 1.0]
   }'
+```
+
+**Example 8: Head Size Control for Visual Effects**
+```bash
+# Enlarge head for dramatic emphasis (2.5x size)
+curl -X POST http://localhost:8000/api/control/head-size \
+  -H "Content-Type: application/json" \
+  -d '{"scaleFactor": 2.5}'
+
+# Shrink head for cute or humorous effect (0.7x size)
+curl -X POST http://localhost:8000/api/control/head-size \
+  -H "Content-Type: application/json" \
+  -d '{"scaleFactor": 0.7}'
+
+# Extremely large head for comedic effect (5.0x size)
+curl -X POST http://localhost:8000/api/control/head-size \
+  -H "Content-Type: application/json" \
+  -d '{"scaleFactor": 5.0}'
+
+# Tiny head for surreal effect (0.3x size)
+curl -X POST http://localhost:8000/api/control/head-size \
+  -H "Content-Type: application/json" \
+  -d '{"scaleFactor": 0.3}'
+
+# Return to normal size
+curl -X POST http://localhost:8000/api/control/head-size \
+  -H "Content-Type: application/json" \
+  -d '{"scaleFactor": 1.0}'
 ```
 
 ## 🎬 Director's Cut: The Art of the 3-Command Combo (導演進階：三連擊的藝術)
