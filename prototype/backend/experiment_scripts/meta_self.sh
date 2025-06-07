@@ -243,8 +243,8 @@ curl -X POST "$BASE_URL/control/emotion-trajectory" \
   }'
 sleep 2.0
 
-echo "監視器 screen1 切換到『火箭發射』..."
-curl -X PUT "$BASE_URL/monitors/screen1" \
+echo "監視器 screen2 切換到『火箭發射』..."
+curl -X PUT "$BASE_URL/monitors/screen2" \
   -H "Content-Type: application/json" \
   -d '{
     "content": "/videos/火箭發射.mp4",
