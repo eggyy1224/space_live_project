@@ -11,6 +11,7 @@ APIs are defined in `prototype/backend/api/endpoints/`:
 - `speech.py` – speech to text processing.
 - `health.py` – service health check.
 - `websocket.py` – real-time communication endpoint.
+- `image_generation.py` – AI image generation using Gemini models.
 
 The application registers these routes in `prototype/backend/api/__init__.py`.
 
@@ -50,6 +51,11 @@ The request models for these routes are defined at the top of `control.py` and i
 |`POST`|`/api/speech-to-text`|Upload an audio file and receive transcribed text plus a generated reply.|
 |`POST`|`/api/speech-to-text/base64`|Convert base64-encoded audio to text and optional reply.|
 
+### Image Generation Endpoints
+| Method | Path | Description |
+|-------|------|-------------|
+|`POST`|`/api/generate-image`|Generate an AI image using Gemini 2.0 Flash Preview Image Generation model and broadcast via WebSocket.|
+
 ### System Endpoint
 | Method | Path | Description |
 |-------|------|-------------|
@@ -62,8 +68,9 @@ A websocket endpoint at `/ws` provides real-time conversation handling. It manag
 1. **Direct control commands** – map explicit directives such as "play this audio", "set camera angle", or "switch to overview camera" to the corresponding control endpoint (e.g., `/api/control/camera/set-frontend-preset` for named camera views).
 2. **Monitor operations** – interpret requests about changing monitor visibility, content or volume and call the monitor endpoints.
 3. **Speech processing** – when users supply audio to convert or ask for generated speech, use the speech endpoints.
-4. **Status queries** – requests for availability or connection information should call `/api/control/status` or `/api/health`.
-5. **Unstructured chat** – route open conversation through the websocket endpoint.
+4. **Image generation requests** – when users ask for image generation or want to create visual content, use the `/api/generate-image` endpoint.
+5. **Status queries** – requests for availability or connection information should call `/api/control/status` or `/api/health`.
+6. **Unstructured chat** – route open conversation through the websocket endpoint.
 
 ## Response Generation
 When an API call succeeds, include key fields from the returned JSON in natural language. For example, a successful `send-message` call should note the connection count. If an error occurs, return a concise summary of the failure and its HTTP status.
@@ -214,6 +221,28 @@ To help Cursor better understand and utilize project assets, here are some key p
   "scale": "array (Optional, room scale [x, y, z] or [uniform] for equal scaling, must be positive)"
 }
 ```
+
+**11. Image Generation (`/api/generate-image`)**
+```json
+{
+  "description": "string (Text description of the image to generate, required. Can be in Chinese or English. Examples: '一隻可愛的橘貓在花園裡', 'a beautiful sunset over mountains')"
+}
+```
+
+**Image Generation Response:**
+```json
+{
+  "success": "boolean (true if generation succeeded)",
+  "url": "string (Relative URL path to the generated image, e.g., '/generated-images/image_1234567890.png')",
+  "caption": "string (AI-generated description of the image, may be in Chinese or English)"
+}
+```
+
+**Generated Images Access:**
+- Generated images are automatically saved to `prototype/backend/generated_images/` directory
+- Images are accessible via HTTP at `http://localhost:8000{url}` (e.g., `http://localhost:8000/generated-images/image_1234567890.png`)
+- Images are automatically broadcasted via WebSocket to connected frontends with message type `generated-image`
+- Frontend `ImageOverlay` component will display generated images for 10 seconds automatically
 
 ## 🎉 Best Practices for a Smooth Show! 🎉
 
@@ -449,6 +478,32 @@ curl -X POST http://localhost:8000/api/control/head-size \
   -d '{"scaleFactor": 1.0}'
 ```
 
+**Example 9: AI Image Generation**
+```bash
+# Generate a simple image (Chinese description)
+curl -X POST http://localhost:8000/api/generate-image \
+  -H "Content-Type: application/json" \
+  -d '{"description": "一隻可愛的橘貓在花園裡玩耍"}'
+
+# Generate a space-themed image (English description)
+curl -X POST http://localhost:8000/api/generate-image \
+  -H "Content-Type: application/json" \
+  -d '{"description": "astronaut floating in space with beautiful nebula background"}'
+
+# Generate a Taiwan influencer style image
+curl -X POST http://localhost:8000/api/generate-image \
+  -H "Content-Type: application/json" \
+  -d '{"description": "台灣辣妹網紅在太空站內自拍直播，穿著粉色太空服，做出比愛心手勢"}'
+
+# Generate artistic scene
+curl -X POST http://localhost:8000/api/generate-image \
+  -H "Content-Type: application/json" \
+  -d '{"description": "futuristic space city with neon lights and flying cars at sunset"}'
+
+# Note: Generated images will automatically appear in the frontend ImageOverlay
+# and are accessible at the returned URL path (e.g., /generated-images/image_xxx.png)
+```
+
 ## 🎬 Director's Cut: The Art of the 3-Command Combo (導演進階：三連擊的藝術)
 
 While individual API calls are powerful, the true art of directing lies in weaving them into a seamless narrative. Since most API calls are **non-blocking** (they return `success` immediately, without waiting for the action to complete), crafting complex scenes requires a method to control timing and order.
@@ -573,6 +628,16 @@ sleep 5
     3.  **Frontend Support?** Ensure frontend has implemented scene switching functionality.
     4.  **`displayScene: true`?** Must be true to show any scene.
 
+-   **Image Generation Not Working?**
+    1.  **API Key Set?** Ensure `GOOGLE_API_KEY` is properly configured in backend environment.
+    2.  **Description Field?** The request must include a `description` field with text content.
+    3.  **Model Access?** Verify access to Gemini 2.0 Flash Preview Image Generation model.
+    4.  **Backend Logs?** Check for detailed error messages about image generation failures.
+    5.  **Frontend Not Showing Images?** Check if `ImageOverlay` component is properly mounted in `App.tsx`.
+    6.  **Image File Access?** Verify that generated images are accessible at `http://localhost:8000/generated-images/`.
+    7.  **WebSocket Connection?** Images are broadcast via WebSocket, ensure frontend is connected.
+    8.  **Static File Serving?** Confirm `/generated-images/` static route is mounted in backend `__init__.py`.
+
 ## ✅ Response Validation Guide
 
 -   **Successful Calls Generally Return:** `{"success": true, ...}`. Specific endpoints might include additional data (e.g., `url` for `play-audio`, `connections` for `send-message`).
@@ -603,3 +668,13 @@ sleep 5
 -   `太空直播中.mp4`
 -   `太空瑜伽.mp4`
 -   `模擬星雲圖.mp4`
+
+### Generated Images (automatically created by AI - use `/generated-images/` prefix)
+-   Images are dynamically generated using Gemini 2.0 Flash Preview Image Generation
+-   File naming pattern: `image_{timestamp}.png` (e.g., `image_1749308094327.png`)
+-   Typical resolutions: 1024x684 pixels
+-   Format: PNG with RGB color space
+-   Storage location: `prototype/backend/generated_images/`
+-   Accessible via: `http://localhost:8000/generated-images/{filename}`
+-   Frontend display: Automatically shown in `ImageOverlay` component for 10 seconds
+-   WebSocket broadcast: Images are broadcasted with type `generated-image` including URL and caption
