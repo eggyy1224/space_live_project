@@ -53,6 +53,31 @@ async def main() -> None:
         time.sleep(4.0)
         print()
         
+        # 測試隱藏房間
+        print("👻 Testing room hide")
+        requests.post(f"{API_BASE}/api/control/send-message", json={"content": "首先讓房間消失！"})
+        time.sleep(4.0)
+        
+        print("   → Hiding room...")
+        response = requests.post(f"{API_BASE}/api/control/scene-display", json={"displayScene": False})
+        data = response.json()
+        print("✅ room hidden:", data)
+        
+        requests.post(f"{API_BASE}/api/control/send-message", json={"content": "房間不見了！"})
+        print("   ⏳ Observe the hidden room...")
+        time.sleep(4.0)
+        
+        # 重新顯示房間
+        print("   → Showing room again...")
+        response = requests.post(f"{API_BASE}/api/control/scene-display", json={"displayScene": True, "sceneName": "6面房間"})
+        data = response.json()
+        print("✅ room shown:", data)
+        
+        requests.post(f"{API_BASE}/api/control/send-message", json={"content": "房間回來了！"})
+        print("   ⏳ Observe the room return...")
+        time.sleep(4.0)
+        print()
+        
         # 測試位置變換
         print("🚀 Testing room position transform")
         requests.post(f"{API_BASE}/api/control/send-message", json={"content": "現在測試位置變換！"})
