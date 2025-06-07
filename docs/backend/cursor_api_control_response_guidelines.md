@@ -32,6 +32,8 @@ The application registers these routes in `prototype/backend/api/__init__.py`.
 |`POST`|`/api/control/camera/load-preset`|Load a stored camera preset.|
 |`POST`|`/api/control/camera/set-frontend-preset`|Command frontend to switch to a named camera preset.|
 |`POST`|`/api/control/body-animation`|Control body animation states.|
+|`POST`|`/api/control/head-size`|Adjust the scale of the head model (0.1 to 20.0).|
+|`POST`|`/api/control/scene-display`|Toggle or change the active 3D scene.|
 
 The request models for these routes are defined at the top of `control.py` and include fields such as `content`, `url`, `duration`, `keyframes`, and camera angles.
 
@@ -195,6 +197,21 @@ To help Cursor better understand and utilize project assets, here are some key p
 }
 ```
 
+**9. Head Size Control (`/api/control/head-size`)**
+```json
+{
+  "scaleFactor": "float (Scale multiplier for head model, range: 0.1 to 20.0, required. 1.0 = normal size, 2.0 = double size, 0.5 = half size)"
+}
+```
+
+**10. Scene Display Control (`/api/control/scene-display`)**
+```json
+{
+  "displayScene": "boolean (Whether to show or hide the 3D scene, required)",
+  "sceneName": "string (Optional, scene ID to load. Available: '6面房間', '6面房間A')"
+}
+```
+
 ## 🎉 Best Practices for a Smooth Show! 🎉
 
 1.  **Always Verify Connection Status First!**
@@ -298,6 +315,42 @@ curl -X PUT http://localhost:8000/api/monitors/screen1 \
 curl -X POST http://localhost:8000/api/control/camera/set-frontend-preset \\
   -H "Content-Type: application/json" \\
   -d '{"name": "side_view", "duration": 2.0}'
+```
+
+**Example 5: Head Size Control for Dramatic Effects**
+```bash
+# Make the head larger for emphasis
+curl -X POST http://localhost:8000/api/control/head-size \
+  -H "Content-Type: application/json" \
+  -d '{"scaleFactor": 2.5}'
+
+# Make the head smaller for a cute effect
+curl -X POST http://localhost:8000/api/control/head-size \
+  -H "Content-Type: application/json" \
+  -d '{"scaleFactor": 0.7}'
+
+# Return to normal size
+curl -X POST http://localhost:8000/api/control/head-size \
+  -H "Content-Type: application/json" \
+  -d '{"scaleFactor": 1.0}'
+```
+
+**Example 6: Scene Display Control**
+```bash
+# Show the main 6-sided room scene
+curl -X POST http://localhost:8000/api/control/scene-display \
+  -H "Content-Type: application/json" \
+  -d '{"displayScene": true, "sceneName": "6面房間"}'
+
+# Switch to room A variant
+curl -X POST http://localhost:8000/api/control/scene-display \
+  -H "Content-Type: application/json" \
+  -d '{"displayScene": true, "sceneName": "6面房間A"}'
+
+# Hide the scene completely
+curl -X POST http://localhost:8000/api/control/scene-display \
+  -H "Content-Type: application/json" \
+  -d '{"displayScene": false}'
 ```
 
 ## 🎬 Director's Cut: The Art of the 3-Command Combo (導演進階：三連擊的藝術)
@@ -411,6 +464,18 @@ sleep 5
         *   Ensure the "Golden Rule" (Speech + Emotion back-to-back) is followed.
         *   Try adding a slightly longer `sleep` (e.g., 1-2 seconds) immediately after the `send-message` / `emotion-trajectory` pair *before* any subsequent rapid-fire commands. This can give the TTS system crucial time to initialize.
         *   Ensure the previous scene or command block had enough `sleep` time to fully complete, preventing system overload when the new `send-message` is issued.
+
+-   **Head Size Control Not Working?**
+    1.  **Character Visible?** Make sure character is speaking or animated so you can see the size change.
+    2.  **Valid Range?** `scaleFactor` must be between 0.1 and 20.0.
+    3.  **Frontend Implementation?** Ensure WebSocket message handling includes `head-size` type.
+    4.  **Gradual Changes?** Try extreme values (like 0.3 or 5.0) to make changes more obvious.
+
+-   **Scene Display Not Changing?**
+    1.  **Valid Scene Name?** Currently available: "6面房間", "6面房間A".
+    2.  **File Exists?** Check that `.glb` files exist in `prototype/frontend/public/scenes/`.
+    3.  **Frontend Support?** Ensure frontend has implemented scene switching functionality.
+    4.  **`displayScene: true`?** Must be true to show any scene.
 
 ## ✅ Response Validation Guide
 

@@ -309,6 +309,12 @@ class WebSocketService {
         );
         // --- 日誌記錄結束 ---
         // (可以保留特定處理邏輯，但狀態已更新)
+      } else if (data.type === "head-size") {
+        const scaleFactor = (data as any).scaleFactor;
+        if (scaleFactor && typeof scaleFactor === "number") {
+          useStore.getState().setUniformScale(scaleFactor);
+          logger.info(`頭部縮放設置為: ${scaleFactor}`, LogCategory.WEBSOCKET);
+        }
       } else if (data.type === "body-animation") {
         const payload: any = (data as any).payload || {};
         if (Array.isArray(payload.sequence)) {

@@ -51,11 +51,11 @@ async def main() -> None:
         print("🚀 Testing scene-display with valid scene")
         resp = requests.post(
             f"{API_BASE}/api/control/scene-display",
-            json={"displayScene": True, "sceneName": "room-a"},
+            json={"displayScene": True, "sceneName": "6面房間"},
         )
         assert resp.status_code == 200, f"Unexpected status {resp.status_code}"
         data = await wait_for_type(ws, "scene-display")
-        assert data and data.get("payload", {}).get("sceneName") == "room-a"
+        assert data and data.get("payload", {}).get("sceneName") == "6面房間"
         print("✅ scene-display:", data)
 
         print("🚀 Testing scene-display invalid scene")

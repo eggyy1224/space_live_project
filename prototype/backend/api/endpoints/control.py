@@ -427,7 +427,7 @@ class SceneDisplayRequest(BaseModel):
     sceneName: Optional[str] = None
 
 
-VALID_SCENES = {"room-a", "room-b"}
+VALID_SCENES = {"6面房間", "6面房間A"}
 
 
 @router.post("/control/head-size")
@@ -435,7 +435,7 @@ async def set_head_size(request: HeadSizeRequest):
     """Set the scale of the head model on the frontend."""
     if not manager.active_connections:
         raise HTTPException(status_code=503, detail="沒有活動的前端連接")
-    if request.scaleFactor <= 0 or request.scaleFactor > 5:
+    if request.scaleFactor <= 0 or request.scaleFactor > 20:
         raise HTTPException(status_code=400, detail="Invalid scaleFactor")
 
     message = {"type": "head-size", "scaleFactor": request.scaleFactor}

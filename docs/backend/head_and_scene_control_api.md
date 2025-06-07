@@ -22,12 +22,12 @@ curl -X POST http://localhost:8000/api/control/head-size \
 ### `/api/control/scene-display`
 
 - `displayScene`：布林值，是否顯示房間場景。
-- `sceneName`：可選，指定要載入的場景 ID（如 `room-a` 或 `room-b`）。
+- `sceneName`：可選，指定要載入的場景 ID（如 `6面房間` 或 `6面房間A`）。
 
 ```bash
 curl -X POST http://localhost:8000/api/control/scene-display \
   -H 'Content-Type: application/json' \
-  -d '{"displayScene": true, "sceneName": "room-a"}'
+  -d '{"displayScene": true, "sceneName": "6面房間"}'
 ```
 
 無效縮放值將回傳 `400 Bad Request`，未知場景名稱則回傳 `404 Not Found`。
