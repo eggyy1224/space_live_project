@@ -343,6 +343,24 @@ class WebSocketService {
               logger.warn(`未知的場景名稱: ${payload.sceneName}`, LogCategory.WEBSOCKET);
             }
           }
+          
+          // 處理房間變換參數
+          if (payload.position && Array.isArray(payload.position) && payload.position.length === 3) {
+            useStore.getState().setRoomPosition(payload.position as [number, number, number]);
+            logger.info(`房間位置設置為: [${payload.position.join(', ')}]`, LogCategory.WEBSOCKET);
+          }
+          
+          if (payload.rotation && Array.isArray(payload.rotation) && payload.rotation.length === 3) {
+            // 將度數轉換為弧度 (如果前端需要弧度)
+            const rotationRadians = payload.rotation.map((deg: number) => (deg * Math.PI) / 180) as [number, number, number];
+            useStore.getState().setRoomRotation(rotationRadians);
+            logger.info(`房間旋轉設置為: [${payload.rotation.join(', ')}] 度`, LogCategory.WEBSOCKET);
+          }
+          
+          if (payload.scale && Array.isArray(payload.scale) && payload.scale.length === 3) {
+            useStore.getState().setRoomScale(payload.scale as [number, number, number]);
+            logger.info(`房間縮放設置為: [${payload.scale.join(', ')}]`, LogCategory.WEBSOCKET);
+          }
         }
       } else if (data.type === "body-animation") {
         const payload: any = (data as any).payload || {};

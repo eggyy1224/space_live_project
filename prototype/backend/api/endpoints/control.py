@@ -425,6 +425,10 @@ class HeadSizeRequest(BaseModel):
 class SceneDisplayRequest(BaseModel):
     displayScene: bool
     sceneName: Optional[str] = None
+    # 房間變換參數
+    position: Optional[List[float]] = None  # [x, y, z]
+    rotation: Optional[List[float]] = None  # [x, y, z] 以度為單位
+    scale: Optional[List[float]] = None     # [x, y, z] 或 [uniform] 統一縮放
 
 
 VALID_SCENES = {"6面房間", "6面房間A"}
@@ -446,15 +450,43 @@ async def set_head_size(request: HeadSizeRequest):
 
 @router.post("/control/scene-display")
 async def control_scene_display(request: SceneDisplayRequest):
-    """Toggle or change the active 3D scene on the frontend."""
+    """Toggle, change, or transform the active 3D scene on the frontend."""
     if not manager.active_connections:
         raise HTTPException(status_code=503, detail="沒有活動的前端連接")
 
     if request.sceneName and request.sceneName not in VALID_SCENES:
         raise HTTPException(status_code=404, detail="Scene not found")
 
-    payload = {"displayScene": request.displayScene, "sceneName": request.sceneName}
+    # 驗證變換參數格式
+    if request.position is not None and len(request.position) != 3:
+        raise HTTPException(status_code=400, detail="Position must be [x, y, z]")
+    
+    if request.rotation is not None and len(request.rotation) != 3:
+        raise HTTPException(status_code=400, detail="Rotation must be [x, y, z] in degrees")
+    
+    if request.scale is not None:
+        if len(request.scale) == 1:
+            # 統一縮放：[uniform] -> [uniform, uniform, uniform]
+            request.scale = [request.scale[0]] * 3
+        elif len(request.scale) != 3:
+            raise HTTPException(status_code=400, detail="Scale must be [uniform] or [x, y, z]")
+        
+        # 驗證縮放值為正數
+        if any(s <= 0 for s in request.scale):
+            raise HTTPException(status_code=400, detail="Scale values must be positive")
+
+    # 構建payload，只包含非None的值
+    payload = {"displayScene": request.displayScene}
+    if request.sceneName is not None:
+        payload["sceneName"] = request.sceneName
+    if request.position is not None:
+        payload["position"] = request.position
+    if request.rotation is not None:
+        payload["rotation"] = request.rotation
+    if request.scale is not None:
+        payload["scale"] = request.scale
+
     message = {"type": "scene-display", "payload": payload}
     await manager.broadcast(json.dumps(message))
     logger.info(f"Scene display control: {payload}")
-    return {"success": True}
+    return {"success": True, "payload": payload}

@@ -353,6 +353,50 @@ curl -X POST http://localhost:8000/api/control/scene-display \
   -d '{"displayScene": false}'
 ```
 
+**Example 7: Room Transform Control (Position, Rotation, Scale)**
+```bash
+# Move room to a new position
+curl -X POST http://localhost:8000/api/control/scene-display \
+  -H "Content-Type: application/json" \
+  -d '{"displayScene": true, "position": [1.0, 2.0, 3.0]}'
+
+# Rotate room 90 degrees on Y-axis
+curl -X POST http://localhost:8000/api/control/scene-display \
+  -H "Content-Type: application/json" \
+  -d '{"displayScene": true, "rotation": [0.0, 90.0, 0.0]}'
+
+# Scale room uniformly to 1.5x size
+curl -X POST http://localhost:8000/api/control/scene-display \
+  -H "Content-Type: application/json" \
+  -d '{"displayScene": true, "scale": [1.5]}'
+
+# Scale room differently on each axis
+curl -X POST http://localhost:8000/api/control/scene-display \
+  -H "Content-Type: application/json" \
+  -d '{"displayScene": true, "scale": [2.0, 1.0, 0.8]}'
+
+# Combine multiple transformations
+curl -X POST http://localhost:8000/api/control/scene-display \
+  -H "Content-Type: application/json" \
+  -d '{
+    "displayScene": true,
+    "sceneName": "6面房間A",
+    "position": [-1.0, 0.5, 2.0],
+    "rotation": [0.0, 90.0, 0.0],
+    "scale": [1.2, 1.2, 1.2]
+  }'
+
+# Reset room to default transform
+curl -X POST http://localhost:8000/api/control/scene-display \
+  -H "Content-Type: application/json" \
+  -d '{
+    "displayScene": true,
+    "position": [0.0, 0.0, 0.0],
+    "rotation": [0.0, 0.0, 0.0],
+    "scale": [2.0, 2.0, 2.0]
+  }'
+```
+
 ## 🎬 Director's Cut: The Art of the 3-Command Combo (導演進階：三連擊的藝術)
 
 While individual API calls are powerful, the true art of directing lies in weaving them into a seamless narrative. Since most API calls are **non-blocking** (they return `success` immediately, without waiting for the action to complete), crafting complex scenes requires a method to control timing and order.
