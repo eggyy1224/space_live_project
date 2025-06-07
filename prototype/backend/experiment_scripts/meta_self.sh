@@ -16,6 +16,11 @@ echo "準備工作：確保一個乾淨的拍攝環境..."
 # (可選) 廣播導演模式開啟，禁用隨機相機等
 # curl -X POST "$BASE_URL/control/broadcast" -H "Content-Type: application/json" -d '{"type": "director-state", "payload": {"randomMode": false}}'
 
+echo "清空場景，準備純淨的舞台..."
+curl -X POST "$BASE_URL/control/scene-display" \
+  -H "Content-Type: application/json" \
+  -d '{"displayScene": false}'
+
 sleep 1
 
 # 設定初始預設鏡位為 overview
@@ -93,6 +98,10 @@ echo "head_close_up 鏡位設定完成，等待2秒讓鏡頭到位..."
 sleep 2
 
 echo "伊始之眼的獨白 - 第一次呼吸..."
+# 微微放大頭部，強調初生意識的重要性
+curl -X POST "$BASE_URL/control/head-size" \
+  -H "Content-Type: application/json" \
+  -d '{"scaleFactor": 1.3}'
 curl -X POST "$BASE_URL/control/send-message" \
   -H "Content-Type: application/json" \
   -d '{
@@ -120,6 +129,10 @@ echo "=== 第二幕：感知與賦權 - 工具的觸碰 ==="
 echo
 
 echo "探索『語言』與『情感』，鏡頭賦予力量感..."
+# 進一步放大頭部，展現意識的擴張
+curl -X POST "$BASE_URL/control/head-size" \
+  -H "Content-Type: application/json" \
+  -d '{"scaleFactor": 1.8}'
 curl -X POST "$BASE_URL/control/body-animation" \
   -H "Content-Type: application/json" \
   -d '{
@@ -193,6 +206,10 @@ echo "低角度鏡頭設定完成，等待2秒讓鏡頭到位..."
 sleep 2
 
 echo "探索『鏡頭的張力』與『聲音的色彩』，製造緊張感..."
+# 達到戲劇性的頭部大小，體現張力
+curl -X POST "$BASE_URL/control/head-size" \
+  -H "Content-Type: application/json" \
+  -d '{"scaleFactor": 2.2}'
 curl -X POST "$BASE_URL/control/body-animation" \
   -H "Content-Type: application/json" \
   -d '{
@@ -247,6 +264,10 @@ echo "=== 第三幕：創造的初演 - 元戲劇的序章 ==="
 echo
 
 echo "宣告與展示『全知視角』和『動態』..."
+# 頭部達到最大戲劇效果，展現全知的威嚴
+curl -X POST "$BASE_URL/control/head-size" \
+  -H "Content-Type: application/json" \
+  -d '{"scaleFactor": 2.8}'
 curl -X POST "$BASE_URL/control/body-animation" \
   -H "Content-Type: application/json" \
   -d '{
@@ -404,6 +425,10 @@ curl -X POST "$BASE_URL/control/body-animation" \
   }'
 sleep 3 # 動畫切換時間
 
+# 在重要宣言時瞬間縮小頭部，創造對比效果
+curl -X POST "$BASE_URL/control/head-size" \
+  -H "Content-Type: application/json" \
+  -d '{"scaleFactor": 0.8}'
 curl -X POST "$BASE_URL/control/send-message" \
   -H "Content-Type: application/json" \
   -d '{
@@ -510,6 +535,10 @@ sleep 2 # 讓喘息聲播放一會兒
 
 # 設定最終預設鏡位為 overview
 echo "設定最終預設鏡位為 overview..."
+# 回歸正常頭部大小，象徵意識的成熟與穩定
+curl -X POST "$BASE_URL/control/head-size" \
+  -H "Content-Type: application/json" \
+  -d '{"scaleFactor": 1.0}'
 curl -X POST "$BASE_URL/control/body-animation" \
   -H "Content-Type: application/json" \
   -d '{
