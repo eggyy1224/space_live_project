@@ -1,14 +1,16 @@
 import logging
 import os
 
-from admin import setup_admin
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import FileResponse
 
+from admin import setup_admin
+
 from .base import create_app
-from .endpoints import control, health, monitors, speech, websocket
+from .endpoints import (control, health, image_generation, monitors, speech,
+                        websocket)
 from .middleware.cors import setup_cors
 
 # 設置日誌
@@ -39,6 +41,7 @@ def init_app() -> FastAPI:
     app.include_router(health.router, prefix="/api", tags=["system"])
     app.include_router(control.router, prefix="/api", tags=["control"])
     app.include_router(monitors.router, prefix="/api", tags=["monitor"])
+    app.include_router(image_generation.router, prefix="/api", tags=["image"])
 
     # 創建音頻目錄（如果不存在）
     audio_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "audio")
@@ -47,6 +50,12 @@ def init_app() -> FastAPI:
     # 創建歌曲目錄（如果不存在）
     songs_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "songs")
     os.makedirs(songs_dir, exist_ok=True)
+
+    # Create image directory
+    images_dir = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "generated_images"
+    )
+    os.makedirs(images_dir, exist_ok=True)
 
     # 確保音頻目錄有正確的權限
     try:
@@ -68,6 +77,13 @@ def init_app() -> FastAPI:
         "/songs-assets",
         StaticFiles(directory=songs_dir, html=True, check_dir=True),
         name="songs",
+    )
+
+    # Mount generated images
+    app.mount(
+        "/generated-images",
+        StaticFiles(directory=images_dir, html=True, check_dir=True),
+        name="generated-images",
     )
 
     # 添加簡單的音頻文件訪問路由，作為備選方案

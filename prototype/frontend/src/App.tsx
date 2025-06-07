@@ -9,6 +9,7 @@ import ModelAnalyzerTool from './components/ModelAnalyzerTool'
 import ErrorBoundary from './components/ErrorBoundary'
 import { ToastContainer } from './components/Toast'
 import FloatingChatWindow from './components/FloatingChatWindow'
+import ImageOverlay from './components/ImageOverlay'
 import SettingsPanel from './components/SettingsPanel'
 import BackgroundSoundSystem from './components/BackgroundSoundSystem'
 import DirectorMonitorHUD from './components/DirectorMonitorHUD'
@@ -527,8 +528,9 @@ function App() {
           toggleSettingsPanel={toggleSettingsPanel}
           toggleRoomControlPanel={useStore((state) => state.toggleRoomControlPanel)}
         />
-        
+
         <ToastContainer />
+        <ImageOverlay />
         <DirectorMonitorHUD />
         <DirectorLogPanel />
       </div>
