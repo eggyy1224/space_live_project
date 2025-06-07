@@ -139,6 +139,27 @@ async def main() -> None:
         assert data and data.get("payload", {}).get("sceneName") == "6面房間"
         print("✅ scene-display:", data)
 
+        print("🚀 Testing scene-display hide scene")
+        resp = requests.post(
+            f"{API_BASE}/api/control/scene-display",
+            json={"displayScene": False, "sceneName": "6面房間"},
+        )
+        assert resp.status_code == 200, f"Unexpected status {resp.status_code}"
+        data = await wait_for_type(ws, "scene-display")
+        assert data and data.get("payload", {}).get("displayScene") == False
+        print("✅ scene-display hide:", data)
+
+        print("🚀 Testing scene-display show different scene")
+        resp = requests.post(
+            f"{API_BASE}/api/control/scene-display",
+            json={"displayScene": True, "sceneName": "6面房間A"},
+        )
+        assert resp.status_code == 200, f"Unexpected status {resp.status_code}"
+        data = await wait_for_type(ws, "scene-display")
+        assert data and data.get("payload", {}).get("sceneName") == "6面房間A"
+        assert data and data.get("payload", {}).get("displayScene") == True
+        print("✅ scene-display switch:", data)
+
         print("🚀 Testing scene-display invalid scene")
         resp = requests.post(
             f"{API_BASE}/api/control/scene-display",

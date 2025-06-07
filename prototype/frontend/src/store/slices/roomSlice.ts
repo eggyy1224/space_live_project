@@ -15,6 +15,7 @@ export interface RoomSlice {
   
   // 房間場景操作
   toggleRoomScene: () => void;
+  setShowRoomScene: (show: boolean) => void;
   switchScene: (sceneId: string) => void;
   setRoomSceneUrl: (url: string) => void;
   setRoomPosition: (position: [number, number, number]) => void;
@@ -42,6 +43,10 @@ export const createRoomSlice = (set: any, get: any, api: any) => ({
   toggleRoomScene: () => {
     const currentState = get();
     set({ showRoomScene: !currentState.showRoomScene });
+  },
+  
+  setShowRoomScene: (show: boolean) => {
+    set({ showRoomScene: show });
   },
   
   switchScene: (sceneId: string) => {

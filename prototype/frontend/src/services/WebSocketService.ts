@@ -315,6 +315,35 @@ class WebSocketService {
           useStore.getState().setUniformScale(scaleFactor);
           logger.info(`頭部縮放設置為: ${scaleFactor}`, LogCategory.WEBSOCKET);
         }
+      } else if (data.type === "scene-display") {
+        const payload = (data as any).payload;
+        if (payload) {
+          const currentState = useStore.getState();
+          
+          // 處理場景顯示/隱藏 - 直接設置具體狀態
+          if (typeof payload.displayScene === "boolean") {
+            useStore.getState().setShowRoomScene(payload.displayScene);
+            logger.info(`場景顯示狀態設置為: ${payload.displayScene}`, LogCategory.WEBSOCKET);
+          }
+          
+          // 處理場景切換
+          if (payload.sceneName && typeof payload.sceneName === "string") {
+            // 需要將場景名稱映射到場景ID
+            let sceneId: string | null = null;
+            if (payload.sceneName === "6面房間") {
+              sceneId = "room-b";
+            } else if (payload.sceneName === "6面房間A") {
+              sceneId = "room-a";
+            }
+            
+            if (sceneId) {
+              useStore.getState().switchScene(sceneId);
+              logger.info(`場景切換到: ${payload.sceneName} (ID: ${sceneId})`, LogCategory.WEBSOCKET);
+            } else {
+              logger.warn(`未知的場景名稱: ${payload.sceneName}`, LogCategory.WEBSOCKET);
+            }
+          }
+        }
       } else if (data.type === "body-animation") {
         const payload: any = (data as any).payload || {};
         if (Array.isArray(payload.sequence)) {
