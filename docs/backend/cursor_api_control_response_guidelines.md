@@ -261,10 +261,9 @@ To help Cursor better understand and utilize project assets, here are some key p
 - Generated images are automatically saved to `prototype/backend/generated_images/` directory
 - Images are accessible via HTTP at `http://localhost:8000{url}` (e.g., `http://localhost:8000/generated-images/image_1234567890.png`)
 - Images are automatically broadcasted via WebSocket to connected frontends with message type `generated-image`
-- Frontend `ImageOverlay` component will display generated images for 10 seconds automatically
+- Frontend `ImageOverlay` component displays each generated image for the `duration` specified by the backend (default 10 seconds)
 
 ## 🎉 Best Practices for a Smooth Show! 🎉
-
 1.  **Always Verify Connection Status First!**
     -   Before sending any commands, especially at the start of a sequence, call `GET /api/control/status` to ensure there's an active frontend connection. If `active_connections` is 0, commands won't be received.
 
@@ -718,7 +717,7 @@ sleep 5
 -   Format: PNG with RGB color space
 -   Storage location: `prototype/backend/generated_images/`
 -   Accessible via: `http://localhost:8000/generated-images/{filename}`
--   Frontend display: Automatically shown in `ImageOverlay` component for 10 seconds
+-   Frontend display: Shown in `ImageOverlay` component for the backend-provided `duration` (default 10 seconds)
 -   WebSocket broadcast: Images are broadcasted with type `generated-image` including URL, caption, and display_config
 -   Position control: 7 preset positions (center-right default) plus custom positioning
 -   Size control: 3 preset sizes (medium default) plus custom sizing

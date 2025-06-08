@@ -12,7 +12,8 @@
 
 ```json
 {
-  "description": "一段描述文字"
+  "description": "一段描述文字",
+  "duration": 5.0
 }
 ```
 
@@ -21,7 +22,8 @@
 ```json
 {
   "success": true,
-  "url": "/generated-images/image_1700000000000.png"
+  "url": "/generated-images/image_1700000000000.png",
+  "duration": 5.0
 }
 ```
 

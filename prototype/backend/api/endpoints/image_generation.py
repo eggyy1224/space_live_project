@@ -37,6 +37,8 @@ class ImageGenerationRequest(BaseModel):
     custom_position: Optional[dict] = None  # {"top": "50%", "right": "50px", "transform": "translateY(-50%)"}
     # 自定義大小 (可選，優先於 size)
     custom_size: Optional[dict] = None  # {"width": "350px", "height": "280px"}
+    # 顯示持續時間 (可選，秒)
+    duration: Optional[float] = 10.0
 
 
 @router.post("/generate-image")
@@ -76,20 +78,22 @@ async def generate_image(request: ImageGenerationRequest):
         
         # 處理位置和大小設定
         display_config = _get_display_config(request)
-        
+
         # 透過WebSocket廣播結果，包含顯示配置
         await manager.broadcast(json.dumps({
-            "type": "generated-image", 
+            "type": "generated-image",
             "url": url,
             "caption": caption,
-            "display_config": display_config
+            "display_config": display_config,
+            "duration": request.duration
         }))
-        
+
         return {
-            "success": True, 
-            "url": url, 
+            "success": True,
+            "url": url,
             "caption": caption,
-            "display_config": display_config
+            "display_config": display_config,
+            "duration": request.duration
         }
         
     except Exception as e:
