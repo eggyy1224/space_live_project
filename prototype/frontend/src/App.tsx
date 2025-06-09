@@ -101,8 +101,32 @@ function App() {
     playAudio
   } = useAudioService();
 
-  const { start: startRealtime, stop: stopRealtime, streaming: realtimeStreaming, error: realtimeError } =
-    useRealtimeVoice();
+  const {
+    start: startRealtime,
+    stop: stopRealtime,
+    streaming: realtimeStreaming,
+    error: realtimeError,
+  } = useRealtimeVoice();
+
+  const toggleRealtime = useCallback(() => {
+    if (realtimeStreaming) {
+      stopRealtime();
+    } else {
+      startRealtime();
+    }
+  }, [realtimeStreaming, startRealtime, stopRealtime]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (e.code === 'Space' && !e.repeat && target.tagName !== 'INPUT' && !target.isContentEditable) {
+        e.preventDefault();
+        toggleRealtime();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [toggleRealtime]);
   
   // --- 使用頭部服務 (替換 useModelService) ---
   const {
@@ -531,8 +555,7 @@ function App() {
           toggleChatWindow={toggleChatWindow}
           toggleSettingsPanel={toggleSettingsPanel}
           toggleRoomControlPanel={useStore((state) => state.toggleRoomControlPanel)}
-          startRealtime={startRealtime}
-          stopRealtime={stopRealtime}
+          toggleRealtime={toggleRealtime}
           realtimeStreaming={realtimeStreaming}
           realtimeError={realtimeError}
         />

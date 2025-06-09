@@ -56,8 +56,7 @@ interface AppUIProps {
   toggleSettingsPanel: () => void;
   // 房間控制面板控制
   toggleRoomControlPanel: () => void;
-  startRealtime: () => void;
-  stopRealtime: () => void;
+  toggleRealtime: () => void;
   realtimeStreaming: boolean;
   realtimeError: string | null;
 }
@@ -74,8 +73,7 @@ const AppUI: React.FC<AppUIProps> = ({
   toggleSettingsPanel,
   // 房間控制面板控制
   toggleRoomControlPanel,
-  startRealtime,
-  stopRealtime,
+  toggleRealtime,
   realtimeStreaming,
   realtimeError,
 }) => {
@@ -124,23 +122,19 @@ const AppUI: React.FC<AppUIProps> = ({
         {/* Real-time Voice Button */}
         <div className="flex flex-col items-end">
           <button
-            onMouseDown={startRealtime}
-            onMouseUp={stopRealtime}
-            onTouchStart={startRealtime}
-            onTouchEnd={stopRealtime}
-            onMouseLeave={realtimeStreaming ? stopRealtime : undefined}
+            onClick={toggleRealtime}
             className={`
               relative w-12 h-12 rounded-full shadow-md flex items-center justify-center cursor-pointer transition-all duration-200
-              ${realtimeStreaming 
-                ? 'bg-red-600 hover:bg-red-700 animate-pulse ring-2 ring-red-300' 
+              ${realtimeStreaming
+                ? 'bg-red-600 hover:bg-red-700 animate-pulse ring-2 ring-red-300'
                 : realtimeError
-                ? 'bg-red-400 hover:bg-red-500'
-                : 'bg-red-500 hover:bg-red-600'
+                  ? 'bg-red-400 hover:bg-red-500'
+                  : 'bg-red-500 hover:bg-red-600'
               }
               text-white text-2xl
             `}
-            title={realtimeStreaming ? "正在實時語音通話 - 鬆開停止" : "按住開始實時語音"}
-            aria-label={realtimeStreaming ? "正在實時語音通話 - 鬆開停止" : "按住開始實時語音"}
+            title={realtimeStreaming ? '停止實時語音通話 (空白鍵)' : '啟動實時語音通話 (空白鍵)'}
+            aria-label={realtimeStreaming ? '停止實時語音通話 (空白鍵)' : '啟動實時語音通話 (空白鍵)'}
           >
             {realtimeStreaming ? '🔴' : '🎤'}
             {realtimeStreaming && (
