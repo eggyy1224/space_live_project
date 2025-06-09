@@ -42,7 +42,6 @@ def init_app() -> FastAPI:
 
     # 註冊WebSocket路由
     app.add_websocket_route("/ws", websocket.websocket_endpoint)
-    app.add_websocket_route("/rtws", realtime_conversation.websocket_endpoint)
 
     # 註冊常規API路由
     app.include_router(speech.router, prefix="/api", tags=["speech"])

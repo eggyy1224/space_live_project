@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import AudioService from './AudioService';
 
-const WS_URL = `ws://${window.location.hostname}:8000/rtws`;
+const WS_URL = `ws://${window.location.host}/api/real-time/ws`;
 
 export function useRealtimeVoice() {
   const wsRef = useRef<WebSocket | null>(null);
@@ -27,6 +28,14 @@ export function useRealtimeVoice() {
       };
       recorder.start(250);
       setStreaming(true);
+    };
+    ws.onmessage = (event) => {
+      const data = event.data;
+      if (data instanceof Blob) {
+        AudioService.getInstance().playAudio(data).catch((err) => {
+          console.error('Failed to play realtime audio', err);
+        });
+      }
     };
     ws.onclose = () => {
       setStreaming(false);

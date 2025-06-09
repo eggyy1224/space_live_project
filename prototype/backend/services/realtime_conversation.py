@@ -20,12 +20,12 @@ class RealtimeConversationService:
     ) -> AsyncGenerator[bytes, None]:
         """Stream audio chunks to OpenAI and yield TTS audio bytes."""
         try:
-            async with self.client.beta.threads.stream(  # type: ignore[attr-defined]
-                input_audio=audio_chunks,
-            ) as stream:
-                async for event in stream:  # pragma: no cover - network
+            async with self.client.realtime.conversations.stream(
+                input_audio=audio_chunks
+            ) as stream:  # pragma: no cover - network
+                async for event in stream:
                     if hasattr(event, "audio"):
-                        yield event.audio  # type: ignore[attr-defined]
+                        yield event.audio
         except Exception as exc:  # pragma: no cover - network
             logger.error("Realtime conversation failed: %s", exc)
             return

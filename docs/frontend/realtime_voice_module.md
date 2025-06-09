@@ -12,4 +12,6 @@ const { start, stop, streaming } = useRealtimeVoice();
 
 在介面上提供一個獨立的麥克風按鈕，按下開始串流，放開即停止。
 
+預設會連線至 `ws://<host>/api/real-time/ws` WebSocket 端點。
+
 
