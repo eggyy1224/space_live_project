@@ -229,17 +229,35 @@ To help Cursor better understand and utilize project assets, here are some key p
   "position": "string (Optional, position preset: 'center-right'(default), 'center-left', 'top-right', 'top-left', 'bottom-right', 'bottom-left', 'center')",
   "size": "string (Optional, size preset: 'small', 'medium'(default), 'large')",
   "custom_position": "object (Optional, custom CSS position properties, overrides 'position'. Example: {'top': '50%', 'right': '50px', 'transform': 'translateY(-50%)'})",
-  "custom_size": "object (Optional, custom CSS size properties, overrides 'size'. Example: {'width': '400px', 'height': '300px'})"
+  "custom_size": "object (Optional, custom CSS size properties, overrides 'size'. Example: {'width': '400px', 'height': '300px'})",
+  "duration": "number (Optional, display duration in seconds, default: 10.0)",
+  "aspect_ratio": "string (Optional, image aspect ratio: 'square', 'portrait', 'landscape')"
 }
 ```
 
-**Image Generation Response:**
+**12. Show Existing Image (`/api/show-existing-image`)**
 ```json
 {
-  "success": "boolean (true if generation succeeded)",
-  "url": "string (Relative URL path to the generated image, e.g., '/generated-images/image_1234567890.png')",
-  "caption": "string (AI-generated description of the image, may be in Chinese or English)",
-  "display_config": "object (Configuration for frontend display positioning and sizing)"
+  "filename": "string (Required, image filename in generated_images directory. Example: 'image_1749309153863.png')",
+  "caption": "string (Optional, display caption text, default: '現有圖片')",
+  "position": "string (Optional, position preset: 'center'(default), 'center-left', 'top-right', 'top-left', 'bottom-right', 'bottom-left', 'center-right')",
+  "size": "string (Optional, size preset: 'small', 'medium', 'large'(default))",
+  "custom_position": "object (Optional, custom CSS position properties, overrides 'position'. Example: {'top': '15%', 'right': '300px'})",
+  "custom_size": "object (Optional, custom CSS size properties, overrides 'size'. Example: {'width': '500px', 'height': '400px'})",
+  "duration": "number (Optional, display duration in seconds, default: 15.0)",
+  "aspect_ratio": "string (Optional, aspect ratio hint for display: 'square', 'portrait', 'landscape'(default))"
+}
+```
+
+**Image Generation & Show Existing Image Response:**
+```json
+{
+  "success": "boolean (true if generation/display succeeded)",
+  "url": "string (Relative URL path to the image, e.g., '/generated-images/image_1234567890.png')",
+  "caption": "string (AI-generated description or custom caption text)",
+  "display_config": "object (Configuration for frontend display positioning and sizing)",
+  "duration": "number (Display duration in seconds)",
+  "aspect_ratio": "string (Image aspect ratio: 'square', 'portrait', 'landscape')"
 }
 ```
 
@@ -257,11 +275,13 @@ To help Cursor better understand and utilize project assets, here are some key p
 - `medium` (default): 350px × 280px
 - `large`: 450px × 360px
 
-**Generated Images Access:**
+**Image Display & Access:**
 - Generated images are automatically saved to `prototype/backend/generated_images/` directory
 - Images are accessible via HTTP at `http://localhost:8000{url}` (e.g., `http://localhost:8000/generated-images/image_1234567890.png`)
-- Images are automatically broadcasted via WebSocket to connected frontends with message type `generated-image`
-- Frontend `ImageOverlay` component displays each generated image for the `duration` specified by the backend (default 10 seconds)
+- Both generated and existing images are broadcasted via WebSocket to connected frontends with message type `generated-image`
+- Frontend `ImageOverlay` component can display multiple images simultaneously, each with independent positioning, sizing, and duration
+- **Multiple identical images**: The same image file can be displayed multiple times simultaneously at different positions and sizes
+- **Image persistence**: Images remain visible for their specified `duration` before automatically disappearing
 
 ## 🎉 Best Practices for a Smooth Show! 🎉
 1.  **Always Verify Connection Status First!**
