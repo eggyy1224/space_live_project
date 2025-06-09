@@ -247,44 +247,28 @@ export function useRealtimeVoice() {
             return;
           }
           
-          // 使用簡單的 HTMLAudioElement 直接播放，避免 AudioContext 衝突
-          try {
-            const audioUrl = URL.createObjectURL(data);
-            const audio = new Audio(audioUrl);
+          // 🎯 確保正確的 WAV MIME type 並轉換為 AudioService 期望的格式
+          const wavBlob = new Blob([data], { type: 'audio/wav' });
+          const reader = new FileReader();
+          
+          reader.onload = () => {
+            const base64Data = reader.result as string;
+            console.log('[RealtimeVoice] 🎭 Playing audio through AudioService with correct MIME type:', base64Data.substring(0, 50) + '...');
             
-            // 設置音頻屬性
-            audio.volume = 0.8; // 稍微降低音量避免過響
-            audio.preload = 'auto';
-            
-            // 播放完成後清理資源
-            audio.onended = () => {
-              URL.revokeObjectURL(audioUrl);
-              console.log('[RealtimeVoice] ✅ Audio played successfully and resources cleaned up');
-            };
-            
-            audio.onerror = (err) => {
-              URL.revokeObjectURL(audioUrl);
-              console.error('[RealtimeVoice] ❌ Failed to play realtime audio:', err);
-              console.error('[RealtimeVoice] Audio blob details:', {
-                size: data.size,
-                type: data.type,
-                audioUrl: audioUrl
-              });
-            };
-            
-            // 開始播放
-            audio.play()
+            AudioService.getInstance().playAudio(base64Data)
               .then(() => {
-                console.log('[RealtimeVoice] 🎵 Audio playback started');
+                console.log('[RealtimeVoice] ✅ Audio played successfully with lip-sync animation');
               })
               .catch((err) => {
-                URL.revokeObjectURL(audioUrl);
-                console.error('[RealtimeVoice] ❌ Failed to start audio playback:', err);
+                console.error('[RealtimeVoice] ❌ Failed to play audio through AudioService:', err);
               });
-              
-          } catch (error) {
-            console.error('[RealtimeVoice] ❌ Failed to create audio URL:', error);
-          }
+          };
+          
+          reader.onerror = (err) => {
+            console.error('[RealtimeVoice] ❌ Failed to convert blob to data URL:', err);
+          };
+          
+          reader.readAsDataURL(wavBlob);
         } else {
           console.log('[RealtimeVoice] Received non-audio message:', data);
         }
