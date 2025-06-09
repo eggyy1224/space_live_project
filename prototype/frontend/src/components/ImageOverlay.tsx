@@ -9,6 +9,7 @@ interface ImageData {
   id: string;
   url: string;
   caption?: string;
+  aspect_ratio?: string;
   display_config?: {
     position?: { [key: string]: string };
     size?: { [key: string]: string };
@@ -35,7 +36,16 @@ const ImageOverlay: React.FC = () => {
         setImages((prev) => {
           // 移除同 URL 的現有圖片，以支援覆蓋
           const filtered = prev.filter((img) => img.url !== fullImageUrl);
-          return [...filtered, { id, url: fullImageUrl, caption: data.caption, display_config: data.display_config }];
+          return [
+            ...filtered,
+            {
+              id,
+              url: fullImageUrl,
+              caption: data.caption,
+              display_config: data.display_config,
+              aspect_ratio: data.aspect_ratio,
+            },
+          ];
         });
 
         if (timers.current[id]) clearTimeout(timers.current[id]);
@@ -57,14 +67,14 @@ const ImageOverlay: React.FC = () => {
   // 獲取樣式配置
   const getStyles = (img: ImageData) => {
     const defaultPosition = { top: "50%", right: "50px", transform: "translateY(-50%)" };
-    const defaultSize = { width: "350px", height: "280px" };
-    
+    const defaultSize = { width: "350px" };
+
     const position = img.display_config?.position || defaultPosition;
     const size = img.display_config?.size || defaultSize;
-    
+
     return {
       ...position,
-      ...size,
+      width: size.width,
       position: 'fixed' as const,
       borderRadius: '15px',
       overflow: 'hidden',
@@ -134,9 +144,10 @@ const ImageOverlay: React.FC = () => {
           alt="Generated"
           style={{
             width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            borderRadius: '13px'
+            height: 'auto',
+            objectFit: 'contain',
+            borderRadius: '13px',
+            display: 'block'
           }}
           onError={(e) => {
             console.error('圖片載入失敗:', img.url);

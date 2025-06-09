@@ -6,6 +6,8 @@ import time
 from io import BytesIO
 from typing import Optional
 
+from PIL import Image
+
 from google import genai
 from google.genai.types import GenerateContentConfig
 from fastapi import APIRouter, HTTPException
@@ -39,6 +41,8 @@ class ImageGenerationRequest(BaseModel):
     custom_size: Optional[dict] = None  # {"width": "350px", "height": "280px"}
     # 顯示持續時間 (可選，秒)
     duration: Optional[float] = 10.0
+    # 圖像長寬比 (可選) square, portrait, landscape
+    aspect_ratio: Optional[str] = None
 
 
 @router.post("/generate-image")
@@ -65,11 +69,35 @@ async def generate_image(request: ImageGenerationRequest):
         
         if not image_data:
             raise HTTPException(status_code=500, detail="No image generated")
-        
+
+        # 根據需要處理圖像長寬比
+        if request.aspect_ratio:
+            ratio_map = {"square": 1.0, "portrait": 0.75, "landscape": 4 / 3}
+            ratio = ratio_map.get(request.aspect_ratio)
+            if ratio:
+                try:
+                    img = Image.open(BytesIO(image_data))
+                    w, h = img.size
+                    current = w / h
+                    if current > ratio:
+                        new_w = int(h * ratio)
+                        left = (w - new_w) // 2
+                        box = (left, 0, left + new_w, h)
+                    else:
+                        new_h = int(w / ratio)
+                        top = (h - new_h) // 2
+                        box = (0, top, w, top + new_h)
+                    img = img.crop(box)
+                    buffer = BytesIO()
+                    img.save(buffer, format="PNG")
+                    image_data = buffer.getvalue()
+                except Exception as e:
+                    logging.error(f"Aspect ratio processing failed: {e}")
+
         # 儲存圖像檔案
         filename = f"image_{int(time.time()*1000)}.png"
         file_path = os.path.join(GENERATED_DIR, filename)
-        
+
         # 將圖像數據保存到檔案
         with open(file_path, "wb") as f:
             f.write(image_data)
@@ -85,7 +113,8 @@ async def generate_image(request: ImageGenerationRequest):
             "url": url,
             "caption": caption,
             "display_config": display_config,
-            "duration": request.duration
+            "duration": request.duration,
+            "aspect_ratio": request.aspect_ratio
         }))
 
         return {
@@ -93,7 +122,8 @@ async def generate_image(request: ImageGenerationRequest):
             "url": url,
             "caption": caption,
             "display_config": display_config,
-            "duration": request.duration
+            "duration": request.duration,
+            "aspect_ratio": request.aspect_ratio
         }
         
     except Exception as e:
