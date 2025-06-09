@@ -57,6 +57,12 @@ def init_app() -> FastAPI:
     )
     os.makedirs(images_dir, exist_ok=True)
 
+    # Create selfies directory
+    selfies_dir = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "selfies"
+    )
+    os.makedirs(selfies_dir, exist_ok=True)
+
     # 確保音頻目錄有正確的權限
     try:
         # 嘗試添加讀取權限
@@ -84,6 +90,13 @@ def init_app() -> FastAPI:
         "/generated-images",
         StaticFiles(directory=images_dir, html=True, check_dir=True),
         name="generated-images",
+    )
+
+    # Mount selfies
+    app.mount(
+        "/selfies",
+        StaticFiles(directory=selfies_dir, html=True, check_dir=True),
+        name="selfies",
     )
 
     # 添加簡單的音頻文件訪問路由，作為備選方案

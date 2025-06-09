@@ -249,6 +249,33 @@ To help Cursor better understand and utilize project assets, here are some key p
 }
 ```
 
+**13. Take Selfie (`/api/take-selfie`)**
+```json
+{
+  "description": "string (Optional, selfie description, default: '拍一張自拍照')",
+  "reference_image": "string (Optional, reference image filename from selfies/ or generated_images/ directory. Example: 'selfie_1749441340870.png')",
+  "modification": "string (Optional, modification instructions. Example: '換個開心的表情', '變成比較酷的眼神')",
+  "use_latest_selfie": "boolean (Optional, auto-use latest selfie as reference, default: false)",
+  "position": "string (Optional, position preset: 'center'(default), 'center-left', 'top-right', 'top-left', 'bottom-right', 'bottom-left', 'center-right')",
+  "size": "string (Optional, size preset: 'small', 'medium', 'large'(default))",
+  "custom_position": "object (Optional, custom CSS position properties, overrides 'position')",
+  "custom_size": "object (Optional, custom CSS size properties, overrides 'size')",
+  "duration": "number (Optional, display duration in seconds, default: 15.0)",
+  "aspect_ratio": "string (Optional, aspect ratio: 'square', 'portrait'(default), 'landscape')",
+  "add_timestamp": "boolean (Optional, add timestamp watermark to image, default: true)"
+}
+```
+
+**14. Continue Selfie (`/api/continue-selfie`)**
+```json
+{
+  "modification": "string (Optional, modification instructions, default: '稍微改變一下表情和姿勢')",
+  "position": "string (Optional, position preset: 'center'(default), 'center-left', 'top-right', 'top-left', 'bottom-right', 'bottom-left', 'center-right')",
+  "size": "string (Optional, size preset: 'small', 'medium', 'large'(default))",
+  "duration": "number (Optional, display duration in seconds, default: 20.0)"
+}
+```
+
 **Image Generation & Show Existing Image Response:**
 ```json
 {
