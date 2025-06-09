@@ -9,8 +9,15 @@ from starlette.responses import FileResponse
 from admin import setup_admin
 
 from .base import create_app
-from .endpoints import (control, health, image_generation, monitors, speech,
-                        websocket)
+from .endpoints import (
+    control,
+    health,
+    image_generation,
+    monitors,
+    realtime_conversation,
+    speech,
+    websocket,
+)
 from .middleware.cors import setup_cors
 
 # 設置日誌
@@ -35,6 +42,7 @@ def init_app() -> FastAPI:
 
     # 註冊WebSocket路由
     app.add_websocket_route("/ws", websocket.websocket_endpoint)
+    app.add_websocket_route("/rtws", realtime_conversation.websocket_endpoint)
 
     # 註冊常規API路由
     app.include_router(speech.router, prefix="/api", tags=["speech"])
@@ -42,6 +50,7 @@ def init_app() -> FastAPI:
     app.include_router(control.router, prefix="/api", tags=["control"])
     app.include_router(monitors.router, prefix="/api", tags=["monitor"])
     app.include_router(image_generation.router, prefix="/api", tags=["image"])
+    app.include_router(realtime_conversation.router, prefix="/api", tags=["realtime"])
 
     # 創建音頻目錄（如果不存在）
     audio_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "audio")

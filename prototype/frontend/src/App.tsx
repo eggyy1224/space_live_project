@@ -25,6 +25,7 @@ import {
   useChatService,
   useBodyService
 } from './services'
+import { useRealtimeVoice } from './services'
 
 // 引入 API 函數
 import { speechToText, processSpeechAudio } from './services/api';
@@ -99,6 +100,9 @@ function App() {
     stopRecording, 
     playAudio
   } = useAudioService();
+
+  const { start: startRealtime, stop: stopRealtime, streaming: realtimeStreaming } =
+    useRealtimeVoice();
   
   // --- 使用頭部服務 (替換 useModelService) ---
   const {
@@ -527,6 +531,9 @@ function App() {
           toggleChatWindow={toggleChatWindow}
           toggleSettingsPanel={toggleSettingsPanel}
           toggleRoomControlPanel={useStore((state) => state.toggleRoomControlPanel)}
+          startRealtime={startRealtime}
+          stopRealtime={stopRealtime}
+          realtimeStreaming={realtimeStreaming}
         />
 
         <ToastContainer />

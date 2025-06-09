@@ -4,6 +4,7 @@ export { default as AudioService } from './AudioService';
 export { default as ModelService } from './HeadService';
 export { default as ChatService } from './ChatService';
 export { default as BodyService } from './BodyService';
+export { useRealtimeVoice } from './RealtimeVoiceService';
 
 // React Hook 導出
 export { useWebSocket } from './WebSocketService';

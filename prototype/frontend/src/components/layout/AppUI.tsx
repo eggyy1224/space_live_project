@@ -56,6 +56,9 @@ interface AppUIProps {
   toggleSettingsPanel: () => void;
   // 房間控制面板控制
   toggleRoomControlPanel: () => void;
+  startRealtime: () => void;
+  stopRealtime: () => void;
+  realtimeStreaming: boolean;
 }
 
 const AppUI: React.FC<AppUIProps> = ({
@@ -70,6 +73,9 @@ const AppUI: React.FC<AppUIProps> = ({
   toggleSettingsPanel,
   // 房間控制面板控制
   toggleRoomControlPanel,
+  startRealtime,
+  stopRealtime,
+  realtimeStreaming,
 }) => {
   // // REMOVED micPermission logic
   // const micPermissionBool: boolean | null = ...
@@ -111,6 +117,19 @@ const AppUI: React.FC<AppUIProps> = ({
           aria-label="開啟/關閉聊天視窗"
         >
           💬
+        </button>
+
+        {/* Real-time Voice Button */}
+        <button
+          onMouseDown={startRealtime}
+          onMouseUp={stopRealtime}
+          onTouchStart={startRealtime}
+          onTouchEnd={stopRealtime}
+          className={`w-12 h-12 rounded-full bg-red-500 hover:bg-red-600 text-white text-2xl shadow-md flex items-center justify-center cursor-pointer transition-colors duration-200 ${realtimeStreaming ? 'animate-pulse' : ''}`}
+          title="即時語音"
+          aria-label="即時語音"
+        >
+          🎤
         </button>
 
         {/* Trigger Settings Panel Button */}
