@@ -33,20 +33,16 @@ const ImageOverlay: React.FC = () => {
         const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
         const duration = typeof data.duration === 'number' ? data.duration * 1000 : DEFAULT_DISPLAY_TIME;
 
-        setImages((prev) => {
-          // 移除同 URL 的現有圖片，以支援覆蓋
-          const filtered = prev.filter((img) => img.url !== fullImageUrl);
-          return [
-            ...filtered,
-            {
-              id,
-              url: fullImageUrl,
-              caption: data.caption,
-              display_config: data.display_config,
-              aspect_ratio: data.aspect_ratio,
-            },
-          ];
-        });
+        setImages((prev) => [
+          ...prev,
+          {
+            id,
+            url: fullImageUrl,
+            caption: data.caption,
+            display_config: data.display_config,
+            aspect_ratio: data.aspect_ratio,
+          },
+        ]);
 
         if (timers.current[id]) clearTimeout(timers.current[id]);
         timers.current[id] = setTimeout(() => {
