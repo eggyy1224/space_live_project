@@ -1,7 +1,170 @@
 import { useEffect, useRef, useState } from 'react';
 import AudioService from './AudioService';
+import { useStore } from '../store';
 
 const WS_URL = `ws://${window.location.hostname}:8000/api/real-time/ws`;
+
+// 專門用於實時音頻播放的類
+class RealtimeAudioPlayer {
+  private audioContext: AudioContext | null = null;
+  private analyser: AnalyserNode | null = null;
+  private gainNode: GainNode | null = null;
+  private analysisFrameId: number | null = null;
+  private audioQueue: AudioBuffer[] = [];
+  private isPlaying = false;
+  private nextStartTime = 0;
+
+  async initialize() {
+    if (!this.audioContext) {
+      this.audioContext = new AudioContext();
+      this.analyser = this.audioContext.createAnalyser();
+      this.analyser.fftSize = 256;
+      
+      this.gainNode = this.audioContext.createGain();
+      this.gainNode.gain.value = 0.8;
+      
+      this.analyser.connect(this.gainNode);
+      this.gainNode.connect(this.audioContext.destination);
+    }
+    
+    if (this.audioContext.state === 'suspended') {
+      await this.audioContext.resume();
+    }
+  }
+
+  async addAudioChunk(audioData: ArrayBuffer) {
+    if (!this.audioContext) return;
+    
+    try {
+      const audioBuffer = await this.audioContext.decodeAudioData(audioData);
+      this.audioQueue.push(audioBuffer);
+      
+      if (!this.isPlaying) {
+        this.startPlayback();
+      }
+    } catch (error) {
+      console.error('[RealtimeAudioPlayer] Failed to decode audio:', error);
+    }
+  }
+
+  private startPlayback() {
+    if (!this.audioContext || !this.analyser) return;
+    
+    this.isPlaying = true;
+    this.nextStartTime = this.audioContext.currentTime;
+    
+    // 開始音頻分析
+    this.startAudioAnalysis();
+    
+    // 設置 speaking 狀態
+    useStore.getState().setSpeaking(true);
+    
+    this.playNextChunk();
+  }
+
+  private playNextChunk() {
+    if (!this.audioContext || !this.analyser || this.audioQueue.length === 0) {
+      // 如果沒有更多音頻塊，等待一小段時間後檢查
+      setTimeout(() => {
+        if (this.audioQueue.length === 0 && this.isPlaying) {
+          this.stopPlayback();
+        } else if (this.audioQueue.length > 0) {
+          this.playNextChunk();
+        }
+      }, 100);
+      return;
+    }
+
+    const audioBuffer = this.audioQueue.shift()!;
+    const source = this.audioContext.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(this.analyser);
+
+    // 計算開始時間，確保連續播放
+    const startTime = Math.max(this.nextStartTime, this.audioContext.currentTime);
+    source.start(startTime);
+    
+    // 更新下次開始時間
+    this.nextStartTime = startTime + audioBuffer.duration;
+    
+    // 設置結束回調
+    source.onended = () => {
+      this.playNextChunk();
+    };
+
+    console.log(`[RealtimeAudioPlayer] Playing audio chunk: ${audioBuffer.duration.toFixed(3)}s`);
+  }
+
+  private startAudioAnalysis() {
+    if (!this.analyser) return;
+    
+    const dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+    
+    const analyze = () => {
+      if (!this.isPlaying || !this.analyser) {
+        this.stopAudioAnalysis();
+        return;
+      }
+      
+      this.analyser.getByteTimeDomainData(dataArray);
+      let sumOfSquares = 0;
+      for (let i = 0; i < dataArray.length; i++) {
+        const norm = (dataArray[i] / 128.0) - 1.0;
+        sumOfSquares += norm * norm;
+      }
+      const rms = Math.sqrt(sumOfSquares / dataArray.length);
+      
+      // 映射到 jawOpen
+      const sensitivity = 4.0;
+      const threshold = 0.01;
+      let jawOpenValue = 0;
+      if (rms > threshold) {
+        jawOpenValue = Math.min(1.0, rms * sensitivity);
+      }
+      
+      // 更新嘴型
+      useStore.getState().setAudioLipsyncTarget('jawOpen', jawOpenValue);
+      useStore.getState().setAudioAverageVolume(rms);
+      
+      this.analysisFrameId = requestAnimationFrame(analyze);
+    };
+    
+    analyze();
+  }
+
+  private stopAudioAnalysis() {
+    if (this.analysisFrameId !== null) {
+      cancelAnimationFrame(this.analysisFrameId);
+      this.analysisFrameId = null;
+    }
+    
+    // 重置嘴型
+    useStore.getState().setAudioLipsyncTarget('jawOpen', 0);
+  }
+
+  stopPlayback() {
+    this.isPlaying = false;
+    this.audioQueue = [];
+    this.nextStartTime = 0;
+    
+    this.stopAudioAnalysis();
+    useStore.getState().setSpeaking(false);
+    
+    console.log('[RealtimeAudioPlayer] Stopped playback');
+  }
+
+  cleanup() {
+    this.stopPlayback();
+    
+    if (this.audioContext) {
+      this.audioContext.close();
+      this.audioContext = null;
+    }
+    
+    this.analyser = null;
+    this.gainNode = null;
+  }
+}
 
 export function useRealtimeVoice() {
   const wsRef = useRef<WebSocket | null>(null);
@@ -9,6 +172,7 @@ export function useRealtimeVoice() {
   const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const processorNodeRef = useRef<ScriptProcessorNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const audioPlayerRef = useRef<RealtimeAudioPlayer | null>(null);
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,6 +186,7 @@ export function useRealtimeVoice() {
       hasSourceNode: !!sourceNodeRef.current,
       hasProcessorNode: !!processorNodeRef.current,
       hasMediaStream: !!streamRef.current,
+      hasAudioPlayer: !!audioPlayerRef.current,
       wsState: wsRef.current?.readyState,
       audioContextState: audioContextRef.current?.state,
       mediaStreamTracks: streamRef.current?.getTracks().map(t => ({
@@ -41,6 +206,11 @@ export function useRealtimeVoice() {
 
   const cleanup = () => {
     console.log('[RealtimeVoice] Starting cleanup...');
+    
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.cleanup();
+      audioPlayerRef.current = null;
+    }
     
     if (processorNodeRef.current) {
       console.log('[RealtimeVoice] Disconnecting processor node...');
@@ -133,6 +303,10 @@ export function useRealtimeVoice() {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('瀏覽器不支援媒體設備 API');
       }
+      
+      // 初始化實時音頻播放器
+      audioPlayerRef.current = new RealtimeAudioPlayer();
+      await audioPlayerRef.current.initialize();
       
       console.log('[RealtimeVoice] Requesting microphone access...');
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -231,7 +405,7 @@ export function useRealtimeVoice() {
         setStreaming(false);
       };
       
-      ws.onmessage = (event) => {
+      ws.onmessage = async (event) => {
         const data = event.data;
         console.log(`[RealtimeVoice] Received message:`, {
           type: typeof data,
@@ -247,28 +421,16 @@ export function useRealtimeVoice() {
             return;
           }
           
-          // 🎯 確保正確的 WAV MIME type 並轉換為 AudioService 期望的格式
-          const wavBlob = new Blob([data], { type: 'audio/wav' });
-          const reader = new FileReader();
-          
-          reader.onload = () => {
-            const base64Data = reader.result as string;
-            console.log('[RealtimeVoice] 🎭 Playing audio through AudioService with correct MIME type:', base64Data.substring(0, 50) + '...');
-            
-            AudioService.getInstance().playAudio(base64Data)
-              .then(() => {
-                console.log('[RealtimeVoice] ✅ Audio played successfully with lip-sync animation');
-              })
-              .catch((err) => {
-                console.error('[RealtimeVoice] ❌ Failed to play audio through AudioService:', err);
-              });
-          };
-          
-          reader.onerror = (err) => {
-            console.error('[RealtimeVoice] ❌ Failed to convert blob to data URL:', err);
-          };
-          
-          reader.readAsDataURL(wavBlob);
+          // 🎯 使用實時音頻播放器處理音頻片段
+          try {
+            const arrayBuffer = await data.arrayBuffer();
+            if (audioPlayerRef.current) {
+              await audioPlayerRef.current.addAudioChunk(arrayBuffer);
+              console.log('[RealtimeVoice] 🎭 Audio chunk added to realtime player');
+            }
+          } catch (error) {
+            console.error('[RealtimeVoice] ❌ Failed to process audio chunk:', error);
+          }
         } else {
           console.log('[RealtimeVoice] Received non-audio message:', data);
         }
