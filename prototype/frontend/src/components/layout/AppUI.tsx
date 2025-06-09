@@ -59,6 +59,7 @@ interface AppUIProps {
   startRealtime: () => void;
   stopRealtime: () => void;
   realtimeStreaming: boolean;
+  realtimeError: string | null;
 }
 
 const AppUI: React.FC<AppUIProps> = ({
@@ -76,6 +77,7 @@ const AppUI: React.FC<AppUIProps> = ({
   startRealtime,
   stopRealtime,
   realtimeStreaming,
+  realtimeError,
 }) => {
   // // REMOVED micPermission logic
   // const micPermissionBool: boolean | null = ...
@@ -120,17 +122,39 @@ const AppUI: React.FC<AppUIProps> = ({
         </button>
 
         {/* Real-time Voice Button */}
-        <button
-          onMouseDown={startRealtime}
-          onMouseUp={stopRealtime}
-          onTouchStart={startRealtime}
-          onTouchEnd={stopRealtime}
-          className={`w-12 h-12 rounded-full bg-red-500 hover:bg-red-600 text-white text-2xl shadow-md flex items-center justify-center cursor-pointer transition-colors duration-200 ${realtimeStreaming ? 'animate-pulse' : ''}`}
-          title="即時語音"
-          aria-label="即時語音"
-        >
-          🎤
-        </button>
+        <div className="flex flex-col items-end">
+          <button
+            onMouseDown={startRealtime}
+            onMouseUp={stopRealtime}
+            onTouchStart={startRealtime}
+            onTouchEnd={stopRealtime}
+            onMouseLeave={realtimeStreaming ? stopRealtime : undefined}
+            className={`
+              relative w-12 h-12 rounded-full shadow-md flex items-center justify-center cursor-pointer transition-all duration-200
+              ${realtimeStreaming 
+                ? 'bg-red-600 hover:bg-red-700 animate-pulse ring-2 ring-red-300' 
+                : realtimeError
+                ? 'bg-red-400 hover:bg-red-500'
+                : 'bg-red-500 hover:bg-red-600'
+              }
+              text-white text-2xl
+            `}
+            title={realtimeStreaming ? "正在實時語音通話 - 鬆開停止" : "按住開始實時語音"}
+            aria-label={realtimeStreaming ? "正在實時語音通話 - 鬆開停止" : "按住開始實時語音"}
+          >
+            {realtimeStreaming ? '🔴' : '🎤'}
+            {realtimeStreaming && (
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-ping"></div>
+            )}
+          </button>
+          
+          {/* 錯誤提示 */}
+          {realtimeError && (
+            <div className="mt-1 bg-red-100 border border-red-400 text-red-700 px-2 py-1 rounded text-xs max-w-48">
+              {realtimeError}
+            </div>
+          )}
+        </div>
 
         {/* Trigger Settings Panel Button */}
         <button

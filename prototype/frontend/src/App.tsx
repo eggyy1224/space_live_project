@@ -101,7 +101,7 @@ function App() {
     playAudio
   } = useAudioService();
 
-  const { start: startRealtime, stop: stopRealtime, streaming: realtimeStreaming } =
+  const { start: startRealtime, stop: stopRealtime, streaming: realtimeStreaming, error: realtimeError } =
     useRealtimeVoice();
   
   // --- 使用頭部服務 (替換 useModelService) ---
@@ -534,6 +534,7 @@ function App() {
           startRealtime={startRealtime}
           stopRealtime={stopRealtime}
           realtimeStreaming={realtimeStreaming}
+          realtimeError={realtimeError}
         />
 
         <ToastContainer />
