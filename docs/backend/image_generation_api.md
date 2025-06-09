@@ -8,7 +8,7 @@
 |------|------|------|
 |`POST`|`/api/generate-image`|根據描述產生圖像，回傳圖片 URL 並廣播|
 
-`aspect_ratio` 可選值：
+`aspect_ratio` 可選值（傳遞給 Gemini API 決定產生的圖片比例）：
 
 - `square` - 1:1 正方形
 - `portrait` - 3:4 直向
@@ -36,3 +36,5 @@
 ```
 
 產生的圖片會儲存在 `prototype/backend/generated_images/` 目錄，檔名以時間戳記為基礎。前端會收到 `generated-image` 類型的 WebSocket 訊息，內容包含圖片路徑、`duration` 與 `aspect_ratio`。
+
+後端會將 `aspect_ratio` 參數直接傳遞給 Gemini 圖像生成 API，確保得到的圖片比例與請求一致，無需在本地進行裁切。

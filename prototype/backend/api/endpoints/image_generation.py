@@ -1,12 +1,9 @@
-import base64
 import json
 import logging
 import os
 import time
-from io import BytesIO
 from typing import Optional
 
-from PIL import Image
 
 from google import genai
 from google.genai.types import GenerateContentConfig
@@ -49,11 +46,13 @@ class ImageGenerationRequest(BaseModel):
 async def generate_image(request: ImageGenerationRequest):
     try:
         # 使用正確的Gemini圖像生成模型和配置
+        aspect_ratio_map = {"square": "1:1", "portrait": "3:4", "landscape": "4:3"}
         response = client.models.generate_content(
             model="gemini-2.0-flash-preview-image-generation",
             contents=f"Generate an image of: {request.description}",
             config=GenerateContentConfig(
-                response_modalities=["TEXT", "IMAGE"]
+                response_modalities=["TEXT", "IMAGE"],
+                aspect_ratio=aspect_ratio_map.get(request.aspect_ratio)
             )
         )
         
@@ -70,29 +69,6 @@ async def generate_image(request: ImageGenerationRequest):
         if not image_data:
             raise HTTPException(status_code=500, detail="No image generated")
 
-        # 根據需要處理圖像長寬比
-        if request.aspect_ratio:
-            ratio_map = {"square": 1.0, "portrait": 0.75, "landscape": 4 / 3}
-            ratio = ratio_map.get(request.aspect_ratio)
-            if ratio:
-                try:
-                    img = Image.open(BytesIO(image_data))
-                    w, h = img.size
-                    current = w / h
-                    if current > ratio:
-                        new_w = int(h * ratio)
-                        left = (w - new_w) // 2
-                        box = (left, 0, left + new_w, h)
-                    else:
-                        new_h = int(w / ratio)
-                        top = (h - new_h) // 2
-                        box = (0, top, w, top + new_h)
-                    img = img.crop(box)
-                    buffer = BytesIO()
-                    img.save(buffer, format="PNG")
-                    image_data = buffer.getvalue()
-                except Exception as e:
-                    logging.error(f"Aspect ratio processing failed: {e}")
 
         # 儲存圖像檔案
         filename = f"image_{int(time.time()*1000)}.png"

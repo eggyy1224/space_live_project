@@ -1,6 +1,6 @@
 # ImageOverlay Component
 
-The `ImageOverlay` component listens for `generated-image` WebSocket messages and displays AI generated images on top of the scene. Images keep their original aspect ratio and disappear after the duration provided by the backend.
+The `ImageOverlay` component listens for `generated-image` WebSocket messages and displays AI generated images on top of the scene. Images keep their original aspect ratio, which is determined by the backend using Gemini's image generation options, and disappear after the duration provided by the backend.
 
 ## Handling Aspect Ratios
 
