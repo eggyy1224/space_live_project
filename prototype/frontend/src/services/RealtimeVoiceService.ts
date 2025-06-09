@@ -398,10 +398,6 @@ export function useRealtimeVoice() {
         clearTimeout(connectionTimeout);
         console.log(`[RealtimeVoice] WebSocket closed: code=${event.code}, reason=${event.reason}`);
         
-        if (event.code !== 1000) {
-          setError(`連接意外關閉 (${event.code}): ${event.reason || '未知原因'}`);
-        }
-        
         setStreaming(false);
       };
       
