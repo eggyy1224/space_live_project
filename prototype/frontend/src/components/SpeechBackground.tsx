@@ -188,14 +188,46 @@ const SpeechBackground: React.FC = () => {
   // 當新的語音文字到達時，開始打字機效果
   useEffect(() => {
     if (speechText && speechText !== lastProcessedText) {
-      logger.info(`開始 3D 打字機動畫: "${speechText}"`, LogCategory.CHAT);
+      logger.info(`更新 3D 文字動畫: "${speechText}"`, LogCategory.CHAT);
       
-      // 清理舊字符（讓它們自然消失）
-      setCurrentText(speechText);
-      setTypingIndex(0);
-      setIsTyping(true);
+      // 檢查是否是新的對話開始（文字長度變短或完全不同）
+      if (speechText.length < lastProcessedText.length || 
+          !speechText.startsWith(lastProcessedText.slice(0, Math.min(speechText.length, lastProcessedText.length)))) {
+        // 新對話開始，清理所有舊字符
+        characterPool.clear();
+        setCharacters([]);
+        setCurrentText(speechText);
+        setTypingIndex(0);
+        setIsTyping(true);
+        typingStartTime.current = timeRef.current;
+      } else {
+        // 增量更新：只處理新增的字符
+        const newCharCount = speechText.length - lastProcessedText.length;
+        if (newCharCount > 0) {
+          setCurrentText(speechText);
+          // 立即顯示新字符
+          for (let i = lastProcessedText.length; i < speechText.length; i++) {
+            const char = speechText[i];
+            if (char && char.trim()) {
+              const xOffset = (i - speechText.length / 2) * CONFIG.CHARACTER_SPACING;
+              const yOffset = Math.sin(i * 0.3) * 5 + (Math.random() - 0.5) * 10;
+              const zOffset = Math.cos(i * 0.2) * 5;
+              
+              const spawnPos = new THREE.Vector3(
+                CONFIG.SPAWN_POSITION.x + xOffset,
+                CONFIG.SPAWN_POSITION.y + yOffset,
+                CONFIG.SPAWN_POSITION.z + zOffset
+              );
+              
+              characterPool.getCharacter(char, spawnPos, timeRef.current);
+            }
+          }
+          setCharacters([...characterPool.getActiveCharacters()]);
+          setTypingIndex(speechText.length);
+        }
+      }
+      
       setLastProcessedText(speechText);
-      typingStartTime.current = timeRef.current;
       
       // 從最近的消息中獲取語音持續時間
       if (lastJsonMessage && 

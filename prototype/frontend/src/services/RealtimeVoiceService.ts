@@ -383,6 +383,9 @@ export function useRealtimeVoice() {
         clearTimeout(connectionTimeout);
         console.log('[RealtimeVoice] WebSocket connected successfully!');
         
+        // 清空之前的文字內容
+        useStore.getState().setSpeechText('');
+        
         try {
           // 創建音頻處理鏈
           const source = audioContextRef.current!.createMediaStreamSource(stream);
@@ -450,11 +453,12 @@ export function useRealtimeVoice() {
         });
         
         if (data instanceof Blob) {
-          // 檢查是否是中斷訊號
-          if (data.size === 16) {
+          // 檢查是否是中斷訊號或文字數據
+          if (data.size <= 1024) { // 檢查小於1KB的數據，可能是控制信號
             try {
               const arrayBuffer = await data.arrayBuffer();
               const text = new TextDecoder().decode(arrayBuffer);
+              
               if (text === 'INTERRUPT_SIGNAL') {
                 console.log('[RealtimeVoice] 🛑 Received interrupt signal - stopping playback immediately');
                 if (audioPlayerRef.current) {
@@ -462,9 +466,32 @@ export function useRealtimeVoice() {
                 }
                 return;
               }
+              
+                              // 檢查是否是文字數據
+                if (text.startsWith('TEXT_DATA:')) {
+                  try {
+                    const textJson = text.substring('TEXT_DATA:'.length);
+                    const textData = JSON.parse(textJson);
+                    if (textData.type === 'text' && textData.content) {
+                      if (textData.content === 'CLEAR_TEXT') {
+                        console.log('[RealtimeVoice] 🗑️ Clearing previous text');
+                        useStore.getState().setSpeechText('');
+                      } else {
+                        console.log('[RealtimeVoice] 📝 Received text delta:', textData.content);
+                        
+                        // 累積文字到 store
+                        const currentText = useStore.getState().speechText || '';
+                        useStore.getState().setSpeechText(currentText + textData.content);
+                      }
+                    }
+                  } catch (textError) {
+                    console.error('[RealtimeVoice] Failed to parse text data:', textError);
+                  }
+                  return;
+                }
             } catch (error) {
               // 如果解碼失敗，就當作普通音頻處理
-              console.debug('[RealtimeVoice] Failed to decode potential interrupt signal, treating as audio');
+              console.debug('[RealtimeVoice] Failed to decode potential control signal, treating as audio');
             }
           }
           

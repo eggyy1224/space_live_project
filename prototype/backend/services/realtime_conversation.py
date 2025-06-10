@@ -63,13 +63,15 @@ class RealtimeConversationService:
                 audio_queue = asyncio.Queue()
                 # 創建中斷訊號隊列 - 新增
                 interrupt_queue = asyncio.Queue()
+                # 創建文字接收隊列 - 新增
+                text_queue = asyncio.Queue()
                 
                 # 啟動並行任務
                 send_task = asyncio.create_task(self._send_audio_to_openai(ws, audio_chunks))
-                receive_task = asyncio.create_task(self._receive_openai_responses(ws, audio_queue, interrupt_queue))
+                receive_task = asyncio.create_task(self._receive_openai_responses(ws, audio_queue, interrupt_queue, text_queue))
                 
                 try:
-                    # 從隊列中讀取音頻回應和中斷訊號
+                    # 從隊列中讀取音頻回應、中斷訊號和文字
                     while True:
                         try:
                             # 檢查是否有中斷訊號
@@ -79,6 +81,17 @@ class RealtimeConversationService:
                                     # 發送中斷訊號給前端（使用特殊的標記）
                                     logger.info("Sending interrupt signal to frontend")
                                     yield b"INTERRUPT_SIGNAL"  # 特殊標記
+                                    continue
+                            except asyncio.QueueEmpty:
+                                pass
+                            
+                            # 檢查是否有文字數據
+                            try:
+                                text_data = text_queue.get_nowait()
+                                if text_data:
+                                    # 發送文字數據給前端（使用特殊標記）
+                                    text_json = json.dumps({"type": "text", "content": text_data})
+                                    yield f"TEXT_DATA:{text_json}".encode('utf-8')
                                     continue
                             except asyncio.QueueEmpty:
                                 pass
@@ -201,7 +214,7 @@ class RealtimeConversationService:
         except Exception as e:
             logger.error(f"Error sending audio to OpenAI: {e}")
 
-    async def _receive_openai_responses(self, ws, audio_queue: asyncio.Queue, interrupt_queue: asyncio.Queue):
+    async def _receive_openai_responses(self, ws, audio_queue: asyncio.Queue, interrupt_queue: asyncio.Queue, text_queue: asyncio.Queue):
         """接收來自 OpenAI 的回應"""
         try:
             async for message in ws:
@@ -239,14 +252,25 @@ class RealtimeConversationService:
                         # 向前端發送中斷訊號
                         await interrupt_queue.put(True)
                         logger.info("Sent interrupt signal to frontend via interrupt_queue")
+                        
+                        # 發送清空文字的訊號
+                        await text_queue.put("CLEAR_TEXT")
+                    
+                    # 處理回應開始事件 - 清空舊文字準備新回應
+                    elif event.get("type") == "response.created":
+                        logger.info("AI response started - clearing old text")
+                        await text_queue.put("CLEAR_TEXT")
                     
                     # 處理回應取消確認
                     elif event.get("type") == "response.cancelled":
                         logger.info("OpenAI confirmed response cancellation")
                     
-                    # 處理文本回應（用於調試）
-                    elif event.get("type") == "response.text.delta":
-                        logger.info(f"OpenAI text response: {event.get('delta', '')}")
+                    # 處理文本回應 - 傳送到前端（音頻轉錄）
+                    elif event.get("type") == "response.audio_transcript.delta":
+                        text_delta = event.get('delta', '')
+                        if text_delta:
+                            logger.info(f"OpenAI audio transcript: {text_delta}")
+                            await text_queue.put(text_delta)
                     
                     # 處理錯誤 - 改善錯誤處理
                     elif event.get("type") == "error":
