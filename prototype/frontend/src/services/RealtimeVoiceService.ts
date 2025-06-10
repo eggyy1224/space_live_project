@@ -14,6 +14,14 @@ class RealtimeAudioPlayer {
   private isPlaying = false;
   private nextStartTime = 0;
 
+  isPlayingAudio() {
+    return this.isPlaying;
+  }
+
+  interrupt() {
+    this.stopPlayback();
+  }
+
   async initialize() {
     if (!this.audioContext) {
       this.audioContext = new AudioContext();
@@ -355,7 +363,12 @@ export function useRealtimeVoice() {
           
           processor.onaudioprocess = (event) => {
             if (ws.readyState !== WebSocket.OPEN) return;
-            
+
+            if (useStore.getState().isSpeaking && audioPlayerRef.current?.isPlayingAudio()) {
+              console.log('[RealtimeVoice] Interrupting playback due to new input');
+              audioPlayerRef.current.stopPlayback();
+            }
+
             const inputBuffer = event.inputBuffer.getChannelData(0); // 獲取單聲道數據
             
             // 重採樣到 24kHz
@@ -461,6 +474,12 @@ export function useRealtimeVoice() {
     cleanup();
   };
 
-  return { start, stop, streaming, error };
+  const interrupt = () => {
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.interrupt();
+    }
+  };
+
+  return { start, stop, interrupt, streaming, error };
 }
 
