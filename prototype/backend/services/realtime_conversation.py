@@ -44,7 +44,7 @@ class RealtimeConversationService:
         self, audio_chunks: AsyncIterator[bytes]
     ) -> AsyncGenerator[bytes, None]:
         """使用 WebSocket 連接到 OpenAI Realtime API"""
-        url = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01"
+        url = "wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview"
         headers = {
             "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
             "OpenAI-Beta": "realtime=v1"
