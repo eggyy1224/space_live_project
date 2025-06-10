@@ -487,6 +487,23 @@ export function useRealtimeVoice() {
           }
         } else {
           console.log('[RealtimeVoice] Received non-audio message:', data);
+
+          if (typeof data === 'string') {
+            try {
+              const json = JSON.parse(data);
+              // Backend may send { text: "..." } or { transcript: "..." }
+              const transcript = json.text || json.transcript;
+              if (typeof transcript === 'string') {
+                // Update speech text so SpeechBackground can render it
+                useStore.getState().setSpeechText(transcript);
+              }
+            } catch {
+              // Plain text message fallback
+              if (data.trim()) {
+                useStore.getState().setSpeechText(data);
+              }
+            }
+          }
         }
       };
       
