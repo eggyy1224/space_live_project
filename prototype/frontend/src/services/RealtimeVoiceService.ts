@@ -13,6 +13,7 @@ class RealtimeAudioPlayer {
   private audioQueue: AudioBuffer[] = [];
   private isPlaying = false;
   private nextStartTime = 0;
+  private currentSourceNodes: AudioBufferSourceNode[] = []; // 追蹤所有播放中的音頻源
 
   async initialize() {
     if (!this.audioContext) {
@@ -80,6 +81,9 @@ class RealtimeAudioPlayer {
     source.buffer = audioBuffer;
     source.connect(this.analyser);
 
+    // 追蹤這個音頻源
+    this.currentSourceNodes.push(source);
+
     // 計算開始時間，確保連續播放
     const startTime = Math.max(this.nextStartTime, this.audioContext.currentTime);
     source.start(startTime);
@@ -89,6 +93,11 @@ class RealtimeAudioPlayer {
     
     // 設置結束回調
     source.onended = () => {
+      // 從追蹤列表中移除這個源
+      const index = this.currentSourceNodes.indexOf(source);
+      if (index > -1) {
+        this.currentSourceNodes.splice(index, 1);
+      }
       this.playNextChunk();
     };
 
@@ -153,6 +162,32 @@ class RealtimeAudioPlayer {
     console.log('[RealtimeAudioPlayer] Stopped playback');
   }
 
+  // 新增：立即中斷播放，清空隊列並停止所有播放中的音頻源
+  immediateStopPlayback() {
+    console.log('[RealtimeAudioPlayer] Immediate stop - clearing queue and stopping all sources');
+    
+    // 停止所有正在播放的音頻源
+    this.currentSourceNodes.forEach(source => {
+      try {
+        source.stop();
+        source.disconnect();
+      } catch (error) {
+        // 忽略已經停止的源
+      }
+    });
+    this.currentSourceNodes = [];
+    
+    // 清空隊列
+    this.audioQueue = [];
+    this.isPlaying = false;
+    this.nextStartTime = 0;
+    
+    this.stopAudioAnalysis();
+    useStore.getState().setSpeaking(false);
+    
+    console.log('[RealtimeAudioPlayer] Immediate stop completed');
+  }
+
   cleanup() {
     this.stopPlayback();
     
@@ -163,6 +198,11 @@ class RealtimeAudioPlayer {
     
     this.analyser = null;
     this.gainNode = null;
+  }
+
+  // 提供公開方法讓外部也能調用立即停止
+  public forceStop() {
+    this.immediateStopPlayback();
   }
 }
 
@@ -410,6 +450,24 @@ export function useRealtimeVoice() {
         });
         
         if (data instanceof Blob) {
+          // 檢查是否是中斷訊號
+          if (data.size === 16) {
+            try {
+              const arrayBuffer = await data.arrayBuffer();
+              const text = new TextDecoder().decode(arrayBuffer);
+              if (text === 'INTERRUPT_SIGNAL') {
+                console.log('[RealtimeVoice] 🛑 Received interrupt signal - stopping playback immediately');
+                if (audioPlayerRef.current) {
+                  audioPlayerRef.current.immediateStopPlayback();
+                }
+                return;
+              }
+            } catch (error) {
+              // 如果解碼失敗，就當作普通音頻處理
+              console.debug('[RealtimeVoice] Failed to decode potential interrupt signal, treating as audio');
+            }
+          }
+          
           console.log(`[RealtimeVoice] 🔊 Received audio response: ${data.size} bytes, type: ${data.type}`);
           
           if (data.size === 0) {
@@ -457,10 +515,17 @@ export function useRealtimeVoice() {
     cleanup();
   };
 
+  const forceStopPlayback = () => {
+    console.log('[RealtimeVoice] 🛑 Force stopping AI playback...');
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.forceStop();
+    }
+  };
+
   const recorderCleanup = () => {
     cleanup();
   };
 
-  return { start, stop, streaming, error };
+  return { start, stop, forceStopPlayback, streaming, error };
 }
 
