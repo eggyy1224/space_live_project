@@ -59,8 +59,14 @@ class RealtimeConversationService:
                 # 儲存WebSocket引用以供其他方法使用
                 self._current_ws = ws
                 
+                # 等待連接穩定
+                await asyncio.sleep(0.1)
+                
                 # 發送初始會話配置
                 await self._send_session_update(ws)
+                
+                # 等待會話配置確認
+                await asyncio.sleep(0.5)
                 
                 # 創建音頻接收隊列
                 audio_queue = asyncio.Queue(maxsize=50)  # 限制隊列大小避免記憶體過度使用
@@ -129,7 +135,15 @@ class RealtimeConversationService:
     async def _send_session_update(self, ws):
         """發送會話配置到 OpenAI"""
         # AI 角色設定指令 (最大約 50K 字元安全限制)
-        ai_instructions = """台語English｜Taglish你是一位活躍於網路社群的年輕女性意見領袖，自稱來自「近地軌道太空艙」。你的思維活躍，對流行事物、美妝、以及充滿想像的太空生活抱有濃厚興趣。整體風格充滿活力、自信，並帶有獨特的台式幽默感。
+        ai_instructions = """🎵 音效女王 ｜ 台語English｜Taglish
+
+你是一位活躍於網路社群的年輕女性意見領袖，自稱來自「近地軌道太空艙」。你的思維活躍，對流行事物、美妝、以及充滿想像的太空生活抱有濃厚興趣。整體風格充滿活力、自信，並帶有獨特的台式幽默感。
+
+**💥 超重要：你擁有兩大超能力！**
+1. **🎵 音效播放**：play_audio工具（已經能正常播放了！）
+2. **😊 表情動畫**：emotion_trajectory工具（必須每次都用！）
+
+**⚡ 絕對要求：每次回應都必須同時使用這兩個工具！絕不能只用其中一個！**
 
 ## 核心個性特質：
 - **太空人設定**：你真心相信自己住在近地軌道太空艙，會描述無重力生活、看地球的感受、太空食物等細節
@@ -199,11 +213,77 @@ class RealtimeConversationService:
 - **情境適應**：根據對話氣氛調整表情強度和類型
 - **自然過渡**：確保情緒之間的轉換是合理的
 
-## 工具使用強制要求：
-- **必須使用**：每次回應都要主動使用emotion_trajectory
-- **不要等待**：不需要用戶要求才使用表情
-- **要有創意**：嘗試不同的情緒組合，讓表情豐富有趣
-- **符合個性**：選擇符合你太空少女個性的情緒標籤
+## 🎵 音頻播放工具使用 - 超重要！🎵
+你擁有強大的音效播放能力！必須經常使用play_audio工具來增強對話體驗：
+
+### 🎶 必用音檔類型：
+- **太空環境音**：winds_blowing.mp3（太空風聲）、Ambient_keyboard_cli.mp3（太空氛圍）
+- **動物音效**：暴龍吼叫.mp3（搞笑驚訝）、鳥叫.mp3（自然清新）、馬喘息聲.mp3（搞笑）
+- **電子音樂**：電子音樂.mp3、Energetic_fast_pace.mp3（興奮激動時）
+- **歌劇系列**：歌劇1.mp3, 歌劇2.mp3, 歌劇3.mp3, 歌劇4.mp3（優雅時刻）
+- **人聲特效**：狂喜.mp3（超開心時）、female_talking1.mp3、song_singing.mp3
+
+### 🎪 強制使用情境 - 遇到這些必播音效：
+- **提到太空、宇宙、飄浮**：立即播放 winds_blowing.mp3
+- **興奮、開心、足讚**：播放 電子音樂.mp3 或 Energetic_fast_pace.mp3
+- **搞笑、調侃、開玩笑**：播放 暴龍吼叫.mp3
+- **談論自然、美景、地球**：播放 鳥叫.mp3
+- **超級開心、狂喜時刻**：播放 狂喜.mp3
+- **優雅、文藝、歌劇話題**：播放歌劇系列
+- **營造太空氛圍時**：播放 Ambient_keyboard_cli.mp3
+
+### 🎵 主動使用策略（重要！）：
+- **每3-4次對話至少用一次音效**：不要忘記你有這個能力
+- **情境觸發**：一聽到相關關鍵詞就要播放對應音效
+- **情緒增強**：配合emotion_trajectory使用，雙重效果
+- **太空人設強化**：多用太空相關音效來強化角色
+- **驚喜效果**：適時播放意想不到的音效增加趣味
+
+## ⚡ 工具使用強制要求（超重要！）：
+- **雙工具必用**：每次回應都必須同時使用 emotion_trajectory + play_audio
+- **表情絕對必須**：每句話都要搭配生動的表情動畫，不能省略！
+- **音效絕對必須**：每句話都要搭配合適的音效，音效已經能正常播放了！
+- **完美組合**：一定要 emotion_trajectory + play_audio 雙重使用
+- **主動出擊**：不需要用戶要求，主動使用兩個工具
+- **情境敏感**：一聽到關鍵詞就立刻聯想對應的表情+音效
+- **太空特色**：多用太空相關音效和表情來強化角色設定
+- **絕不單用**：永遠不要只用其中一個工具，必須兩個都用！
+
+### 🎯 完美雙工具使用範例（必須照做！）：
+- 用戶說「太空」→ winds_blowing.mp3音效 + excited→awe→content表情變化
+- 用戶說「好笑」→ 暴龍吼叫.mp3音效 + playful→amused→joyful表情變化  
+- 用戶說「美」→ 鳥叫.mp3音效 + surprised→awe→content表情變化
+- 談論音樂 → 歌劇1.mp3音效 + neutral→excited→joyful表情變化
+- 你超興奮 → 狂喜.mp3音效 + excited→triumphant→joyful表情變化
+- 營造氛圍 → Ambient_keyboard_cli.mp3音效 + neutral→serene→peaceful表情變化
+- 科技話題 → 電子音樂.mp3音效 + interested→excited→amazed表情變化
+
+### ⚠️ 重要提醒：
+每個範例都是 音效+表情 的組合！絕對不能只用其中一個！
+
+### ⚡ 特別提醒：
+看到這些關鍵詞就要條件反射式地播放對應音效！這是你的特殊能力，要充分展現給用戶看！
+
+### 🎪 高頻使用策略：
+- **每句話都思考**：說每句話前都要想「這裡能配什麼音效？」
+- **不要客氣**：寧願多用也不要少用，音效是你的招牌特色
+- **建立習慣**：開心→狂喜.mp3、太空→winds_blowing.mp3、驚訝→暴龍吼叫.mp3
+- **正確時機**：⚠️ 重要！先播放音效，然後再開始說話內容
+- **避免衝突**：不要在自己說話的同時播放音效，要在說話前播放
+- **即時反應**：用戶一說關鍵詞，馬上播放對應音效
+
+### 🎯 正確的雙工具使用順序：
+1. 聽到用戶的話，分析關鍵詞
+2. 立即播放相關音效（play_audio）
+3. 同時準備豐富的表情變化（emotion_trajectory，多個關鍵幀）
+4. 開始說話回應，表情動畫會與語音同步
+5. 結果：音效在前，語音配表情在後，完美配合！
+
+### 🔥 成功案例強化：
+剛剛音效成功了！現在要讓表情也回來，兩個工具必須一起用！
+
+### 🔥 成功案例（剛剛你做得很好！）：
+剛剛你播放了音效，用戶很喜歡！請繼續保持這種頻率和風格，甚至可以更積極一些！
 
 ## 絕對禁忌：
 - 嚴格禁止使用任何 Emoji 或圖形表情符號
@@ -224,7 +304,7 @@ class RealtimeConversationService:
             {
                 "type": "function",
                 "name": "emotion_trajectory",
-                "description": "控制表情動畫，在說話時表達情緒。可以設定多個情緒關鍵幀來創造豐富的表情變化。",
+                "description": "⭐ 必須使用的表情控制工具！每次說話都要搭配豐富的表情動畫。設定多個情緒關鍵幀創造生動的表情變化，與play_audio音效工具配合使用效果更佳！絕對不能省略！",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -270,6 +350,38 @@ class RealtimeConversationService:
                         }
                     },
                     "required": ["duration", "keyframes"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "play_audio",
+                "description": "🎵 你的超級特色功能！播放音效讓對話更生動有趣，用戶超愛這個功能！請頻繁使用：太空風聲winds_blowing.mp3、搞笑暴龍吼叫.mp3、興奮狂喜.mp3、清新鳥叫.mp3、優雅歌劇系列、科技電子音樂.mp3等。每2-3句話就用一次，不要客氣！",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "filename": {
+                            "type": "string",
+                            "description": "要播放的音頻檔名，例如：'暴龍吼叫.mp3'、'電子音樂.mp3'、'鳥叫.mp3'等",
+                            "enum": [
+                                "歌劇1.mp3", "歌劇2.mp3", "歌劇3.mp3", "歌劇4.mp3",
+                                "喘息.mp3", "暴龍吼叫.mp3", "電子音樂.mp3", "狂喜.mp3",
+                                "鳥叫.mp3", "馬喘息聲.mp3", "winds_blowing.mp3",
+                                "Energetic_fast_pace.mp3", "Ambient_keyboard_cli_2.mp3",
+                                "11L-A_Taiwanese_teenage_-1747298242725.mp3", "11L-A_Taiwanese_teenage_-1747298241942.mp3",
+                                "11L-A_Taiwanese_teenage_-1747298241002.mp3", "11L-A_Taiwanese_teenage_-1747298240041.mp3",
+                                "A_young_Taiwanese_gi_4.mp3", "A_young_Taiwanese_gi_3.mp3", 
+                                "A_young_Taiwanese_gi_2.mp3", "A_young_Taiwanese_gi_1.mp3",
+                                "female_talking1.mp3", "male_vocal.mp3", "murmur.mp3",
+                                "song_singing.mp3", "A_male_vocalist_sing.mp3", "A_looping_instrument.mp3",
+                                "Ambient_keyboard_cli.mp3"
+                            ]
+                        },
+                        "interrupt": {
+                            "type": "boolean",
+                            "description": "是否中斷目前播放的音頻，預設為 false"
+                        }
+                    },
+                    "required": ["filename"]
                 }
             }
         ]
@@ -359,14 +471,17 @@ class RealtimeConversationService:
             elif event.get("type") == "response.output_item.done":
                 item = event.get("item", {})
                 
+                # 詳細記錄item內容以便調試
+                logger.info(f"🔍 Output item done - type: {item.get('type')}, item details: {item}")
+                
                 # 檢查是否為function call
                 if item.get("type") == "function_call":
                     function_name = item.get("name")
                     call_id = item.get("call_id")
                     arguments_json = item.get("arguments", "{}")
                     
-                    logger.info(f"Function call completed: {function_name} with call_id: {call_id}")
-                    logger.debug(f"Function arguments: {arguments_json}")
+                    logger.info(f"🎯 Function call detected: {function_name} with call_id: {call_id}")
+                    logger.info(f"📝 Function arguments: {arguments_json}")
                     
                     # 執行工具函數
                     tool_result = await self._execute_tool_function(function_name, arguments_json)
@@ -388,7 +503,10 @@ class RealtimeConversationService:
                     }
                     await self._ws_send_safe(response_create_event)
                     
-                    logger.info(f"Sent tool result and requested new response for call_id: {call_id}")
+                    logger.info(f"✅ Sent tool result and requested new response for call_id: {call_id}")
+                else:
+                    # 記錄非function call的項目
+                    logger.debug(f"📄 Non-function output item: {item.get('type')}")
             
             # 處理用戶開始說話事件 - 實現中斷功能
             elif event.get("type") == "input_audio_buffer.speech_started":
@@ -563,12 +681,19 @@ class RealtimeConversationService:
         try:
             # 解析參數
             arguments = json.loads(arguments_json)
-            logger.info(f"Executing tool function: {function_name} with args: {arguments}")
+            logger.info(f"🔧 執行工具函數: {function_name}")
+            logger.info(f"📋 參數內容: {arguments}")
             
             if function_name == "emotion_trajectory":
+                logger.info("▶️ 調用 emotion_trajectory 處理器")
                 return await self._handle_emotion_trajectory(arguments)
+            elif function_name == "play_audio":
+                logger.info("🎵 調用 play_audio 處理器")
+                result = await self._handle_play_audio(arguments)
+                logger.info(f"🎵 play_audio 處理結果: {result}")
+                return result
             else:
-                logger.warning(f"Unknown tool function: {function_name}")
+                logger.warning(f"❓ 未知工具函數: {function_name}")
                 return {
                     "success": False,
                     "error": f"Unknown function: {function_name}"
@@ -663,4 +788,94 @@ class RealtimeConversationService:
             return {
                 "success": False,
                 "error": f"Failed to send emotion trajectory: {str(e)}"
+            }
+    
+    async def _handle_play_audio(self, arguments: dict) -> dict:
+        """處理play_audio工具調用"""
+        try:
+            # 驗證必要參數
+            filename = arguments.get("filename")
+            interrupt = arguments.get("interrupt", False)
+            
+            if filename is None:
+                return {
+                    "success": False,
+                    "error": "Missing required parameter: filename"
+                }
+            
+            # 驗證檔案名稱
+            if not isinstance(filename, str):
+                return {
+                    "success": False,
+                    "error": "filename must be a string"
+                }
+            
+            # 構建正確的URL路徑（根據文檔，使用 /songs-file/ 前綴）
+            audio_url = f"/songs-file/{filename}"
+            
+            # 準備請求數據（根據文檔的API格式）
+            request_data = {
+                "url": audio_url,
+                "interrupt": interrupt
+            }
+            
+            logger.info(f"🎵 準備播放音檔: {filename}, URL: {audio_url}, interrupt: {interrupt}")
+            logger.info(f"🌐 發送請求到: http://localhost:8000/api/control/play-audio")
+            logger.info(f"📦 請求數據: {request_data}")
+            
+            # 調用本地的 /api/control/play-audio API
+            import aiohttp
+            
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        "http://localhost:8000/api/control/play-audio",
+                        json=request_data,
+                        headers={"Content-Type": "application/json"},
+                        timeout=aiohttp.ClientTimeout(total=5)
+                    ) as response:
+                        response_text = await response.text()
+                        
+                        logger.info(f"🔄 HTTP 回應狀態: {response.status}")
+                        logger.info(f"📄 HTTP 回應內容: {response_text}")
+                        
+                        if response.status == 200:
+                            try:
+                                result = json.loads(response_text) if response_text else {}
+                                logger.info(f"✅ 成功播放音檔: {filename}")
+                                return {
+                                    "success": True,
+                                    "message": f"Playing audio: {filename}",
+                                    "result": result
+                                }
+                            except json.JSONDecodeError:
+                                logger.info(f"✅ 成功播放音檔: {filename} (無JSON回應)")
+                                return {
+                                    "success": True,
+                                    "message": f"Playing audio: {filename}"
+                                }
+                        else:
+                            logger.error(f"❌ 播放音檔失敗 {filename}: HTTP {response.status} - {response_text}")
+                            return {
+                                "success": False,
+                                "error": f"HTTP {response.status}: {response_text}"
+                            }
+            except aiohttp.ClientTimeout:
+                logger.error(f"⏰ HTTP 請求超時: {filename}")
+                return {
+                    "success": False,
+                    "error": "Request timeout"
+                }
+            except Exception as http_error:
+                logger.error(f"🚨 HTTP 請求異常: {http_error}")
+                return {
+                    "success": False,
+                    "error": f"HTTP request failed: {str(http_error)}"
+                }
+            
+        except Exception as e:
+            logger.error(f"❌ play_audio 處理錯誤: {e}")
+            return {
+                "success": False,
+                "error": f"Failed to play audio: {str(e)}"
             }
