@@ -5,6 +5,7 @@ API 整合模組
 
 import json
 import logging
+import random
 import aiohttp
 from typing import Dict, Any
 
@@ -40,6 +41,11 @@ class APIIntegrations:
                 logger.info("📸 調用 take_selfie 處理器")
                 result = await self._handle_take_selfie(arguments)
                 logger.info(f"📸 take_selfie 處理結果: {result}")
+                return result
+            elif function_name == "generate_image":
+                logger.info("🎨 調用 generate_image 處理器")
+                result = await self._handle_generate_image(arguments)
+                logger.info(f"🎨 generate_image 處理結果: {result}")
                 return result
             else:
                 logger.warning(f"❓ 未知工具函數: {function_name}")
@@ -252,7 +258,9 @@ class APIIntegrations:
                 reference_image = get_random_selfie_reference(self.selfies_dir)
             
             modification = arguments.get("modification", "")
-            position = arguments.get("position", "center")
+            # 預設使用非中央位置，隨機選擇左右
+            default_positions = ["center-right", "center-left"]
+            position = arguments.get("position", random.choice(default_positions))
             size = arguments.get("size", "large")
             duration = arguments.get("duration", 15.0)
             aspect_ratio = arguments.get("aspect_ratio", "portrait")
@@ -334,4 +342,102 @@ class APIIntegrations:
             return {
                 "success": False,
                 "error": f"Failed to take selfie: {str(e)}"
+            }
+    
+    async def _handle_generate_image(self, arguments: dict) -> dict:
+        """處理generate_image工具調用"""
+        try:
+            # 驗證必要參數
+            description = arguments.get("description")
+            
+            if description is None:
+                return {
+                    "success": False,
+                    "error": "Missing required parameter: description"
+                }
+            
+            # 驗證描述格式
+            if not isinstance(description, str) or len(description.strip()) == 0:
+                return {
+                    "success": False,
+                    "error": "description must be a non-empty string"
+                }
+            
+            # 設定預設參數，避免中央位置
+            default_positions = ["center-right", "center-left", "top-right", "top-left"]
+            position = arguments.get("position", random.choice(default_positions))
+            size = arguments.get("size", "large")
+            duration = arguments.get("duration", 10.0)
+            aspect_ratio = arguments.get("aspect_ratio", "square")
+            
+            # 構建API請求數據（根據文檔的/api/generate-image格式）
+            request_data = {
+                "description": description,
+                "position": position,
+                "size": size,
+                "duration": duration,
+                "aspect_ratio": aspect_ratio
+            }
+            
+            logger.info(f"🎨 準備生成圖片: {description}")
+            logger.info(f"🌐 發送請求到: {self.base_url}/api/generate-image")
+            logger.info(f"📦 請求數據: {request_data}")
+            
+            # 調用本地的 /api/generate-image API
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        f"{self.base_url}/api/generate-image",
+                        json=request_data,
+                        headers={"Content-Type": "application/json"},
+                        timeout=aiohttp.ClientTimeout(total=30)  # 圖片生成需要較長時間
+                    ) as response:
+                        response_text = await response.text()
+                        
+                        logger.info(f"🔄 HTTP 回應狀態: {response.status}")
+                        logger.info(f"📄 HTTP 回應內容: {response_text}")
+                        
+                        if response.status == 200:
+                            try:
+                                result = json.loads(response_text) if response_text else {}
+                                image_url = result.get("url", "")
+                                caption = result.get("caption", "")
+                                logger.info(f"✅ 成功生成圖片: {image_url}")
+                                return {
+                                    "success": True,
+                                    "message": f"Image generated successfully: {caption}",
+                                    "result": result,
+                                    "url": image_url,
+                                    "caption": caption
+                                }
+                            except json.JSONDecodeError:
+                                logger.info(f"✅ 成功生成圖片 (無JSON回應)")
+                                return {
+                                    "success": True,
+                                    "message": f"Image generated successfully"
+                                }
+                        else:
+                            logger.error(f"❌ 圖片生成失敗: HTTP {response.status} - {response_text}")
+                            return {
+                                "success": False,
+                                "error": f"HTTP {response.status}: {response_text}"
+                            }
+            except aiohttp.ClientTimeout:
+                logger.error(f"⏰ 圖片生成請求超時")
+                return {
+                    "success": False,
+                    "error": "Image generation request timeout"
+                }
+            except Exception as http_error:
+                logger.error(f"🚨 圖片生成HTTP請求異常: {http_error}")
+                return {
+                    "success": False,
+                    "error": f"Image generation HTTP request failed: {str(http_error)}"
+                }
+                
+        except Exception as e:
+            logger.error(f"❌ generate_image 處理錯誤: {e}")
+            return {
+                "success": False,
+                "error": f"Failed to generate image: {str(e)}"
             } 

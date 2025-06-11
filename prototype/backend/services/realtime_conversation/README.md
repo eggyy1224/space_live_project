@@ -43,13 +43,14 @@ realtime_conversation/
   - 表情動畫 API 整合
   - 音效播放 API 整合  
   - 自拍功能 API 整合
+  - 圖片生成 API 整合
   - 工具函數執行與參數驗證
 
 ### 4. `session_config.py` - 會話配置
 - **主要職責**：定義 AI 角色與工具配置
 - **功能**：
   - AI 角色設定指令（台語English風格）
-  - 工具定義（表情、音效、自拍）
+  - 工具定義（表情、音效、自拍、圖片生成）
   - 會話參數配置
 
 ### 5. `stream_processor.py` - 音頻流處理

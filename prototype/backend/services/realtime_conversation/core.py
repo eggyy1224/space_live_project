@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class RealtimeConversationService:
     """
     實時對話服務的主要類別
-    整合 OpenAI Realtime API 的完整功能，包含音效播放、表情動畫、自拍功能等。
+    整合 OpenAI Realtime API 的完整功能，包含音效播放、表情動畫、自拍功能、圖片生成等。
     """
 
     def __init__(self) -> None:
