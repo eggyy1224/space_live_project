@@ -47,6 +47,11 @@ class APIIntegrations:
                 result = await self._handle_generate_image(arguments)
                 logger.info(f"🎨 generate_image 處理結果: {result}")
                 return result
+            elif function_name == "background_audio":
+                logger.info("🎼 調用 background_audio 處理器")
+                result = await self._handle_background_audio(arguments)
+                logger.info(f"🎼 background_audio 處理結果: {result}")
+                return result
             else:
                 logger.warning(f"❓ 未知工具函數: {function_name}")
                 return {
@@ -440,4 +445,111 @@ class APIIntegrations:
             return {
                 "success": False,
                 "error": f"Failed to generate image: {str(e)}"
+            }
+    
+    async def _handle_background_audio(self, arguments: dict) -> dict:
+        """處理background_audio工具調用"""
+        try:
+            # 獲取參數
+            bgm_url = arguments.get("bgmUrl")
+            sfx_url = arguments.get("sfxUrl")
+            bgm_playing = arguments.get("bgmPlaying")
+            
+            # 至少需要一個參數
+            if bgm_url is None and sfx_url is None and bgm_playing is None:
+                return {
+                    "success": False,
+                    "error": "At least one parameter (bgmUrl, sfxUrl, or bgmPlaying) is required"
+                }
+            
+            # 構建API請求數據（根據文檔的/api/control/background-audio格式）
+            request_data = {}
+            
+            if bgm_url is not None:
+                request_data["bgmUrl"] = bgm_url
+            
+            if sfx_url is not None:
+                request_data["sfxUrl"] = sfx_url
+                
+            if bgm_playing is not None:
+                request_data["bgmPlaying"] = bgm_playing
+            
+            logger.info(f"🎼 準備控制背景音頻")
+            if bgm_url is not None:
+                logger.info(f"🎵 BGM: {bgm_url}")
+            if sfx_url is not None:
+                logger.info(f"🔊 SFX: {sfx_url}")
+            if bgm_playing is not None:
+                logger.info(f"⏯️ BGM狀態: {'播放' if bgm_playing else '暫停'}")
+            logger.info(f"🌐 發送請求到: {self.base_url}/api/control/background-audio")
+            logger.info(f"📦 請求數據: {request_data}")
+            
+            # 調用本地的 /api/control/background-audio API
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        f"{self.base_url}/api/control/background-audio",
+                        json=request_data,
+                        headers={"Content-Type": "application/json"},
+                        timeout=aiohttp.ClientTimeout(total=5)
+                    ) as response:
+                        response_text = await response.text()
+                        
+                        logger.info(f"🔄 HTTP 回應狀態: {response.status}")
+                        logger.info(f"📄 HTTP 回應內容: {response_text}")
+                        
+                        if response.status == 200:
+                            try:
+                                result = json.loads(response_text) if response_text else {}
+                                logger.info(f"✅ 成功控制背景音頻")
+                                
+                                # 構建成功消息
+                                message_parts = []
+                                if bgm_url is not None:
+                                    if bgm_url == "":
+                                        message_parts.append("BGM已停止")
+                                    else:
+                                        message_parts.append(f"BGM已設置: {bgm_url}")
+                                if sfx_url is not None:
+                                    message_parts.append(f"音效已播放: {sfx_url}")
+                                if bgm_playing is not None:
+                                    message_parts.append(f"BGM{'已播放' if bgm_playing else '已暫停'}")
+                                
+                                success_message = ", ".join(message_parts)
+                                
+                                return {
+                                    "success": True,
+                                    "message": success_message,
+                                    "result": result
+                                }
+                            except json.JSONDecodeError:
+                                logger.info(f"✅ 成功控制背景音頻 (無JSON回應)")
+                                return {
+                                    "success": True,
+                                    "message": "Background audio controlled successfully"
+                                }
+                        else:
+                            logger.error(f"❌ 背景音頻控制失敗: HTTP {response.status} - {response_text}")
+                            return {
+                                "success": False,
+                                "error": f"HTTP {response.status}: {response_text}"
+                            }
+            except aiohttp.ClientTimeout:
+                logger.error(f"⏰ 背景音頻請求超時")
+                return {
+                    "success": False,
+                    "error": "Background audio request timeout"
+                }
+            except Exception as http_error:
+                logger.error(f"🚨 背景音頻HTTP請求異常: {http_error}")
+                return {
+                    "success": False,
+                    "error": f"Background audio HTTP request failed: {str(http_error)}"
+                }
+                
+        except Exception as e:
+            logger.error(f"❌ background_audio 處理錯誤: {e}")
+            return {
+                "success": False,
+                "error": f"Failed to control background audio: {str(e)}"
             } 
