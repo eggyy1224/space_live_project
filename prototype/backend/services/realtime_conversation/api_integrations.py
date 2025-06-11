@@ -62,6 +62,11 @@ class APIIntegrations:
                 result = await self._handle_head_size_control(arguments)
                 logger.info(f"📏 head_size_control 處理結果: {result}")
                 return result
+            elif function_name == "body_animation":
+                logger.info("💃 調用 body_animation 處理器")
+                result = await self._handle_body_animation(arguments)
+                logger.info(f"💃 body_animation 處理結果: {result}")
+                return result
             else:
                 logger.warning(f"❓ 未知工具函數: {function_name}")
                 return {
@@ -789,4 +794,158 @@ class APIIntegrations:
             return {
                 "success": False,
                 "error": f"Failed to control head size: {str(e)}"
+            }
+    
+    async def _handle_body_animation(self, arguments: dict) -> dict:
+        """處理body_animation工具調用"""
+        try:
+            # 獲取參數
+            state = arguments.get("state", "play")
+            animation = arguments.get("animation")
+            sequence = arguments.get("sequence")
+            loop = arguments.get("loop", True)
+            loop_count = arguments.get("loopCount")
+            speed = arguments.get("speed", 1.0)
+            transition_duration = arguments.get("transitionDuration", 0.5)
+            
+            # 驗證參數
+            if state not in ["play", "pause", "resume", "stop"]:
+                return {
+                    "success": False,
+                    "error": "state must be one of: play, pause, resume, stop"
+                }
+            
+            # 如果是play狀態，需要提供animation或sequence
+            if state == "play":
+                if not animation and not sequence:
+                    return {
+                        "success": False,
+                        "error": "animation or sequence is required when state is 'play'"
+                    }
+                
+                if animation and sequence:
+                    return {
+                        "success": False,
+                        "error": "Cannot specify both animation and sequence, choose one"
+                    }
+            
+            # 驗證speed範圍
+            if not isinstance(speed, (int, float)) or speed < 0.5 or speed > 3.0:
+                return {
+                    "success": False,
+                    "error": "speed must be a number between 0.5 and 3.0"
+                }
+            
+            # 驗證transition_duration範圍
+            if not isinstance(transition_duration, (int, float)) or transition_duration < 0.1 or transition_duration > 2.0:
+                return {
+                    "success": False,
+                    "error": "transitionDuration must be a number between 0.1 and 2.0"
+                }
+            
+            # 構建API請求數據（根據文檔的body-animation格式）
+            request_data = {
+                "state": state,
+                "speed": speed,
+                "transitionDuration": transition_duration
+            }
+            
+            # 添加可選參數
+            if animation:
+                request_data["animation"] = animation
+            if sequence:
+                request_data["sequence"] = sequence
+            if loop is not None:
+                request_data["loop"] = loop
+            if loop_count is not None:
+                request_data["loopCount"] = loop_count
+            
+            logger.info(f"💃 準備控制身體動畫: {state}")
+            if animation:
+                logger.info(f"🎭 動畫名稱: {animation}")
+            if sequence:
+                logger.info(f"🎬 動畫序列: {len(sequence)} 個動畫")
+            logger.info(f"🌐 發送請求到: {self.base_url}/api/control/body-animation")
+            logger.info(f"📦 請求數據: {request_data}")
+            
+            # 調用本地的 /api/control/body-animation API
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        f"{self.base_url}/api/control/body-animation",
+                        json=request_data,
+                        headers={"Content-Type": "application/json"},
+                        timeout=aiohttp.ClientTimeout(total=5)
+                    ) as response:
+                        response_text = await response.text()
+                        
+                        logger.info(f"🔄 HTTP 回應狀態: {response.status}")
+                        logger.info(f"📄 HTTP 回應內容: {response_text}")
+                        
+                        if response.status == 200:
+                            try:
+                                result = json.loads(response_text) if response_text else {}
+                                logger.info(f"✅ 成功控制身體動畫")
+                                
+                                # 構建成功消息
+                                if state == "play":
+                                    if animation:
+                                        success_message = f"正在播放動畫: {animation}"
+                                        if loop:
+                                            if loop_count:
+                                                success_message += f"，循環 {loop_count} 次"
+                                            else:
+                                                success_message += "，無限循環"
+                                        if speed != 1.0:
+                                            success_message += f"，速度: {speed}x"
+                                    elif sequence:
+                                        success_message = f"正在播放動畫序列，包含 {len(sequence)} 個動畫"
+                                        if speed != 1.0:
+                                            success_message += f"，速度: {speed}x"
+                                elif state == "pause":
+                                    success_message = "動畫已暫停"
+                                elif state == "resume":
+                                    success_message = "動畫已恢復播放"
+                                elif state == "stop":
+                                    success_message = "動畫已停止"
+                                
+                                return {
+                                    "success": True,
+                                    "message": success_message,
+                                    "result": result,
+                                    "state": state,
+                                    "animation": animation if animation else None,
+                                    "sequence_length": len(sequence) if sequence else None
+                                }
+                            except json.JSONDecodeError:
+                                logger.info(f"✅ 成功控制身體動畫 (無JSON回應)")
+                                return {
+                                    "success": True,
+                                    "message": f"Body animation {state} executed successfully",
+                                    "state": state
+                                }
+                        else:
+                            logger.error(f"❌ 身體動畫控制失敗: HTTP {response.status} - {response_text}")
+                            return {
+                                "success": False,
+                                "error": f"HTTP {response.status}: {response_text}"
+                            }
+            except aiohttp.ClientTimeout:
+                logger.error(f"⏰ 身體動畫控制請求超時")
+                return {
+                    "success": False,
+                    "error": "Body animation control request timeout"
+                }
+            except Exception as http_error:
+                logger.error(f"🚨 身體動畫控制HTTP請求異常: {http_error}")
+                return {
+                    "success": False,
+                    "error": f"Body animation control HTTP request failed: {str(http_error)}"
+                }
+                
+        except Exception as e:
+            logger.error(f"❌ body_animation 處理錯誤: {e}")
+            return {
+                "success": False,
+                "error": f"Failed to control body animation: {str(e)}"
             } 
