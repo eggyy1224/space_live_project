@@ -57,6 +57,11 @@ class APIIntegrations:
                 result = await self._handle_camera_control(arguments)
                 logger.info(f"📹 camera_control 處理結果: {result}")
                 return result
+            elif function_name == "head_size_control":
+                logger.info("📏 調用 head_size_control 處理器")
+                result = await self._handle_head_size_control(arguments)
+                logger.info(f"📏 head_size_control 處理結果: {result}")
+                return result
             else:
                 logger.warning(f"❓ 未知工具函數: {function_name}")
                 return {
@@ -698,4 +703,90 @@ class APIIntegrations:
             return {
                 "success": False,
                 "error": f"Failed to control camera: {str(e)}"
+            }
+    
+    async def _handle_head_size_control(self, arguments: dict) -> dict:
+        """處理head_size_control工具調用"""
+        try:
+            # 驗證必要參數
+            scale_factor = arguments.get("scaleFactor")
+            
+            if scale_factor is None:
+                return {
+                    "success": False,
+                    "error": "Missing required parameter: scaleFactor"
+                }
+            
+            # 驗證scaleFactor格式和範圍（1.0 到 20.0）
+            if not isinstance(scale_factor, (int, float)) or scale_factor < 1.0 or scale_factor > 20.0:
+                return {
+                    "success": False,
+                    "error": "scaleFactor must be a number between 1.0 and 20.0"
+                }
+            
+            # 構建API請求數據（根據文檔的/api/control/head-size格式）
+            request_data = {
+                "scaleFactor": scale_factor
+            }
+            
+            logger.info(f"📏 準備控制頭部大小: {scale_factor}")
+            logger.info(f"🌐 發送請求到: {self.base_url}/api/control/head-size")
+            logger.info(f"📦 請求數據: {request_data}")
+            
+            # 調用本地的 /api/control/head-size API
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        f"{self.base_url}/api/control/head-size",
+                        json=request_data,
+                        headers={"Content-Type": "application/json"},
+                        timeout=aiohttp.ClientTimeout(total=5)
+                    ) as response:
+                        response_text = await response.text()
+                        
+                        logger.info(f"🔄 HTTP 回應狀態: {response.status}")
+                        logger.info(f"📄 HTTP 回應內容: {response_text}")
+                        
+                        if response.status == 200:
+                            try:
+                                result = json.loads(response_text) if response_text else {}
+                                logger.info(f"✅ 成功控制頭部大小: {scale_factor}")
+                                
+                                return {
+                                    "success": True,
+                                    "message": f"Head size controlled successfully: {scale_factor}x",
+                                    "scaleFactor": scale_factor,
+                                    "result": result
+                                }
+                            except json.JSONDecodeError:
+                                logger.info(f"✅ 成功控制頭部大小 (無JSON回應)")
+                                return {
+                                    "success": True,
+                                    "message": f"Head size controlled successfully: {scale_factor}x",
+                                    "scaleFactor": scale_factor
+                                }
+                        else:
+                            logger.error(f"❌ 頭部大小控制失敗: HTTP {response.status} - {response_text}")
+                            return {
+                                "success": False,
+                                "error": f"HTTP {response.status}: {response_text}"
+                            }
+            except aiohttp.ClientTimeout:
+                logger.error(f"⏰ 頭部大小請求超時")
+                return {
+                    "success": False,
+                    "error": "Head size request timeout"
+                }
+            except Exception as http_error:
+                logger.error(f"🚨 頭部大小HTTP請求異常: {http_error}")
+                return {
+                    "success": False,
+                    "error": f"Head size HTTP request failed: {str(http_error)}"
+                }
+                
+        except Exception as e:
+            logger.error(f"❌ head_size_control 處理錯誤: {e}")
+            return {
+                "success": False,
+                "error": f"Failed to control head size: {str(e)}"
             } 
