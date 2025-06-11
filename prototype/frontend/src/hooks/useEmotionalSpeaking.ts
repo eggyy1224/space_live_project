@@ -52,13 +52,17 @@ export const useEmotionalSpeaking = (): EmotionalSpeakingControl => {
           logger.info('[useEmotionalSpeaking] Payload is valid. Processing trajectory...', LogCategory.ANIMATION);
           const trajectoryData = payload as EmotionalTrajectory;
           trajectoryData.keyframes.sort((a, b) => a.proportion - b.proportion);
-          setCurrentTrajectory(trajectoryData); // Update local state
-          // --- 新增：重置本地參考時間和標記 ---
-          setLocalReferenceTime(null); // 會在下面的 useEffect 中設定
-          setTrajectoryActive(true);
-          trajectoryCompleted.current = false;
-          // --- 新增結束 ---
-          logger.info('[useEmotionalSpeaking] Successfully set currentTrajectory:', LogCategory.ANIMATION, JSON.stringify(trajectoryData, null, 2));
+          
+          // 使用setTimeout確保emotion trajectory處理不阻塞其他操作
+          setTimeout(() => {
+            setCurrentTrajectory(trajectoryData); // Update local state
+            // --- 新增：重置本地參考時間和標記 ---
+            setLocalReferenceTime(null); // 會在下面的 useEffect 中設定
+            setTrajectoryActive(true);
+            trajectoryCompleted.current = false;
+            // --- 新增結束 ---
+            logger.info('[useEmotionalSpeaking] Successfully set currentTrajectory:', LogCategory.ANIMATION, JSON.stringify(trajectoryData, null, 2));
+          }, 0); // 異步執行，不阻塞當前執行緒
       } else {
           logger.warn(
               '[useEmotionalSpeaking] Received invalid trajectory data format:',
@@ -74,7 +78,7 @@ export const useEmotionalSpeaking = (): EmotionalSpeakingControl => {
         logger.debug('[useEmotionalSpeaking] lastMessage is null.', LogCategory.ANIMATION);
       }
     }
-  }, [lastMessage]); 
+  }, [lastMessage]);
 
   // --- 新增：監聽 audioStartTime 變化，設置本地參考時間 ---
   useEffect(() => {

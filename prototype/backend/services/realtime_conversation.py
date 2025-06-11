@@ -44,7 +44,7 @@ class RealtimeConversationService:
         self, audio_chunks: AsyncIterator[bytes]
     ) -> AsyncGenerator[bytes, None]:
         """使用 WebSocket 連接到 OpenAI Realtime API"""
-        url = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01"
+        url = "wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview"
         headers = {
             "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
             "OpenAI-Beta": "realtime=v1"
@@ -56,15 +56,18 @@ class RealtimeConversationService:
             async with websockets.connect(url, additional_headers=headers) as ws:
                 logger.info("Connected to OpenAI Realtime API")
                 
+                # 儲存WebSocket引用以供其他方法使用
+                self._current_ws = ws
+                
                 # 發送初始會話配置
                 await self._send_session_update(ws)
                 
                 # 創建音頻接收隊列
-                audio_queue = asyncio.Queue()
+                audio_queue = asyncio.Queue(maxsize=50)  # 限制隊列大小避免記憶體過度使用
                 # 創建中斷訊號隊列 - 新增
-                interrupt_queue = asyncio.Queue()
+                interrupt_queue = asyncio.Queue(maxsize=10)
                 # 創建文字接收隊列 - 新增
-                text_queue = asyncio.Queue()
+                text_queue = asyncio.Queue(maxsize=100)
                 
                 # 啟動並行任務
                 send_task = asyncio.create_task(self._send_audio_to_openai(ws, audio_chunks))
@@ -113,6 +116,8 @@ class RealtimeConversationService:
                     # 取消所有任務
                     receive_task.cancel()
                     send_task.cancel()
+                    # 清理WebSocket引用
+                    self._current_ws = None
                     
         except ConnectionClosed:
             logger.error("WebSocket connection to OpenAI was closed")
@@ -218,85 +223,8 @@ class RealtimeConversationService:
         """接收來自 OpenAI 的回應"""
         try:
             async for message in ws:
-                try:
-                    event = json.loads(message)
-                    logger.debug(f"Received event: {event.get('type')}")
-                    
-                    # 處理音頻回應
-                    if event.get("type") == "response.audio.delta":
-                        if "delta" in event:
-                            # 解碼 base64 音頻數據
-                            pcm_data = base64.b64decode(event["delta"])
-                            logger.info(f"Received PCM audio delta: {len(pcm_data)} bytes")
-                            
-                            # 將 PCM16 數據轉換為 WAV 格式
-                            wav_data = self._pcm_to_wav(pcm_data)
-                            logger.info(f"Converted to WAV: {len(wav_data)} bytes")
-                            await audio_queue.put(wav_data)
-                    
-                    # 處理用戶開始說話事件 - 實現中斷功能
-                    elif event.get("type") == "input_audio_buffer.speech_started":
-                        logger.info("User started speaking - interrupting AI response")
-                        
-                        # 直接發送取消回應指令（不檢查是否有活躍回應）
-                        # 根據錯誤訊息，OpenAI 會自己處理是否有活躍回應
-                        try:
-                            cancel_event = {
-                                "type": "response.cancel"
-                            }
-                            await ws.send(json.dumps(cancel_event))
-                            logger.info("Sent response.cancel to interrupt AI speech")
-                        except Exception as e:
-                            logger.warning(f"Failed to send response.cancel: {e}")
-                        
-                        # 向前端發送中斷訊號
-                        await interrupt_queue.put(True)
-                        logger.info("Sent interrupt signal to frontend via interrupt_queue")
-                        
-                        # 發送清空文字的訊號
-                        await text_queue.put("CLEAR_TEXT")
-                    
-                    # 處理回應開始事件 - 清空舊文字準備新回應
-                    elif event.get("type") == "response.created":
-                        logger.info("AI response started - clearing old text")
-                        await text_queue.put("CLEAR_TEXT")
-                    
-                    # 處理回應取消確認
-                    elif event.get("type") == "response.cancelled":
-                        logger.info("OpenAI confirmed response cancellation")
-                    
-                    # 處理文本回應 - 傳送到前端（音頻轉錄）
-                    elif event.get("type") == "response.audio_transcript.delta":
-                        text_delta = event.get('delta', '')
-                        if text_delta:
-                            logger.info(f"OpenAI audio transcript: {text_delta}")
-                            await text_queue.put(text_delta)
-                    
-                    # 處理錯誤 - 改善錯誤處理
-                    elif event.get("type") == "error":
-                        error_info = event.get("error", {})
-                        error_code = error_info.get("code")
-                        error_message = error_info.get("message", "")
-                        
-                        if error_code == "response_cancel_not_active":
-                            logger.debug("No active response to cancel - this is normal")
-                        elif error_code == "invalid_value":
-                            logger.error(f"Invalid event type sent: {error_message}")
-                        else:
-                            logger.error(f"OpenAI API error: {event}")
-                        
-                    # 處理會話創建
-                    elif event.get("type") == "session.created":
-                        logger.info("OpenAI session created successfully")
-                        
-                    # 處理會話更新
-                    elif event.get("type") == "session.updated":
-                        logger.info("OpenAI session updated successfully")
-                        
-                except json.JSONDecodeError as e:
-                    logger.error(f"Failed to parse JSON message: {e}")
-                except Exception as e:
-                    logger.error(f"Error processing OpenAI response: {e}")
+                # 使用 asyncio.create_task 確保每個事件處理都是異步的，不會相互阻塞
+                asyncio.create_task(self._process_openai_event(message, audio_queue, interrupt_queue, text_queue))
                     
         except ConnectionClosed:
             logger.info("OpenAI WebSocket connection closed")
@@ -305,6 +233,114 @@ class RealtimeConversationService:
         finally:
             # 發送結束信號
             await audio_queue.put(None)
+
+    async def _process_openai_event(self, message, audio_queue: asyncio.Queue, interrupt_queue: asyncio.Queue, text_queue: asyncio.Queue):
+        """處理單個OpenAI事件 - 確保非阻塞處理"""
+        try:
+            event = json.loads(message)
+            logger.debug(f"Received event: {event.get('type')}")
+            
+            # 處理音頻回應
+            if event.get("type") == "response.audio.delta":
+                if "delta" in event:
+                    # 解碼 base64 音頻數據
+                    pcm_data = base64.b64decode(event["delta"])
+                    logger.info(f"Received PCM audio delta: {len(pcm_data)} bytes")
+                    
+                    # 將 PCM16 數據轉換為 WAV 格式
+                    wav_data = self._pcm_to_wav(pcm_data)
+                    logger.info(f"Converted to WAV: {len(wav_data)} bytes")
+                    # 使用 put_nowait 避免阻塞，如果隊列滿則跳過
+                    try:
+                        audio_queue.put_nowait(wav_data)
+                    except asyncio.QueueFull:
+                        logger.warning("Audio queue is full, skipping audio chunk")
+            
+            # 處理用戶開始說話事件 - 實現中斷功能
+            elif event.get("type") == "input_audio_buffer.speech_started":
+                logger.info("User started speaking - interrupting AI response")
+                
+                # 直接發送取消回應指令（不檢查是否有活躍回應）
+                # 根據錯誤訊息，OpenAI 會自己處理是否有活躍回應
+                try:
+                    cancel_event = {
+                        "type": "response.cancel"
+                    }
+                    await self._ws_send_safe(cancel_event)
+                    logger.info("Sent response.cancel to interrupt AI speech")
+                except Exception as e:
+                    logger.warning(f"Failed to send response.cancel: {e}")
+                
+                # 向前端發送中斷訊號 - 非阻塞
+                try:
+                    interrupt_queue.put_nowait(True)
+                    logger.info("Sent interrupt signal to frontend via interrupt_queue")
+                except asyncio.QueueFull:
+                    logger.warning("Interrupt queue is full, skipping interrupt signal")
+                
+                # 發送清空文字的訊號 - 非阻塞
+                try:
+                    text_queue.put_nowait("CLEAR_TEXT")
+                except asyncio.QueueFull:
+                    logger.warning("Text queue is full, skipping clear text signal")
+            
+            # 處理回應開始事件 - 清空舊文字準備新回應
+            elif event.get("type") == "response.created":
+                logger.info("AI response started - clearing old text")
+                try:
+                    text_queue.put_nowait("CLEAR_TEXT")
+                except asyncio.QueueFull:
+                    logger.warning("Text queue is full, skipping clear text signal")
+            
+            # 處理回應取消確認
+            elif event.get("type") == "response.cancelled":
+                logger.info("OpenAI confirmed response cancellation")
+            
+            # 處理文本回應 - 傳送到前端（音頻轉錄）
+            elif event.get("type") == "response.audio_transcript.delta":
+                text_delta = event.get('delta', '')
+                if text_delta:
+                    logger.info(f"OpenAI audio transcript: {text_delta}")
+                    try:
+                        text_queue.put_nowait(text_delta)
+                    except asyncio.QueueFull:
+                        logger.warning("Text queue is full, skipping text delta")
+            
+            # 處理錯誤 - 改善錯誤處理
+            elif event.get("type") == "error":
+                error_info = event.get("error", {})
+                error_code = error_info.get("code")
+                error_message = error_info.get("message", "")
+                
+                if error_code == "response_cancel_not_active":
+                    logger.debug("No active response to cancel - this is normal")
+                elif error_code == "invalid_value":
+                    logger.error(f"Invalid event type sent: {error_message}")
+                else:
+                    logger.error(f"OpenAI API error: {event}")
+                
+            # 處理會話創建
+            elif event.get("type") == "session.created":
+                logger.info("OpenAI session created successfully")
+                
+            # 處理會話更新
+            elif event.get("type") == "session.updated":
+                logger.info("OpenAI session updated successfully")
+                
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse JSON message: {e}")
+        except Exception as e:
+            logger.error(f"Error processing OpenAI response: {e}")
+
+    async def _ws_send_safe(self, event_dict):
+        """安全地發送WebSocket消息，避免阻塞"""
+        try:
+            if hasattr(self, '_current_ws') and self._current_ws:
+                await self._current_ws.send(json.dumps(event_dict))
+            else:
+                logger.warning("No active WebSocket connection to send message")
+        except Exception as e:
+            logger.error(f"Failed to send WebSocket message: {e}")
 
     def _pcm_to_wav(self, pcm_data: bytes) -> bytes:
         """將 PCM16 數據轉換為 WAV 格式"""

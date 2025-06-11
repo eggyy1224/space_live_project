@@ -526,16 +526,19 @@ async def websocket_endpoint(websocket: WebSocket):
                     "url": bot_message["audioUrl"],
                 })
             
-            # 發送情緒軌跡（如果有）
+            # 發送情緒軌跡（如果有）- 改為非阻塞異步發送
             emotional_keyframes = ai_result.get("emotional_keyframes")
             if emotional_keyframes:
-                await websocket.send_json({
-                    "type": "emotionalTrajectory",
-                    "payload": {
-                        "duration": audio_duration,
-                        "keyframes": emotional_keyframes
-                    }
-                })
+                # 創建異步任務發送emotion trajectory，不等待完成
+                asyncio.create_task(
+                    websocket.send_json({
+                        "type": "emotionalTrajectory",
+                        "payload": {
+                            "duration": audio_duration,
+                            "keyframes": emotional_keyframes
+                        }
+                    })
+                )
             
             # 設置音頻播放完成後的任務
             buffer_time = min(MURMUR_BUFFER_MAX, 0.3 + audio_duration * 0.03)
@@ -715,12 +718,19 @@ async def websocket_endpoint(websocket: WebSocket):
                     "url": bot_message["audioUrl"],
                 })
 
+            # 發送情緒軌跡（如果有）- 改為非阻塞異步發送
             emotional_keyframes = ai_result.get("emotional_keyframes")
             if emotional_keyframes:
-                await websocket.send_json({
-                    "type": "emotionalTrajectory",
-                    "payload": {"duration": audio_duration, "keyframes": emotional_keyframes}
-                })
+                # 創建異步任務發送emotion trajectory，不等待完成
+                asyncio.create_task(
+                    websocket.send_json({
+                        "type": "emotionalTrajectory",
+                        "payload": {
+                            "duration": audio_duration,
+                            "keyframes": emotional_keyframes
+                        }
+                    })
+                )
             
             last_murmur_timestamp = datetime.utcnow()
             buffer_time = min(MURMUR_BUFFER_MAX, 0.3 + audio_duration * 0.03)

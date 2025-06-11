@@ -166,26 +166,33 @@ class RealtimeAudioPlayer {
   immediateStopPlayback() {
     console.log('[RealtimeAudioPlayer] Immediate stop - clearing queue and stopping all sources');
     
-    // 停止所有正在播放的音頻源
-    this.currentSourceNodes.forEach(source => {
-      try {
-        source.stop();
-        source.disconnect();
-      } catch (error) {
-        // 忽略已經停止的源
-      }
-    });
-    this.currentSourceNodes = [];
-    
-    // 清空隊列
-    this.audioQueue = [];
-    this.isPlaying = false;
-    this.nextStartTime = 0;
-    
-    this.stopAudioAnalysis();
-    useStore.getState().setSpeaking(false);
-    
-    console.log('[RealtimeAudioPlayer] Immediate stop completed');
+    // 使用setTimeout確保停止操作不阻塞其他音頻處理
+    setTimeout(() => {
+      // 停止所有正在播放的音頻源
+      this.currentSourceNodes.forEach(source => {
+        try {
+          source.stop();
+          source.disconnect();
+        } catch (error) {
+          // 忽略已經停止的源
+        }
+      });
+      this.currentSourceNodes = [];
+      
+      // 清空隊列
+      this.audioQueue = [];
+      this.isPlaying = false;
+      this.nextStartTime = 0;
+      
+      this.stopAudioAnalysis();
+      
+      // 異步更新狀態，避免阻塞
+      requestAnimationFrame(() => {
+        useStore.getState().setSpeaking(false);
+      });
+      
+      console.log('[RealtimeAudioPlayer] Immediate stop completed');
+    }, 0);
   }
 
   cleanup() {
@@ -461,18 +468,23 @@ export function useRealtimeVoice() {
               
               if (text === 'INTERRUPT_SIGNAL') {
                 console.log('[RealtimeVoice] 🛑 Received interrupt signal - stopping playback immediately');
-                if (audioPlayerRef.current) {
-                  audioPlayerRef.current.immediateStopPlayback();
-                }
+                // 使用異步方式處理中斷，避免阻塞新的音頻處理
+                requestAnimationFrame(() => {
+                  if (audioPlayerRef.current) {
+                    audioPlayerRef.current.immediateStopPlayback();
+                  }
+                });
                 return;
               }
               
-                              // 檢查是否是文字數據
-                if (text.startsWith('TEXT_DATA:')) {
-                  try {
-                    const textJson = text.substring('TEXT_DATA:'.length);
-                    const textData = JSON.parse(textJson);
-                    if (textData.type === 'text' && textData.content) {
+              // 檢查是否是文字數據
+              if (text.startsWith('TEXT_DATA:')) {
+                try {
+                  const textJson = text.substring('TEXT_DATA:'.length);
+                  const textData = JSON.parse(textJson);
+                  if (textData.type === 'text' && textData.content) {
+                    // 異步處理文字更新，避免阻塞音頻流
+                    requestAnimationFrame(() => {
                       if (textData.content === 'CLEAR_TEXT') {
                         console.log('[RealtimeVoice] 🗑️ Clearing previous text');
                         useStore.getState().setSpeechText('');
@@ -483,13 +495,14 @@ export function useRealtimeVoice() {
                         const currentText = useStore.getState().speechText || '';
                         useStore.getState().setSpeechText(currentText + textData.content);
                       }
-                    }
-                  } catch (textError) {
-                    console.error('[RealtimeVoice] Failed to parse text data:', textError);
+                    });
                   }
-                  return;
+                } catch (textError) {
+                  console.error('[RealtimeVoice] Failed to parse text data:', textError);
                 }
-            } catch (error) {
+                return;
+              }
+            } catch (decodeError) {
               // 如果解碼失敗，就當作普通音頻處理
               console.debug('[RealtimeVoice] Failed to decode potential control signal, treating as audio');
             }
@@ -502,16 +515,18 @@ export function useRealtimeVoice() {
             return;
           }
           
-          // 🎯 使用實時音頻播放器處理音頻片段
-          try {
-            const arrayBuffer = await data.arrayBuffer();
-            if (audioPlayerRef.current) {
-              await audioPlayerRef.current.addAudioChunk(arrayBuffer);
-              console.log('[RealtimeVoice] 🎭 Audio chunk added to realtime player');
+          // 🎯 使用實時音頻播放器處理音頻片段 - 完全異步處理
+          setTimeout(async () => {
+            try {
+              const arrayBuffer = await data.arrayBuffer();
+              if (audioPlayerRef.current) {
+                await audioPlayerRef.current.addAudioChunk(arrayBuffer);
+                console.log('[RealtimeVoice] 🎭 Audio chunk added to realtime player');
+              }
+            } catch (error) {
+              console.error('[RealtimeVoice] ❌ Failed to process audio chunk:', error);
             }
-          } catch (error) {
-            console.error('[RealtimeVoice] ❌ Failed to process audio chunk:', error);
-          }
+          }, 0);
         } else {
           console.log('[RealtimeVoice] Received non-audio message:', data);
         }
