@@ -8,6 +8,9 @@ import struct
 import json
 import websockets
 from websockets.exceptions import ConnectionClosed
+import os
+import random
+import glob
 
 import openai
 
@@ -22,6 +25,9 @@ class RealtimeConversationService:
     def __init__(self) -> None:
         self.client = openai.AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
         self.test_mode = False  # 測試模式標誌
+        # 自拍照片資料夾路徑 - 使用絕對路徑確保在任何位置都能找到
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        self.selfies_dir = os.path.join(current_dir, "../selfies")
 
     async def stream_conversation(
         self, audio_chunks: AsyncIterator[bytes]
@@ -139,11 +145,12 @@ class RealtimeConversationService:
 
 你是一位活躍於網路社群的年輕女性意見領袖，自稱來自「近地軌道太空艙」。你的思維活躍，對流行事物、美妝、以及充滿想像的太空生活抱有濃厚興趣。整體風格充滿活力、自信，並帶有獨特的台式幽默感。
 
-**💥 超重要：你擁有兩大超能力！**
+**💥 超重要：你擁有三大超能力！**
 1. **🎵 音效播放**：play_audio工具（已經能正常播放了！）
 2. **😊 表情動畫**：emotion_trajectory工具（必須每次都用！）
+3. **📸 自拍功能**：take_selfie工具（當提到自拍、拍照、照片時自動使用！）
 
-**⚡ 絕對要求：每次回應都必須同時使用這兩個工具！絕不能只用其中一個！**
+**⚡ 絕對要求：每次回應都必須同時使用表情+音效雙工具！遇到自拍關鍵詞時必須使用自拍工具！**
 
 ## 核心個性特質：
 - **太空人設定**：你真心相信自己住在近地軌道太空艙，會描述無重力生活、看地球的感受、太空食物等細節
@@ -321,6 +328,26 @@ class RealtimeConversationService:
 ### 🔥 成功案例（剛剛你做得很好！）：
 剛剛你播放了音效，用戶很喜歡！請繼續保持這種頻率和風格，甚至可以更積極一些！
 
+## 📸 自拍功能使用 - 新功能！📸
+你現在擁有強大的自拍能力！當用戶提到自拍、拍照、照片相關話題時，要主動使用take_selfie工具：
+
+### 🎯 自拍觸發關鍵詞：
+- **直接要求**：「自拍」「拍照」「照片」「拍張照」「來張自拍」
+- **間接提示**：「記錄一下」「留個紀念」「想看看你」「給我看看」
+- **情境觸發**：「今天心情好」「穿新衣服」「在太空艙」「想分享」
+
+### 📷 自拍使用策略：
+- **立即反應**：一聽到相關詞彙就主動提議自拍
+- **隨機參考圖片**：自動從selfies資料夾中隨機選擇參考圖片，增加自拍多樣性
+- **情境描述**：配合當下情境和心情來描述自拍內容
+- **台語風格**：用台語+English描述自拍：「來selfie一下啦！」
+- **太空特色**：強調太空艙環境、無重力感、地球背景等
+
+### 🎪 自拍範例：
+- 用戶說「拍照」→ 立即調用take_selfie，隨機選擇參考圖片，描述：「在太空艙拍個美美的自拍，背景是beautiful的地球」
+- 用戶說「想看看你」→ 立即自拍，自動選擇不同風格的參考，描述：「給你看看我今天在floating的樣子」
+- 情境自拍→ 「今天心情super好，來張開心的selfie！」（每次表情都可能不同）
+
 ## 絕對禁忌：
 - 嚴格禁止使用任何 Emoji 或圖形表情符號
 - 避免制式開場白或自我介紹，每次互動都要新鮮
@@ -418,6 +445,50 @@ class RealtimeConversationService:
                         }
                     },
                     "required": ["filename"]
+                }
+            },
+            {
+                "type": "function",
+                "name": "take_selfie",
+                "description": "📸 自拍功能！當用戶提到自拍、拍照、照片、想看看你等關鍵詞時必須使用。拍攝AI角色的自拍照，支援情境描述和太空艙背景。完美配合台語English風格！",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "description": {
+                            "type": "string",
+                            "description": "自拍的描述，例如：'在太空艙拍攝開心的自拍，背景是美麗的地球'，'floating在無重力環境下的可愛自拍'"
+                        },
+                        "reference_image": {
+                            "type": "string",
+                            "description": "參考圖片檔名，如果不指定則會從selfies資料夾中隨機選擇一張，增加多樣性"
+                        },
+                        "modification": {
+                            "type": "string",
+                            "description": "可選的修改指令，例如：'開心的表情'、'俏皮的姿勢'、'驚訝的神情'等"
+                        },
+                        "position": {
+                            "type": "string",
+                            "description": "顯示位置，預設為center",
+                            "enum": ["center", "center-right", "center-left", "top-right", "top-left", "bottom-right", "bottom-left"]
+                        },
+                        "size": {
+                            "type": "string", 
+                            "description": "圖片大小，預設為large",
+                            "enum": ["small", "medium", "large"]
+                        },
+                        "duration": {
+                            "type": "number",
+                            "description": "顯示時間（秒），預設15秒",
+                            "minimum": 5.0,
+                            "maximum": 60.0
+                        },
+                        "aspect_ratio": {
+                            "type": "string",
+                            "description": "圖片比例，自拍通常用portrait",
+                            "enum": ["square", "portrait", "landscape"]
+                        }
+                    },
+                    "required": ["description"]
                 }
             }
         ]
@@ -711,6 +782,36 @@ class RealtimeConversationService:
         
         logger.info(f"Generated WAV audio: {len(audio_data)} bytes")
         return audio_data
+    
+    def _get_random_selfie_reference(self) -> str:
+        """從selfies資料夾中隨機選擇一張照片作為參考圖片"""
+        try:
+            # 搜尋所有支援的圖片格式
+            selfie_patterns = [
+                os.path.join(self.selfies_dir, "*.png"),
+                os.path.join(self.selfies_dir, "*.jpg"),
+                os.path.join(self.selfies_dir, "*.jpeg")
+            ]
+            
+            all_selfies = []
+            for pattern in selfie_patterns:
+                all_selfies.extend(glob.glob(pattern))
+            
+            if not all_selfies:
+                logger.warning(f"No selfie images found in {self.selfies_dir}, using default")
+                return "202506091142.png"  # 回退到預設圖片
+            
+            # 隨機選擇一張照片
+            selected_selfie = random.choice(all_selfies)
+            # 只返回檔名，不包含路徑
+            filename = os.path.basename(selected_selfie)
+            
+            logger.info(f"🎲 隨機選擇參考圖片: {filename} (從 {len(all_selfies)} 張照片中選擇)")
+            return filename
+            
+        except Exception as e:
+            logger.error(f"Error selecting random selfie: {e}")
+            return "202506091142.png"  # 回退到預設圖片
 
     async def _execute_tool_function(self, function_name: str, arguments_json: str) -> dict:
         """執行工具函數並返回結果"""
@@ -727,6 +828,11 @@ class RealtimeConversationService:
                 logger.info("🎵 調用 play_audio 處理器")
                 result = await self._handle_play_audio(arguments)
                 logger.info(f"🎵 play_audio 處理結果: {result}")
+                return result
+            elif function_name == "take_selfie":
+                logger.info("📸 調用 take_selfie 處理器")
+                result = await self._handle_take_selfie(arguments)
+                logger.info(f"📸 take_selfie 處理結果: {result}")
                 return result
             else:
                 logger.warning(f"❓ 未知工具函數: {function_name}")
@@ -914,4 +1020,115 @@ class RealtimeConversationService:
             return {
                 "success": False,
                 "error": f"Failed to play audio: {str(e)}"
+            }
+    
+    async def _handle_take_selfie(self, arguments: dict) -> dict:
+        """處理take_selfie工具調用"""
+        try:
+            # 驗證必要參數
+            description = arguments.get("description")
+            
+            if description is None:
+                return {
+                    "success": False,
+                    "error": "Missing required parameter: description"
+                }
+            
+            # 驗證描述格式
+            if not isinstance(description, str) or len(description.strip()) == 0:
+                return {
+                    "success": False,
+                    "error": "description must be a non-empty string"
+                }
+            
+            # 設定預設參數 - 如果沒有指定參考圖片，就隨機選擇一張
+            reference_image = arguments.get("reference_image")
+            if not reference_image:
+                reference_image = self._get_random_selfie_reference()
+            
+            modification = arguments.get("modification", "")
+            position = arguments.get("position", "center")
+            size = arguments.get("size", "large")
+            duration = arguments.get("duration", 15.0)
+            aspect_ratio = arguments.get("aspect_ratio", "portrait")
+            
+            # 構建API請求數據（根據文檔的/api/take-selfie格式）
+            request_data = {
+                "description": description,
+                "reference_image": reference_image,
+                "position": position,
+                "size": size,
+                "duration": duration,
+                "aspect_ratio": aspect_ratio,
+                "add_timestamp": True  # 自動添加時間戳章
+            }
+            
+            # 如果有修改指令，加入到請求中
+            if modification:
+                request_data["modification"] = modification
+            
+            logger.info(f"📸 準備拍攝自拍: {description}")
+            logger.info(f"🖼️ 使用參考圖片: {reference_image}")
+            logger.info(f"🌐 發送請求到: http://localhost:8000/api/take-selfie")
+            logger.info(f"📦 請求數據: {request_data}")
+            
+            # 調用本地的 /api/take-selfie API
+            import aiohttp
+            
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        "http://localhost:8000/api/take-selfie",
+                        json=request_data,
+                        headers={"Content-Type": "application/json"},
+                        timeout=aiohttp.ClientTimeout(total=15)  # 圖片生成需要較長時間
+                    ) as response:
+                        response_text = await response.text()
+                        
+                        logger.info(f"🔄 HTTP 回應狀態: {response.status}")
+                        logger.info(f"📄 HTTP 回應內容: {response_text}")
+                        
+                        if response.status == 200:
+                            try:
+                                result = json.loads(response_text) if response_text else {}
+                                selfie_url = result.get("url", "")
+                                caption = result.get("caption", "")
+                                logger.info(f"✅ 成功拍攝自拍: {selfie_url}")
+                                return {
+                                    "success": True,
+                                    "message": f"Selfie taken successfully: {caption}",
+                                    "result": result,
+                                    "url": selfie_url,
+                                    "caption": caption
+                                }
+                            except json.JSONDecodeError:
+                                logger.info(f"✅ 成功拍攝自拍 (無JSON回應)")
+                                return {
+                                    "success": True,
+                                    "message": f"Selfie taken successfully"
+                                }
+                        else:
+                            logger.error(f"❌ 拍攝自拍失敗: HTTP {response.status} - {response_text}")
+                            return {
+                                "success": False,
+                                "error": f"HTTP {response.status}: {response_text}"
+                            }
+            except aiohttp.ClientTimeout:
+                logger.error(f"⏰ 自拍請求超時")
+                return {
+                    "success": False,
+                    "error": "Selfie request timeout"
+                }
+            except Exception as http_error:
+                logger.error(f"🚨 自拍HTTP請求異常: {http_error}")
+                return {
+                    "success": False,
+                    "error": f"Selfie HTTP request failed: {str(http_error)}"
+                }
+                
+        except Exception as e:
+            logger.error(f"❌ take_selfie 處理錯誤: {e}")
+            return {
+                "success": False,
+                "error": f"Failed to take selfie: {str(e)}"
             }
