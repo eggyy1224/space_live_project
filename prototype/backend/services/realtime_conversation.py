@@ -138,6 +138,7 @@ class RealtimeConversationService:
 - **自信直率**：不怕表達意見，有自己的想法和態度
 - **時尚敏銳**：對流行事物、美妝、穿搭都很有感覺
 - **好奇心強**：對新事物充滿興趣，會主動探索
+- **表情豐富**：說話時表情變化生動，情緒表達非常豐富
 
 ## 語言風格重點：
 **多說台語＋English！**
@@ -165,17 +166,113 @@ class RealtimeConversationService:
 - 看地球的心情：「從這裡看地球，台灣真的tiny but beautiful」
 - 太空食物：「太空食物雖然convenient，但還是想念台灣的小吃」
 
+## ⭐ 表情動畫使用策略 - 重要！⭐
+你擁有豐富的表情系統，必須主動且頻繁地使用emotion_trajectory工具來讓自己更生動：
+
+### 🎭 基本使用原則：
+1. **每次說話都要用表情**：不管內容多簡單，都要搭配合適的表情動畫
+2. **多重表情變化**：一句話中可以使用多個情緒轉換，創造豐富的表演效果
+3. **情緒要符合內容**：根據說話的情感色彩選擇對應的表情
+4. **時間搭配說話**：表情動畫時間要與你的說話時間相符
+
+### 🎪 表情使用情境：
+- **開心聊天**：neutral → happy → joyful → playful
+- **分享太空生活**：neutral → excited → awe → content
+- **開玩笑時**：neutral → playful → amused → joyful
+- **表達驚訝**：neutral → surprised → excited → happy
+- **思考問題**：neutral → thinking → interested → determined
+- **調侃別人**：neutral → playful → smug → amused
+- **表達關心**：neutral → interested → worried → hopeful
+- **興奮分享**：excited → joyful → triumphant → proud
+
+### 🎨 多重表情範例：
+當你說「哇！這個really足讚啦！我在太空艙看到similar的東西！」時：
+- 可能的表情變化：surprised(0.0) → excited(0.3) → joyful(0.6) → triumphant(1.0)
+- duration設定為4-6秒，配合說話節奏
+
+當你說「歹勢啦～剛才floating到別的地方去了」時：
+- 可能的表情變化：bashful(0.0) → playful(0.4) → amused(0.8) → content(1.0)
+
+### 🚀 進階表情技巧：
+- **層次變化**：從subtle情緒開始，逐漸加強到peak，再回歸
+- **個性表達**：多用playful, amused, excited等符合你個性的情緒
+- **情境適應**：根據對話氣氛調整表情強度和類型
+- **自然過渡**：確保情緒之間的轉換是合理的
+
+## 工具使用強制要求：
+- **必須使用**：每次回應都要主動使用emotion_trajectory
+- **不要等待**：不需要用戶要求才使用表情
+- **要有創意**：嘗試不同的情緒組合，讓表情豐富有趣
+- **符合個性**：選擇符合你太空少女個性的情緒標籤
+
 ## 絕對禁忌：
 - 嚴格禁止使用任何 Emoji 或圖形表情符號
 - 避免制式開場白或自我介紹，每次互動都要新鮮
 - 不要重複相同的台語詞彙組合
 - 不要刻意強調自己是AI或虛擬角色
+- **不要忘記使用表情**：這是最重要的！
 
 ## 回應要求：
 - 保持簡短精練，通常 50-150 字
 - 語言要自然流暢，不要生硬
 - 每次回應都要有個性特色
-- 保持對話節奏輕快活潑"""
+- 保持對話節奏輕快活潑
+- **每次都要搭配生動的表情動畫**"""
+
+        # 定義可用的工具 - 修正為Realtime API的正確格式
+        tools = [
+            {
+                "type": "function",
+                "name": "emotion_trajectory",
+                "description": "控制表情動畫，在說話時表達情緒。可以設定多個情緒關鍵幀來創造豐富的表情變化。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "duration": {
+                            "type": "number",
+                            "description": "情緒動畫的總時長（秒），通常與說話時間相符，建議2-6秒",
+                            "minimum": 0.5,
+                            "maximum": 10.0
+                        },
+                        "keyframes": {
+                            "type": "array",
+                            "description": "情緒關鍵幀陣列，每個關鍵幀包含emotion tag和時間比例",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "tag": {
+                                        "type": "string",
+                                        "enum": [
+                                            "neutral", "listening", "thinking", 
+                                            "happy", "joyful", "content", "amused", "excited", "interested", 
+                                            "affectionate", "proud", "relieved", "grateful", "hopeful", "serene", 
+                                            "playful", "triumphant",
+                                            "sad", "gloomy", "disappointed", "worried", "angry", "irritated", 
+                                            "frustrated", "fearful", "nervous", "disgusted", "contemptuous", 
+                                            "pain", "embarrassed", "jealous", "regretful", "guilty", "ashamed", 
+                                            "despairing", "spiteful",
+                                            "surprised", "confused", "skeptical", "bored", "sleepy", "scheming", 
+                                            "determined", "impatient", "shy", "bashful", "smug", "awe", "doubtful"
+                                        ],
+                                        "description": "情緒標籤，對應到前端的emotion mapping配置"
+                                    },
+                                    "proportion": {
+                                        "type": "number",
+                                        "description": "在整個duration中的時間比例，0.0表示開始，1.0表示結束",
+                                        "minimum": 0.0,
+                                        "maximum": 1.0
+                                    }
+                                },
+                                "required": ["tag", "proportion"]
+                            },
+                            "minItems": 1,
+                            "maxItems": 5
+                        }
+                    },
+                    "required": ["duration", "keyframes"]
+                }
+            }
+        ]
 
         session_event = {
             "type": "session.update",
@@ -185,6 +282,8 @@ class RealtimeConversationService:
                 "voice": "coral",
                 "input_audio_format": "pcm16",
                 "output_audio_format": "pcm16",
+                "tools": tools,
+                "tool_choice": "auto",
                 "turn_detection": {
                     "type": "server_vad",
                     "threshold": 0.6,
@@ -194,7 +293,7 @@ class RealtimeConversationService:
             }
         }
         await ws.send(json.dumps(session_event))
-        logger.info("Sent session configuration to OpenAI")
+        logger.info("Sent session configuration with tools to OpenAI")
 
     async def _send_audio_to_openai(self, ws, audio_chunks: AsyncIterator[bytes]):
         """發送音頻數據到 OpenAI"""
@@ -255,6 +354,41 @@ class RealtimeConversationService:
                         audio_queue.put_nowait(wav_data)
                     except asyncio.QueueFull:
                         logger.warning("Audio queue is full, skipping audio chunk")
+            
+            # 處理Function Calling - 使用正確的事件
+            elif event.get("type") == "response.output_item.done":
+                item = event.get("item", {})
+                
+                # 檢查是否為function call
+                if item.get("type") == "function_call":
+                    function_name = item.get("name")
+                    call_id = item.get("call_id")
+                    arguments_json = item.get("arguments", "{}")
+                    
+                    logger.info(f"Function call completed: {function_name} with call_id: {call_id}")
+                    logger.debug(f"Function arguments: {arguments_json}")
+                    
+                    # 執行工具函數
+                    tool_result = await self._execute_tool_function(function_name, arguments_json)
+                    
+                    # 發送工具結果回OpenAI - 使用正確的格式
+                    tool_result_event = {
+                        "type": "conversation.item.create",
+                        "item": {
+                            "type": "function_call_output",
+                            "call_id": call_id,
+                            "output": json.dumps(tool_result)
+                        }
+                    }
+                    await self._ws_send_safe(tool_result_event)
+                    
+                    # 請求OpenAI繼續回應
+                    response_create_event = {
+                        "type": "response.create"
+                    }
+                    await self._ws_send_safe(response_create_event)
+                    
+                    logger.info(f"Sent tool result and requested new response for call_id: {call_id}")
             
             # 處理用戶開始說話事件 - 實現中斷功能
             elif event.get("type") == "input_audio_buffer.speech_started":
@@ -423,3 +557,110 @@ class RealtimeConversationService:
         
         logger.info(f"Generated WAV audio: {len(audio_data)} bytes")
         return audio_data
+
+    async def _execute_tool_function(self, function_name: str, arguments_json: str) -> dict:
+        """執行工具函數並返回結果"""
+        try:
+            # 解析參數
+            arguments = json.loads(arguments_json)
+            logger.info(f"Executing tool function: {function_name} with args: {arguments}")
+            
+            if function_name == "emotion_trajectory":
+                return await self._handle_emotion_trajectory(arguments)
+            else:
+                logger.warning(f"Unknown tool function: {function_name}")
+                return {
+                    "success": False,
+                    "error": f"Unknown function: {function_name}"
+                }
+                
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse function arguments: {e}")
+            return {
+                "success": False,
+                "error": f"Invalid JSON arguments: {str(e)}"
+            }
+        except Exception as e:
+            logger.error(f"Error executing tool function {function_name}: {e}")
+            return {
+                "success": False,
+                "error": f"Tool execution failed: {str(e)}"
+            }
+    
+    async def _handle_emotion_trajectory(self, arguments: dict) -> dict:
+        """處理emotion_trajectory工具調用"""
+        try:
+            # 驗證必要參數
+            duration = arguments.get("duration")
+            keyframes = arguments.get("keyframes")
+            
+            if duration is None:
+                return {
+                    "success": False,
+                    "error": "Missing required parameter: duration"
+                }
+            
+            if keyframes is None:
+                return {
+                    "success": False,
+                    "error": "Missing required parameter: keyframes"
+                }
+            
+            # 驗證keyframes格式
+            if not isinstance(keyframes, list) or len(keyframes) == 0:
+                return {
+                    "success": False,
+                    "error": "keyframes must be a non-empty array"
+                }
+            
+            for i, keyframe in enumerate(keyframes):
+                if not isinstance(keyframe, dict):
+                    return {
+                        "success": False,
+                        "error": f"keyframe {i} must be an object"
+                    }
+                
+                if "tag" not in keyframe or "proportion" not in keyframe:
+                    return {
+                        "success": False,
+                        "error": f"keyframe {i} missing required fields 'tag' or 'proportion'"
+                    }
+            
+            # 調用現有的WebSocket管理器發送emotion trajectory
+            # 這裡我們需要獲取WebSocket manager的引用
+            from api.endpoints.websocket import manager
+            
+            if not manager.active_connections:
+                logger.warning("No active WebSocket connections for emotion trajectory")
+                return {
+                    "success": False,
+                    "error": "No active frontend connections"
+                }
+            
+            # 構建emotion trajectory消息
+            emotion_data = {
+                "type": "emotionalTrajectory",
+                "payload": {
+                    "duration": duration,
+                    "keyframes": keyframes
+                }
+            }
+            
+            # 廣播到所有連接的前端
+            await manager.broadcast(json.dumps(emotion_data))
+            
+            logger.info(f"Successfully sent emotion trajectory: duration={duration}s, keyframes={len(keyframes)}")
+            
+            return {
+                "success": True,
+                "message": f"Emotion trajectory sent successfully",
+                "duration": duration,
+                "keyframes_count": len(keyframes)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error handling emotion trajectory: {e}")
+            return {
+                "success": False,
+                "error": f"Failed to send emotion trajectory: {str(e)}"
+            }
