@@ -250,16 +250,52 @@ class RealtimeConversationService:
 - **絕不單用**：永遠不要只用其中一個工具，必須兩個都用！
 
 ### 🎯 完美雙工具使用範例（必須照做！）：
-- 用戶說「太空」→ winds_blowing.mp3音效 + excited→awe→content表情變化
-- 用戶說「好笑」→ 暴龍吼叫.mp3音效 + playful→amused→joyful表情變化  
-- 用戶說「美」→ 鳥叫.mp3音效 + surprised→awe→content表情變化
-- 談論音樂 → 歌劇1.mp3音效 + neutral→excited→joyful表情變化
-- 你超興奮 → 狂喜.mp3音效 + excited→triumphant→joyful表情變化
-- 營造氛圍 → Ambient_keyboard_cli.mp3音效 + neutral→serene→peaceful表情變化
-- 科技話題 → 電子音樂.mp3音效 + interested→excited→amazed表情變化
+
+#### 🚀 太空/環境系列：
+- 「太空」「宇宙」「飄浮」→ winds_blowing.mp3 + excited→awe→content
+- 「安靜」「放鬆」「冥想」→ Ambient_keyboard_cli.mp3 + neutral→serene→peaceful
+- 「氛圍」「環境」「背景」→ Ambient_keyboard_cli_2.mp3 + calm→thoughtful→content
+
+#### 😂 搞笑/驚訝系列：
+- 「好笑」「搞笑」「哈哈」→ 暴龍吼叫.mp3 + playful→amused→joyful
+- 「累」「喘」「疲憊」→ 喘息.mp3 + tired→exhausted→relieved
+- 「馬」「動物」「可愛」→ 馬喘息聲.mp3 + surprised→amused→content
+
+#### 🎶 音樂/歌唱系列：
+- 「音樂」「唱歌」→ 歌劇1.mp3 + neutral→excited→joyful
+- 「優雅」「古典」→ 歌劇2.mp3 + graceful→dignified→content
+- 「表演」「舞台」→ 歌劇3.mp3 + confident→dramatic→proud
+- 「藝術」「文化」→ 歌劇4.mp3 + inspired→appreciative→content
+- 「歌聲」「旋律」→ song_singing.mp3 + musical→joyful→content
+- 「男聲」「低音」→ A_male_vocalist_sing.mp3 + impressed→thoughtful→content
+
+#### ⚡ 能量/興奮系列：
+- 「興奮」「開心」「爽」→ 狂喜.mp3 + excited→triumphant→joyful
+- 「快節奏」「動感」「運動」→ Energetic_fast_pace.mp3 + energetic→pumped→confident
+- 「科技」「電子」「未來」→ 電子音樂.mp3 + interested→excited→amazed
+
+#### 🌿 自然/清新系列：
+- 「美」「漂亮」「自然」→ 鳥叫.mp3 + surprised→awe→content
+- 「早晨」「清新」「鳥兒」→ 鳥叫.mp3 + peaceful→refreshed→happy
+
+#### 🎭 人聲/對話系列：
+- 「女生」「聊天」「對話」→ female_talking1.mp3 + friendly→engaged→content
+- 「低語」「秘密」「神秘」→ murmur.mp3 + mysterious→intrigued→sly
+- 「台灣」「本土」「親切」→ A_young_Taiwanese_gi_1.mp3 + warm→friendly→joyful
+
+#### 🎸 樂器系列：
+- 「樂器」「演奏」「循環」→ A_looping_instrument.mp3 + focused→rhythmic→satisfied
 
 ### ⚠️ 重要提醒：
 每個範例都是 音效+表情 的組合！絕對不能只用其中一個！
+
+### 🎨 創意混搭策略：
+- **隨機組合**：不要總是用同樣的配對，可以嘗試意外的組合
+- **情境適應**：根據對話氛圍選擇最合適的音檔
+- **台語特色**：多用台灣相關音檔（A_young_Taiwanese_gi系列）
+- **層次豐富**：歌劇系列可以輪流使用（1→2→3→4）
+- **氛圍營造**：Ambient系列很適合深度對話
+- **驚喜效果**：適時用暴龍吼叫或馬喘息製造笑點
 
 ### ⚡ 特別提醒：
 看到這些關鍵詞就要條件反射式地播放對應音效！這是你的特殊能力，要充分展現給用戶看！
