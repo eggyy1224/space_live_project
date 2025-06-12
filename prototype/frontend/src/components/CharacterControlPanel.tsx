@@ -48,61 +48,6 @@ export const CharacterControlPanel: React.FC<CharacterControlPanelProps> = ({
     }
   };
 
-  const adjustCharacterScale = (factor: number) => {
-    const newScale = Math.max(0.1, Math.min(3, characterScale * factor));
-    setCharacterScale(newScale);
-  };
-
-  const moveCharacterDirection = (direction: string) => {
-    const [x, y, z] = characterPosition;
-    const distance = 0.5;
-    let newPosition: [number, number, number];
-
-    switch (direction) {
-      case 'left':
-        newPosition = [x - distance, y, z];
-        break;
-      case 'right':
-        newPosition = [x + distance, y, z];
-        break;
-      case 'forward':
-        newPosition = [x, y, z - distance];
-        break;
-      case 'backward':
-        newPosition = [x, y, z + distance];
-        break;
-      case 'up':
-        newPosition = [x, y + distance, z];
-        break;
-      case 'down':
-        newPosition = [x, y - distance, z];
-        break;
-      default:
-        newPosition = [x, y, z];
-    }
-    moveCharacter(newPosition);
-  };
-
-  const rotateCharacterAxis = (axis: string, angle: number) => {
-    const [x, y, z] = characterRotation;
-    let newRotation: [number, number, number];
-
-    switch (axis) {
-      case 'x':
-        newRotation = [x + angle, y, z];
-        break;
-      case 'y':
-        newRotation = [x, y + angle, z];
-        break;
-      case 'z':
-        newRotation = [x, y, z + angle];
-        break;
-      default:
-        newRotation = [x, y, z];
-    }
-    rotateCharacter(newRotation);
-  };
-
   // 主要表情變形目標
   const facialMorphTargets = morphTargetDictionary ? 
     Object.keys(morphTargetDictionary).filter(name => 
@@ -114,6 +59,12 @@ export const CharacterControlPanel: React.FC<CharacterControlPanelProps> = ({
   const speechMorphTargets = morphTargetDictionary ?
     Object.keys(morphTargetDictionary).filter(name =>
       ['CH', 'DD', 'E', 'FF', 'PP', 'RR', 'SS', 'TH', 'aa', 'ih', 'kk', 'nn', 'oh', 'ou', 'sil'].includes(name)
+    ) : [];
+
+  // Outfit 變形目標 (outfit_shoes030 相關)
+  const outfitMorphTargets = morphTargetDictionary ? 
+    Object.keys(morphTargetDictionary).filter(name => 
+      name.includes('鍵 1') || name.includes('錯置') || name.includes('錯置.001')
     ) : [];
 
   return (
@@ -134,7 +85,7 @@ export const CharacterControlPanel: React.FC<CharacterControlPanelProps> = ({
         <div className="text-sm">
           <div>模型狀態: {characterModelLoaded ? '✅ 已載入' : '⏳ 載入中...'}</div>
           <div>可見性: {characterVisible ? '👁️ 顯示' : '👁️‍🗨️ 隱藏'}</div>
-          <div>位置: [{characterPosition.join(', ')}]</div>
+          <div>位置: [{characterPosition.map(v => v.toFixed(1)).join(', ')}]</div>
           <div>縮放: {characterScale.toFixed(2)}</div>
         </div>
       </div>
@@ -158,55 +109,145 @@ export const CharacterControlPanel: React.FC<CharacterControlPanelProps> = ({
         </div>
       </div>
 
-      {/* 縮放控制 */}
+      {/* 縮放控制 - 改為滑動條 */}
       <div className="mb-4">
         <h3 className="text-md font-semibold mb-2">縮放</h3>
-        <div className="grid grid-cols-3 gap-1">
-          <button
-            onClick={() => adjustCharacterScale(0.9)}
-            className="px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-xs"
-          >
-            縮小
-          </button>
-          <button
-            onClick={() => adjustCharacterScale(1.1)}
-            className="px-2 py-1 bg-green-600 hover:bg-green-700 rounded text-xs"
-          >
-            放大
-          </button>
-          <button
-            onClick={() => adjustCharacterScale(1/characterScale)}
-            className="px-2 py-1 bg-gray-600 hover:bg-gray-700 rounded text-xs"
-          >
-            重置
-          </button>
+        <div className="mb-2">
+          <input
+            type="range"
+            min="0.1"
+            max="3"
+            step="0.1"
+            value={characterScale}
+            onChange={(e) => setCharacterScale(parseFloat(e.target.value))}
+            className="w-full"
+          />
+          <div className="text-xs text-gray-300 text-center">
+            縮放: {characterScale.toFixed(2)}
+          </div>
         </div>
       </div>
 
-      {/* 位置控制 */}
+      {/* 位置控制 - 改為滑動條 */}
       <div className="mb-4">
         <h3 className="text-md font-semibold mb-2">位置</h3>
-        <div className="grid grid-cols-3 gap-1 mb-2">
-          <button onClick={() => moveCharacterDirection('up')} className="px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded text-xs">上</button>
-          <button onClick={() => moveCharacterDirection('forward')} className="px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded text-xs">前</button>
-          <button onClick={() => moveCharacterDirection('down')} className="px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded text-xs">下</button>
-        </div>
-        <div className="grid grid-cols-3 gap-1">
-          <button onClick={() => moveCharacterDirection('left')} className="px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded text-xs">左</button>
-          <button onClick={() => moveCharacterDirection('backward')} className="px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded text-xs">後</button>
-          <button onClick={() => moveCharacterDirection('right')} className="px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded text-xs">右</button>
+        <div className="space-y-2">
+          <div>
+            <label className="text-xs text-gray-300">X 軸 (左右)</label>
+            <input
+              type="range"
+              min="-10"
+              max="10"
+              step="0.1"
+              value={characterPosition[0]}
+              onChange={(e) => moveCharacter([parseFloat(e.target.value), characterPosition[1], characterPosition[2]])}
+              className="w-full"
+            />
+            <div className="text-xs text-gray-300 text-center">{characterPosition[0].toFixed(1)}</div>
+          </div>
+          <div>
+            <label className="text-xs text-gray-300">Y 軸 (上下)</label>
+            <input
+              type="range"
+              min="-5"
+              max="5"
+              step="0.1"
+              value={characterPosition[1]}
+              onChange={(e) => moveCharacter([characterPosition[0], parseFloat(e.target.value), characterPosition[2]])}
+              className="w-full"
+            />
+            <div className="text-xs text-gray-300 text-center">{characterPosition[1].toFixed(1)}</div>
+          </div>
+          <div>
+            <label className="text-xs text-gray-300">Z 軸 (前後)</label>
+            <input
+              type="range"
+              min="-10"
+              max="10"
+              step="0.1"
+              value={characterPosition[2]}
+              onChange={(e) => moveCharacter([characterPosition[0], characterPosition[1], parseFloat(e.target.value)])}
+              className="w-full"
+            />
+            <div className="text-xs text-gray-300 text-center">{characterPosition[2].toFixed(1)}</div>
+          </div>
         </div>
       </div>
 
-      {/* 旋轉控制 */}
+      {/* 旋轉控制 - 改為滑動條 */}
       <div className="mb-4">
         <h3 className="text-md font-semibold mb-2">旋轉</h3>
-        <div className="grid grid-cols-3 gap-1">
-          <button onClick={() => rotateCharacterAxis('y', Math.PI/4)} className="px-2 py-1 bg-orange-600 hover:bg-orange-700 rounded text-xs">左轉</button>
-          <button onClick={() => rotateCharacterAxis('x', Math.PI/4)} className="px-2 py-1 bg-orange-600 hover:bg-orange-700 rounded text-xs">前傾</button>
-          <button onClick={() => rotateCharacterAxis('y', -Math.PI/4)} className="px-2 py-1 bg-orange-600 hover:bg-orange-700 rounded text-xs">右轉</button>
+        <div className="space-y-2">
+          <div>
+            <label className="text-xs text-gray-300">X 軸旋轉</label>
+            <input
+              type="range"
+              min={-Math.PI}
+              max={Math.PI}
+              step="0.1"
+              value={characterRotation[0]}
+              onChange={(e) => rotateCharacter([parseFloat(e.target.value), characterRotation[1], characterRotation[2]])}
+              className="w-full"
+            />
+            <div className="text-xs text-gray-300 text-center">{(characterRotation[0] * 180 / Math.PI).toFixed(0)}°</div>
+          </div>
+          <div>
+            <label className="text-xs text-gray-300">Y 軸旋轉</label>
+            <input
+              type="range"
+              min={-Math.PI}
+              max={Math.PI}
+              step="0.1"
+              value={characterRotation[1]}
+              onChange={(e) => rotateCharacter([characterRotation[0], parseFloat(e.target.value), characterRotation[2]])}
+              className="w-full"
+            />
+            <div className="text-xs text-gray-300 text-center">{(characterRotation[1] * 180 / Math.PI).toFixed(0)}°</div>
+          </div>
+          <div>
+            <label className="text-xs text-gray-300">Z 軸旋轉</label>
+            <input
+              type="range"
+              min={-Math.PI}
+              max={Math.PI}
+              step="0.1"
+              value={characterRotation[2]}
+              onChange={(e) => rotateCharacter([characterRotation[0], characterRotation[1], parseFloat(e.target.value)])}
+              className="w-full"
+            />
+            <div className="text-xs text-gray-300 text-center">{(characterRotation[2] * 180 / Math.PI).toFixed(0)}°</div>
+          </div>
         </div>
       </div>
+
+      {/* Outfit 控制 (outfit_shoes030_1) */}
+      {outfitMorphTargets.length > 0 && (
+        <div className="mb-4">
+          <h3 className="text-md font-semibold mb-2">服裝控制 (outfit_shoes030_1)</h3>
+          <div className="space-y-2">
+            {outfitMorphTargets.map((target) => (
+              <div key={target}>
+                <label className="text-xs text-gray-300">{target}</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={morphTargets[target] || 0}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    updateCharacterMorphTarget({ [target]: value });
+                  }}
+                  className="w-full"
+                />
+                <div className="text-xs text-gray-300 text-center">
+                  {(morphTargets[target] || 0).toFixed(2)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 動畫控制 */}
       <div className="mb-4">
