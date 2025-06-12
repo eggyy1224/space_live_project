@@ -7,6 +7,7 @@ import { HeadSlice, createHeadSlice } from './slices/headSlice';
 import { AppSlice, createAppSlice } from './slices/appSlice';
 import { MediaSlice, createMediaSlice } from './slices/mediaSlice';
 import { BodySlice, createBodySlice } from './slices/bodySlice';
+import { CharacterSlice, createCharacterSlice } from './slices/characterSlice';
 import { AudioSettingsSlice, createAudioSettingsSlice } from './slices/audioSettingsSlice';
 import { BackgroundAudioSlice, createBackgroundAudioSlice } from './slices/backgroundAudioSlice';
 import { SpeechTextSlice, createSpeechTextSlice } from './slices/speechTextSlice';
@@ -23,6 +24,7 @@ export type Store =
   AppSlice &
   MediaSlice &
   BodySlice &
+  CharacterSlice &
   AudioSettingsSlice &
   BackgroundAudioSlice &
   SpeechTextSlice &
@@ -39,6 +41,7 @@ export const useStore = create<Store>()(
       ...createAppSlice(set, get, api),
       ...createMediaSlice(set, get, api),
       ...createBodySlice(set, get, api),
+      ...createCharacterSlice(set, get, api),
       ...createAudioSettingsSlice(set, get, api),
       ...createBackgroundAudioSlice(set, get, api),
       ...createSpeechTextSlice(set, get, api),

@@ -2,6 +2,7 @@ import React, { Suspense, useRef, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Stars } from "@react-three/drei";
 import { HeadModel } from "./HeadModel";
+import CharacterModel from "./CharacterModel";
 import DanceGroup from "./DanceGroup";
 import DynamicAudioBackgrounds from "./DynamicAudioBackgrounds";
 import RoomScene from "./RoomScene";
@@ -211,6 +212,9 @@ const SceneContent: React.FC<SceneContainerProps> = ({
             </group>
           );
         })()}
+        
+        {/* 角色模型 - 放在頭部旁邊 */}
+        <CharacterModel />
         {(() => {
           // 圓形軍隊陣列：100個人圍成圓圈
           const armyPosition: [number, number, number] = [0, -25, 0]; // 再往下移動更多

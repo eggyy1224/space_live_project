@@ -15,6 +15,7 @@ import BackgroundSoundSystem from './components/BackgroundSoundSystem'
 import DirectorMonitorHUD from './components/DirectorMonitorHUD'
 import DirectorLogPanel from './components/DirectorLogPanel'
 import RoomControlPanel from './components/RoomControlPanel'
+import { CharacterControlPanel } from './components/CharacterControlPanel'
 import { usePerformanceMetrics } from './hooks/usePerformanceMetrics'
 
 // 引入服務
@@ -23,7 +24,8 @@ import {
   useAudioService, 
   useHeadService,
   useChatService,
-  useBodyService
+  useBodyService,
+  useCharacterService
 } from './services'
 import { useRealtimeVoice } from './services'
 
@@ -88,6 +90,11 @@ function App() {
   // <--- 從 Zustand Store 獲取設定面板狀態和操作 --->
   const isSettingsPanelVisible = useStore((state) => state.isSettingsPanelVisible);
   const toggleSettingsPanel = useStore((state) => state.toggleSettingsPanel);
+  // <--- 結束 --->
+  
+  // <--- 從 Zustand Store 獲取角色控制面板狀態和操作 --->
+  const isCharacterControlPanelVisible = useStore((state) => state.isCharacterControlPanelVisible);
+  const toggleCharacterControlPanel = useStore((state) => state.toggleCharacterControlPanel);
   // <--- 結束 --->
   
   // 使用音頻服務
@@ -156,6 +163,10 @@ function App() {
     currentAnimation,
     selectAnimation
   } = useBodyService();
+  // --- 結束 ---
+  
+  // --- 使用角色服務 ---
+  useCharacterService(); // 初始化角色服務
   // --- 結束 ---
   
   // 使用聊天服務
@@ -549,12 +560,19 @@ function App() {
         {/* 房間控制面板 */}
         <RoomControlPanel isVisible={useStore((state) => state.isRoomControlPanelVisible)} />
         
+        {/* 角色控制面板 */}
+        <CharacterControlPanel 
+          isVisible={isCharacterControlPanelVisible}
+          onClose={toggleCharacterControlPanel}
+        />
+        
         {/* 渲染 AppUI (只傳遞必要 props) */}
         <AppUI
           wsConnected={wsConnected}
           toggleChatWindow={toggleChatWindow}
           toggleSettingsPanel={toggleSettingsPanel}
           toggleRoomControlPanel={useStore((state) => state.toggleRoomControlPanel)}
+          toggleCharacterControlPanel={toggleCharacterControlPanel}
           toggleRealtime={toggleRealtime}
           realtimeStreaming={realtimeStreaming}
           realtimeError={realtimeError}

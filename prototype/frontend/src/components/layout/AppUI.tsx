@@ -56,6 +56,8 @@ interface AppUIProps {
   toggleSettingsPanel: () => void;
   // 房間控制面板控制
   toggleRoomControlPanel: () => void;
+  // 角色控制面板控制
+  toggleCharacterControlPanel: () => void;
   toggleRealtime: () => void;
   realtimeStreaming: boolean;
   realtimeError: string | null;
@@ -73,6 +75,8 @@ const AppUI: React.FC<AppUIProps> = ({
   toggleSettingsPanel,
   // 房間控制面板控制
   toggleRoomControlPanel,
+  // 角色控制面板控制
+  toggleCharacterControlPanel,
   toggleRealtime,
   realtimeStreaming,
   realtimeError,
@@ -170,6 +174,17 @@ const AppUI: React.FC<AppUIProps> = ({
           aria-label="開啟/關閉房間場景控制"
         >
           🏠
+        </button>
+
+        {/* Trigger Character Control Panel Button */}
+        <button
+          onClick={toggleCharacterControlPanel}
+          // Apply Tailwind classes
+          className="w-12 h-12 rounded-full bg-orange-600 hover:bg-orange-700 text-white text-2xl shadow-md flex items-center justify-center cursor-pointer transition-colors duration-200"
+          title="開啟/關閉角色控制面板"
+          aria-label="開啟/關閉角色控制面板"
+        >
+          🚶
         </button>
       </div>
     </>
