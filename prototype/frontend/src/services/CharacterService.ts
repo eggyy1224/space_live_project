@@ -1,13 +1,19 @@
 import { useCallback, useEffect } from 'react';
 import { useStore } from '../store';
 import logger, { LogCategory } from '../utils/LogManager';
-import { CHARACTER_MODEL_URL } from '../store/slices/characterSlice';
 
 /**
- * CharacterService Hook - 管理角色模型狀態和操作
+ * CharacterService - 角色服務 Hook
+ * 
+ * 完全同步設計說明：
+ * - Character 和 Head 模型實現雙向完全同步
+ * - 手動表情控制：HeadSlice.morphTargets ⟷ CharacterSlice.characterMorphTargets
+ * - 語音口型同步：HeadSlice.audioLipsyncTargets ⟷ CharacterSlice.characterAudioLipsyncTargets
+ * - 確保兩個模型在任何情況下都保持一致的表情狀態
+ * - 包括用戶手動控制、語音驅動和情緒軌跡
  */
 export const useCharacterService = () => {
-  // 從 Store 獲取狀態
+  // 從 CharacterSlice 獲取角色專屬狀態
   const characterModelLoaded = useStore((state) => state.characterModelLoaded);
   const characterVisible = useStore((state) => state.characterVisible);
   const characterPosition = useStore((state) => state.characterPosition);
@@ -15,10 +21,18 @@ export const useCharacterService = () => {
   const characterRotation = useStore((state) => state.characterRotation);
   const availableCharacterAnimations = useStore((state) => state.availableCharacterAnimations);
   const currentCharacterAnimation = useStore((state) => state.currentCharacterAnimation);
-  const morphTargets = useStore((state) => state.morphTargets);
-  const morphTargetDictionary = useStore((state) => state.morphTargetDictionary);
+  
+  // 角色專屬的表情狀態
+  const characterMorphTargets = useStore((state) => state.characterMorphTargets);
+  const characterAudioLipsyncTargets = useStore((state) => state.characterAudioLipsyncTargets);
+  const characterMorphTargetDictionary = useStore((state) => state.characterMorphTargetDictionary);
+  
+  // 從 HeadSlice 獲取共享狀態 (用於同步)
+  const headMorphTargets = useStore((state) => state.morphTargets);
+  const headAudioLipsyncTargets = useStore((state) => state.audioLipsyncTargets);
+  const headMorphTargetDictionary = useStore((state) => state.morphTargetDictionary);
 
-  // 從 Store 獲取操作方法
+  // 從 CharacterSlice 獲取角色專屬操作方法
   const setCharacterModelLoaded = useStore((state) => state.setCharacterModelLoaded);
   const setCharacterVisible = useStore((state) => state.setCharacterVisible);
   const setCharacterPosition = useStore((state) => state.setCharacterPosition);
@@ -26,127 +40,114 @@ export const useCharacterService = () => {
   const setCharacterRotation = useStore((state) => state.setCharacterRotation);
   const setAvailableCharacterAnimations = useStore((state) => state.setAvailableCharacterAnimations);
   const setCurrentCharacterAnimation = useStore((state) => state.setCurrentCharacterAnimation);
-  const setCharacterMorphTargets = useStore((state) => state.setCharacterMorphTargets);
   const setCharacterMorphTargetDictionary = useStore((state) => state.setCharacterMorphTargetDictionary);
+  const setCharacterMorphTargets = useStore((state) => state.setCharacterMorphTargets);
   const updateCharacterMorphTarget = useStore((state) => state.updateCharacterMorphTarget);
   const resetCharacterMorphTargets = useStore((state) => state.resetCharacterMorphTargets);
+  const setCharacterAudioLipsyncTarget = useStore((state) => state.setCharacterAudioLipsyncTarget);
   const resetCharacterTransform = useStore((state) => state.resetCharacterTransform);
+  
+  // 從 HeadSlice 獲取操作方法 (用於反向同步)
+  const updateHeadMorphTarget = useStore((state) => state.updateMorphTarget);
+  const setHeadMorphTargets = useStore((state) => state.setMorphTargets);
 
   // 包裝操作方法
-  const toggleCharacterVisibility = useCallback(() => {
-    const newVisibility = !characterVisible;
-    setCharacterVisible(newVisibility);
-    logger.info(`[CharacterService] Character visibility toggled: ${newVisibility}`, LogCategory.MODEL);
-  }, [characterVisible, setCharacterVisible]);
+  const moveCharacter = useCallback((position: [number, number, number]) => {
+    setCharacterPosition(position);
+    logger.info(`[CharacterService] Moved character to: [${position.join(', ')}]`, LogCategory.MODEL);
+  }, [setCharacterPosition]);
 
-  const selectCharacterAnimation = useCallback((animationName: string) => {
-    if (availableCharacterAnimations.includes(animationName)) {
-      setCurrentCharacterAnimation(animationName);
-      logger.info(`[CharacterService] Animation changed to: ${animationName}`, LogCategory.ANIMATION);
-    } else {
-      logger.warn(`[CharacterService] Animation not found: ${animationName}`, LogCategory.ANIMATION);
-    }
-  }, [availableCharacterAnimations, setCurrentCharacterAnimation]);
+  const rotateCharacter = useCallback((rotation: [number, number, number]) => {
+    setCharacterRotation(rotation);
+    logger.info(`[CharacterService] Rotated character to: [${rotation.join(', ')}]`, LogCategory.MODEL);
+  }, [setCharacterRotation]);
 
-  const adjustCharacterScale = useCallback((scaleFactor: number) => {
-    const newScale = Math.max(0.1, Math.min(3, characterScale * scaleFactor));
-    setCharacterScale(newScale);
-    logger.info(`[CharacterService] Character scale adjusted to: ${newScale}`, LogCategory.MODEL);
-  }, [characterScale, setCharacterScale]);
-
-  const moveCharacter = useCallback((direction: 'left' | 'right' | 'forward' | 'backward' | 'up' | 'down', distance: number = 0.5) => {
-    const [x, y, z] = characterPosition;
-    let newPosition: [number, number, number];
-
-    switch (direction) {
-      case 'left':
-        newPosition = [x - distance, y, z];
-        break;
-      case 'right':
-        newPosition = [x + distance, y, z];
-        break;
-      case 'forward':
-        newPosition = [x, y, z - distance];
-        break;
-      case 'backward':
-        newPosition = [x, y, z + distance];
-        break;
-      case 'up':
-        newPosition = [x, y + distance, z];
-        break;
-      case 'down':
-        newPosition = [x, y - distance, z];
-        break;
-      default:
-        newPosition = [x, y, z];
-    }
-
-    setCharacterPosition(newPosition);
-    logger.info(`[CharacterService] Character moved ${direction} to: [${newPosition.join(', ')}]`, LogCategory.MODEL);
-  }, [characterPosition, setCharacterPosition]);
-
-  const rotateCharacter = useCallback((axis: 'x' | 'y' | 'z', angle: number) => {
-    const [x, y, z] = characterRotation;
-    let newRotation: [number, number, number];
-
-    switch (axis) {
-      case 'x':
-        newRotation = [x + angle, y, z];
-        break;
-      case 'y':
-        newRotation = [x, y + angle, z];
-        break;
-      case 'z':
-        newRotation = [x, y, z + angle];
-        break;
-      default:
-        newRotation = [x, y, z];
-    }
-
-    setCharacterRotation(newRotation);
-    logger.info(`[CharacterService] Character rotated around ${axis}-axis by ${angle} to: [${newRotation.join(', ')}]`, LogCategory.MODEL);
-  }, [characterRotation, setCharacterRotation]);
-
+  // 表情控制方法 - 實現雙向同步
   const applyCharacterExpression = useCallback((expression: Record<string, number>) => {
+    // 同時更新兩個模型的表情
     Object.entries(expression).forEach(([name, value]) => {
       updateCharacterMorphTarget(name, value);
+      updateHeadMorphTarget(name, value); // 同步到 Head
     });
-    logger.info(`[CharacterService] Applied expression with ${Object.keys(expression).length} morph targets`, LogCategory.MODEL);
-  }, [updateCharacterMorphTarget]);
+    logger.info(`[CharacterService] Applied synchronized expression with ${Object.keys(expression).length} morph targets`, LogCategory.MODEL);
+  }, [updateCharacterMorphTarget, updateHeadMorphTarget]);
 
-  // 初始化時預加載模型
+  // 同步 HeadSlice 的手動表情到 Character
   useEffect(() => {
-    logger.info('[CharacterService] Initializing character service', LogCategory.SERVICE);
+    if (Object.keys(headMorphTargets).length > 0) {
+      const hasChanges = Object.keys(headMorphTargets).some(
+        key => characterMorphTargets[key] !== headMorphTargets[key]
+      );
+      
+      if (hasChanges) {
+        setCharacterMorphTargets(headMorphTargets);
+        logger.info(`[CharacterService] Synced ${Object.keys(headMorphTargets).length} morph targets from Head to Character`, LogCategory.MODEL);
+      }
+    } else if (Object.keys(characterMorphTargets).length > 0) {
+      // Head 清空時也清空 Character
+      resetCharacterMorphTargets();
+      logger.info(`[CharacterService] Reset character morph targets to sync with Head`, LogCategory.MODEL);
+    }
+  }, [headMorphTargets, characterMorphTargets, setCharacterMorphTargets, resetCharacterMorphTargets]);
+
+  // 同步 HeadSlice 的語音口型到 Character
+  useEffect(() => {
+    if (Object.keys(headAudioLipsyncTargets).length > 0) {
+      const hasChanges = Object.keys(headAudioLipsyncTargets).some(
+        key => characterAudioLipsyncTargets[key] !== headAudioLipsyncTargets[key]
+      );
+      
+      if (hasChanges) {
+        Object.entries(headAudioLipsyncTargets).forEach(([key, value]) => {
+          setCharacterAudioLipsyncTarget(key, value);
+        });
+        logger.info(`[CharacterService] Synced ${Object.keys(headAudioLipsyncTargets).length} audio lipsync targets from Head to Character`, LogCategory.MODEL);
+      }
+    }
+  }, [headAudioLipsyncTargets, characterAudioLipsyncTargets, setCharacterAudioLipsyncTarget]);
+
+  // 初始化時的日誌
+  useEffect(() => {
+    logger.info('[CharacterService] Initializing character service with complete synchronization', LogCategory.GENERAL);
   }, []);
 
+  // 返回值 - 提供兩套狀態以支持完全同步
   return {
-    // 狀態
-    characterModelUrl: CHARACTER_MODEL_URL,
+    // 基本模型狀態
+    characterModelUrl: '/models/character0611.glb',
     characterModelLoaded,
     characterVisible,
     characterPosition,
     characterScale,
     characterRotation,
+    
+    // 動畫狀態
     availableCharacterAnimations,
     currentCharacterAnimation,
-    morphTargets,
-    morphTargetDictionary,
+    
+    // 表情狀態 - 使用合併後的狀態 (確保同步)
+    morphTargets: { ...characterMorphTargets, ...headMorphTargets }, // 合併手動表情
+    audioLipsyncTargets: { ...characterAudioLipsyncTargets, ...headAudioLipsyncTargets }, // 合併語音口型
+    morphTargetDictionary: characterMorphTargetDictionary || headMorphTargetDictionary,
 
     // 操作方法
     setCharacterModelLoaded,
-    toggleCharacterVisibility,
-    setCharacterPosition,
-    setCharacterScale,
-    setCharacterRotation,
-    selectCharacterAnimation,
-    adjustCharacterScale,
+    setCharacterVisible,
     moveCharacter,
     rotateCharacter,
-    updateCharacterMorphTarget,
+    updateCharacterMorphTarget: applyCharacterExpression, // 使用同步版本
     applyCharacterExpression,
-    resetCharacterMorphTargets,
+    resetCharacterMorphTargets: () => {
+      resetCharacterMorphTargets();
+      setHeadMorphTargets({}); // 同時重置 Head
+      logger.info(`[CharacterService] Reset morph targets for both models`, LogCategory.MODEL);
+    },
     resetCharacterTransform,
     setCharacterMorphTargetDictionary,
-    setCharacterMorphTargets,
+    setCharacterMorphTargets: (targets: Record<string, number>) => {
+      setCharacterMorphTargets(targets);
+      setHeadMorphTargets(targets); // 同步到 Head
+      logger.info(`[CharacterService] Set morph targets for both models`, LogCategory.MODEL);
+    },
   };
 }; 

@@ -4,8 +4,20 @@ import { Group } from 'three';
 import * as THREE from 'three';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { useCharacterService } from '../services/CharacterService';
+import { useEmotionalSpeaking } from '../hooks/useEmotionalSpeaking';
+import { useStore } from '../store';
 import logger, { LogCategory } from '../utils/LogManager';
 
+/**
+ * CharacterModel - 角色模型組件
+ * 
+ * 完全同步設計說明：
+ * - Character 和 Head 模型實現雙向完全同步
+ * - 手動表情控制：HeadSlice.morphTargets ⟷ CharacterSlice.characterMorphTargets
+ * - 語音口型同步：HeadSlice.audioLipsyncTargets ⟷ CharacterSlice.characterAudioLipsyncTargets
+ * - CharacterService 提供合併後的狀態，確保兩個模型完全一致
+ * - 包括用戶手動控制、語音驅動和情緒軌跡的完全同步
+ */
 export function CharacterModel() {
   const {
     characterModelUrl,
@@ -15,9 +27,14 @@ export function CharacterModel() {
     characterRotation,
     currentCharacterAnimation,
     morphTargets,
+    audioLipsyncTargets,
     setCharacterModelLoaded,
     setCharacterMorphTargetDictionary,
   } = useCharacterService();
+
+  // 添加情緒軌跡計算 (與 HeadModel 保持一致)
+  const { calculateCurrentTrajectoryWeights } = useEmotionalSpeaking();
+  const isSpeaking = useStore((state) => state.isSpeaking);
 
   const group = useRef<Group>(null);
 
@@ -95,25 +112,40 @@ export function CharacterModel() {
   // 初始化動畫混合器
   const { mixer, actions } = useAnimations(animations, group);
 
-  // 設置變形目標字典
+  // 設置變形目標字典 (角色專屬，但不影響共享表情狀態)
   useEffect(() => {
     if (clonedScene) {
       const morphTargetDict: Record<string, number> = {};
       
       clonedScene.traverse((child) => {
+        // 檢查標準 Mesh
         if ((child as THREE.Mesh).isMesh) {
           const mesh = child as THREE.Mesh;
           if (mesh.morphTargetDictionary) {
+            logger.info(`[CharacterModel] Found Mesh with morph targets: ${child.name}`, LogCategory.MODEL);
             Object.keys(mesh.morphTargetDictionary).forEach((key) => {
               morphTargetDict[key] = mesh.morphTargetDictionary![key];
+            });
+          }
+        }
+        
+        // 檢查 SkinnedMesh (角色模型的主要表情網格通常是 SkinnedMesh)
+        if ((child as THREE.SkinnedMesh).isSkinnedMesh) {
+          const skinnedMesh = child as THREE.SkinnedMesh;
+          if (skinnedMesh.morphTargetDictionary) {
+            logger.info(`[CharacterModel] Found SkinnedMesh with morph targets: ${child.name}`, LogCategory.MODEL);
+            Object.keys(skinnedMesh.morphTargetDictionary).forEach((key) => {
+              morphTargetDict[key] = skinnedMesh.morphTargetDictionary![key];
             });
           }
         }
       });
 
       if (Object.keys(morphTargetDict).length > 0) {
+        // 僅保存角色專屬的字典，不影響共享的表情狀態
         setCharacterMorphTargetDictionary(morphTargetDict);
-        logger.info(`[CharacterModel] Found ${Object.keys(morphTargetDict).length} morph targets`, LogCategory.MODEL);
+        logger.info(`[CharacterModel] Found ${Object.keys(morphTargetDict).length} morph targets in character model`, LogCategory.MODEL);
+        logger.info(`[CharacterModel] Character morphTargets will sync with HeadModel via shared state`, LogCategory.MODEL);
       }
 
       // 標記模型已加載
@@ -146,24 +178,68 @@ export function CharacterModel() {
     };
   }, [mixer, actions, currentCharacterAnimation]);
 
-  // 應用變形目標
+  // 應用變形目標 (同步表情 + 語音驅動 + 情緒軌跡)
   useEffect(() => {
     if (!clonedScene) return;
 
+    // 使用與 HeadModel 相同的權重計算邏輯
+    const trajectoryWeights = calculateCurrentTrajectoryWeights(); // 1. 情緒軌跡權重
+    const manualOrPresetTargets = morphTargets; // 2. 手動/預設權重
+    const audioLipsyncTargetsFromProps = audioLipsyncTargets; // 3. 語音口型權重
+
+    // 判斷是否有手動/預設激活
+    const isManualOrPresetActive = Object.keys(manualOrPresetTargets).length > 0 && 
+                                    Object.values(manualOrPresetTargets).some((v: number) => v > 0.01);
+
+    // 確定基礎表情
+    const baseEmotion = isManualOrPresetActive ? manualOrPresetTargets : trajectoryWeights;
+
+    // 獲取語音口型 (只有在說話時)
+    const audioShapes = isSpeaking ? audioLipsyncTargetsFromProps : {};
+
+    // 合併：以 baseEmotion 為基礎，用 audioShapes 覆蓋
+    const finalTargetWeights = {
+      ...baseEmotion,
+      ...audioShapes
+    };
+    
+    // 調試日誌
+    if (Object.keys(finalTargetWeights).length > 0) {
+      logger.info(`[CharacterModel] Applying ${Object.keys(finalTargetWeights).length} final target weights (trajectory + manual + audio)`, LogCategory.MODEL);
+      if (Object.keys(trajectoryWeights).length > 0) {
+        logger.info(`[CharacterModel] Trajectory weights active: ${Object.keys(trajectoryWeights).length}`, LogCategory.MODEL);
+      }
+    }
+
     clonedScene.traverse((child) => {
+      // 處理標準 Mesh
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
         if (mesh.morphTargetDictionary && mesh.morphTargetInfluences) {
-          Object.entries(morphTargets).forEach(([name, value]) => {
+          Object.entries(finalTargetWeights).forEach(([name, value]) => {
             const index = mesh.morphTargetDictionary![name];
-            if (index !== undefined && mesh.morphTargetInfluences) {
+            if (index !== undefined && mesh.morphTargetInfluences && typeof value === 'number') {
               mesh.morphTargetInfluences[index] = value;
             }
           });
         }
       }
+      
+      // 處理 SkinnedMesh (這裡應該是 AvatarHead.007)
+      if ((child as THREE.SkinnedMesh).isSkinnedMesh) {
+        const skinnedMesh = child as THREE.SkinnedMesh;
+        if (skinnedMesh.morphTargetDictionary && skinnedMesh.morphTargetInfluences) {
+          logger.info(`[CharacterModel] Applying final weights to SkinnedMesh: ${child.name}`, LogCategory.MODEL);
+          Object.entries(finalTargetWeights).forEach(([name, value]) => {
+            const index = skinnedMesh.morphTargetDictionary![name];
+            if (index !== undefined && skinnedMesh.morphTargetInfluences && typeof value === 'number') {
+              skinnedMesh.morphTargetInfluences[index] = value;
+            }
+          });
+        }
+      }
     });
-  }, [clonedScene, morphTargets]);
+  }, [clonedScene, morphTargets, audioLipsyncTargets, calculateCurrentTrajectoryWeights, isSpeaking]);
 
   // 如果不可見，不渲染
   if (!characterVisible || !clonedScene) {

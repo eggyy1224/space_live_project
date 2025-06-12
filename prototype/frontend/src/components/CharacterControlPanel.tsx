@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useCharacterService } from '../services/CharacterService';
 import { CHARACTER_ANIMATIONS } from '../store/slices/characterSlice';
+import { useStore } from '../store';
 
 interface CharacterControlPanelProps {
   isVisible: boolean;
@@ -16,12 +17,11 @@ export const CharacterControlPanel: React.FC<CharacterControlPanelProps> = ({
     characterVisible,
     characterPosition,
     characterScale,
+    characterRotation,
     currentCharacterAnimation,
     morphTargets,
     morphTargetDictionary,
-    toggleCharacterVisibility,
-    selectCharacterAnimation,
-    adjustCharacterScale,
+    setCharacterVisible,
     moveCharacter,
     rotateCharacter,
     updateCharacterMorphTarget,
@@ -29,9 +29,79 @@ export const CharacterControlPanel: React.FC<CharacterControlPanelProps> = ({
     resetCharacterTransform,
   } = useCharacterService();
 
+  // 直接從 store 獲取其他需要的方法
+  const setCharacterScale = useStore((state) => state.setCharacterScale);
+  const setCurrentCharacterAnimation = useStore((state) => state.setCurrentCharacterAnimation);
+
   const [selectedMorphTarget, setSelectedMorphTarget] = useState<string>('');
 
   if (!isVisible) return null;
+
+  // 輔助函數
+  const toggleCharacterVisibility = () => {
+    setCharacterVisible(!characterVisible);
+  };
+
+  const selectCharacterAnimation = (animationName: string) => {
+    if (CHARACTER_ANIMATIONS.includes(animationName)) {
+      setCurrentCharacterAnimation(animationName);
+    }
+  };
+
+  const adjustCharacterScale = (factor: number) => {
+    const newScale = Math.max(0.1, Math.min(3, characterScale * factor));
+    setCharacterScale(newScale);
+  };
+
+  const moveCharacterDirection = (direction: string) => {
+    const [x, y, z] = characterPosition;
+    const distance = 0.5;
+    let newPosition: [number, number, number];
+
+    switch (direction) {
+      case 'left':
+        newPosition = [x - distance, y, z];
+        break;
+      case 'right':
+        newPosition = [x + distance, y, z];
+        break;
+      case 'forward':
+        newPosition = [x, y, z - distance];
+        break;
+      case 'backward':
+        newPosition = [x, y, z + distance];
+        break;
+      case 'up':
+        newPosition = [x, y + distance, z];
+        break;
+      case 'down':
+        newPosition = [x, y - distance, z];
+        break;
+      default:
+        newPosition = [x, y, z];
+    }
+    moveCharacter(newPosition);
+  };
+
+  const rotateCharacterAxis = (axis: string, angle: number) => {
+    const [x, y, z] = characterRotation;
+    let newRotation: [number, number, number];
+
+    switch (axis) {
+      case 'x':
+        newRotation = [x + angle, y, z];
+        break;
+      case 'y':
+        newRotation = [x, y + angle, z];
+        break;
+      case 'z':
+        newRotation = [x, y, z + angle];
+        break;
+      default:
+        newRotation = [x, y, z];
+    }
+    rotateCharacter(newRotation);
+  };
 
   // 主要表情變形目標
   const facialMorphTargets = morphTargetDictionary ? 
@@ -117,14 +187,14 @@ export const CharacterControlPanel: React.FC<CharacterControlPanelProps> = ({
       <div className="mb-4">
         <h3 className="text-md font-semibold mb-2">位置</h3>
         <div className="grid grid-cols-3 gap-1 mb-2">
-          <button onClick={() => moveCharacter('up')} className="px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded text-xs">上</button>
-          <button onClick={() => moveCharacter('forward')} className="px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded text-xs">前</button>
-          <button onClick={() => moveCharacter('down')} className="px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded text-xs">下</button>
+          <button onClick={() => moveCharacterDirection('up')} className="px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded text-xs">上</button>
+          <button onClick={() => moveCharacterDirection('forward')} className="px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded text-xs">前</button>
+          <button onClick={() => moveCharacterDirection('down')} className="px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded text-xs">下</button>
         </div>
         <div className="grid grid-cols-3 gap-1">
-          <button onClick={() => moveCharacter('left')} className="px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded text-xs">左</button>
-          <button onClick={() => moveCharacter('backward')} className="px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded text-xs">後</button>
-          <button onClick={() => moveCharacter('right')} className="px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded text-xs">右</button>
+          <button onClick={() => moveCharacterDirection('left')} className="px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded text-xs">左</button>
+          <button onClick={() => moveCharacterDirection('backward')} className="px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded text-xs">後</button>
+          <button onClick={() => moveCharacterDirection('right')} className="px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded text-xs">右</button>
         </div>
       </div>
 
@@ -132,9 +202,9 @@ export const CharacterControlPanel: React.FC<CharacterControlPanelProps> = ({
       <div className="mb-4">
         <h3 className="text-md font-semibold mb-2">旋轉</h3>
         <div className="grid grid-cols-3 gap-1">
-          <button onClick={() => rotateCharacter('y', Math.PI/4)} className="px-2 py-1 bg-orange-600 hover:bg-orange-700 rounded text-xs">左轉</button>
-          <button onClick={() => rotateCharacter('x', Math.PI/4)} className="px-2 py-1 bg-orange-600 hover:bg-orange-700 rounded text-xs">前傾</button>
-          <button onClick={() => rotateCharacter('y', -Math.PI/4)} className="px-2 py-1 bg-orange-600 hover:bg-orange-700 rounded text-xs">右轉</button>
+          <button onClick={() => rotateCharacterAxis('y', Math.PI/4)} className="px-2 py-1 bg-orange-600 hover:bg-orange-700 rounded text-xs">左轉</button>
+          <button onClick={() => rotateCharacterAxis('x', Math.PI/4)} className="px-2 py-1 bg-orange-600 hover:bg-orange-700 rounded text-xs">前傾</button>
+          <button onClick={() => rotateCharacterAxis('y', -Math.PI/4)} className="px-2 py-1 bg-orange-600 hover:bg-orange-700 rounded text-xs">右轉</button>
         </div>
       </div>
 
@@ -164,7 +234,7 @@ export const CharacterControlPanel: React.FC<CharacterControlPanelProps> = ({
       {/* 表情控制 */}
       {facialMorphTargets.length > 0 && (
         <div className="mb-4">
-          <h3 className="text-md font-semibold mb-2">表情控制</h3>
+          <h3 className="text-md font-semibold mb-2">表情控制 (同步)</h3>
           <div className="mb-2">
             <select
               value={selectedMorphTarget}
@@ -185,7 +255,10 @@ export const CharacterControlPanel: React.FC<CharacterControlPanelProps> = ({
                 max="1"
                 step="0.01"
                 value={morphTargets[selectedMorphTarget] || 0}
-                onChange={(e) => updateCharacterMorphTarget(selectedMorphTarget, parseFloat(e.target.value))}
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value);
+                  updateCharacterMorphTarget({ [selectedMorphTarget]: value });
+                }}
                 className="w-full"
               />
               <div className="text-xs text-gray-300 text-center">
@@ -197,7 +270,7 @@ export const CharacterControlPanel: React.FC<CharacterControlPanelProps> = ({
             onClick={resetCharacterMorphTargets}
             className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm w-full"
           >
-            重置表情
+            重置表情 (同步)
           </button>
         </div>
       )}
@@ -205,24 +278,28 @@ export const CharacterControlPanel: React.FC<CharacterControlPanelProps> = ({
       {/* 語音變形目標 */}
       {speechMorphTargets.length > 0 && (
         <div className="mb-4">
-          <h3 className="text-md font-semibold mb-2">語音口型</h3>
-          <div className="grid grid-cols-3 gap-1 max-h-24 overflow-y-auto">
-            {speechMorphTargets.map((name) => (
+          <h3 className="text-md font-semibold mb-2">語音控制 (同步)</h3>
+          <div className="grid grid-cols-3 gap-1 max-h-32 overflow-y-auto">
+            {speechMorphTargets.map((target) => (
               <button
-                key={name}
-                onClick={() => updateCharacterMorphTarget(name, morphTargets[name] > 0 ? 0 : 1)}
+                key={target}
+                onClick={() => updateCharacterMorphTarget({ [target]: morphTargets[target] > 0 ? 0 : 1 })}
                 className={`px-2 py-1 rounded text-xs ${
-                  morphTargets[name] > 0
-                    ? 'bg-yellow-600 hover:bg-yellow-700'
+                  morphTargets[target] > 0
+                    ? 'bg-green-600 hover:bg-green-700'
                     : 'bg-gray-600 hover:bg-gray-700'
                 }`}
               >
-                {name}
+                {target}
               </button>
             ))}
           </div>
         </div>
       )}
+
+      <div className="text-xs text-gray-400 mt-4">
+        * 表情和語音控制會同步到頭部模型
+      </div>
     </div>
   );
 }; 

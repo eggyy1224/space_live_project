@@ -20,9 +20,10 @@ export interface CharacterSlice {
   availableCharacterAnimations: string[];
   currentCharacterAnimation: string | null;
   
-  // 變形目標相關
-  morphTargets: Record<string, number>;
-  morphTargetDictionary: Record<string, number> | null;
+  // 表情同步狀態 (與 HeadSlice 獨立，但可以同步)
+  characterMorphTargets: Record<string, number>; // 角色專屬的手動表情
+  characterAudioLipsyncTargets: Record<string, number>; // 角色專屬的語音口型
+  characterMorphTargetDictionary: Record<string, number> | null;
   
   // 操作方法
   setCharacterModelLoaded: (loaded: boolean) => void;
@@ -32,10 +33,14 @@ export interface CharacterSlice {
   setCharacterRotation: (rotation: [number, number, number]) => void;
   setAvailableCharacterAnimations: (animations: string[]) => void;
   setCurrentCharacterAnimation: (animation: string | null) => void;
-  setCharacterMorphTargets: (targets: Record<string, number>) => void;
   setCharacterMorphTargetDictionary: (dictionary: Record<string, number> | null) => void;
-  updateCharacterMorphTarget: (name: string, value: number) => void;
+  
+  // 表情同步操作方法
+  setCharacterMorphTargets: (targets: Record<string, number>) => void;
+  updateCharacterMorphTarget: (key: string, value: number) => void;
   resetCharacterMorphTargets: () => void;
+  setCharacterAudioLipsyncTarget: (key: string, value: number) => void;
+  
   resetCharacterTransform: () => void;
 }
 
@@ -52,9 +57,10 @@ export const createCharacterSlice: StateCreator<CharacterSlice> = (set, get) => 
   availableCharacterAnimations: CHARACTER_ANIMATIONS,
   currentCharacterAnimation: "Tpose", // 默認姿勢
   
-  // 變形目標狀態
-  morphTargets: {},
-  morphTargetDictionary: null,
+  // 表情同步狀態
+  characterMorphTargets: {},
+  characterAudioLipsyncTargets: {},
+  characterMorphTargetDictionary: null,
   
   // 操作實現
   setCharacterModelLoaded: (loaded: boolean) => set({ characterModelLoaded: loaded }),
@@ -71,18 +77,20 @@ export const createCharacterSlice: StateCreator<CharacterSlice> = (set, get) => 
   
   setCurrentCharacterAnimation: (animation: string | null) => set({ currentCharacterAnimation: animation }),
   
-  setCharacterMorphTargets: (targets: Record<string, number>) => set({ morphTargets: targets }),
+  setCharacterMorphTargetDictionary: (dictionary: Record<string, number> | null) => set({ characterMorphTargetDictionary: dictionary }),
   
-  setCharacterMorphTargetDictionary: (dictionary: Record<string, number> | null) => set({ morphTargetDictionary: dictionary }),
+  // 表情同步操作實現
+  setCharacterMorphTargets: (targets: Record<string, number>) => set({ characterMorphTargets: targets }),
   
-  updateCharacterMorphTarget: (name: string, value: number) => set((state) => ({
-    morphTargets: {
-      ...state.morphTargets,
-      [name]: value
-    }
+  updateCharacterMorphTarget: (key: string, value: number) => set((state) => ({
+    characterMorphTargets: { ...state.characterMorphTargets, [key]: value }
   })),
   
-  resetCharacterMorphTargets: () => set({ morphTargets: {} }),
+  resetCharacterMorphTargets: () => set({ characterMorphTargets: {} }),
+  
+  setCharacterAudioLipsyncTarget: (key: string, value: number) => set((state) => ({
+    characterAudioLipsyncTargets: { ...state.characterAudioLipsyncTargets, [key]: value }
+  })),
   
   resetCharacterTransform: () => set({
     characterPosition: [2, 0, 0],
