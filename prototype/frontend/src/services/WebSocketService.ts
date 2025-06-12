@@ -414,10 +414,12 @@ class WebSocketService {
 
           case "outfit":
             if (payload.morphTargets && typeof payload.morphTargets === "object") {
-              // 逐個更新每個 morph target
+              // 直接更新 characterMorphTargets，不通過包裝函數
               Object.entries(payload.morphTargets).forEach(([key, value]) => {
                 if (typeof value === "number") {
                   useStore.getState().updateCharacterMorphTarget(key, value);
+                  // 同時更新 headMorphTargets 以確保 UI 同步
+                  useStore.getState().updateMorphTarget(key, value);
                 }
               });
               logger.info(`API 設置角色服裝: ${JSON.stringify(payload.morphTargets)}`, LogCategory.WEBSOCKET);
