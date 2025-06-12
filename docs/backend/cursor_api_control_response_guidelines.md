@@ -35,6 +35,14 @@ The application registers these routes in `prototype/backend/api/__init__.py`.
 |`POST`|`/api/control/body-animation`|Control body animation states.|
 |`POST`|`/api/control/head-size`|Adjust the scale of the head model (0.1 to 20.0).|
 |`POST`|`/api/control/scene-display`|Toggle or change the active 3D scene.|
+|`POST`|`/api/control/character/scale`|Set character scale (0.1 to 3.0).|
+|`POST`|`/api/control/character/position`|Set character position [x, y, z].|
+|`POST`|`/api/control/character/rotation`|Set character rotation [x, y, z] in radians.|
+|`POST`|`/api/control/character/outfit`|Control character outfit morph targets (outfit_shoes030_1 etc.).|
+|`POST`|`/api/control/character/animation`|Set character animation.|
+|`POST`|`/api/control/character/visibility`|Toggle character visibility.|
+|`POST`|`/api/control/character/reset-transform`|Reset character transform (position, rotation, scale).|
+|`GET`|`/api/control/character/status`|Get current character status.|
 
 The request models for these routes are defined at the top of `control.py` and include fields such as `content`, `url`, `duration`, `keyframes`, and camera angles.
 
@@ -180,7 +188,7 @@ To help Cursor better understand and utilize project assets, here are some key p
 ```json
 {
   "state": "string (Optional, e.g., 'play', 'stop', default: 'play')",
-  "animation": "string (Required, animation name from animations.json, e.g., 'Idle', 'Happy')",
+  "animation": "string (Required, animation name from character model, e.g., 'Tpose', '舞步1', '運動1')",
   "loop": "boolean (Optional, true to loop, default: model's setting or false)",
   "speed": "float (Optional, playback speed multiplier, default: 1.0)"
 }
@@ -199,19 +207,72 @@ To help Cursor better understand and utilize project assets, here are some key p
 **8. Set Frontend Camera Preset (`/api/control/camera/set-frontend-preset`)**
 ```json
 {
-  "name": "string (Name of the camera preset defined in frontend, e.g., 'overview', 'head_close_up', required)",
-  "duration": "float (Optional, transition duration in seconds, default by backend implementation, e.g., 5.0s)"
+  "name": "string (Required, preset name, e.g., 'overview', 'closeup')",
+  "duration": "float (Optional, transition duration in seconds, default: 5.0)"
 }
 ```
 
-**9. Head Size Control (`/api/control/head-size`)**
+**9. Character Scale (`/api/control/character/scale`)**
+```json
+{
+  "scale": "float (Required, scale factor 0.1 to 15.0)"
+}
+```
+
+**10. Character Position (`/api/control/character/position`)**
+```json
+{
+  "position": "array (Required, [x, y, z] coordinates)"
+}
+```
+
+**11. Character Rotation (`/api/control/character/rotation`)**
+```json
+{
+  "rotation": "array (Required, [x, y, z] rotation angles in radians)"
+}
+```
+
+**12. Character Outfit (`/api/control/character/outfit`)**
+```json
+{
+  "outfit_morphs": "object (Required, morph target names and values 0.0-1.0, e.g., {'鍵 1': 0.8, '錯置': 0.5})"
+}
+```
+
+**13. Character Animation (`/api/control/character/animation`)**
+```json
+{
+  "animation": "string (Required, animation name from CHARACTER_ANIMATIONS)",
+  "loop": "boolean (Optional, true to loop, default: true)",
+  "speed": "float (Optional, playback speed multiplier, default: 1.0)"
+}
+```
+
+**14. Character Visibility (`/api/control/character/visibility`)**
+```json
+{
+  "visible": "boolean (Required, true to show, false to hide)"
+}
+```
+
+**15. Character Reset Transform (`/api/control/character/reset-transform`)**
+```json
+{
+  "reset_position": "boolean (Optional, default: true)",
+  "reset_rotation": "boolean (Optional, default: true)",
+  "reset_scale": "boolean (Optional, default: true)"
+}
+```
+
+**16. Head Size Control (`/api/control/head-size`)**
 ```json
 {
   "scaleFactor": "float (Scale multiplier for head model, range: 0.1 to 20.0, required. 1.0 = normal size, 2.0 = double size, 0.5 = half size)"
 }
 ```
 
-**10. Scene Display Control (`/api/control/scene-display`)**
+**17. Scene Display Control (`/api/control/scene-display`)**
 ```json
 {
   "displayScene": "boolean (Whether to show or hide the 3D scene, required)",
@@ -222,7 +283,7 @@ To help Cursor better understand and utilize project assets, here are some key p
 }
 ```
 
-**11. Image Generation (`/api/generate-image`)**
+**18. Image Generation (`/api/generate-image`)**
 ```json
 {
   "description": "string (Text description of the image to generate, required. Can be in Chinese or English. Examples: '一隻可愛的橘貓在花園裡', 'a beautiful sunset over mountains')",
@@ -235,7 +296,7 @@ To help Cursor better understand and utilize project assets, here are some key p
 }
 ```
 
-**12. Show Existing Image (`/api/show-existing-image`)**
+**19. Show Existing Image (`/api/show-existing-image`)**
 ```json
 {
   "filename": "string (Required, image filename in generated_images directory. Example: 'image_1749309153863.png')",
@@ -249,7 +310,7 @@ To help Cursor better understand and utilize project assets, here are some key p
 }
 ```
 
-**13. Take Selfie (`/api/take-selfie`)**
+**20. Take Selfie (`/api/take-selfie`)**
 ```json
 {
   "description": "string (Optional, selfie description, default: '拍一張自拍照')",
@@ -266,7 +327,7 @@ To help Cursor better understand and utilize project assets, here are some key p
 }
 ```
 
-**14. Continue Selfie (`/api/continue-selfie`)**
+**21. Continue Selfie (`/api/continue-selfie`)**
 ```json
 {
   "modification": "string (Optional, modification instructions, default: '稍微改變一下表情和姿勢')",

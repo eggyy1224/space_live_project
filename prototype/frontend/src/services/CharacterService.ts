@@ -135,7 +135,15 @@ export const useCharacterService = () => {
     setCharacterVisible,
     moveCharacter,
     rotateCharacter,
-    updateCharacterMorphTarget: applyCharacterExpression, // 使用同步版本
+    updateCharacterMorphTarget: (targetOrKey: string | Record<string, number>, value?: number) => {
+      if (typeof targetOrKey === 'string' && typeof value === 'number') {
+        // 單個 morph target 更新
+        applyCharacterExpression({ [targetOrKey]: value });
+      } else if (typeof targetOrKey === 'object') {
+        // 批量 morph targets 更新
+        applyCharacterExpression(targetOrKey);
+      }
+    },
     applyCharacterExpression,
     resetCharacterMorphTargets: () => {
       resetCharacterMorphTargets();

@@ -380,6 +380,86 @@ class WebSocketService {
         } else if (payload.state === "resume") {
           useStore.getState().resumeSequencePlayback();
         }
+      } else if (data.type === "character-control") {
+        // 處理角色控制消息
+        const payload = (data as any).payload;
+        const action = (data as any).action;
+        
+        if (!payload || !action) {
+          logger.warn("角色控制消息缺少 payload 或 action", LogCategory.WEBSOCKET);
+          return;
+        }
+
+        switch (action) {
+          case "scale":
+            if (typeof payload.scale === "number") {
+              useStore.getState().setCharacterScale(payload.scale);
+              logger.info(`API 設置角色縮放: ${payload.scale}`, LogCategory.WEBSOCKET);
+            }
+            break;
+
+          case "position":
+            if (Array.isArray(payload.position) && payload.position.length === 3) {
+              useStore.getState().setCharacterPosition(payload.position as [number, number, number]);
+              logger.info(`API 設置角色位置: [${payload.position.join(', ')}]`, LogCategory.WEBSOCKET);
+            }
+            break;
+
+          case "rotation":
+            if (Array.isArray(payload.rotation) && payload.rotation.length === 3) {
+              useStore.getState().setCharacterRotation(payload.rotation as [number, number, number]);
+              logger.info(`API 設置角色旋轉: [${payload.rotation.join(', ')}]`, LogCategory.WEBSOCKET);
+            }
+            break;
+
+          case "outfit":
+            if (payload.morphTargets && typeof payload.morphTargets === "object") {
+              // 逐個更新每個 morph target
+              Object.entries(payload.morphTargets).forEach(([key, value]) => {
+                if (typeof value === "number") {
+                  useStore.getState().updateCharacterMorphTarget(key, value);
+                }
+              });
+              logger.info(`API 設置角色服裝: ${JSON.stringify(payload.morphTargets)}`, LogCategory.WEBSOCKET);
+            }
+            break;
+
+          case "animation":
+            if (typeof payload.animation === "string") {
+              useStore.getState().setCurrentCharacterAnimation(payload.animation);
+              logger.info(`API 設置角色動畫: ${payload.animation}`, LogCategory.WEBSOCKET);
+            }
+            break;
+
+          case "visibility":
+            if (typeof payload.visible === "boolean") {
+              useStore.getState().setCharacterVisible(payload.visible);
+              logger.info(`API 設置角色可見性: ${payload.visible}`, LogCategory.WEBSOCKET);
+            }
+            break;
+
+          case "reset-transform":
+            useStore.getState().resetCharacterTransform();
+            logger.info("API 重置角色變換", LogCategory.WEBSOCKET);
+            break;
+
+          case "get-status":
+            // 對於狀態查詢，可以在這裡處理並回傳當前狀態
+            const currentState = useStore.getState();
+            logger.info("API 查詢角色狀態", LogCategory.WEBSOCKET);
+            console.log("當前角色狀態:", {
+              position: currentState.characterPosition,
+              scale: currentState.characterScale,
+              rotation: currentState.characterRotation,
+              visible: currentState.characterVisible,
+              animation: currentState.currentCharacterAnimation,
+              morphTargets: currentState.characterMorphTargets
+            });
+            break;
+
+          default:
+            logger.warn(`未知的角色控制動作: ${action}`, LogCategory.WEBSOCKET);
+        }
       } else if (data.type && highFrequencyTypes.includes(data.type)) {
         this._handleHighFrequencyMessage(data.type, data);
       } else {

@@ -490,3 +490,311 @@ async def control_scene_display(request: SceneDisplayRequest):
     await manager.broadcast(json.dumps(message))
     logger.info(f"Scene display control: {payload}")
     return {"success": True, "payload": payload}
+
+
+# 在文件末尾新增角色控制相關的請求模型和端點
+
+class CharacterScaleRequest(BaseModel):
+    """角色縮放控制請求模型"""
+    scale: float  # 縮放比例，範圍 0.1-15.0
+
+class CharacterPositionRequest(BaseModel):
+    """角色位置控制請求模型"""
+    position: List[float]  # [x, y, z] 座標
+
+class CharacterRotationRequest(BaseModel):
+    """角色旋轉控制請求模型"""
+    rotation: List[float]  # [x, y, z] 旋轉角度 (弧度)
+
+class CharacterOutfitRequest(BaseModel):
+    """角色服裝控制請求模型"""
+    outfit_morphs: Dict[str, float]  # morph target 名稱和數值的字典
+
+class CharacterAnimationRequest(BaseModel):
+    """角色動畫控制請求模型"""
+    animation: str  # 動畫名稱
+    loop: Optional[bool] = True
+    speed: Optional[float] = 1.0
+
+class CharacterVisibilityRequest(BaseModel):
+    """角色可見性控制請求模型"""
+    visible: bool
+
+class CharacterTransformResetRequest(BaseModel):
+    """角色變換重置請求模型"""
+    reset_position: Optional[bool] = True
+    reset_rotation: Optional[bool] = True
+    reset_scale: Optional[bool] = True
+
+@router.post("/control/character/scale")
+async def set_character_scale(request: CharacterScaleRequest):
+    """設置角色縮放比例"""
+    if not manager.active_connections:
+        raise HTTPException(status_code=503, detail="沒有活動的前端連接")
+
+    # 驗證縮放範圍
+    if not (0.1 <= request.scale <= 15.0):
+        raise HTTPException(status_code=400, detail="縮放比例必須在 0.1 到 15.0 之間")
+
+    try:
+        # 構建控制消息
+        control_data = {
+            "type": "character-control",
+            "action": "scale",
+            "payload": {
+                "scale": request.scale
+            }
+        }
+
+        await manager.broadcast(json.dumps(control_data))
+
+        logger.info(f"API 設置角色縮放: {request.scale}")
+
+        return {
+            "success": True,
+            "message": "角色縮放已設置",
+            "scale": request.scale,
+            "connections": len(manager.active_connections),
+        }
+
+    except Exception as e:
+        logger.error(f"API 設置角色縮放失敗: {e}")
+        raise HTTPException(status_code=500, detail=f"設置角色縮放失敗: {str(e)}")
+
+@router.post("/control/character/position")
+async def set_character_position(request: CharacterPositionRequest):
+    """設置角色位置"""
+    if not manager.active_connections:
+        raise HTTPException(status_code=503, detail="沒有活動的前端連接")
+
+    # 驗證位置參數
+    if len(request.position) != 3:
+        raise HTTPException(status_code=400, detail="位置必須包含 3 個座標值 [x, y, z]")
+
+    try:
+        # 構建控制消息
+        control_data = {
+            "type": "character-control",
+            "action": "position",
+            "payload": {
+                "position": request.position
+            }
+        }
+
+        await manager.broadcast(json.dumps(control_data))
+
+        logger.info(f"API 設置角色位置: {request.position}")
+
+        return {
+            "success": True,
+            "message": "角色位置已設置",
+            "position": request.position,
+            "connections": len(manager.active_connections),
+        }
+
+    except Exception as e:
+        logger.error(f"API 設置角色位置失敗: {e}")
+        raise HTTPException(status_code=500, detail=f"設置角色位置失敗: {str(e)}")
+
+@router.post("/control/character/rotation")
+async def set_character_rotation(request: CharacterRotationRequest):
+    """設置角色旋轉"""
+    if not manager.active_connections:
+        raise HTTPException(status_code=503, detail="沒有活動的前端連接")
+
+    # 驗證旋轉參數
+    if len(request.rotation) != 3:
+        raise HTTPException(status_code=400, detail="旋轉必須包含 3 個角度值 [x, y, z]")
+
+    try:
+        # 構建控制消息
+        control_data = {
+            "type": "character-control",
+            "action": "rotation",
+            "payload": {
+                "rotation": request.rotation
+            }
+        }
+
+        await manager.broadcast(json.dumps(control_data))
+
+        logger.info(f"API 設置角色旋轉: {request.rotation}")
+
+        return {
+            "success": True,
+            "message": "角色旋轉已設置",
+            "rotation": request.rotation,
+            "connections": len(manager.active_connections),
+        }
+
+    except Exception as e:
+        logger.error(f"API 設置角色旋轉失敗: {e}")
+        raise HTTPException(status_code=500, detail=f"設置角色旋轉失敗: {str(e)}")
+
+@router.post("/control/character/outfit")
+async def set_character_outfit(request: CharacterOutfitRequest):
+    """控制角色服裝 (outfit_shoes030_1 等 morph targets)"""
+    if not manager.active_connections:
+        raise HTTPException(status_code=503, detail="沒有活動的前端連接")
+
+    # 驗證 morph target 數值範圍
+    for name, value in request.outfit_morphs.items():
+        if not (0.0 <= value <= 1.0):
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Morph target '{name}' 的數值必須在 0.0 到 1.0 之間"
+            )
+
+    try:
+        # 構建控制消息
+        control_data = {
+            "type": "character-control",
+            "action": "outfit",
+            "payload": {
+                "morphTargets": request.outfit_morphs
+            }
+        }
+
+        await manager.broadcast(json.dumps(control_data))
+
+        logger.info(f"API 設置角色服裝: {request.outfit_morphs}")
+
+        return {
+            "success": True,
+            "message": "角色服裝已設置",
+            "outfit_morphs": request.outfit_morphs,
+            "connections": len(manager.active_connections),
+        }
+
+    except Exception as e:
+        logger.error(f"API 設置角色服裝失敗: {e}")
+        raise HTTPException(status_code=500, detail=f"設置角色服裝失敗: {str(e)}")
+
+@router.post("/control/character/animation")
+async def set_character_animation(request: CharacterAnimationRequest):
+    """設置角色動畫"""
+    try:
+        if not manager.active_connections:
+            raise HTTPException(status_code=503, detail="沒有活動的前端連接")
+
+        # 構建控制消息
+        control_data = {
+            "type": "character-control",
+            "action": "animation",
+            "payload": {
+                "animation": request.animation,
+                "loop": request.loop,
+                "speed": request.speed
+            }
+        }
+
+        await manager.broadcast(json.dumps(control_data))
+
+        logger.info(f"API 設置角色動畫: {request.animation}")
+
+        return {
+            "success": True,
+            "message": "角色動畫已設置",
+            "animation": request.animation,
+            "loop": request.loop,
+            "speed": request.speed,
+            "connections": len(manager.active_connections),
+        }
+
+    except Exception as e:
+        logger.error(f"API 設置角色動畫失敗: {e}")
+        raise HTTPException(status_code=500, detail=f"設置角色動畫失敗: {str(e)}")
+
+@router.post("/control/character/visibility")
+async def set_character_visibility(request: CharacterVisibilityRequest):
+    """設置角色可見性"""
+    try:
+        if not manager.active_connections:
+            raise HTTPException(status_code=503, detail="沒有活動的前端連接")
+
+        # 構建控制消息
+        control_data = {
+            "type": "character-control",
+            "action": "visibility",
+            "payload": {
+                "visible": request.visible
+            }
+        }
+
+        await manager.broadcast(json.dumps(control_data))
+
+        logger.info(f"API 設置角色可見性: {request.visible}")
+
+        return {
+            "success": True,
+            "message": "角色可見性已設置",
+            "visible": request.visible,
+            "connections": len(manager.active_connections),
+        }
+
+    except Exception as e:
+        logger.error(f"API 設置角色可見性失敗: {e}")
+        raise HTTPException(status_code=500, detail=f"設置角色可見性失敗: {str(e)}")
+
+@router.post("/control/character/reset-transform")
+async def reset_character_transform(request: CharacterTransformResetRequest):
+    """重置角色變換 (位置、旋轉、縮放)"""
+    try:
+        if not manager.active_connections:
+            raise HTTPException(status_code=503, detail="沒有活動的前端連接")
+
+        # 構建控制消息
+        control_data = {
+            "type": "character-control",
+            "action": "reset-transform",
+            "payload": {
+                "resetPosition": request.reset_position,
+                "resetRotation": request.reset_rotation,
+                "resetScale": request.reset_scale
+            }
+        }
+
+        await manager.broadcast(json.dumps(control_data))
+
+        logger.info(f"API 重置角色變換")
+
+        return {
+            "success": True,
+            "message": "角色變換已重置",
+            "reset_position": request.reset_position,
+            "reset_rotation": request.reset_rotation,
+            "reset_scale": request.reset_scale,
+            "connections": len(manager.active_connections),
+        }
+
+    except Exception as e:
+        logger.error(f"API 重置角色變換失敗: {e}")
+        raise HTTPException(status_code=500, detail=f"重置角色變換失敗: {str(e)}")
+
+@router.get("/control/character/status")
+async def get_character_status():
+    """獲取角色當前狀態"""
+    try:
+        if not manager.active_connections:
+            raise HTTPException(status_code=503, detail="沒有活動的前端連接")
+
+        # 構建狀態查詢消息
+        control_data = {
+            "type": "character-control",
+            "action": "get-status",
+            "payload": {}
+        }
+
+        await manager.broadcast(json.dumps(control_data))
+
+        logger.info("API 查詢角色狀態")
+
+        return {
+            "success": True,
+            "message": "角色狀態查詢已發送",
+            "connections": len(manager.active_connections),
+        }
+
+    except Exception as e:
+        logger.error(f"API 查詢角色狀態失敗: {e}")
+        raise HTTPException(status_code=500, detail=f"查詢角色狀態失敗: {str(e)}")

@@ -150,4 +150,168 @@ echo "curl -X POST '$BASE_URL/control/send-message' -H 'Content-Type: applicatio
 echo
 echo "# 檢查連接狀態："
 echo "curl -X GET '$BASE_URL/control/status'"
-echo 
+echo
+
+# === 角色控制 API 測試範例 ===
+echo "=== 角色控制 API 測試範例 ==="
+
+# 1. 設置角色縮放
+echo "1. 設置角色縮放 (1.5倍)"
+curl -X POST "$BASE_URL/api/control/character/scale" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "scale": 1.5
+  }'
+
+echo -e "\n"
+
+# 2. 設置角色位置
+echo "2. 設置角色位置"
+curl -X POST "$BASE_URL/api/control/character/position" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "position": [0, 0, -2]
+  }'
+
+echo -e "\n"
+
+# 3. 設置角色旋轉
+echo "3. 設置角色旋轉"
+curl -X POST "$BASE_URL/api/control/character/rotation" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "rotation": [0, 1.57, 0]
+  }'
+
+echo -e "\n"
+
+# 4. 控制角色服裝 (outfit_shoes030_1)
+echo "4. 控制角色服裝"
+curl -X POST "$BASE_URL/api/control/character/outfit" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "outfit_morphs": {
+      "鍵 1": 0.8,
+      "錯置": 0.5,
+      "錯置.001": 0.3
+    }
+  }'
+
+echo -e "\n"
+
+# 5. 設置角色動畫
+echo "5. 設置角色動畫"
+curl -X POST "$BASE_URL/api/control/character/animation" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "animation": "舞步1",
+    "loop": true,
+    "speed": 1.0
+  }'
+
+echo -e "\n"
+
+# 6. 切換角色可見性
+echo "6. 隱藏角色"
+curl -X POST "$BASE_URL/api/control/character/visibility" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "visible": false
+  }'
+
+echo -e "\n"
+
+echo "7. 顯示角色"
+curl -X POST "$BASE_URL/api/control/character/visibility" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "visible": true
+  }'
+
+echo -e "\n"
+
+# 8. 重置角色變換
+echo "8. 重置角色變換"
+curl -X POST "$BASE_URL/api/control/character/reset-transform" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reset_position": true,
+    "reset_rotation": true,
+    "reset_scale": true
+  }'
+
+echo -e "\n"
+
+# 9. 獲取角色狀態
+echo "9. 獲取角色狀態"
+curl -X GET "$BASE_URL/api/control/character/status"
+
+echo -e "\n"
+
+# === 組合測試：完整的角色控制演示 ===
+echo "=== 組合測試：完整的角色控制演示 ==="
+
+echo "發送歡迎消息"
+curl -X POST "$BASE_URL/api/control/send-message" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "開始角色控制演示！"
+  }'
+
+sleep 3
+
+echo "設置舞蹈動畫"
+curl -X POST "$BASE_URL/api/control/character/animation" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "animation": "舞步2",
+    "loop": true
+  }'
+
+sleep 2
+
+echo "放大角色"
+curl -X POST "$BASE_URL/api/control/character/scale" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "scale": 2.0
+  }'
+
+sleep 2
+
+echo "移動角色位置"
+curl -X POST "$BASE_URL/api/control/character/position" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "position": [-2, 1, 0]
+  }'
+
+sleep 2
+
+echo "調整角色服裝"
+curl -X POST "$BASE_URL/api/control/character/outfit" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "outfit_morphs": {
+      "鍵 1": 1.0,
+      "錯置": 0.8
+    }
+  }'
+
+sleep 3
+
+echo "發送結束消息"
+curl -X POST "$BASE_URL/api/control/send-message" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "角色控制演示完成！"
+  }'
+
+sleep 2
+
+echo "重置角色"
+curl -X POST "$BASE_URL/api/control/character/reset-transform" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
+echo -e "\n角色控制 API 測試完成！\n" 
