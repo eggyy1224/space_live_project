@@ -5,6 +5,7 @@ import { HeadModel } from "./HeadModel";
 import DanceGroup from "./DanceGroup";
 import DynamicAudioBackgrounds from "./DynamicAudioBackgrounds";
 import RoomScene from "./RoomScene";
+import CharacterModel from "./CharacterModel";
 import { useStore } from "../store";
 import * as THREE from "three";
 import { useCameraManager, CameraPreset } from "../camera";
@@ -208,6 +209,10 @@ const SceneContent: React.FC<SceneContainerProps> = ({
           return (
             <group position={basePosition} scale={baseScale}>
               <HeadModel headModelUrl={headModelUrl} scale={modelScale} />
+              {/* Character model positioned slightly behind the head */}
+              <group position={[0, -1, -2]} scale={0.2}>
+                <CharacterModel />
+              </group>
             </group>
           );
         })()}
