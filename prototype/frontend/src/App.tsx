@@ -15,6 +15,7 @@ import BackgroundSoundSystem from './components/BackgroundSoundSystem'
 import DirectorMonitorHUD from './components/DirectorMonitorHUD'
 import DirectorLogPanel from './components/DirectorLogPanel'
 import RoomControlPanel from './components/RoomControlPanel'
+import CharacterControlPanel from './components/CharacterControlPanel'
 import { usePerformanceMetrics } from './hooks/usePerformanceMetrics'
 
 // 引入服務
@@ -548,6 +549,8 @@ function App() {
         
         {/* 房間控制面板 */}
         <RoomControlPanel isVisible={useStore((state) => state.isRoomControlPanelVisible)} />
+        {/* Character morph target controls */}
+        <CharacterControlPanel />
         
         {/* 渲染 AppUI (只傳遞必要 props) */}
         <AppUI
