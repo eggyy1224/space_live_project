@@ -67,6 +67,11 @@ class APIIntegrations:
                 result = await self._handle_body_animation(arguments)
                 logger.info(f"💃 body_animation 處理結果: {result}")
                 return result
+            elif function_name == "character_animation":
+                logger.info("🎭 調用 character_animation 處理器")
+                result = await self._handle_character_animation(arguments)
+                logger.info(f"🎭 character_animation 處理結果: {result}")
+                return result
             else:
                 logger.warning(f"❓ 未知工具函數: {function_name}")
                 return {
@@ -948,4 +953,121 @@ class APIIntegrations:
             return {
                 "success": False,
                 "error": f"Failed to control body animation: {str(e)}"
+            }
+    
+    async def _handle_character_animation(self, arguments: dict) -> dict:
+        """處理character_animation工具調用"""
+        try:
+            # 獲取參數
+            animation = arguments.get("animation")
+            loop = arguments.get("loop", True)
+            speed = arguments.get("speed", 1.0)
+            
+            # 驗證必要參數
+            if not animation:
+                return {
+                    "success": False,
+                    "error": "animation parameter is required"
+                }
+            
+            # 驗證動畫名稱
+            valid_animations = [
+                "運動1", "運動2", "漂浮", "漂浮2", "Tpose", 
+                "不穩", "划手機", "臥躺", 
+                "舞步1", "舞步2", "舞步3", 
+                "飛1", "飛2"
+            ]
+            
+            if animation not in valid_animations:
+                return {
+                    "success": False,
+                    "error": f"Invalid animation name: {animation}. Valid options: {', '.join(valid_animations)}"
+                }
+            
+            # 驗證speed範圍
+            if not isinstance(speed, (int, float)) or speed < 0.5 or speed > 3.0:
+                return {
+                    "success": False,
+                    "error": "speed must be a number between 0.5 and 3.0"
+                }
+            
+            # 構建API請求數據
+            request_data = {
+                "animation": animation,
+                "loop": loop,
+                "speed": speed
+            }
+            
+            logger.info(f"🎭 準備播放角色動畫: {animation}")
+            logger.info(f"🔄 循環播放: {loop}, 速度: {speed}x")
+            logger.info(f"🌐 發送請求到: {self.base_url}/api/control/character/animation")
+            logger.info(f"📦 請求數據: {request_data}")
+            
+            # 調用角色動畫控制 API
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        f"{self.base_url}/api/control/character/animation",
+                        json=request_data,
+                        headers={"Content-Type": "application/json"},
+                        timeout=aiohttp.ClientTimeout(total=5)
+                    ) as response:
+                        response_text = await response.text()
+                        
+                        logger.info(f"🔄 HTTP 回應狀態: {response.status}")
+                        logger.info(f"📄 HTTP 回應內容: {response_text}")
+                        
+                        if response.status == 200:
+                            try:
+                                result = json.loads(response_text) if response_text else {}
+                                logger.info(f"✅ 成功播放角色動畫: {animation}")
+                                
+                                # 構建成功消息
+                                success_message = f"正在播放角色動畫: {animation}"
+                                if loop:
+                                    success_message += "，循環播放"
+                                if speed != 1.0:
+                                    success_message += f"，速度: {speed}x"
+                                
+                                return {
+                                    "success": True,
+                                    "message": success_message,
+                                    "result": result,
+                                    "animation": animation,
+                                    "loop": loop,
+                                    "speed": speed
+                                }
+                            except json.JSONDecodeError:
+                                logger.info(f"✅ 成功播放角色動畫 (無JSON回應)")
+                                return {
+                                    "success": True,
+                                    "message": f"Character animation '{animation}' started successfully",
+                                    "animation": animation,
+                                    "loop": loop,
+                                    "speed": speed
+                                }
+                        else:
+                            logger.error(f"❌ 角色動畫控制失敗: HTTP {response.status} - {response_text}")
+                            return {
+                                "success": False,
+                                "error": f"HTTP {response.status}: {response_text}"
+                            }
+            except aiohttp.ClientTimeout:
+                logger.error(f"⏰ 角色動畫控制請求超時")
+                return {
+                    "success": False,
+                    "error": "Character animation control request timeout"
+                }
+            except Exception as http_error:
+                logger.error(f"🚨 角色動畫控制HTTP請求異常: {http_error}")
+                return {
+                    "success": False,
+                    "error": f"Character animation control HTTP request failed: {str(http_error)}"
+                }
+                
+        except Exception as e:
+            logger.error(f"❌ character_animation 處理錯誤: {e}")
+            return {
+                "success": False,
+                "error": f"Failed to control character animation: {str(e)}"
             } 

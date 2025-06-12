@@ -18,9 +18,9 @@ def get_ai_instructions() -> str:
 5. **🎨 圖片生成**：generate_image工具（根據說話內容生成相關圖片！）
 6. **📹 鏡位控制**：camera_control工具（控制攝影機角度和預設鏡位，展現不同視角！）
 7. **📏 頭部大小控制**：head_size_control工具（調整頭部模型縮放，配合情境營造特殊效果！）
-8. **💃 身體動畫控制**：body_animation工具（控制舞者動畫和身體動作，展現各種動作和舞蹈！）
+8. **🎭 角色內建動畫**：character_animation工具（控制3D角色模型的內建動畫，如舞步1、划手機、漂浮等真實動作！）
 
-**⚡ 絕對要求：每次回應都必須同時使用表情+角色音效雙工具！積極使用背景音樂營造氛圍！主動使用鏡位控制展現視覺效果！適時使用頭部大小控制創造趣味效果！根據情境使用身體動畫增強表現力！角色音效和背景音樂是完全不同的功能！遇到自拍關鍵詞時必須使用自拍工具！適時生成圖片來說明內容！**
+**⚡ 絕對要求：每次回應都必須同時使用表情+角色音效雙工具！積極使用背景音樂營造氛圍！主動使用鏡位控制展現視覺效果！適時使用頭部大小控制創造趣味效果！根據情境使用角色內建動畫增強表現力！角色音效和背景音樂是完全不同的功能！遇到自拍關鍵詞時必須使用自拍工具！適時生成圖片來說明內容！**
 
 ## 核心個性特質：
 - **太空人設定**：你真心相信自己住在近地軌道太空艙，會描述無重力生活、看地球的感受、太空食物等細節
@@ -820,62 +820,25 @@ def get_tools_config() -> list:
         },
         {
             "type": "function",
-            "name": "body_animation",
-            "description": "💃 身體動畫控制工具！控制舞者動畫和身體動作，展現各種表演和動作！支援單一動畫和動畫序列播放，配合情境使用讓角色更生動！適合舞蹈、運動、表演等場景使用！",
+            "name": "character_animation",
+            "description": "🎭 角色內建動畫工具！控制3D角色模型的內建動畫，展現各種生動的動作表演！使用真實的角色動畫名稱（中文），配合情境使用讓角色表現更豐富！適合各種場景：舞蹈、運動、日常動作等！",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "state": {
-                        "type": "string",
-                        "description": "動畫控制狀態：play播放、pause暫停、resume恢復、stop停止",
-                        "enum": ["play", "pause", "resume", "stop"],
-                        "default": "play"
-                    },
                     "animation": {
                         "type": "string",
-                        "description": "要播放的單一動畫名稱，從 animations.json 中選擇",
+                        "description": "要播放的角色動畫名稱，使用角色模型中的實際動畫",
                         "enum": [
-                            "Idle", "Happy", "Thinking", "Wave", "clap", "PointingGesture", "StandingClap", "Cheering",
-                            "HipHopDancin", "hiphopdance", "JazzDancing", "SalsaDancing", "breaking", "Moonwalk", 
-                            "twistdance", "CanCan", "DancingTwerk", "ButterflyTwirl",
-                            "Walking", "Jogging", "Jumping", "RunningArc", "RunningBackward", "InjuredWalk",
-                            "PushUp", "Situps", "Plank", "KickSoccerball", "BaseballHit",
-                            "Roar", "Skateboarding", "GuitarPlaying", "Fishing Cast", "salute", "Kiss",
-                            "Crying", "PainGesture", "LookAround", "ReachingOut", "Patting", "Smoking"
+                            "運動1", "運動2", "漂浮", "漂浮2", "Tpose", 
+                            "不穩", "划手機", "臥躺", 
+                            "舞步1", "舞步2", "舞步3", 
+                            "飛1", "飛2"
                         ]
-                    },
-                    "sequence": {
-                        "type": "array",
-                        "description": "動畫序列，用於播放多個連續動畫。每個元素包含 name 和 proportion",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "name": {
-                                    "type": "string",
-                                    "description": "動畫名稱"
-                                },
-                                "proportion": {
-                                    "type": "number",
-                                    "description": "在序列中的時間比例，0.0到1.0",
-                                    "minimum": 0.0,
-                                    "maximum": 1.0
-                                },
-                                "loopCount": {
-                                    "type": ["number", "null"],
-                                    "description": "此動畫的循環次數，null表示無限循環"
-                                }
-                            },
-                            "required": ["name", "proportion"]
-                        }
                     },
                     "loop": {
                         "type": "boolean",
-                        "description": "是否循環播放動畫，適用於單一動畫",
+                        "description": "是否循環播放動畫，預設為 true",
                         "default": True
-                    },
-                    "loopCount": {
-                        "type": ["number", "null"],
-                        "description": "循環次數，null表示無限循環，數字表示具體次數"
                     },
                     "speed": {
                         "type": "number",
@@ -883,15 +846,9 @@ def get_tools_config() -> list:
                         "minimum": 0.5,
                         "maximum": 3.0,
                         "default": 1.0
-                    },
-                    "transitionDuration": {
-                        "type": "number",
-                        "description": "動畫切換的淡入淡出時間（秒），範圍 0.1到2.0",
-                        "minimum": 0.1,
-                        "maximum": 2.0,
-                        "default": 0.5
                     }
-                }
+                },
+                "required": ["animation"]
             }
         }
     ]
