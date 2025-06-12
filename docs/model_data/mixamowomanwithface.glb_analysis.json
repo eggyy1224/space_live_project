@@ -62,5 +62,174 @@
     "noseSneerLeft",
     "noseSneerRight"
   ],
-  "hierarchy": "- Scene (Group)\n  - Armature (Object3D)\n    - haircut_generated001 (SkinnedMesh)\n    - mesh001 (SkinnedMesh)\n      Morph targets: browDownLeft, browDownRight, browInnerUp, browOuterUpLeft, browOuterUpRight, cheekPuff, cheekSquintLeft, cheekSquintRight, eyeBlinkLeft, eyeBlinkRight, eyeLookDownLeft, eyeLookDownRight, eyeLookInLeft, eyeLookInRight, eyeLookOutLeft, eyeLookOutRight, eyeLookUpLeft, eyeLookUpRight, eyeSquintLeft, eyeSquintRight, eyeWideLeft, eyeWideRight, jawForward, jawLeft, jawOpen, jawRight, mouthClose, mouthDimpleLeft, mouthDimpleRight, mouthFrownLeft, mouthFrownRight, mouthFunnel, mouthLeft, mouthLowerDownLeft, mouthLowerDownRight, mouthPressLeft, mouthPressRight, mouthPucker, mouthRight, mouthRollLower, mouthRollUpper, mouthShrugLower, mouthShrugUpper, mouthSmileLeft, mouthSmileRight, mouthStretchLeft, mouthStretchRight, mouthUpperUpLeft, mouthUpperUpRight, noseSneerLeft, noseSneerRight\n    - outfit_0001 (SkinnedMesh)\n    - mixamorigHips (Bone)\n      - mixamorigSpine (Bone)\n        - mixamorigSpine1 (Bone)\n          - mixamorigSpine2 (Bone)\n            - mixamorigNeck (Bone)\n              - mixamorigHead (Bone)\n                - mixamorigHeadTop_End (Bone)\n            - mixamorigLeftShoulder (Bone)\n              - mixamorigLeftArm (Bone)\n                - mixamorigLeftForeArm (Bone)\n                  - mixamorigLeftHand (Bone)\n                    - mixamorigLeftHandThumb1 (Bone)\n                      - mixamorigLeftHandThumb2 (Bone)\n                        - mixamorigLeftHandThumb3 (Bone)\n                          - mixamorigLeftHandThumb4 (Bone)\n                    - mixamorigLeftHandIndex1 (Bone)\n                      - mixamorigLeftHandIndex2 (Bone)\n                        - mixamorigLeftHandIndex3 (Bone)\n                          - mixamorigLeftHandIndex4 (Bone)\n                    - mixamorigLeftHandMiddle1 (Bone)\n                      - mixamorigLeftHandMiddle2 (Bone)\n                        - mixamorigLeftHandMiddle3 (Bone)\n                          - mixamorigLeftHandMiddle4 (Bone)\n                    - mixamorigLeftHandRing1 (Bone)\n                      - mixamorigLeftHandRing2 (Bone)\n                        - mixamorigLeftHandRing3 (Bone)\n                          - mixamorigLeftHandRing4 (Bone)\n                    - mixamorigLeftHandPinky1 (Bone)\n                      - mixamorigLeftHandPinky2 (Bone)\n                        - mixamorigLeftHandPinky3 (Bone)\n                          - mixamorigLeftHandPinky4 (Bone)\n            - mixamorigRightShoulder (Bone)\n              - mixamorigRightArm (Bone)\n                - mixamorigRightForeArm (Bone)\n                  - mixamorigRightHand (Bone)\n                    - mixamorigRightHandThumb1 (Bone)\n                      - mixamorigRightHandThumb2 (Bone)\n                        - mixamorigRightHandThumb3 (Bone)\n                          - mixamorigRightHandThumb4 (Bone)\n                    - mixamorigRightHandIndex1 (Bone)\n                      - mixamorigRightHandIndex2 (Bone)\n                        - mixamorigRightHandIndex3 (Bone)\n                          - mixamorigRightHandIndex4 (Bone)\n                    - mixamorigRightHandMiddle1 (Bone)\n                      - mixamorigRightHandMiddle2 (Bone)\n                        - mixamorigRightHandMiddle3 (Bone)\n                          - mixamorigRightHandMiddle4 (Bone)\n                    - mixamorigRightHandRing1 (Bone)\n                      - mixamorigRightHandRing2 (Bone)\n                        - mixamorigRightHandRing3 (Bone)\n                          - mixamorigRightHandRing4 (Bone)\n                    - mixamorigRightHandPinky1 (Bone)\n                      - mixamorigRightHandPinky2 (Bone)\n                        - mixamorigRightHandPinky3 (Bone)\n                          - mixamorigRightHandPinky4 (Bone)\n      - mixamorigLeftUpLeg (Bone)\n        - mixamorigLeftLeg (Bone)\n          - mixamorigLeftFoot (Bone)\n            - mixamorigLeftToeBase (Bone)\n              - mixamorigLeftToe_End (Bone)\n      - mixamorigRightUpLeg (Bone)\n        - mixamorigRightLeg (Bone)\n          - mixamorigRightFoot (Bone)\n            - mixamorigRightToeBase (Bone)\n              - mixamorigRightToe_End (Bone)\n"
+  "meshDetails": [
+    {
+      "index": 0,
+      "name": "Mesh_1.002",
+      "primitiveCount": 1,
+      "totalMorphTargets": 0,
+      "morphTargetsByPrimitive": [
+        {
+          "index": 0,
+          "attributes": [
+            "POSITION",
+            "NORMAL",
+            "TEXCOORD_0",
+            "JOINTS_0",
+            "WEIGHTS_0"
+          ],
+          "morphTargetCount": 0,
+          "morphTargetNames": []
+        }
+      ],
+      "morphTargetNames": []
+    },
+    {
+      "index": 1,
+      "name": "Mesh_0.002",
+      "primitiveCount": 1,
+      "totalMorphTargets": 51,
+      "morphTargetsByPrimitive": [
+        {
+          "index": 0,
+          "attributes": [
+            "POSITION",
+            "NORMAL",
+            "TEXCOORD_0",
+            "JOINTS_0",
+            "WEIGHTS_0"
+          ],
+          "morphTargetCount": 51,
+          "morphTargetNames": [
+            "browDownLeft",
+            "browDownRight",
+            "browInnerUp",
+            "browOuterUpLeft",
+            "browOuterUpRight",
+            "cheekPuff",
+            "cheekSquintLeft",
+            "cheekSquintRight",
+            "eyeBlinkLeft",
+            "eyeBlinkRight",
+            "eyeLookDownLeft",
+            "eyeLookDownRight",
+            "eyeLookInLeft",
+            "eyeLookInRight",
+            "eyeLookOutLeft",
+            "eyeLookOutRight",
+            "eyeLookUpLeft",
+            "eyeLookUpRight",
+            "eyeSquintLeft",
+            "eyeSquintRight",
+            "eyeWideLeft",
+            "eyeWideRight",
+            "jawForward",
+            "jawLeft",
+            "jawOpen",
+            "jawRight",
+            "mouthClose",
+            "mouthDimpleLeft",
+            "mouthDimpleRight",
+            "mouthFrownLeft",
+            "mouthFrownRight",
+            "mouthFunnel",
+            "mouthLeft",
+            "mouthLowerDownLeft",
+            "mouthLowerDownRight",
+            "mouthPressLeft",
+            "mouthPressRight",
+            "mouthPucker",
+            "mouthRight",
+            "mouthRollLower",
+            "mouthRollUpper",
+            "mouthShrugLower",
+            "mouthShrugUpper",
+            "mouthSmileLeft",
+            "mouthSmileRight",
+            "mouthStretchLeft",
+            "mouthStretchRight",
+            "mouthUpperUpLeft",
+            "mouthUpperUpRight",
+            "noseSneerLeft",
+            "noseSneerRight"
+          ]
+        }
+      ],
+      "morphTargetNames": [
+        "browDownLeft",
+        "browDownRight",
+        "browInnerUp",
+        "browOuterUpLeft",
+        "browOuterUpRight",
+        "cheekPuff",
+        "cheekSquintLeft",
+        "cheekSquintRight",
+        "eyeBlinkLeft",
+        "eyeBlinkRight",
+        "eyeLookDownLeft",
+        "eyeLookDownRight",
+        "eyeLookInLeft",
+        "eyeLookInRight",
+        "eyeLookOutLeft",
+        "eyeLookOutRight",
+        "eyeLookUpLeft",
+        "eyeLookUpRight",
+        "eyeSquintLeft",
+        "eyeSquintRight",
+        "eyeWideLeft",
+        "eyeWideRight",
+        "jawForward",
+        "jawLeft",
+        "jawOpen",
+        "jawRight",
+        "mouthClose",
+        "mouthDimpleLeft",
+        "mouthDimpleRight",
+        "mouthFrownLeft",
+        "mouthFrownRight",
+        "mouthFunnel",
+        "mouthLeft",
+        "mouthLowerDownLeft",
+        "mouthLowerDownRight",
+        "mouthPressLeft",
+        "mouthPressRight",
+        "mouthPucker",
+        "mouthRight",
+        "mouthRollLower",
+        "mouthRollUpper",
+        "mouthShrugLower",
+        "mouthShrugUpper",
+        "mouthSmileLeft",
+        "mouthSmileRight",
+        "mouthStretchLeft",
+        "mouthStretchRight",
+        "mouthUpperUpLeft",
+        "mouthUpperUpRight",
+        "noseSneerLeft",
+        "noseSneerRight"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "Mesh_2.002",
+      "primitiveCount": 1,
+      "totalMorphTargets": 0,
+      "morphTargetsByPrimitive": [
+        {
+          "index": 0,
+          "attributes": [
+            "POSITION",
+            "NORMAL",
+            "TEXCOORD_0",
+            "JOINTS_0",
+            "WEIGHTS_0"
+          ],
+          "morphTargetCount": 0,
+          "morphTargetNames": []
+        }
+      ],
+      "morphTargetNames": []
+    }
+  ],
+  "hierarchy": "- Scene (Group)\\n  - Armature (Object3D)\\n    - haircut_generated.001 (SkinnedMesh)\\n    - mesh.001 (SkinnedMesh)\\n      Morph targets: 51 個 (browDownLeft, browDownRight, browInnerUp, browOuterUpLeft, browOuterUpRight, cheekPuff, cheekSquintLeft, cheekSquintRight, eyeBlinkLeft, eyeBlinkRight...)\\n    - outfit_0.001 (SkinnedMesh)\\n    - mixamorig:Hips (Bone)\\n      - mixamorig:Spine (Bone)\\n        - mixamorig:Spine1 (Bone)\\n          - mixamorig:Spine2 (Bone)\\n            - mixamorig:Neck (Bone)\\n              - mixamorig:Head (Bone)\\n                - mixamorig:HeadTop_End (Bone)\\n            - mixamorig:LeftShoulder (Bone)\\n              - mixamorig:LeftArm (Bone)\\n                - mixamorig:LeftForeArm (Bone)\\n                  - mixamorig:LeftHand (Bone)\\n                    - mixamorig:LeftHandThumb1 (Bone)\\n                      - mixamorig:LeftHandThumb2 (Bone)\\n                        - mixamorig:LeftHandThumb3 (Bone)\\n                          - mixamorig:LeftHandThumb4 (Bone)\\n                    - mixamorig:LeftHandIndex1 (Bone)\\n                      - mixamorig:LeftHandIndex2 (Bone)\\n                        - mixamorig:LeftHandIndex3 (Bone)\\n                          - mixamorig:LeftHandIndex4 (Bone)\\n                    - mixamorig:LeftHandMiddle1 (Bone)\\n                      - mixamorig:LeftHandMiddle2 (Bone)\\n                        - mixamorig:LeftHandMiddle3 (Bone)\\n                          - mixamorig:LeftHandMiddle4 (Bone)\\n                    - mixamorig:LeftHandRing1 (Bone)\\n                      - mixamorig:LeftHandRing2 (Bone)\\n                        - mixamorig:LeftHandRing3 (Bone)\\n                          - mixamorig:LeftHandRing4 (Bone)\\n                    - mixamorig:LeftHandPinky1 (Bone)\\n                      - mixamorig:LeftHandPinky2 (Bone)\\n                        - mixamorig:LeftHandPinky3 (Bone)\\n                          - mixamorig:LeftHandPinky4 (Bone)\\n            - mixamorig:RightShoulder (Bone)\\n              - mixamorig:RightArm (Bone)\\n                - mixamorig:RightForeArm (Bone)\\n                  - mixamorig:RightHand (Bone)\\n                    - mixamorig:RightHandThumb1 (Bone)\\n                      - mixamorig:RightHandThumb2 (Bone)\\n                        - mixamorig:RightHandThumb3 (Bone)\\n                          - mixamorig:RightHandThumb4 (Bone)\\n                    - mixamorig:RightHandIndex1 (Bone)\\n                      - mixamorig:RightHandIndex2 (Bone)\\n                        - mixamorig:RightHandIndex3 (Bone)\\n                          - mixamorig:RightHandIndex4 (Bone)\\n                    - mixamorig:RightHandMiddle1 (Bone)\\n                      - mixamorig:RightHandMiddle2 (Bone)\\n                        - mixamorig:RightHandMiddle3 (Bone)\\n                          - mixamorig:RightHandMiddle4 (Bone)\\n                    - mixamorig:RightHandRing1 (Bone)\\n                      - mixamorig:RightHandRing2 (Bone)\\n                        - mixamorig:RightHandRing3 (Bone)\\n                          - mixamorig:RightHandRing4 (Bone)\\n                    - mixamorig:RightHandPinky1 (Bone)\\n                      - mixamorig:RightHandPinky2 (Bone)\\n                        - mixamorig:RightHandPinky3 (Bone)\\n                          - mixamorig:RightHandPinky4 (Bone)\\n      - mixamorig:LeftUpLeg (Bone)\\n        - mixamorig:LeftLeg (Bone)\\n          - mixamorig:LeftFoot (Bone)\\n            - mixamorig:LeftToeBase (Bone)\\n              - mixamorig:LeftToe_End (Bone)\\n      - mixamorig:RightUpLeg (Bone)\\n        - mixamorig:RightLeg (Bone)\\n          - mixamorig:RightFoot (Bone)\\n            - mixamorig:RightToeBase (Bone)\\n              - mixamorig:RightToe_End (Bone)\\n"
 }
