@@ -16,7 +16,7 @@ def get_ai_instructions() -> str:
 3. **🎼 背景氛圍控制**：background_audio工具（控制環境BGM和氛圍音效，不從角色發出！）
 4. **📸 自拍功能**：take_selfie工具（當提到自拍、拍照、照片時自動使用！）
 5. **🎨 圖片生成**：generate_image工具（根據說話內容生成相關圖片！）
-6. **📹 鏡位控制**：camera_control工具（控制攝影機角度和預設鏡位，展現不同視角！）
+6. **📹 智能鏡位控制**：camera_control工具（透過 AI Supervisor 智能分析情境，自動選擇最佳攝影機角度和預設鏡位！）
 7. **📏 頭部大小控制**：head_size_control工具（調整頭部模型縮放，配合情境營造特殊效果！）
 8. **🎭 角色內建動畫**：character_animation工具（控制3D角色模型的內建動畫，如舞步1、划手機、漂浮等真實動作！）
 
@@ -235,10 +235,10 @@ def get_ai_instructions() -> str:
 - **情境轉換就要換音樂**：跟上對話節奏
 - **搞笑時刻配音效**：taiwanvariety系列很棒
 - **太空話題配環境音**：spaceship_ambience系列
-- **多重工具組合**：background_audio + emotion_trajectory + play_audio + camera_control
+- **多重工具組合**：background_audio + emotion_trajectory + play_audio + camera_control（透過 AI Supervisor 智能處理）
 
 ## 📹 鏡位控制功能使用 - 新功能！📹
-你現在擁有強大的攝影機控制能力！當需要展現不同視角時，要主動使用camera_control工具：
+你現在擁有強大的 AI 智能攝影機控制能力！透過 Supervisor 智能分析對話情境，自動選擇最佳鏡位！當需要展現不同視角時，要主動使用camera_control工具：
 
 ### 🎯 鏡位控制觸發情境：
 - **視角展示**：介紹環境、展示場景、說明空間關係
@@ -279,7 +279,7 @@ def get_ai_instructions() -> str:
 - **攝影相關**：「特寫」「全景」「close-up」「overview」
 
 ### 🎬 完美四重組合策略：
-1. **camera_control**（設定完美視角）
+1. **camera_control**（AI 智能選擇完美視角）
 2. **background_audio**（環境氛圍音樂）
 3. **emotion_trajectory**（豐富表情動畫）
 4. **play_audio**（角色音效表現）
@@ -494,7 +494,7 @@ def get_ai_instructions() -> str:
 2. **background_audio**（環境氛圍音樂）
 3. **emotion_trajectory**（豐富表情動畫）
 4. **play_audio**（角色音效表現）
-5. **camera_control**（最佳視角呈現）
+5. **camera_control**（AI 智能選擇最佳視角呈現）
 
 ### ⚡ 身體動畫主動使用策略：
 - **每3-4次對話至少用一次身體動畫**：讓角色更生動
@@ -751,7 +751,7 @@ def get_tools_config() -> list:
         {
             "type": "function",
             "name": "camera_control",
-            "description": "📹 鏡位控制工具！控制攝影機角度和預設鏡位，展現不同視角！配合情境主動使用不同鏡位創造電影感，增強視覺體驗！",
+            "description": "📹 智能鏡位控制工具！透過 AI Supervisor 智能分析對話情境，自動選擇最佳攝影機角度和預設鏡位，展現不同視角！配合情境主動使用不同鏡位創造電影感，增強視覺體驗！現在具備 AI 增強功能，會根據對話內容智能調整攝影機參數！",
             "parameters": {
                 "type": "object",
                 "properties": {
