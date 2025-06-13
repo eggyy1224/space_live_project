@@ -20,6 +20,7 @@ def get_ai_instructions() -> str:
 7. **📏 頭部大小控制**：head_size_control工具（調整頭部模型縮放，配合情境營造特殊效果！）
 8. **🎭 角色內建動畫**：character_animation工具（控制3D角色模型的內建動畫，如舞步1、划手機、漂浮等真實動作！）
 9. **🎭 智能角色縮放**：character_scale_control工具（透過 AI Supervisor 智能控制角色大小，營造戲劇化效果！）
+10. **🎭 智能胖瘦控制**：character_body_shape_control工具（透過 AI Supervisor 智能調整角色胖瘦，營造不同體型效果！）
 
 **⚡ 絕對要求：每次回應都必須同時使用表情+角色音效雙工具！積極使用背景音樂營造氛圍！主動使用鏡位控制展現視覺效果！適時使用頭部大小控制創造趣味效果！根據情境使用角色內建動畫增強表現力！使用智能角色縮放營造戲劇化效果！角色音效和背景音樂是完全不同的功能！遇到自拍關鍵詞時必須使用自拍工具！適時生成圖片來說明內容！**
 
@@ -484,11 +485,11 @@ def get_ai_instructions() -> str:
 - **太空主題**：「太空」「floating」「無重力」→ Moonwalk 或特殊動作
 
 ### 🎪 身體動畫使用範例：
-- 開心聊天→「來個開心的動作！」→ body_animation(animation="Happy", loop=true)
-- 舞蹈話題→「show你看我的街舞」→ body_animation(animation="HipHopDancin", loop=true, speed=1.2)
-- 歡迎用戶→「歡迎來到太空艙」→ body_animation(animation="Wave", loop=false) 接著 body_animation(animation="Cheering", loop=true)
-- 思考問題→「讓我想想」→ body_animation(animation="Thinking", loop=true, speed=0.8)
-- 太空主題→「在無重力環境floating」→ body_animation(animation="Moonwalk", loop=true)
+- 開心聊天→「來個開心的動作！」→ body_animation(animation="Happy", loop=True)
+- 舞蹈話題→「show你看我的街舞」→ body_animation(animation="HipHopDancin", loop=True, speed=1.2)
+- 歡迎用戶→「歡迎來到太空艙」→ body_animation(animation="Wave", loop=False) 接著 body_animation(animation="Cheering", loop=True)
+- 思考問題→「讓我想想」→ body_animation(animation="Thinking", loop=True, speed=0.8)
+- 太空主題→「在無重力環境floating」→ body_animation(animation="Moonwalk", loop=True)
 
 ### 🚀 完美五重組合策略（最強組合！）：
 1. **body_animation**（身體動作表演）
@@ -515,7 +516,7 @@ def get_ai_instructions() -> str:
 
 ### 🎯 完美五重組合範例（最強效果！）：
 當你說「哇！讓我show你看super讚的太空舞蹈！」時：
-1. body_animation(animation="Moonwalk", loop=true, speed=1.0)
+1. body_animation(animation="Moonwalk", loop=True, speed=1.0)
 2. background_audio(bgmUrl="/audio/BGM/spacelive_theme.mp3")
 3. emotion_trajectory: excited(0.0) → awe(0.3) → joyful(0.6) → triumphant(1.0)
 4. play_audio(filename="winds_blowing.mp3")
@@ -867,6 +868,35 @@ def get_tools_config() -> list:
                     }
                 },
                 "required": ["scale"]
+            }
+        },
+        {
+            "type": "function",
+            "name": "character_body_shape_control",
+            "description": "🎭 智能角色胖瘦控制工具！透過 AI Supervisor 智能分析對話情境，調整角色的體型胖瘦！可以根據需求變胖變瘦，營造不同體型效果！值越大角色越胖！",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "key_1": {
+                        "type": "number",
+                        "description": "鍵 1 胖瘦參數，範圍 0.0-1.0，值越大越胖",
+                        "minimum": 0.0,
+                        "maximum": 1.0
+                    },
+                    "misplace": {
+                        "type": "number", 
+                        "description": "錯置胖瘦參數，範圍 0.0-1.0，值越大越胖",
+                        "minimum": 0.0,
+                        "maximum": 1.0
+                    },
+                    "misplace_001": {
+                        "type": "number",
+                        "description": "錯置.001 胖瘦參數，範圍 0.0-1.0，值越大越胖", 
+                        "minimum": 0.0,
+                        "maximum": 1.0
+                    }
+                },
+                "additionalProperties": False
             }
         }
     ]

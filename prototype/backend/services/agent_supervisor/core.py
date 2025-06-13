@@ -135,6 +135,7 @@ class SupervisorManager:
             "character_position_control": "position", 
             "character_rotation_control": "rotation",
             "character_outfit_control": "outfit",
+            "character_body_shape_control": "body_shape",  # 新增：胖瘦控制
             "character_visibility_control": "visibility",
             "character_reset_transform": "reset-transform"
         }

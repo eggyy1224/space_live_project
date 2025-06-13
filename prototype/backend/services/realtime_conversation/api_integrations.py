@@ -136,6 +136,7 @@ class APIIntegrations:
             "character_position_control", 
             "character_rotation_control",
             "character_outfit_control",
+            "character_body_shape_control",  # 新增：胖瘦控制
             "character_visibility_control",
             "character_reset_transform",
             # 未來可以加入更多複雜工具

@@ -39,6 +39,8 @@ class CharacterControlAgent:
                 return await self._handle_character_animation(arguments)
             elif control_type == "outfit":
                 return await self._handle_character_outfit(arguments)
+            elif control_type == "body_shape":
+                return await self._handle_character_body_shape(arguments)
             elif control_type == "visibility":
                 return await self._handle_character_visibility(arguments)
             elif control_type == "reset-transform":
@@ -427,4 +429,106 @@ class CharacterControlAgent:
             return {
                 "success": False,
                 "error": f"Failed to reset character transform: {str(e)}"
+            }
+    
+    async def _handle_character_body_shape(self, arguments: dict) -> dict:
+        """處理角色胖瘦控制（透過 outfit morph targets）"""
+        try:
+            # 獲取胖瘦參數
+            key_1 = arguments.get("key_1", 0.0)  # 鍵 1
+            misplace = arguments.get("misplace", 0.0)  # 錯置
+            misplace_001 = arguments.get("misplace_001", 0.0)  # 錯置.001
+            
+            # 驗證參數範圍 (0.0-1.0)
+            for name, value in [("key_1", key_1), ("misplace", misplace), ("misplace_001", misplace_001)]:
+                if not isinstance(value, (int, float)) or not (0.0 <= value <= 1.0):
+                    return {
+                        "success": False,
+                        "error": f"{name} must be a number between 0.0 and 1.0"
+                    }
+            
+            # 驗證至少一個參數大於等於 0.1
+            if key_1 < 0.1 and misplace < 0.1 and misplace_001 < 0.1:
+                return {
+                    "success": False,
+                    "error": "At least one body shape parameter must be >= 0.1 (cannot all be 0)"
+                }
+            
+            # 構建 outfit morph targets
+            outfit_morphs = {
+                "鍵 1": key_1,
+                "錯置": misplace,
+                "錯置.001": misplace_001
+            }
+            
+            # 過濾掉 0 值（可選優化）
+            outfit_morphs = {k: v for k, v in outfit_morphs.items() if v > 0.0}
+            
+            request_data = {
+                "outfit_morphs": outfit_morphs
+            }
+            
+            logger.info(f"🎭 準備設置角色胖瘦: key_1={key_1}, misplace={misplace}, misplace_001={misplace_001}")
+            logger.info(f"🌐 發送請求到: {self.base_url}/api/control/character/outfit")
+            logger.info(f"📦 請求數據: {request_data}")
+            
+            # 調用角色服裝 API（outfit API 處理 morph targets）
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{self.base_url}/api/control/character/outfit",
+                    json=request_data,
+                    headers={"Content-Type": "application/json"},
+                    timeout=aiohttp.ClientTimeout(total=5)
+                ) as response:
+                    response_text = await response.text()
+                    
+                    logger.info(f"🔄 HTTP 回應狀態: {response.status}")
+                    logger.info(f"📄 HTTP 回應內容: {response_text}")
+                    
+                    if response.status == 200:
+                        try:
+                            result = json.loads(response_text) if response_text else {}
+                            logger.info(f"✅ 成功控制角色胖瘦")
+                            
+                            # 構建描述性消息
+                            shape_desc = []
+                            if key_1 > 0:
+                                shape_desc.append(f"鍵 1: {key_1:.2f}")
+                            if misplace > 0:
+                                shape_desc.append(f"錯置: {misplace:.2f}")
+                            if misplace_001 > 0:
+                                shape_desc.append(f"錯置.001: {misplace_001:.2f}")
+                            
+                            shape_message = "角色體型已調整: " + ", ".join(shape_desc)
+                            
+                            return {
+                                "success": True,
+                                "message": shape_message,
+                                "result": result,
+                                "action": "body_shape",
+                                "body_shape": {
+                                    "key_1": key_1,
+                                    "misplace": misplace,
+                                    "misplace_001": misplace_001
+                                }
+                            }
+                        except json.JSONDecodeError:
+                            logger.info(f"✅ 成功控制角色胖瘦 (無JSON回應)")
+                            return {
+                                "success": True,
+                                "message": f"角色體型已調整",
+                                "action": "body_shape"
+                            }
+                    else:
+                        logger.error(f"❌ 角色胖瘦控制失敗: HTTP {response.status} - {response_text}")
+                        return {
+                            "success": False,
+                            "error": f"HTTP {response.status}: {response_text}"
+                        }
+                        
+        except Exception as e:
+            logger.error(f"❌ 角色胖瘦處理錯誤: {e}")
+            return {
+                "success": False,
+                "error": f"Failed to control character body shape: {str(e)}"
             } 
