@@ -10,9 +10,11 @@ import logging
 import websockets
 from typing import AsyncIterator, AsyncGenerator
 from websockets.exceptions import ConnectionClosed
+from pathlib import Path
 
 from .utils import pcm_to_wav
 from .session_config import create_session_config
+from .logging import WebSocketLogger
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +25,7 @@ class WebSocketHandler:
     def __init__(self, api_key: str):
         self.api_key = api_key
         self._current_ws = None
+        self._session_logger = None
     
     async def stream_conversation(
         self, audio_chunks: AsyncIterator[bytes]
@@ -34,11 +37,17 @@ class WebSocketHandler:
             "OpenAI-Beta": "realtime=v1"
         }
         
+        # 初始化會話日誌記錄器
+        logs_dir = Path(__file__).parent / "logging" / "logs"
+        self._session_logger = WebSocketLogger(str(logs_dir))
+        
         logger.info("Connecting to OpenAI Realtime API via WebSocket...")
+        self._session_logger.log_connection_start(url, headers)
         
         try:
             async with websockets.connect(url, additional_headers=headers) as ws:
                 logger.info("Connected to OpenAI Realtime API")
+                self._session_logger.log_connection_success()
                 
                 # 儲存WebSocket引用以供其他方法使用
                 self._current_ws = ws
@@ -102,18 +111,28 @@ class WebSocketHandler:
                             
                 except asyncio.CancelledError:
                     logger.info("Realtime conversation cancelled")
+                    if self._session_logger:
+                        self._session_logger.log_connection_closed("Cancelled by user")
                 finally:
                     # 取消所有任務
                     receive_task.cancel()
                     send_task.cancel()
                     # 清理WebSocket引用
                     self._current_ws = None
+                    # 關閉日誌記錄器
+                    if self._session_logger:
+                        self._session_logger.log_connection_closed("Normal closure")
+                        self._session_logger = None
                     
         except ConnectionClosed:
             logger.error("WebSocket connection to OpenAI was closed")
+            if self._session_logger:
+                self._session_logger.log_connection_closed("WebSocket connection closed")
             raise
         except Exception as e:
             logger.error(f"Error in OpenAI Realtime WebSocket: {e}")
+            if self._session_logger:
+                self._session_logger.log_error("WEBSOCKET_ERROR", str(e))
             raise
 
     async def _send_session_update(self, ws):
@@ -121,6 +140,10 @@ class WebSocketHandler:
         session_event = create_session_config()
         await ws.send(json.dumps(session_event))
         logger.info("Sent session configuration with tools to OpenAI")
+        
+        # 記錄會話配置
+        if self._session_logger:
+            self._session_logger.log_session_config_sent(session_event)
 
     async def _send_audio_to_openai(self, ws, audio_chunks: AsyncIterator[bytes]):
         """發送音頻數據到 OpenAI"""
@@ -139,11 +162,17 @@ class WebSocketHandler:
                     await ws.send(json.dumps(audio_event))
                     logger.info(f"Sent audio chunk #{chunk_count}: {len(chunk)} bytes (PCM16 format)")
                     
+                    # 記錄音頻塊發送
+                    if self._session_logger:
+                        self._session_logger.log_audio_chunk_sent(chunk_count, len(chunk))
+                    
                     # 依賴 OpenAI 的 server_vad 自動檢測語音結束並回應
                     # 不再手動觸發回應
                         
         except Exception as e:
             logger.error(f"Error sending audio to OpenAI: {e}")
+            if self._session_logger:
+                self._session_logger.log_error("AUDIO_SEND_ERROR", str(e))
 
     async def _receive_openai_responses(self, ws, audio_queue: asyncio.Queue, interrupt_queue: asyncio.Queue, text_queue: asyncio.Queue):
         """接收來自 OpenAI 的回應"""
@@ -156,6 +185,8 @@ class WebSocketHandler:
             logger.info("OpenAI WebSocket connection closed")
         except Exception as e:
             logger.error(f"Error receiving from OpenAI: {e}")
+            if self._session_logger:
+                self._session_logger.log_error("AUDIO_RECEIVE_ERROR", str(e))
         finally:
             # 發送結束信號
             await audio_queue.put(None)
@@ -165,6 +196,10 @@ class WebSocketHandler:
         try:
             event = json.loads(message)
             logger.debug(f"Received event: {event.get('type')}")
+            
+            # 記錄接收到的事件
+            if self._session_logger:
+                self._session_logger.log_event_received(event.get('type', 'unknown'), event)
             
             # 處理音頻回應
             if event.get("type") == "response.audio.delta":
@@ -176,6 +211,11 @@ class WebSocketHandler:
                     # 將 PCM16 數據轉換為 WAV 格式
                     wav_data = pcm_to_wav(pcm_data)
                     logger.info(f"Converted to WAV: {len(wav_data)} bytes")
+                    
+                    # 記錄音頻處理
+                    if self._session_logger:
+                        self._session_logger.log_audio_processed(len(pcm_data), len(wav_data))
+                    
                     # 使用 put_nowait 避免阻塞，如果隊列滿則跳過
                     try:
                         audio_queue.put_nowait(wav_data)
@@ -206,6 +246,10 @@ class WebSocketHandler:
                             "success": False,
                             "error": "No tool executor configured"
                         }
+                    
+                    # 記錄 Function Call 執行結果
+                    if self._session_logger:
+                        self._session_logger.log_function_call_executed(function_name, call_id, tool_result)
                     
                     # 發送工具結果回OpenAI - 使用正確的格式
                     tool_result_event = {
@@ -289,8 +333,21 @@ class WebSocketHandler:
                     logger.debug("No active response to cancel - this is normal")
                 elif error_code == "invalid_value":
                     logger.error(f"Invalid event type sent: {error_message}")
+                    # 記錄詳細錯誤到會話日誌
+                    if self._session_logger:
+                        self._session_logger.log_error("INVALID_VALUE_ERROR", error_message, {
+                            "error_code": error_code,
+                            "full_event": event
+                        })
                 else:
                     logger.error(f"OpenAI API error: {event}")
+                    # 記錄詳細錯誤到會話日誌
+                    if self._session_logger:
+                        self._session_logger.log_error("OPENAI_API_ERROR", error_message, {
+                            "error_code": error_code,
+                            "error_info": error_info,
+                            "full_event": event
+                        })
                 
             # 處理會話創建
             elif event.get("type") == "session.created":
@@ -302,8 +359,12 @@ class WebSocketHandler:
                 
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse JSON message: {e}")
+            if self._session_logger:
+                self._session_logger.log_error("JSON_PARSE_ERROR", str(e), {"message": message})
         except Exception as e:
             logger.error(f"Error processing OpenAI response: {e}")
+            if self._session_logger:
+                self._session_logger.log_error("EVENT_PROCESSING_ERROR", str(e))
 
     async def _ws_send_safe(self, event_dict):
         """安全地發送WebSocket消息，避免阻塞"""
