@@ -10,6 +10,7 @@ import openai
 from openai import OpenAI
 
 from .camera_agent import CameraControlAgent
+from .character_agent import CharacterControlAgent
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +27,12 @@ class SupervisorManager:
         
         # 初始化專門的 Agent
         self.camera_agent = CameraControlAgent()
+        self.character_agent = CharacterControlAgent()
         
         # Agent 註冊表
         self.agents = {
-            'camera_control': self.camera_agent
+            'camera_control': self.camera_agent,
+            'character_control': self.character_agent
         }
         
         logger.info("🎭 SupervisorManager 初始化完成")
@@ -56,6 +59,8 @@ class SupervisorManager:
             # 根據工具名稱路由到對應的 Agent
             if tool_name == "camera_control":
                 return await self._handle_camera_control(arguments, context)
+            elif tool_name.startswith("character_"):
+                return await self._handle_character_control(tool_name, arguments, context)
             else:
                 return {
                     "success": False,
@@ -91,6 +96,51 @@ class SupervisorManager:
                 "error": f"Camera control failed: {str(e)}"
             }
     
+    async def _handle_character_control(self, tool_name: str, arguments: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """
+        處理角色控制請求（統一入口）
+        使用專門的 Character Agent 進行智能決策
+        """
+        try:
+            # 從工具名稱解析控制類型
+            control_type = self._parse_character_control_type(tool_name)
+            
+            logger.info(f"🎭 處理角色控制: {control_type}")
+            
+            # 使用 GPT-4 進行智能分析和決策
+            enhanced_arguments = await self._enhance_character_decision(control_type, arguments, context)
+            
+            # 委託給專門的 Character Agent 執行
+            result = await self.character_agent.execute_character_control(control_type, enhanced_arguments)
+            
+            logger.info(f"🎭 角色控制執行結果: {result}")
+            return result
+            
+        except Exception as e:
+            logger.error(f"❌ 角色控制處理失敗: {e}")
+            return {
+                "success": False,
+                "error": f"Character control failed: {str(e)}"
+            }
+    
+    def _parse_character_control_type(self, tool_name: str) -> str:
+        """從工具名稱解析角色控制類型"""
+        # character_scale_control -> scale
+        # character_position_control -> position
+        # character_rotation_control -> rotation
+        # 等等...
+        
+        control_mapping = {
+            "character_scale_control": "scale",
+            "character_position_control": "position", 
+            "character_rotation_control": "rotation",
+            "character_outfit_control": "outfit",
+            "character_visibility_control": "visibility",
+            "character_reset_transform": "reset-transform"
+        }
+        
+        return control_mapping.get(tool_name, tool_name.replace("character_", "").replace("_control", ""))
+
     async def _enhance_camera_decision(self, arguments: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         使用 GPT-4 增強攝影機控制決策
@@ -144,6 +194,57 @@ class SupervisorManager:
             logger.warning(f"⚠️ 智能決策增強失敗，使用原始參數: {e}")
             return arguments
     
+    async def _enhance_character_decision(self, control_type: str, arguments: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """
+        使用 GPT-4 增強角色控制決策
+        根據對話上下文選擇最適合的角色縮放參數
+        """
+        try:
+            # 如果已經指定了具體參數，直接返回
+            if "scale" in arguments:
+                return arguments
+            
+            # 構建智能決策的 prompt
+            system_prompt = """你是一個專業的角色控制助手。根據對話情境和用戶需求，選擇最適合的角色縮放比例。
+
+角色縮放範圍：
+- 0.1-0.5: 迷你模式，適合可愛或神秘效果
+- 0.6-0.9: 小型，適合謙虛或低調場景
+- 1.0: 正常大小
+- 1.1-2.0: 稍大，適合自信或重要時刻
+- 2.1-5.0: 大型，適合展示力量或驚喜
+- 5.1-15.0: 巨大，適合戲劇化效果或特殊場景
+
+請根據情境選擇最適合的縮放比例。"""
+            
+            user_prompt = f"""
+            角色控制請求參數: {json.dumps(arguments, ensure_ascii=False)}
+            對話上下文: {json.dumps(context, ensure_ascii=False) if context else "無"}
+            
+            請返回JSON格式的角色控制參數，包含：
+            - scale: 縮放比例（0.1-15.0）
+            """
+            
+            response = self.client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.3
+            )
+            
+            enhanced_params = json.loads(response.choices[0].message.content)
+            logger.info(f"🧠 GPT-4 角色決策增強結果: {enhanced_params}")
+            
+            # 合併原始參數和增強參數
+            final_arguments = {**arguments, **enhanced_params}
+            return final_arguments
+            
+        except Exception as e:
+            logger.warning(f"⚠️ 角色智能決策增強失敗，使用原始參數: {e}")
+            return arguments
+    
     def get_available_tools(self) -> list:
         """獲取 Supervisor 可用的工具列表"""
         return [
@@ -157,7 +258,7 @@ class SupervisorManager:
                         "tool_name": {
                             "type": "string",
                             "description": "要執行的工具名稱",
-                            "enum": ["camera_control"]
+                            "enum": ["camera_control", "character_scale_control"]
                         },
                         "arguments": {
                             "type": "object",

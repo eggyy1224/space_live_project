@@ -76,11 +76,18 @@ class APIIntegrations:
                 logger.info(f"🎭 character_animation 處理結果: {result}")
                 return result
             else:
-                logger.warning(f"❓ 未知工具函數: {function_name}")
-                return {
-                    "success": False,
-                    "error": f"Unknown function: {function_name}"
-                }
+                # 🎯 智能路由：如果 realtime 無法處理，轉發給 Supervisor
+                logger.info(f"🤖 Realtime 無法處理 {function_name}，嘗試轉發給 Supervisor")
+                result = await self._try_supervisor_fallback(function_name, arguments)
+                if result["success"]:
+                    logger.info(f"✅ Supervisor 成功處理: {function_name}")
+                    return result
+                else:
+                    logger.warning(f"❓ 未知工具函數: {function_name}")
+                    return {
+                        "success": False,
+                        "error": f"Unknown function: {function_name}"
+                    }
                 
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse function arguments: {e}")
@@ -94,6 +101,45 @@ class APIIntegrations:
                 "success": False,
                 "error": f"Tool execution failed: {str(e)}"
             }
+
+    async def _try_supervisor_fallback(self, function_name: str, arguments: dict) -> dict:
+        """嘗試透過 Supervisor 處理未知或複雜的工具請求"""
+        try:
+            logger.info(f"🎭 嘗試將 {function_name} 轉發給 Supervisor")
+            
+            # 檢查 Supervisor 是否支援這個工具
+            if function_name in self._get_supervisor_supported_tools():
+                # 調用 Supervisor 處理
+                result = await self.supervisor.handle_tool_request(
+                    tool_name=function_name,
+                    arguments=arguments,
+                    context=None  # 之後可以加入對話上下文
+                )
+                return result
+            else:
+                return {
+                    "success": False,
+                    "error": f"Tool not supported by Supervisor: {function_name}"
+                }
+            
+        except Exception as e:
+            logger.error(f"❌ Supervisor fallback 失敗: {e}")
+            return {
+                "success": False,
+                "error": f"Supervisor fallback failed: {str(e)}"
+            }
+    
+    def _get_supervisor_supported_tools(self) -> list:
+        """獲取 Supervisor 支援的工具列表"""
+        return [
+            "character_scale_control",
+            "character_position_control", 
+            "character_rotation_control",
+            "character_outfit_control",
+            "character_visibility_control",
+            "character_reset_transform",
+            # 未來可以加入更多複雜工具
+        ]
 
     async def _handle_camera_control_via_supervisor(self, arguments: dict) -> dict:
         """透過 Supervisor 處理攝影機控制"""
