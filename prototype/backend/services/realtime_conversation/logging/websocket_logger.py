@@ -193,6 +193,28 @@ class WebSocketLogger:
             "timestamp": datetime.now().isoformat()
         })
     
+    def log_user_transcript_delta(self, transcript_delta: str):
+        """記錄用戶輸入轉錄增量"""
+        if not self._is_active:
+            return
+            
+        self._write_log("USER_TRANSCRIPT", "DELTA", {
+            "transcript_delta": transcript_delta,
+            "delta_length": len(transcript_delta),
+            "timestamp": datetime.now().isoformat()
+        })
+    
+    def log_user_transcript_completed(self, transcript: str):
+        """記錄用戶輸入轉錄完成"""
+        if not self._is_active:
+            return
+            
+        self._write_log("USER_TRANSCRIPT", "COMPLETED", {
+            "transcript": transcript,
+            "transcript_length": len(transcript),
+            "timestamp": datetime.now().isoformat()
+        })
+    
     def log_error(self, error_type: str, error_message: str, details: Optional[Dict[str, Any]] = None):
         """記錄錯誤事件"""
         if not self._is_active:

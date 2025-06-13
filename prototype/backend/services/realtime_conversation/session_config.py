@@ -921,6 +921,9 @@ def create_session_config() -> dict:
             "voice": "coral",
             "input_audio_format": "pcm16",
             "output_audio_format": "pcm16",
+            "input_audio_transcription": {
+                "model": "whisper-1"
+            },
             "tools": get_tools_config(),
             "tool_choice": "auto",
             "turn_detection": {

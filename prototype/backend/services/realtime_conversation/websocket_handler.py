@@ -323,6 +323,38 @@ class WebSocketHandler:
                     except asyncio.QueueFull:
                         logger.warning("Text queue is full, skipping text delta")
             
+            # 處理用戶輸入轉錄 - 新增！
+            elif event.get("type") == "conversation.item.input_audio_transcription.delta":
+                user_transcript_delta = event.get('delta', '')
+                if user_transcript_delta:
+                    logger.info(f"👤 User transcript delta: {user_transcript_delta}")
+                    # 記錄用戶輸入轉錄增量
+                    if self._session_logger:
+                        self._session_logger.log_user_transcript_delta(user_transcript_delta)
+            
+            # 處理用戶輸入轉錄完成 - 新增！
+            elif event.get("type") == "conversation.item.input_audio_transcription.completed":
+                user_transcript = event.get('transcript', '')
+                if user_transcript:
+                    logger.info(f"👤 User transcript completed: {user_transcript}")
+                    # 記錄完整的用戶輸入轉錄
+                    if self._session_logger:
+                        self._session_logger.log_user_transcript_completed(user_transcript)
+            
+            # 處理會話物品創建 - 檢查用戶輸入
+            elif event.get("type") == "conversation.item.created":
+                item = event.get("item", {})
+                if item.get("role") == "user":
+                    logger.info(f"👤 User conversation item created: {item.get('id')}")
+                    # 檢查是否有直接的轉錄內容
+                    content = item.get("content", [])
+                    for content_item in content:
+                        if content_item.get("type") == "input_audio" and content_item.get("transcript"):
+                            transcript = content_item.get("transcript")
+                            logger.info(f"👤 User input transcript from item: {transcript}")
+                            if self._session_logger:
+                                self._session_logger.log_user_transcript_completed(transcript)
+            
             # 處理錯誤 - 改善錯誤處理
             elif event.get("type") == "error":
                 error_info = event.get("error", {})

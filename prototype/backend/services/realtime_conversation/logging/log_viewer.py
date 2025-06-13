@@ -293,6 +293,152 @@ class LogViewer:
         # 提取轉錄內容
         self._extract_transcript_from_file(target_session["file_path"], target_session["session_id"])
     
+    def extract_user_transcript(self, session_index: int = None, session_id: str = None):
+        """提取用戶輸入的完整轉錄內容"""
+        sessions = self.list_sessions()
+        
+        if not sessions:
+            print("📭 沒有找到任何會話日誌")
+            return
+        
+        # 選擇會話
+        target_session = None
+        
+        if session_index is not None:
+            if 1 <= session_index <= len(sessions):
+                target_session = sessions[session_index - 1]
+            else:
+                print(f"❌ 無效的會話索引: {session_index}")
+                return
+        elif session_id is not None:
+            for session in sessions:
+                if session["session_id"] == session_id:
+                    target_session = session
+                    break
+            if not target_session:
+                print(f"❌ 找不到會話 ID: {session_id}")
+                return
+        else:
+            # 默認提取最新的會話
+            target_session = sessions[0]
+        
+        # 提取用戶輸入轉錄內容
+        self._extract_user_transcript_from_file(target_session["file_path"], target_session["session_id"])
+    
+    def _extract_user_transcript_from_file(self, file_path: str, session_id: str):
+        """從日誌檔案中提取用戶輸入轉錄內容"""
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+            
+            print(f"👤 提取用戶輸入內容: {session_id}")
+            print("=" * 80)
+            
+            # 收集用戶轉錄片段
+            user_transcript_segments = []
+            user_deltas = []
+            current_transcript = ""
+            
+            for line in lines:
+                try:
+                    # 檢查用戶轉錄增量
+                    if "USER_TRANSCRIPT" in line and "DELTA" in line:
+                        parts = line.strip().split(' | ', 2)
+                        if len(parts) < 3:
+                            continue
+                        
+                        timestamp = parts[0].strip("[]")
+                        data_json = parts[2]
+                        data = json.loads(data_json)
+                        
+                        if "transcript_delta" in data:
+                            delta_text = data["transcript_delta"]
+                            current_transcript += delta_text
+                            user_deltas.append({
+                                "timestamp": timestamp,
+                                "delta": delta_text
+                            })
+                    
+                    # 檢查用戶轉錄完成
+                    elif "USER_TRANSCRIPT" in line and "COMPLETED" in line:
+                        parts = line.strip().split(' | ', 2)
+                        if len(parts) < 3:
+                            continue
+                        
+                        timestamp = parts[0].strip("[]")
+                        data_json = parts[2]
+                        data = json.loads(data_json)
+                        
+                        if "transcript" in data:
+                            completed_text = data["transcript"]
+                            user_transcript_segments.append({
+                                "timestamp": timestamp,
+                                "content": completed_text,
+                                "deltas_count": len(user_deltas)
+                            })
+                            # 重置累積的轉錄
+                            current_transcript = ""
+                            user_deltas = []
+                    
+                    # 檢查會話項目中的轉錄內容（備用方法）
+                    elif "CONVERSATION_ITEM_CREATED" in line:
+                        parts = line.strip().split(' | ', 2)
+                        if len(parts) < 3:
+                            continue
+                        
+                        timestamp = parts[0].strip("[]")
+                        data_json = parts[2]
+                        data = json.loads(data_json)
+                        
+                        # 檢查事件摘要中是否有用戶角色
+                        event_summary = data.get("event_summary", {})
+                        if isinstance(event_summary, dict) and "role" in str(event_summary):
+                            print(f"🔍 檢查到對話項目: {timestamp}")
+                            
+                except (json.JSONDecodeError, KeyError):
+                    continue
+            
+            # 如果有未完成的增量轉錄，也加入結果
+            if current_transcript.strip():
+                user_transcript_segments.append({
+                    "timestamp": "進行中",
+                    "content": current_transcript.strip(),
+                    "deltas_count": len(user_deltas),
+                    "status": "未完成"
+                })
+            
+            # 顯示結果
+            if user_transcript_segments:
+                print(f"👤 找到 {len(user_transcript_segments)} 段用戶輸入:")
+                print()
+                
+                for i, segment in enumerate(user_transcript_segments, 1):
+                    print(f"💬 用戶輸入 #{i}")
+                    print(f"⏰ 時間: {segment['timestamp']}")
+                    if segment.get('deltas_count'):
+                        print(f"📊 增量片段: {segment['deltas_count']} 個")
+                    if segment.get('status'):
+                        print(f"📝 狀態: {segment['status']}")
+                    print("-" * 60)
+                    print(segment['content'])
+                    print("-" * 60)
+                    print()
+            else:
+                print("❌ 未找到用戶輸入轉錄內容")
+                print("💡 可能原因：")
+                print("  1. 會話配置未開啟 input_audio_transcription")
+                print("  2. 用戶沒有說話或語音太短")
+                print("  3. 需要更新到最新版本的日誌系統")
+                print("  4. OpenAI API 轉錄功能未正常工作")
+                print()
+                print("🔧 解決方法：")
+                print("  1. 檢查 session_config.py 中是否有 input_audio_transcription 設定")
+                print("  2. 確認音頻輸入品質良好")
+                print("  3. 重新測試語音功能")
+                
+        except Exception as e:
+            print(f"❌ 提取用戶輸入轉錄內容失敗: {e}")
+    
     def _extract_transcript_from_file(self, file_path: str, session_id: str):
         """從日誌檔案中提取 AI 轉錄內容"""
         try:
@@ -523,6 +669,11 @@ def main():
     transcript_parser.add_argument("--session", type=int, help="會話索引")
     transcript_parser.add_argument("--session-id", type=str, help="會話 ID")
     
+    # user_transcript 指令 - 新增！
+    user_transcript_parser = subparsers.add_parser("user_transcript", help="提取用戶輸入內容")
+    user_transcript_parser.add_argument("--session", type=int, help="會話索引")
+    user_transcript_parser.add_argument("--session-id", type=str, help="會話 ID")
+    
     args = parser.parse_args()
     
     # 建立日誌查看器
@@ -548,6 +699,11 @@ def main():
             session_index=args.session,
             session_id=args.session_id
         )
+    elif args.command == "user_transcript":
+        viewer.extract_user_transcript(
+            session_index=args.session,
+            session_id=args.session_id
+        )
     else:
         # 默認顯示會話列表
         viewer.show_session_list()
@@ -558,6 +714,7 @@ def main():
         print("  python log_viewer.py view --tail 20            # 只看最後20個事件")
         print("  python log_viewer.py analyze --session 1       # 分析第1個會話")
         print("  python log_viewer.py transcript --session 1    # 提取AI回覆內容")
+        print("  python log_viewer.py user_transcript --session 1  # 提取用戶輸入內容")
 
 
 if __name__ == "__main__":
