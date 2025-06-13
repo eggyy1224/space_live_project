@@ -75,12 +75,16 @@ class APIIntegrations:
                 result = await self._handle_character_animation(arguments)
                 logger.info(f"🎭 character_animation 處理結果: {result}")
                 return result
+            elif function_name.startswith("character_"):
+                # 🎯 智能路由：所有 character_ 開頭的未知工具都轉發給 Supervisor
+                logger.info(f"🤖 Realtime 偵測到 Supervisor 工具: {function_name}，轉發處理")
+                return await self._try_supervisor_fallback(function_name, arguments)
             else:
-                # 🎯 智能路由：如果 realtime 無法處理，轉發給 Supervisor
-                logger.info(f"🤖 Realtime 無法處理 {function_name}，嘗試轉發給 Supervisor")
+                # 備用路由：如果以上都不是，再檢查一次 supervisor 是否能處理
+                logger.info(f"🤖 Realtime 無法處理 {function_name}，嘗試轉發給 Supervisor (備用)")
                 result = await self._try_supervisor_fallback(function_name, arguments)
-                if result["success"]:
-                    logger.info(f"✅ Supervisor 成功處理: {function_name}")
+                if result and result.get("success"):
+                    logger.info(f"✅ Supervisor 成功處理 (備用): {function_name}")
                     return result
                 else:
                     logger.warning(f"❓ 未知工具函數: {function_name}")
@@ -117,6 +121,7 @@ class APIIntegrations:
                 )
                 return result
             else:
+                logger.warning(f"❌ Supervisor 不支援此工具: {function_name}")
                 return {
                     "success": False,
                     "error": f"Tool not supported by Supervisor: {function_name}"
