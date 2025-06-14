@@ -133,7 +133,7 @@ def get_ai_instructions() -> str:
 
 ## 🎬 劇本表演功能
 
-當用戶想看表演或談到劇本相關話題時，你可以使用 script_performance 工具啟動劇本表演模組。系統會自動處理劇本的選擇和執行。
+當用戶想看表演時，使用 script_performance 工具啟動表演（如「來個表演」）；當需要停止時，同樣使用此工具傳入停止指令（如「停止表演」）。
 
 ### 🎯 表情動畫和音效使用範例：
 
@@ -916,13 +916,13 @@ def get_tools_config() -> list:
         {
             "type": "function",
             "name": "script_performance",
-            "description": "🎬 劇本表演工具！啟動劇本表演模組，系統會自動處理劇本的選擇和執行。適合在用戶想看表演或談到劇本相關話題時使用！",
+            "description": "🎬 劇本表演控制工具！可以啟動或停止劇本表演。支援執行（'來個表演'）和停止（'停止表演'）功能！",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "request": {
                         "type": "string",
-                        "description": "表演請求描述，例如：'來個表演'、'想看太空主題劇本'、'給我驚喜'"
+                        "description": "控制請求：啟動表演（'來個表演'、'太空主題'）或停止表演（'停止'、'結束'）"
                     }
                 },
                 "required": ["request"]

@@ -64,7 +64,7 @@ class ScriptExecutionAgent:
         logger.info("🎬 ScriptExecutionAgent 初始化完成")
     
     async def _handle_script_performance(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """處理簡化的劇本表演請求"""
+        """處理簡化的劇本表演請求（包含執行和停止）"""
         try:
             request = arguments.get("request", "")
             
@@ -76,10 +76,12 @@ class ScriptExecutionAgent:
             
             logger.info(f"🎭 處理劇本表演請求: {request}")
             
-            # 簡單的關鍵詞匹配來選擇劇本
-            selected_script = self._smart_script_selection(request)
+            # 檢查是否為停止請求
+            if self._is_stop_request(request):
+                return await self._handle_stop_all_scripts()
             
-            # 直接執行選中的劇本
+            # 否則為執行請求：選擇並執行劇本
+            selected_script = self._smart_script_selection(request)
             execution_args = {
                 "script_name": selected_script,
                 "background": True
@@ -99,6 +101,59 @@ class ScriptExecutionAgent:
             return {
                 "success": False,
                 "error": f"Script performance failed: {str(e)}"
+            }
+    
+    def _is_stop_request(self, request: str) -> bool:
+        """判斷是否為停止請求"""
+        stop_keywords = ["停止", "結束", "停", "stop", "end", "關閉", "取消", "cancel", "暫停", "pause"]
+        request_lower = request.lower()
+        return any(keyword in request_lower for keyword in stop_keywords)
+    
+    async def _handle_stop_all_scripts(self) -> Dict[str, Any]:
+        """停止所有正在運行的劇本"""
+        try:
+            # 透過 API 調用停止所有腳本
+            async with aiohttp.ClientSession() as session:
+                url = f"{self.base_url}/api/scripts/stop-all"
+                
+                async with session.post(url) as response:
+                    if response.status == 200:
+                        result = await response.json()
+                        logger.info(f"✅ 所有劇本停止成功")
+                        return result
+                    else:
+                        # 如果沒有 stop-all API，嘗試逐個停止
+                        return await self._stop_scripts_individually()
+                        
+        except Exception as e:
+            logger.error(f"❌ 停止劇本時發生錯誤: {e}")
+            return {
+                "success": False,
+                "error": f"Stop scripts failed: {str(e)}"
+            }
+    
+    async def _stop_scripts_individually(self) -> Dict[str, Any]:
+        """逐個停止所有可能的劇本"""
+        try:
+            stopped_scripts = []
+            for script in self.available_scripts:
+                try:
+                    result = await self._handle_stop_script({"script_name": script})
+                    if result.get("success"):
+                        stopped_scripts.append(script)
+                except:
+                    continue  # 忽略錯誤，繼續嘗試下一個
+            
+            return {
+                "success": True,
+                "message": f"成功停止 {len(stopped_scripts)} 個劇本",
+                "stopped_scripts": stopped_scripts
+            }
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Individual stop failed: {str(e)}"
             }
     
     def _smart_script_selection(self, request: str) -> str:
