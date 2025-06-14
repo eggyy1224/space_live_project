@@ -831,3 +831,58 @@ sleep 5
 -   Size control: 3 preset sizes (medium default) plus custom sizing
 -   Animation support: Different entrance animations based on position (slide from right/left, fade for center)
 -   Display config: Backend controls frontend positioning via `display_config` object in WebSocket message
+
+### Scripts (executable bash scripts - use script names directly)
+-   `meta_self.sh` - 《伊始之眼：一個導演的誕生》元戲劇腳本
+-   `remix_scene.sh` - 音樂與場景混合劇本
+-   `space_story_script.sh` - 太空故事腳本
+-   `news_broadcast.sh` - 新聞播報劇本
+
+## 🎬 Script Execution API
+
+The Script Execution API allows you to execute predefined bash scripts that orchestrate complex virtual astronaut performances. These scripts combine multiple API calls into choreographed sequences.
+
+### List Available Scripts
+```bash
+curl -X GET "http://localhost:8000/api/scripts/list"
+```
+
+### Execute a Script (Background Mode)
+```bash
+curl -X POST "http://localhost:8000/api/scripts/execute" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "script_name": "meta_self.sh",
+    "background": true
+  }'
+```
+
+### Execute a Script (Synchronous Mode)
+```bash
+curl -X POST "http://localhost:8000/api/scripts/execute" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "script_name": "meta_self.sh",
+    "background": false
+  }'
+```
+
+### Check Script Execution Status
+```bash
+curl -X GET "http://localhost:8000/api/scripts/status"
+```
+
+### Stop Running Script
+```bash
+curl -X POST "http://localhost:8000/api/scripts/stop/meta_self.sh"
+```
+
+**Script Execution Modes:**
+- **Background Mode** (recommended): Script runs independently, API returns immediately
+- **Synchronous Mode**: API waits for script completion before responding (use for shorter scripts only)
+
+**Safety Features:**
+- Only registered scripts can be executed
+- Scripts run in isolated processes
+- Built-in process management and cleanup
+- Graceful termination with fallback to force-kill if needed

@@ -2,7 +2,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api import init_app
-from api.endpoints import health, speech, websocket
+from api.endpoints import health, speech, websocket, scripts
 from core.config import settings
 from utils.logger import setup_logging, logger
 from fastapi.staticfiles import StaticFiles
@@ -38,6 +38,7 @@ app.add_middleware(
 # 包含 API 路由
 app.include_router(health.router, prefix="/api", tags=["Health"])
 app.include_router(speech.router, prefix="/api", tags=["Speech"])
+app.include_router(scripts.router, prefix="/api", tags=["Scripts"])
 
 # ... (Static files and startup event) ...
 
