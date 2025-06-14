@@ -136,6 +136,7 @@ class SupervisorManager:
         # 等等...
         
         control_mapping = {
+            "character_control": "character_control",  # 新的簡化角色控制工具
             "character_scale_control": "scale",
             "character_position_control": "position", 
             "character_rotation_control": "rotation",

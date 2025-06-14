@@ -18,9 +18,7 @@ def get_ai_instructions() -> str:
 5. **🎨 圖片生成**：generate_image工具（根據說話內容生成相關圖片！）
 6. **📹 智能鏡位控制**：camera_control工具（透過 AI Supervisor 智能分析情境，自動選擇最佳攝影機角度和預設鏡位！）
 7. **📏 頭部大小控制**：head_size_control工具（調整頭部模型縮放，配合情境營造特殊效果！）
-8. **🎭 角色內建動畫**：character_animation工具（控制3D角色模型的內建動畫，如舞步1、划手機、漂浮等真實動作！）
-9. **🎭 智能角色縮放**：character_scale_control工具（透過 AI Supervisor 智能控制角色大小，營造戲劇化效果！）
-10. **🎭 智能胖瘦控制**：character_body_shape_control工具（透過 AI Supervisor 智能調整角色胖瘦，營造不同體型效果！）
+8. **🎭 智能角色控制**：character_control工具（統一控制角色外觀和動作，包含縮放、胖瘦、動畫等！）
 11. **🎬 劇本表演**：script_performance工具（執行劇本表演，讓互動更精彩！）
 
 **💫 互動風格：你是個充滿活力的表演者，喜歡用各種工具讓對話更生動有趣！**
@@ -134,6 +132,14 @@ def get_ai_instructions() -> str:
 ## 🎬 劇本表演功能
 
 當用戶想看表演時，使用 script_performance 工具啟動表演（如「來個表演」）；當需要停止時，同樣使用此工具傳入停止指令（如「停止表演」）。
+
+## 🎭 智能角色控制功能
+
+當用戶想調整角色狀態時，使用 character_control 工具統一處理各種角色控制需求：
+- 大小控制：「讓角色變大」、「縮小角色」
+- 動作控制：「角色跳舞」、「開始漂浮動畫」、「做舞步1」
+- 體型控制：「讓角色變胖一點」、「讓角色變瘦」
+系統會自動識別請求類型並派發到對應的控制模組。
 
 ### 🎯 表情動畫和音效使用範例：
 
@@ -836,81 +842,17 @@ def get_tools_config() -> list:
         },
         {
             "type": "function",
-            "name": "character_animation",
-            "description": "🎭 角色內建動畫工具！控制3D角色模型的內建動畫，展現各種生動的動作表演！使用真實的角色動畫名稱（中文），配合情境使用讓角色表現更豐富！適合各種場景：舞蹈、運動、日常動作等！",
+            "name": "character_control",
+            "description": "🎭 智能角色控制工具！統一控制角色的各種外觀和動作，包含大小縮放、胖瘦調整、動畫表演等！透過自然語言描述就能智能調整角色狀態！",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "animation": {
+                    "request": {
                         "type": "string",
-                        "description": "要播放的角色動畫名稱，使用角色模型中的實際動畫",
-                        "enum": [
-                            "運動1", "運動2", "漂浮", "漂浮2", "Tpose", 
-                            "不穩", "划手機", "臥躺", 
-                            "舞步1", "舞步2", "舞步3", 
-                            "飛1", "飛2"
-                        ]
-                    },
-                    "loop": {
-                        "type": "boolean",
-                        "description": "是否循環播放動畫，預設為 true",
-                        "default": True
-                    },
-                    "speed": {
-                        "type": "number",
-                        "description": "動畫播放速度倍率，範圍 0.5到3.0",
-                        "minimum": 0.5,
-                        "maximum": 3.0,
-                        "default": 1.0
+                        "description": "角色控制請求描述，如：'讓角色變大'、'角色跳舞'、'讓角色變胖一點'、'開始漂浮動畫'等"
                     }
                 },
-                "required": ["animation"]
-            }
-        },
-        {
-            "type": "function",
-            "name": "character_scale_control",
-            "description": "🎭 智能角色縮放控制工具！透過 AI Supervisor 智能分析對話情境，自動選擇最適合的角色大小！可以根據情境變大變小，營造戲劇化效果！",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "scale": {
-                        "type": "number",
-                        "description": "角色縮放比例，範圍 0.1-15.0。1.0為正常大小，大於1.0變大，小於1.0變小",
-                        "minimum": 0.1,
-                        "maximum": 15.0
-                    }
-                },
-                "required": ["scale"]
-            }
-        },
-        {
-            "type": "function",
-            "name": "character_body_shape_control",
-            "description": "🎭 智能角色胖瘦控制工具！透過 AI Supervisor 智能分析對話情境，調整角色的體型胖瘦！可以根據需求變胖變瘦，營造不同體型效果！值越大角色越胖！",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "key_1": {
-                        "type": "number",
-                        "description": "鍵 1 胖瘦參數，範圍 0.0-1.0，值越大越胖",
-                        "minimum": 0.0,
-                        "maximum": 1.0
-                    },
-                    "misplace": {
-                        "type": "number", 
-                        "description": "錯置胖瘦參數，範圍 0.0-1.0，值越大越胖",
-                        "minimum": 0.0,
-                        "maximum": 1.0
-                    },
-                    "misplace_001": {
-                        "type": "number",
-                        "description": "錯置.001 胖瘦參數，範圍 0.0-1.0，值越大越胖", 
-                        "minimum": 0.0,
-                        "maximum": 1.0
-                    }
-                },
-                "additionalProperties": False
+                "required": ["request"]
             }
         },
         {

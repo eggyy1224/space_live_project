@@ -14,6 +14,7 @@ import json
 import logging
 import aiohttp
 from typing import Dict, Any, List
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,9 @@ class CharacterControlAgent:
         try:
             logger.info(f"🎭 準備執行角色控制: {control_type}")
             
-            if control_type == "scale":
+            if control_type == "character_control":
+                return await self._handle_character_control_unified(arguments)
+            elif control_type == "scale":
                 return await self._handle_character_scale(arguments)
             elif control_type == "position":
                 return await self._handle_character_position(arguments)  
@@ -531,4 +534,205 @@ class CharacterControlAgent:
             return {
                 "success": False,
                 "error": f"Failed to control character body shape: {str(e)}"
-            } 
+            }
+    
+    async def _handle_character_control_unified(self, arguments: dict) -> dict:
+        """處理簡化的角色控制請求（統一入口）"""
+        try:
+            request = arguments.get("request", "")
+            
+            if not request:
+                return {
+                    "success": False,
+                    "error": "Missing required parameter: request"
+                }
+            
+            logger.info(f"🎭 處理角色控制請求: {request}")
+            
+            # 智能解析請求類型和參數
+            control_info = self._parse_character_request(request)
+            
+            if not control_info:
+                return {
+                    "success": False,
+                    "error": f"Unable to understand character control request: {request}"
+                }
+            
+            control_type = control_info["type"]
+            control_args = control_info["args"]
+            
+            logger.info(f"🎯 解析結果: {control_type}, 參數: {control_args}")
+            
+            # 調用對應的處理方法
+            if control_type == "scale":
+                return await self._handle_character_scale(control_args)
+            elif control_type == "animation":
+                return await self._handle_character_animation(control_args)
+            elif control_type == "body_shape":
+                return await self._handle_character_body_shape(control_args)
+            elif control_type == "position":
+                return await self._handle_character_position(control_args)
+            elif control_type == "rotation":
+                return await self._handle_character_rotation(control_args)
+            elif control_type == "visibility":
+                return await self._handle_character_visibility(control_args)
+            elif control_type == "reset-transform":
+                return await self._handle_character_reset_transform(control_args)
+            else:
+                return {
+                    "success": False,
+                    "error": f"Unsupported character control type: {control_type}"
+                }
+                
+        except Exception as e:
+            logger.error(f"❌ 處理統一角色控制時發生錯誤: {e}")
+            return {
+                "success": False,
+                "error": f"Unified character control failed: {str(e)}"
+            }
+    
+    def _parse_character_request(self, request: str) -> dict:
+        """解析角色控制請求"""
+        request_lower = request.lower()
+        
+        # 優先處理包含數字的縮放請求（如"10倍"、"15倍"）
+        if re.search(r'\d+(?:\.\d+)?倍', request_lower):
+            return self._parse_scale_request(request_lower)
+        
+        # 檢查縮放相關關鍵詞
+        scale_keywords = ["縮放", "大小", "變大", "變小", "放大", "縮小", "巨大", "微小", "身體放大", "身體調整", "身體壯"]
+        for keyword in scale_keywords:
+            if keyword in request_lower:
+                logger.info(f"🎯 縮放關鍵詞匹配: '{keyword}' -> scale")
+                return self._parse_scale_request(request_lower)
+        
+        # 檢查動畫相關關鍵詞
+        animation_keywords = ["動畫", "表演", "跳舞", "舞蹈", "漂浮", "飛", "運動", "划手機", "臥躺", "不穩", "舞步"]
+        for keyword in animation_keywords:
+            if keyword in request_lower:
+                logger.info(f"🎯 動畫關鍵詞匹配: '{keyword}' -> animation")
+                return self._parse_animation_request(request_lower)
+        
+        # 檢查體型相關關鍵詞
+        body_shape_keywords = ["胖瘦", "胖", "瘦", "體型", "身材", "胖一點", "瘦一點", "變胖", "變瘦"]
+        for keyword in body_shape_keywords:
+            if keyword in request_lower:
+                logger.info(f"🎯 體型關鍵詞匹配: '{keyword}' -> body_shape")
+                return self._parse_body_shape_request(request_lower)
+        
+        # 檢查位置相關關鍵詞
+        position_keywords = ["位置", "移動", "移到"]
+        for keyword in position_keywords:
+            if keyword in request_lower:
+                logger.info(f"🎯 位置關鍵詞匹配: '{keyword}' -> position")
+                return {"type": "position", "args": {"position": [0, 0, 0]}}
+        
+        # 檢查旋轉相關關鍵詞
+        rotation_keywords = ["旋轉", "轉", "轉向"]
+        for keyword in rotation_keywords:
+            if keyword in request_lower:
+                logger.info(f"🎯 旋轉關鍵詞匹配: '{keyword}' -> rotation")
+                return {"type": "rotation", "args": {"rotation": [0, 90, 0]}}
+        
+        # 檢查可見性相關關鍵詞
+        visibility_keywords = ["顯示", "隱藏", "看見", "消失"]
+        for keyword in visibility_keywords:
+            if keyword in request_lower:
+                logger.info(f"🎯 可見性關鍵詞匹配: '{keyword}' -> visibility")
+                return self._parse_visibility_request(request_lower)
+        
+        # 檢查重置相關關鍵詞
+        reset_keywords = ["重置", "復原", "恢復"]
+        for keyword in reset_keywords:
+            if keyword in request_lower:
+                logger.info(f"🎯 重置關鍵詞匹配: '{keyword}' -> reset-transform")
+                return {"type": "reset-transform", "args": {}}
+        
+        logger.warning(f"⚠️ 無法解析角色控制請求: {request}")
+        return None
+    
+    def _parse_scale_request(self, request: str) -> dict:
+        """解析縮放請求"""
+        # 首先嘗試提取具體數字
+        scale_match = re.search(r'(\d+(?:\.\d+)?)倍', request)
+        if scale_match:
+            scale = float(scale_match.group(1))
+            # 限制在合理範圍內
+            scale = max(0.1, min(15.0, scale))
+            return {
+                "type": "scale",
+                "args": {"scale": scale}
+            }
+        
+        # 如果沒有找到具體數字，則根據關鍵詞判斷
+        if "大" in request or "放大" in request or "巨大" in request:
+            scale = 3.0  # 變大
+        elif "小" in request or "縮小" in request or "微小" in request:
+            scale = 0.5  # 變小
+        else:
+            scale = 1.5  # 默認稍微放大
+            
+        return {
+            "type": "scale",
+            "args": {"scale": scale}
+        }
+    
+    def _parse_animation_request(self, request: str) -> dict:
+        """解析動畫請求"""
+        # 動畫名稱映射，增加更多關鍵詞匹配
+        animation_mapping = {
+            "跳舞": "舞步1", "舞蹈": "舞步1", "身體動作": "舞步1", "動作": "舞步1", 
+            "舞步": "舞步1", "舞步1": "舞步1", "舞步2": "舞步2", "舞步3": "舞步3",
+            "漂浮": "漂浮", "漂浮2": "漂浮2", "飛": "飛1", "飛1": "飛1", "飛2": "飛2",
+            "運動": "運動1", "運動1": "運動1", "運動2": "運動2",
+            "划手機": "划手機", "臥躺": "臥躺", "不穩": "不穩"
+        }
+        
+        # 查找匹配的動畫
+        for keyword, animation in animation_mapping.items():
+            if keyword in request:
+                logger.info(f"🎯 動畫匹配: '{keyword}' -> {animation}")
+                return {
+                    "type": "animation",
+                    "args": {"animation": animation, "loop": True, "speed": 1.0}
+                }
+        
+        # 默認動畫（當包含跳舞相關但沒有具體匹配時）
+        logger.info(f"🎯 使用默認動畫: 舞步1")
+        return {
+            "type": "animation", 
+            "args": {"animation": "舞步1", "loop": True, "speed": 1.0}
+        }
+    
+    def _parse_body_shape_request(self, request: str) -> dict:
+        """解析體型請求"""
+        if "胖" in request:
+            # 變胖
+            return {
+                "type": "body_shape",
+                "args": {"key_1": 0.8, "misplace": 0.8, "misplace_001": 0.8}
+            }
+        elif "瘦" in request:
+            # 變瘦
+            return {
+                "type": "body_shape", 
+                "args": {"key_1": 0.2, "misplace": 0.2, "misplace_001": 0.2}
+            }
+        else:
+            # 默認正常
+            return {
+                "type": "body_shape",
+                "args": {"key_1": 0.5, "misplace": 0.5, "misplace_001": 0.5}
+            }
+    
+    def _parse_visibility_request(self, request: str) -> dict:
+        """解析可見性請求"""
+        if "隱藏" in request or "消失" in request:
+            visible = False
+        else:
+            visible = True
+            
+        return {
+            "type": "visibility",
+            "args": {"visible": visible}
+        } 

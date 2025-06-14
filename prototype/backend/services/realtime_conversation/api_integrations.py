@@ -154,6 +154,7 @@ class APIIntegrations:
             "character_body_shape_control",  # 新增：胖瘦控制
             "character_visibility_control",
             "character_reset_transform",
+            "character_control",  # 新的簡化角色控制工具
             # 腳本執行相關工具
             "script_performance",  # 新的簡化劇本工具
             "execute_script",
