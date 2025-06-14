@@ -11,6 +11,7 @@ from openai import OpenAI
 
 from .camera_agent import CameraControlAgent
 from .character_agent import CharacterControlAgent
+from .script_agent import ScriptExecutionAgent
 
 logger = logging.getLogger(__name__)
 
@@ -28,11 +29,13 @@ class SupervisorManager:
         # 初始化專門的 Agent
         self.camera_agent = CameraControlAgent()
         self.character_agent = CharacterControlAgent()
+        self.script_agent = ScriptExecutionAgent()
         
         # Agent 註冊表
         self.agents = {
             'camera_control': self.camera_agent,
-            'character_control': self.character_agent
+            'character_control': self.character_agent,
+            'script_control': self.script_agent
         }
         
         logger.info("🎭 SupervisorManager 初始化完成")
@@ -61,6 +64,8 @@ class SupervisorManager:
                 return await self._handle_camera_control(arguments, context)
             elif tool_name.startswith("character_"):
                 return await self._handle_character_control(tool_name, arguments, context)
+            elif tool_name.startswith("script_") or tool_name == "execute_script":
+                return await self._handle_script_control(tool_name, arguments, context)
             else:
                 return {
                     "success": False,
@@ -141,6 +146,53 @@ class SupervisorManager:
         }
         
         return control_mapping.get(tool_name, tool_name.replace("character_", "").replace("_control", ""))
+
+    async def _handle_script_control(self, tool_name: str, arguments: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """
+        處理腳本控制請求（統一入口）
+        使用專門的 Script Agent 進行智能決策
+        """
+        try:
+            # 從工具名稱解析控制類型
+            control_type = self._parse_script_control_type(tool_name)
+            
+            logger.info(f"🎬 處理腳本控制: {control_type}")
+            
+            # 使用 GPT-4 進行智能分析和決策（如果需要）
+            enhanced_arguments = await self._enhance_script_decision(control_type, arguments, context)
+            
+            # 委託給專門的 Script Agent 執行
+            result = await self.script_agent.execute_script_control(control_type, enhanced_arguments)
+            
+            logger.info(f"🎬 腳本控制執行結果: {result}")
+            return result
+            
+        except Exception as e:
+            logger.error(f"❌ 腳本控制處理失敗: {e}")
+            return {
+                "success": False,
+                "error": f"Script control failed: {str(e)}"
+            }
+    
+    def _parse_script_control_type(self, tool_name: str) -> str:
+        """從工具名稱解析腳本控制類型"""
+        # script_performance -> script_performance
+        # execute_script -> execute_script
+        # script_list -> list_scripts
+        # script_stop -> stop_script
+        # script_status -> script_status
+        # script_smart_selection -> smart_script_selection
+        
+        control_mapping = {
+            "script_performance": "script_performance",  # 新的簡化劇本工具
+            "execute_script": "execute_script",
+            "script_list": "list_scripts",
+            "script_stop": "stop_script", 
+            "script_status": "script_status",
+            "script_smart_selection": "smart_script_selection"
+        }
+        
+        return control_mapping.get(tool_name, tool_name.replace("script_", "").replace("_control", ""))
 
     async def _enhance_camera_decision(self, arguments: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
@@ -244,6 +296,73 @@ class SupervisorManager:
             
         except Exception as e:
             logger.warning(f"⚠️ 角色智能決策增強失敗，使用原始參數: {e}")
+            return arguments
+    
+    async def _enhance_script_decision(self, control_type: str, arguments: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """
+        使用 GPT-4 增強腳本執行決策
+        根據對話上下文智能選擇最適合的腳本
+        """
+        try:
+            # 對於智能腳本選擇，使用 GPT-4 進行分析
+            if control_type == "smart_script_selection":
+                system_prompt = """你是一個專業的腳本選擇助手。根據對話情境和用戶需求，選擇最適合的劇本腳本。
+
+可用腳本：
+1. meta_self.sh - 《伊始之眼：一個導演的誕生》
+   - 主題：元戲劇、自我意識、導演誕生
+   - 時長：15-20 分鐘
+   - 適合：深度概念展示、完整表演
+
+2. remix_scene.sh - 音樂與場景混合劇本
+   - 主題：音樂、場景切換、表演
+   - 時長：10-15 分鐘
+   - 適合：音樂表演、氛圍營造
+
+3. space_story_script.sh - 太空故事腳本
+   - 主題：太空探險、宇宙故事
+   - 時長：12-18 分鐘
+   - 適合：主題表演、故事敘述
+
+4. news_broadcast.sh - 新聞播報劇本
+   - 主題：新聞播報、資訊傳達
+   - 時長：8-12 分鐘
+   - 適合：資訊播報、正式場合
+
+請根據情境智能選擇最適合的腳本。"""
+                
+                user_prompt = f"""
+                腳本選擇請求參數: {json.dumps(arguments, ensure_ascii=False)}
+                對話上下文: {json.dumps(context, ensure_ascii=False) if context else "無"}
+                
+                請分析情境並返回JSON格式的腳本選擇參數，包含：
+                - context: 情境描述
+                - mood: 情緒風格
+                - theme: 主題偏好
+                - duration_preference: 時長偏好 (short/medium/long)
+                """
+                
+                response = self.client.chat.completions.create(
+                    model="gpt-4",
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    temperature=0.3
+                )
+                
+                enhanced_params = json.loads(response.choices[0].message.content)
+                logger.info(f"🧠 GPT-4 腳本選擇增強結果: {enhanced_params}")
+                
+                # 合併原始參數和增強參數
+                final_arguments = {**arguments, **enhanced_params}
+                return final_arguments
+            
+            # 對於其他腳本控制類型，直接返回原始參數
+            return arguments
+            
+        except Exception as e:
+            logger.warning(f"⚠️ 腳本智能決策增強失敗，使用原始參數: {e}")
             return arguments
     
     def get_available_tools(self) -> list:

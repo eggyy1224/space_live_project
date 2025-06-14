@@ -5,5 +5,6 @@ Agent Supervisor 服務
 
 from .core import SupervisorManager
 from .camera_agent import CameraControlAgent
+from .script_agent import ScriptExecutionAgent
 
-__all__ = ['SupervisorManager', 'CameraControlAgent'] 
+__all__ = ['SupervisorManager', 'CameraControlAgent', 'ScriptExecutionAgent'] 

@@ -75,6 +75,16 @@ class APIIntegrations:
                 result = await self._handle_character_animation(arguments)
                 logger.info(f"🎭 character_animation 處理結果: {result}")
                 return result
+            elif function_name == "execute_script":
+                logger.info("🎬 調用 execute_script 處理器 (透過 Supervisor)")
+                result = await self._handle_script_execution_via_supervisor(function_name, arguments)
+                logger.info(f"🎬 execute_script 處理結果: {result}")
+                return result
+            elif function_name.startswith("script_"):
+                logger.info(f"🎬 調用腳本工具 {function_name} (透過 Supervisor)")
+                result = await self._handle_script_execution_via_supervisor(function_name, arguments)
+                logger.info(f"🎬 {function_name} 處理結果: {result}")
+                return result
             elif function_name.startswith("character_"):
                 # 🎯 智能路由：所有 character_ 開頭的未知工具都轉發給 Supervisor
                 logger.info(f"🤖 Realtime 偵測到 Supervisor 工具: {function_name}，轉發處理")
@@ -144,6 +154,13 @@ class APIIntegrations:
             "character_body_shape_control",  # 新增：胖瘦控制
             "character_visibility_control",
             "character_reset_transform",
+            # 腳本執行相關工具
+            "script_performance",  # 新的簡化劇本工具
+            "execute_script",
+            "script_list", 
+            "script_stop",
+            "script_status",
+            "script_smart_selection",
             # 未來可以加入更多複雜工具
         ]
 
@@ -166,6 +183,27 @@ class APIIntegrations:
             return {
                 "success": False,
                 "error": f"Supervisor camera control failed: {str(e)}"
+            }
+    
+    async def _handle_script_execution_via_supervisor(self, function_name: str, arguments: dict) -> dict:
+        """透過 Supervisor 處理腳本執行"""
+        try:
+            logger.info(f"🎬 將腳本執行請求 {function_name} 轉發給 Supervisor")
+            
+            # 調用 Supervisor 處理腳本執行
+            result = await self.supervisor.handle_tool_request(
+                tool_name=function_name,
+                arguments=arguments,
+                context=None  # 之後可以加入對話上下文
+            )
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"❌ Supervisor 腳本執行失敗: {e}")
+            return {
+                "success": False,
+                "error": f"Supervisor script execution failed: {str(e)}"
             }
     
     async def _handle_emotion_trajectory(self, arguments: dict) -> dict:
