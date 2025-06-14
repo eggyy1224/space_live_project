@@ -607,7 +607,7 @@ class CharacterControlAgent:
                 return self._parse_scale_request(request_lower)
         
         # 檢查動畫相關關鍵詞
-        animation_keywords = ["動畫", "表演", "跳舞", "舞蹈", "漂浮", "飛", "運動", "划手機", "臥躺", "不穩", "舞步"]
+        animation_keywords = ["動畫", "表演", "跳舞", "舞蹈", "漂浮", "飛", "運動", "划手機", "滑手機", "臥躺", "躺下", "躺", "不穩", "舞步"]
         for keyword in animation_keywords:
             if keyword in request_lower:
                 logger.info(f"🎯 動畫關鍵詞匹配: '{keyword}' -> animation")
@@ -685,7 +685,7 @@ class CharacterControlAgent:
             "舞步": "舞步1", "舞步1": "舞步1", "舞步2": "舞步2", "舞步3": "舞步3",
             "漂浮": "漂浮", "漂浮2": "漂浮2", "飛": "飛1", "飛1": "飛1", "飛2": "飛2",
             "運動": "運動1", "運動1": "運動1", "運動2": "運動2",
-            "划手機": "划手機", "臥躺": "臥躺", "不穩": "不穩"
+            "划手機": "划手機", "滑手機": "划手機", "臥躺": "臥躺", "躺下": "臥躺", "躺": "臥躺", "不穩": "不穩"
         }
         
         # 查找匹配的動畫
