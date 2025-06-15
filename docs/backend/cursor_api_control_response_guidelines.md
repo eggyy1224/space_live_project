@@ -43,6 +43,12 @@ The application registers these routes in `prototype/backend/api/__init__.py`.
 |`POST`|`/api/control/character/visibility`|Toggle character visibility.|
 |`POST`|`/api/control/character/reset-transform`|Reset character transform (position, rotation, scale).|
 |`GET`|`/api/control/character/status`|Get current character status.|
+|`POST`|`/api/control/environment/preset`|Set environment lighting preset.|
+|`POST`|`/api/control/environment/intensity`|Set environment lighting intensity (0.1-3.0).|
+|`POST`|`/api/control/environment/background`|Toggle environment background display.|
+|`POST`|`/api/control/environment/config`|Batch set environment lighting configuration.|
+|`POST`|`/api/control/environment/reset`|Reset environment lighting to default values.|
+|`GET`|`/api/control/environment/status`|Get current environment lighting status.|
 
 The request models for these routes are defined at the top of `control.py` and include fields such as `content`, `url`, `duration`, `keyframes`, and camera angles.
 
@@ -334,6 +340,43 @@ To help Cursor better understand and utilize project assets, here are some key p
   "position": "string (Optional, position preset: 'center'(default), 'center-left', 'top-right', 'top-left', 'bottom-right', 'bottom-left', 'center-right')",
   "size": "string (Optional, size preset: 'small', 'medium', 'large'(default))",
   "duration": "number (Optional, display duration in seconds, default: 20.0)"
+}
+```
+
+**22. Environment Preset (`/api/control/environment/preset`)**
+```json
+{
+  "preset": "string (Required, environment preset name. Options: 'studio', 'sunset', 'dawn', 'night', 'warehouse', 'forest', 'apartment', 'city', 'park', 'lobby')"
+}
+```
+
+**23. Environment Intensity (`/api/control/environment/intensity`)**
+```json
+{
+  "intensity": "float (Required, lighting intensity value, range: 0.1 to 3.0. 1.0 = normal intensity, 2.0 = double brightness, 0.5 = half brightness)"
+}
+```
+
+**24. Environment Background (`/api/control/environment/background`)**
+```json
+{
+  "background": "boolean (Required, true to show environment as background, false to hide background)"
+}
+```
+
+**25. Environment Config (`/api/control/environment/config`)**
+```json
+{
+  "preset": "string (Optional, environment preset name)",
+  "intensity": "float (Optional, lighting intensity 0.1-3.0)",
+  "background": "boolean (Optional, background display toggle)"
+}
+```
+
+**26. Environment Reset (`/api/control/environment/reset`)**
+```json
+{
+  "reset_to_defaults": "boolean (Optional, default: true. Reset all environment settings to default values)"
 }
 ```
 
@@ -786,6 +829,18 @@ sleep 5
     10. **Invalid Position/Size Values?** Ensure position presets match: 'center-right', 'center-left', 'top-right', 'top-left', 'bottom-right', 'bottom-left', 'center'. Size presets: 'small', 'medium', 'large'.
     11. **Custom CSS Not Applied?** Verify `custom_position` and `custom_size` objects contain valid CSS properties.
     12. **Animation Issues?** Check frontend CSS classes for proper animation based on position (left/right/center).
+
+-   **Environment Lighting Not Working?**
+    1.  **Invalid Preset Name?** Ensure preset is one of: 'studio', 'sunset', 'dawn', 'night', 'warehouse', 'forest', 'apartment', 'city', 'park', 'lobby'.
+    2.  **Intensity Out of Range?** Intensity must be between 0.1 and 3.0.
+    3.  **Frontend Support?** Verify frontend has Environment component from @react-three/drei properly configured.
+    4.  **WebSocket Message Handling?** Check frontend WebSocket listener for environment message types: 'environment-preset', 'environment-intensity', 'environment-background', 'environment-config', 'environment-reset'.
+    5.  **Store State Update?** Ensure frontend store (Zustand) properly updates environment settings when WebSocket messages are received.
+    6.  **Three.js Rendering?** Verify Environment component is rendered in SceneContainer with proper Canvas settings.
+    7.  **No Visual Changes?** Some environment changes may be subtle - try extreme values (intensity 0.2 vs 2.5) to see difference.
+    8.  **Background Not Showing?** Ensure Canvas has proper `gl` settings and environment intensity > 0.
+    9.  **Preset Changes Not Visible?** Different presets may look similar depending on scene lighting - try contrasting presets like 'night' vs 'sunset'.
+    10. **Reset Not Working?** Default values are: preset='studio', intensity=1.0, background=false.
 
 ## ✅ Response Validation Guide
 

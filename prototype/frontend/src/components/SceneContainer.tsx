@@ -30,19 +30,19 @@ const DynamicLights = () => {
 
   useFrame(() => {
     if (ambientLightRef.current) {
-      // 讓環境光隨音樂強度變化（增加幅度）
-      ambientLightRef.current.intensity = 2 + bgmIntensity * 10;
+      // 讓環境光隨音樂強度變化（適度變化）
+      ambientLightRef.current.intensity = 1.0 + bgmIntensity * 2.5;
     }
     if (directionalLightRef.current) {
-      // 讓方向光隨音樂強度變化（增加幅度）
-      directionalLightRef.current.intensity = 1.2 + bgmIntensity * 8;
+      // 讓方向光隨音樂強度變化（適度變化）
+      directionalLightRef.current.intensity = 0.8 + bgmIntensity * 2.0;
 
-      // 讓燈光的顏色也隨著音樂強度變化（增加色彩變化的幅度）
+      // 讓燈光的顏色也隨著音樂強度變化（輕微色彩變化）
       const baseColor = new THREE.Color(0xffffff);
-      const accentColor = new THREE.Color(0xff44ff); // 更鮮豔的粉紫色
+      const accentColor = new THREE.Color(0xffeeff); // 更溫和的色調
       directionalLightRef.current.color
         .copy(baseColor)
-        .lerp(accentColor, Math.min(1, bgmIntensity * 1.5));
+        .lerp(accentColor, Math.min(1, bgmIntensity * 0.8));
     }
   });
 

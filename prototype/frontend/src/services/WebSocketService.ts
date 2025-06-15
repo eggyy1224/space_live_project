@@ -462,6 +462,66 @@ class WebSocketService {
           default:
             logger.warn(`未知的角色控制動作: ${action}`, LogCategory.WEBSOCKET);
         }
+      } else if (data.type === "environment-preset") {
+        // 處理環境預設設定
+        const payload = (data as any).payload;
+        if (payload && payload.preset) {
+          useStore.getState().setEnvironmentPreset(payload.preset);
+          logger.info(`API 設定環境預設: ${payload.preset}`, LogCategory.WEBSOCKET);
+        }
+      } else if (data.type === "environment-intensity") {
+        // 處理環境光照強度設定
+        const payload = (data as any).payload;
+        if (payload && typeof payload.intensity === "number") {
+          useStore.getState().setEnvironmentIntensity(payload.intensity);
+          logger.info(`API 設定環境光照強度: ${payload.intensity}`, LogCategory.WEBSOCKET);
+        }
+      } else if (data.type === "environment-background") {
+        // 處理環境背景顯示設定
+        const payload = (data as any).payload;
+        if (payload && typeof payload.background === "boolean") {
+          useStore.getState().setEnvironmentBackground(payload.background);
+          logger.info(`API 設定環境背景顯示: ${payload.background}`, LogCategory.WEBSOCKET);
+        }
+      } else if (data.type === "environment-config") {
+        // 處理環境光照批量配置
+        const payload = (data as any).payload;
+        if (payload) {
+          const store = useStore.getState();
+          if (payload.preset) {
+            store.setEnvironmentPreset(payload.preset);
+          }
+          if (typeof payload.intensity === "number") {
+            store.setEnvironmentIntensity(payload.intensity);
+          }
+          if (typeof payload.background === "boolean") {
+            store.setEnvironmentBackground(payload.background);
+          }
+          logger.info(`API 批量設定環境光照配置: ${JSON.stringify(payload)}`, LogCategory.WEBSOCKET);
+        }
+      } else if (data.type === "environment-reset") {
+        // 處理環境光照重置
+        const store = useStore.getState();
+        store.setEnvironmentPreset("studio");
+        store.setEnvironmentIntensity(1.0);
+        store.setEnvironmentBackground(false);
+        logger.info("API 重置環境光照設定到預設值", LogCategory.WEBSOCKET);
+      } else if (data.type === "environment-status-request") {
+        // 處理環境光照狀態查詢請求
+        const currentState = useStore.getState();
+        const environmentStatus = {
+          preset: currentState.environmentPreset,
+          intensity: currentState.environmentIntensity,
+          background: currentState.environmentBackground
+        };
+        logger.info("API 查詢環境光照狀態", LogCategory.WEBSOCKET);
+        console.log("當前環境光照狀態:", environmentStatus);
+        
+        // 可以選擇通過WebSocket回傳狀態
+        this.sendMessage({
+          type: "environment-status-response",
+          payload: environmentStatus
+        });
       } else if (data.type && highFrequencyTypes.includes(data.type)) {
         this._handleHighFrequencyMessage(data.type, data);
       } else {

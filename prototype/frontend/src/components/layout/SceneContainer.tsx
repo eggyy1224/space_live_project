@@ -27,26 +27,26 @@ const SceneContainer: React.FC<SceneContainerProps> = React.memo(({
       camera={{ position: [0, 0, 2], fov: 50 }}
       gl={{ 
         toneMapping: THREE.ACESFilmicToneMapping,
-        toneMappingExposure: 3.0,
+        toneMappingExposure: 1.0,
         outputColorSpace: THREE.SRGBColorSpace
       }}
     >
       <Suspense fallback={<Html center>加載模型中...</Html>}>
-        {/* 環境光照 - 從根本解決亮度問題 */}
+        {/* 環境光照 - 自然照明設定 */}
         <Environment preset="studio" background={false} />
-        <ambientLight intensity={4} />
-        <directionalLight position={[50, 50, 50]} intensity={6} castShadow />
-        <directionalLight position={[-50, 50, 50]} intensity={4} />
-        <directionalLight position={[0, 100, 0]} intensity={5} />
-        <pointLight position={[30, 30, 30]} intensity={60} decay={1} />
-        <pointLight position={[-30, 30, 30]} intensity={60} decay={1} />
+        <ambientLight intensity={1.5} />
+        <directionalLight position={[50, 50, 50]} intensity={2} castShadow />
+        <directionalLight position={[-50, 50, 50]} intensity={1.5} />
+        <directionalLight position={[0, 100, 0]} intensity={1.8} />
+        <pointLight position={[30, 30, 30]} intensity={15} decay={2} />
+        <pointLight position={[-30, 30, 30]} intensity={15} decay={2} />
         
-        {/* 聚光燈專門打在臉上 - 調整為大型模型 */}
+        {/* 聚光燈專門打在臉上 - 自然照明 */}
         <spotLight
           position={[0, 20, 40]}
           angle={0.8}
           penumbra={0.6}
-          intensity={50}
+          intensity={12}
           distance={200}
           castShadow
           target-position={[0, -10, 0]}
@@ -56,7 +56,7 @@ const SceneContainer: React.FC<SceneContainerProps> = React.memo(({
           position={[30, 10, 30]}
           angle={0.7}
           penumbra={0.5}
-          intensity={40}
+          intensity={10}
           distance={150}
           target-position={[0, -10, 0]}
           color="#fff5f0"
@@ -66,7 +66,7 @@ const SceneContainer: React.FC<SceneContainerProps> = React.memo(({
           position={[-30, 20, 35]}
           angle={0.9}
           penumbra={0.7}
-          intensity={35}
+          intensity={8}
           distance={150}
           target-position={[0, -10, 0]}
           color="#fffefc"

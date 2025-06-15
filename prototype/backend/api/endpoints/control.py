@@ -526,6 +526,34 @@ class CharacterTransformResetRequest(BaseModel):
     reset_rotation: Optional[bool] = True
     reset_scale: Optional[bool] = True
 
+
+# === 環境光照控制請求模型 ===
+class EnvironmentPresetRequest(BaseModel):
+    """環境光照預設控制請求模型"""
+    preset: str  # studio, sunset, dawn, night, warehouse, forest, apartment, city, park, lobby
+
+
+class EnvironmentIntensityRequest(BaseModel):
+    """環境光照強度控制請求模型"""
+    intensity: float  # 範圍 0.1-3.0
+
+
+class EnvironmentBackgroundRequest(BaseModel):
+    """環境背景顯示控制請求模型"""
+    background: bool  # 是否顯示環境作為背景
+
+
+class EnvironmentConfigRequest(BaseModel):
+    """環境光照完整配置請求模型"""
+    preset: Optional[str] = None  # 環境預設
+    intensity: Optional[float] = None  # 光照強度 (0.1-3.0)
+    background: Optional[bool] = None  # 背景顯示
+
+
+class EnvironmentResetRequest(BaseModel):
+    """環境光照重置請求模型"""
+    reset_to_defaults: bool = True
+
 @router.post("/control/character/scale")
 async def set_character_scale(request: CharacterScaleRequest):
     """設置角色縮放比例"""
@@ -798,3 +826,242 @@ async def get_character_status():
     except Exception as e:
         logger.error(f"API 查詢角色狀態失敗: {e}")
         raise HTTPException(status_code=500, detail=f"查詢角色狀態失敗: {str(e)}")
+
+# === 環境光照控制端點 ===
+
+@router.post("/control/environment/preset")
+async def set_environment_preset(request: EnvironmentPresetRequest):
+    """設定環境光照預設"""
+    try:
+        if not manager.active_connections:
+            raise HTTPException(status_code=503, detail="沒有活動的前端連接")
+
+        # 驗證預設名稱
+        valid_presets = ["studio", "sunset", "dawn", "night", "warehouse", "forest", "apartment", "city", "park", "lobby"]
+        if request.preset not in valid_presets:
+            raise HTTPException(status_code=400, detail=f"無效的環境預設。支援的預設: {', '.join(valid_presets)}")
+
+        # 構建控制消息
+        control_message = {
+            "type": "environment-preset",
+            "payload": {
+                "preset": request.preset,
+                "timestamp": datetime.utcnow().isoformat(),
+                "source": "api"
+            }
+        }
+
+        await manager.broadcast(json.dumps(control_message))
+        logger.info(f"API 設定環境預設: {request.preset}")
+
+        return {
+            "success": True,
+            "message": f"環境預設已設定為: {request.preset}",
+            "preset": request.preset,
+            "connections": len(manager.active_connections)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"API 設定環境預設失敗: {e}")
+        raise HTTPException(status_code=500, detail=f"設定環境預設失敗: {str(e)}")
+
+
+@router.post("/control/environment/intensity")
+async def set_environment_intensity(request: EnvironmentIntensityRequest):
+    """設定環境光照強度"""
+    try:
+        if not manager.active_connections:
+            raise HTTPException(status_code=503, detail="沒有活動的前端連接")
+
+        # 驗證強度範圍
+        if not (0.1 <= request.intensity <= 3.0):
+            raise HTTPException(status_code=400, detail="光照強度必須在0.1到3.0之間")
+
+        # 構建控制消息
+        control_message = {
+            "type": "environment-intensity",
+            "payload": {
+                "intensity": request.intensity,
+                "timestamp": datetime.utcnow().isoformat(),
+                "source": "api"
+            }
+        }
+
+        await manager.broadcast(json.dumps(control_message))
+        logger.info(f"API 設定環境光照強度: {request.intensity}")
+
+        return {
+            "success": True,
+            "message": f"環境光照強度已設定為: {request.intensity}",
+            "intensity": request.intensity,
+            "connections": len(manager.active_connections)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"API 設定環境光照強度失敗: {e}")
+        raise HTTPException(status_code=500, detail=f"設定環境光照強度失敗: {str(e)}")
+
+
+@router.post("/control/environment/background")
+async def set_environment_background(request: EnvironmentBackgroundRequest):
+    """設定環境背景顯示"""
+    try:
+        if not manager.active_connections:
+            raise HTTPException(status_code=503, detail="沒有活動的前端連接")
+
+        # 構建控制消息
+        control_message = {
+            "type": "environment-background",
+            "payload": {
+                "background": request.background,
+                "timestamp": datetime.utcnow().isoformat(),
+                "source": "api"
+            }
+        }
+
+        await manager.broadcast(json.dumps(control_message))
+        logger.info(f"API 設定環境背景顯示: {request.background}")
+
+        return {
+            "success": True,
+            "message": f"環境背景顯示已設定為: {'開啟' if request.background else '關閉'}",
+            "background": request.background,
+            "connections": len(manager.active_connections)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"API 設定環境背景顯示失敗: {e}")
+        raise HTTPException(status_code=500, detail=f"設定環境背景顯示失敗: {str(e)}")
+
+
+@router.post("/control/environment/config")
+async def set_environment_config(request: EnvironmentConfigRequest):
+    """設定環境光照完整配置（批量設定）"""
+    try:
+        if not manager.active_connections:
+            raise HTTPException(status_code=503, detail="沒有活動的前端連接")
+
+        # 驗證輸入
+        valid_presets = ["studio", "sunset", "dawn", "night", "warehouse", "forest", "apartment", "city", "park", "lobby"]
+        
+        if request.preset is not None and request.preset not in valid_presets:
+            raise HTTPException(status_code=400, detail=f"無效的環境預設。支援的預設: {', '.join(valid_presets)}")
+        
+        if request.intensity is not None and not (0.1 <= request.intensity <= 3.0):
+            raise HTTPException(status_code=400, detail="光照強度必須在0.1到3.0之間")
+
+        # 構建配置對象
+        config = {}
+        if request.preset is not None:
+            config["preset"] = request.preset
+        if request.intensity is not None:
+            config["intensity"] = request.intensity
+        if request.background is not None:
+            config["background"] = request.background
+
+        if not config:
+            raise HTTPException(status_code=400, detail="至少需要提供一個配置參數")
+
+        # 構建控制消息
+        control_message = {
+            "type": "environment-config",
+            "payload": {
+                **config,
+                "timestamp": datetime.utcnow().isoformat(),
+                "source": "api"
+            }
+        }
+
+        await manager.broadcast(json.dumps(control_message))
+        logger.info(f"API 設定環境光照配置: {config}")
+
+        return {
+            "success": True,
+            "message": "環境光照配置已更新",
+            "config": config,
+            "connections": len(manager.active_connections)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"API 設定環境光照配置失敗: {e}")
+        raise HTTPException(status_code=500, detail=f"設定環境光照配置失敗: {str(e)}")
+
+
+@router.post("/control/environment/reset")
+async def reset_environment_settings(request: EnvironmentResetRequest):
+    """重置環境光照設定到預設值"""
+    try:
+        if not manager.active_connections:
+            raise HTTPException(status_code=503, detail="沒有活動的前端連接")
+
+        # 構建重置消息
+        control_message = {
+            "type": "environment-reset",
+            "payload": {
+                "reset_to_defaults": request.reset_to_defaults,
+                "timestamp": datetime.utcnow().isoformat(),
+                "source": "api"
+            }
+        }
+
+        await manager.broadcast(json.dumps(control_message))
+        logger.info("API 重置環境光照設定")
+
+        return {
+            "success": True,
+            "message": "環境光照設定已重置為預設值",
+            "defaults": {
+                "preset": "studio",
+                "intensity": 1.0,
+                "background": False
+            },
+            "connections": len(manager.active_connections)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"API 重置環境光照設定失敗: {e}")
+        raise HTTPException(status_code=500, detail=f"重置環境光照設定失敗: {str(e)}")
+
+
+@router.get("/control/environment/status")
+async def get_environment_status():
+    """獲取環境光照狀態"""
+    try:
+        if not manager.active_connections:
+            raise HTTPException(status_code=503, detail="沒有活動的前端連接")
+
+        # 構建狀態查詢消息
+        status_request = {
+            "type": "environment-status-request",
+            "payload": {
+                "timestamp": datetime.utcnow().isoformat(),
+                "source": "api"
+            }
+        }
+
+        await manager.broadcast(json.dumps(status_request))
+        logger.info("API 請求環境光照狀態")
+
+        # 注意：實際狀態會通過WebSocket回傳，這裡只返回請求確認
+        return {
+            "success": True,
+            "message": "環境光照狀態查詢已發送",
+            "note": "實際狀態將通過WebSocket回傳",
+            "connections": len(manager.active_connections)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"API 獲取環境光照狀態失敗: {e}")
+        raise HTTPException(status_code=500, detail=f"獲取環境光照狀態失敗: {str(e)}")

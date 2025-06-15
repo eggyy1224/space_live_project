@@ -258,24 +258,23 @@ export const HeadModel: React.FC<HeadModelProps> = ({
       const foundMeshes: MorphTargetMesh[] = [];
       
       scene.traverse((object) => {
-        // 增強所有材質的亮度
+        // 調整材質屬性以獲得自然的外觀
         if (object instanceof THREE.Mesh || object instanceof THREE.SkinnedMesh) {
           if (object.material) {
             const material = Array.isArray(object.material) ? object.material : [object.material];
             material.forEach((mat: any) => {
               if (mat.isMeshStandardMaterial || mat.isMeshPhysicalMaterial) {
-                // 增加材質的亮度
-                mat.emissive = new THREE.Color(0x111111); // 添加自發光
-                mat.emissiveIntensity = 0.3;
-                // 調整材質屬性讓它更容易被照亮
-                mat.roughness = Math.min(mat.roughness * 0.7, 1);
-                mat.metalness = Math.max(mat.metalness * 0.5, 0);
+                // 降低亮度，使用更自然的材質設定
+                mat.emissive = new THREE.Color(0x000000); // 移除自發光
+                mat.emissiveIntensity = 0.0; // 關閉自發光強度
+                // 保留原始材質屬性的自然外觀
+                // mat.roughness 和 mat.metalness 保持原始值
                 mat.needsUpdate = true;
               }
               if (mat.isMeshLambertMaterial || mat.isMeshPhongMaterial) {
-                // 對於舊式材質，直接增加亮度
+                // 對於舊式材質，使用適度的亮度調整
                 if (mat.color) {
-                  mat.color.multiplyScalar(1.5);
+                  mat.color.multiplyScalar(1.0); // 保持原始亮度
                 }
                 mat.needsUpdate = true;
               }
