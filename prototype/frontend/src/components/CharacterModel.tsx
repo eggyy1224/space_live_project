@@ -64,40 +64,39 @@ export function CharacterModel() {
       if ((obj as THREE.Mesh).isMesh) {
         const mesh = obj as THREE.Mesh;
         
-        // 增強角色的光照效果（參考 HeadModel 的處理）
+        // 優化character材質 - 配合新的環境光照和tone mapping
         if (mesh.material) {
           const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
           materials.forEach((mat: any) => {
             if (mat.isMeshStandardMaterial || mat.isMeshPhysicalMaterial) {
-              // 增加材質的亮度 - 添加更強的自發光
-              mat.emissive = new THREE.Color(0x222222); // 增強自發光顏色
-              mat.emissiveIntensity = 0.8; // 大幅增加自發光強度
-              // 調整材質屬性讓它更容易被照亮
-              mat.roughness = Math.min(mat.roughness * 0.5, 1); // 更光滑
-              mat.metalness = Math.max(mat.metalness * 0.3, 0); // 更少金屬感
+              // 確保材質能正確響應環境光照，減少過度的自發光
+              mat.envMapIntensity = mat.envMapIntensity || 1.0; // 確保環境反射正常
               
-              // 如果原始材質是白色或沒有顏色，給它一個默認顏色
-              if (mat.color && (mat.color.r > 0.9 && mat.color.g > 0.9 && mat.color.b > 0.9)) {
-                mat.color.setHex(0xcccccc); // 淺灰色代替純白色
+              // 微調材質屬性以獲得更好的光澤效果
+              if (mat.roughness > 0.8) {
+                mat.roughness = Math.max(mat.roughness * 0.7, 0.2); // 適度降低粗糙度
               }
+              
+              // 保持適度的自發光以確保可見性
+              if (!mat.emissive || mat.emissive.getHex() === 0) {
+                mat.emissive = new THREE.Color(0x111111); // 輕微自發光
+                mat.emissiveIntensity = 0.2; // 較低的自發光強度
+              }
+              
               mat.needsUpdate = true;
             }
             if (mat.isMeshLambertMaterial || mat.isMeshPhongMaterial) {
-              // 對於舊式材質，大幅增加亮度
-              if (mat.color) {
-                mat.color.multiplyScalar(2.5); // 增加亮度倍數
-              }
-              mat.needsUpdate = true;
+              // 對於舊式材質，轉換為標準材質以支持PBR
+              const newMat = new THREE.MeshStandardMaterial({
+                color: mat.color,
+                map: mat.map,
+                roughness: 0.7,
+                metalness: 0.1,
+                emissive: new THREE.Color(0x111111),
+                emissiveIntensity: 0.15
+              });
+              mesh.material = newMat;
             }
-          });
-        } else {
-          // 如果沒有材質，創建一個帶強自發光的材質
-          mesh.material = new THREE.MeshStandardMaterial({
-            color: 0xffffff, // 更亮的基礎顏色
-            roughness: 0.3,  // 更光滑
-            metalness: 0.1,  // 更少金屬感
-            emissive: new THREE.Color(0x333333), // 更強的自發光
-            emissiveIntensity: 1.0 // 最大自發光強度
           });
         }
         

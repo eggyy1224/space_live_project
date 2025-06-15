@@ -1,6 +1,6 @@
 import React, { Suspense, useRef, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls, Stars } from "@react-three/drei";
+import { OrbitControls, Stars, Environment } from "@react-three/drei";
 import { HeadModel } from "./HeadModel";
 import CharacterModel from "./CharacterModel";
 import DanceGroup from "./DanceGroup";
@@ -73,6 +73,12 @@ const SceneContainer: React.FC<SceneContainerProps> = ({
       shadows
       camera={{ position: [0, 0.5, 3], fov: 50 }}
       style={{ background: showSpaceBackground ? "#000010" : "#111a21" }}
+      gl={{
+        toneMapping: THREE.ACESFilmicToneMapping,
+        toneMappingExposure: 1, // 根據GLB Viewer的設定調整exposure
+        outputColorSpace: THREE.SRGBColorSpace,
+        antialias: true
+      }}
     >
       <SceneContent
         headModelUrl={headModelUrl}
@@ -177,6 +183,13 @@ const SceneContent: React.FC<SceneContainerProps> = ({
 
   return (
     <>
+      {/* 環境光照 - 關鍵的PBR材質支援，讓character模型有正確的光澤 */}
+      <Environment 
+        preset="warehouse" 
+        background={false}
+        environmentIntensity={1.5} 
+      />
+      
       {showSpaceBackground && (
         <Stars
           radius={100}
