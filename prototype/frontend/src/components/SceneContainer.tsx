@@ -117,6 +117,11 @@ const SceneContent: React.FC<SceneContainerProps> = ({
   const roomPosition = useStore((s) => s.roomPosition);
   const roomRotation = useStore((s) => s.roomRotation);
   const roomScale = useStore((s) => s.roomScale);
+  
+  // 環境光照狀態
+  const environmentPreset = useStore((s) => s.environmentPreset);
+  const environmentIntensity = useStore((s) => s.environmentIntensity);
+  const environmentBackground = useStore((s) => s.environmentBackground);
 
   // 監聽手動相機預設變化
   useEffect(() => {
@@ -185,9 +190,9 @@ const SceneContent: React.FC<SceneContainerProps> = ({
     <>
       {/* 環境光照 - 關鍵的PBR材質支援，讓character模型有正確的光澤 */}
       <Environment 
-        preset="warehouse" 
-        background={false}
-        environmentIntensity={1.5} 
+        preset={environmentPreset} 
+        background={environmentBackground}
+        environmentIntensity={environmentIntensity} 
       />
       
       {showSpaceBackground && (

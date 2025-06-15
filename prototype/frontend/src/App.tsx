@@ -16,6 +16,7 @@ import DirectorMonitorHUD from './components/DirectorMonitorHUD'
 import DirectorLogPanel from './components/DirectorLogPanel'
 import RoomControlPanel from './components/RoomControlPanel'
 import { CharacterControlPanel } from './components/CharacterControlPanel'
+import EnvironmentControlPanel from './components/EnvironmentControlPanel'
 import { usePerformanceMetrics } from './hooks/usePerformanceMetrics'
 
 // 引入服務
@@ -95,6 +96,11 @@ function App() {
   // <--- 從 Zustand Store 獲取角色控制面板狀態和操作 --->
   const isCharacterControlPanelVisible = useStore((state) => state.isCharacterControlPanelVisible);
   const toggleCharacterControlPanel = useStore((state) => state.toggleCharacterControlPanel);
+  // <--- 結束 --->
+  
+  // <--- 從 Zustand Store 獲取環境光照控制面板狀態和操作 --->
+  const isEnvironmentControlPanelVisible = useStore((state) => state.isEnvironmentControlPanelVisible);
+  const toggleEnvironmentControlPanel = useStore((state) => state.toggleEnvironmentControlPanel);
   // <--- 結束 --->
   
   // 使用音頻服務
@@ -566,6 +572,12 @@ function App() {
           onClose={toggleCharacterControlPanel}
         />
         
+        {/* 環境光照控制面板 */}
+        <EnvironmentControlPanel 
+          isVisible={isEnvironmentControlPanelVisible}
+          onClose={toggleEnvironmentControlPanel}
+        />
+        
         {/* 渲染 AppUI (只傳遞必要 props) */}
         <AppUI
           wsConnected={wsConnected}
@@ -573,6 +585,7 @@ function App() {
           toggleSettingsPanel={toggleSettingsPanel}
           toggleRoomControlPanel={useStore((state) => state.toggleRoomControlPanel)}
           toggleCharacterControlPanel={toggleCharacterControlPanel}
+          toggleEnvironmentControlPanel={toggleEnvironmentControlPanel}
           toggleRealtime={toggleRealtime}
           realtimeStreaming={realtimeStreaming}
           realtimeError={realtimeError}

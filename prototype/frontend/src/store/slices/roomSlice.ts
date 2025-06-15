@@ -1,6 +1,22 @@
 import { StateCreator } from 'zustand';
 import { DEFAULT_SCENE, getSceneById, type SceneConfig } from '../../config/sceneConfig';
 
+// 環境光照預設選項
+export const ENVIRONMENT_PRESETS = [
+  'studio',
+  'sunset', 
+  'dawn',
+  'night',
+  'warehouse',
+  'forest',
+  'apartment',
+  'city',
+  'park',
+  'lobby'
+] as const;
+
+export type EnvironmentPreset = typeof ENVIRONMENT_PRESETS[number];
+
 export interface RoomSlice {
   // 房間場景狀態
   showRoomScene: boolean;
@@ -10,8 +26,14 @@ export interface RoomSlice {
   roomRotation: [number, number, number];
   roomScale: [number, number, number];
   
+  // 環境光照狀態
+  environmentPreset: EnvironmentPreset;
+  environmentIntensity: number;
+  environmentBackground: boolean;
+  
   // UI 狀態
   isRoomControlPanelVisible: boolean;
+  isEnvironmentControlPanelVisible: boolean;
   
   // 房間場景操作
   toggleRoomScene: () => void;
@@ -23,8 +45,15 @@ export interface RoomSlice {
   setRoomScale: (scale: [number, number, number]) => void;
   resetRoomTransform: () => void;
   
+  // 環境光照操作
+  setEnvironmentPreset: (preset: EnvironmentPreset) => void;
+  setEnvironmentIntensity: (intensity: number) => void;
+  setEnvironmentBackground: (background: boolean) => void;
+  resetEnvironmentSettings: () => void;
+  
   // UI 操作
   toggleRoomControlPanel: () => void;
+  toggleEnvironmentControlPanel: () => void;
 }
 
 export const createRoomSlice = (set: any, get: any, api: any) => ({
@@ -36,8 +65,14 @@ export const createRoomSlice = (set: any, get: any, api: any) => ({
   roomRotation: DEFAULT_SCENE.defaultRotation || [0, 0, 0],
   roomScale: DEFAULT_SCENE.defaultScale || [2, 2, 2],
   
+  // 環境光照初始設定
+  environmentPreset: 'studio' as EnvironmentPreset,
+  environmentIntensity: 1.0,
+  environmentBackground: false,
+  
   // UI 狀態
   isRoomControlPanelVisible: false,
+  isEnvironmentControlPanelVisible: false,
   
   // 操作
   toggleRoomScene: () => {
@@ -90,9 +125,35 @@ export const createRoomSlice = (set: any, get: any, api: any) => ({
     }
   },
   
+  // 環境光照操作
+  setEnvironmentPreset: (preset: EnvironmentPreset) => {
+    set({ environmentPreset: preset });
+  },
+  
+  setEnvironmentIntensity: (intensity: number) => {
+    set({ environmentIntensity: Math.max(0.1, Math.min(3.0, intensity)) });
+  },
+  
+  setEnvironmentBackground: (background: boolean) => {
+    set({ environmentBackground: background });
+  },
+  
+  resetEnvironmentSettings: () => {
+    set({
+      environmentPreset: 'studio' as EnvironmentPreset,
+      environmentIntensity: 1.0,
+      environmentBackground: false
+    });
+  },
+  
   // UI 操作
   toggleRoomControlPanel: () => {
     const currentState = get();
     set({ isRoomControlPanelVisible: !currentState.isRoomControlPanelVisible });
+  },
+  
+  toggleEnvironmentControlPanel: () => {
+    const currentState = get();
+    set({ isEnvironmentControlPanelVisible: !currentState.isEnvironmentControlPanelVisible });
   }
 }); 
