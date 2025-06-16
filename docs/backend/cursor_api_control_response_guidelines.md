@@ -941,3 +941,301 @@ curl -X POST "http://localhost:8000/api/scripts/stop/meta_self.sh"
 - Scripts run in isolated processes
 - Built-in process management and cleanup
 - Graceful termination with fallback to force-kill if needed
+
+## 🧘‍♀️ Advanced Script Analysis: Learning from `space_yoga2.sh` (進階腳本分析：從太空瑜伽腳本學習)
+
+The `space_yoga2.sh` script represents a masterclass in comprehensive virtual performance orchestration. This script demonstrates advanced techniques for creating immersive, multi-layered experiences that seamlessly blend narrative, visual effects, audio, and character control. Here are the key learnings and patterns that make this script exceptional:
+
+### 🎯 Structural Excellence: The Art of Narrative Architecture
+
+**1. Clear Phase-Based Organization**
+```bash
+# === 基礎準備工作 ===
+# === 開場環節 ===  
+# === 基礎瑜伽動作示範 ===
+# === 收尾環節 ===
+```
+
+**Key Learning:** The script divides complex performance into digestible phases, each with a clear purpose:
+- **Setup Phase:** Establishes baseline conditions and prepares the environment
+- **Opening Phase:** Creates engagement and sets the mood
+- **Main Content Phase:** Delivers the core experience through structured demonstrations
+- **Closing Phase:** Provides satisfying conclusion and resets to default state
+
+**Best Practice:** Always structure long performances with clear phase boundaries. Use consistent echo statements to mark phase transitions both for debugging and narrative clarity.
+
+### 🎭 Character Transformation Mastery
+
+**2. Dynamic Body Morphing for Storytelling**
+```bash
+# 調整體型為瑜伽辣妹身材...
+curl -X POST "$BASE_URL/api/control/character/outfit" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "outfit_morphs": {
+      "鍵 1": 0.3,
+      "錯置": 0.1,
+      "錯置.001": 0.2
+    }
+  }'
+```
+
+**Key Learning:** The script uses character morphing strategically to match different activity types:
+- **Yoga poses:** Lean, flexible proportions
+- **Meditation:** Centered, balanced appearance  
+- **Dance sequences:** Dynamic, expressive body language
+- **Flight scenes:** Light, ethereal proportions
+
+**Best Practice:** Adjust character morphs contextually to enhance storytelling. Different activities benefit from different physical presentations to maximize visual impact and believability.
+
+### 🎥 Cinematic Vision: The Head Size Technique
+
+**3. Head Scaling for Dramatic Effect**
+```bash
+echo "7a. 放大頭部到最大..."
+curl -X POST "$BASE_URL/api/control/head-size" \
+  -H "Content-Type: application/json" \
+  -d '{"scaleFactor": 20.0}'
+```
+
+**Key Learning:** Extreme head scaling (up to 20.0x) creates powerful visual storytelling moments:
+- **Dramatic Emphasis:** Oversized heads during important speeches
+- **Internal Focus:** Large heads when showing "internal actions" (頭內動作)
+- **Comedic Timing:** Exaggerated proportions for humorous effect
+- **Transition Markers:** Size changes signal narrative shifts
+
+**Best Practice:** Use head scaling as a visual vocabulary. Establish size = significance relationships that audiences can intuitively understand.
+
+### 🎨 Multi-Visual Layer Orchestration
+
+**4. Simultaneous Image Display Strategy**
+```bash
+# 同時顯示現有的太空瑜伽素材圖片...
+curl -X POST "$BASE_URL/api/show-existing-image" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filename": "space_yoga/selfie_1750058069945.png",
+    "caption": "太空瑜伽經典動作示範 - 漂浮冥想式",
+    "position": "bottom-right",
+    "size": "medium",
+    "duration": 30.0,
+    "aspect_ratio": "portrait"
+  }'
+
+# Immediately followed by more images at different positions...
+```
+
+**Key Learning:** The script creates rich visual environments by displaying multiple images simultaneously:
+- **Layered Storytelling:** Different images provide context, history, and variations
+- **Visual Rhythm:** Staggered timing and positions create dynamic visual flow
+- **Content Amplification:** Multiple examples reinforce the main demonstration
+- **Spatial Awareness:** Strategic positioning prevents visual conflicts
+
+**Best Practice:** Think of the screen as a canvas with multiple layers. Use positioning strategically to create visual hierarchy and guide viewer attention.
+
+### 🎵 Audio Landscape Design
+
+**5. Contextual Audio Layering**
+```bash
+echo "播放太空瑜伽主題曲..."
+curl -X POST "$BASE_URL/api/control/background-audio" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "bgmUrl": "/audio/BGM/space_live_country_theme1.mp3",
+    "bgmPlaying": true,
+    "loop": true,
+    "volume": 0.5
+  }'
+
+echo "播放太空環境音效..."
+curl -X POST "$BASE_URL/api/control/play-audio" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "/audio/effects/spaceship_ambience_01.mp3",
+    "volume": 0.1,
+    "interrupt": false
+  }'
+```
+
+**Key Learning:** Sophisticated audio design combines multiple layers:
+- **BGM:** Establishes overall mood and continuity
+- **SFX:** Provides activity-specific atmosphere  
+- **Action Sounds:** Punctuate specific moments and transitions
+- **Volume Management:** Careful balance prevents audio conflicts
+
+**Best Practice:** Design audio in layers like a film score. Background music provides emotional foundation while specific sounds enhance individual moments.
+
+### 🌍 Environment as Character
+
+**6. Dynamic Environment Switching**
+```bash
+echo "設定樹式環境..."
+curl -X POST "$BASE_URL/api/control/environment/preset" \
+  -H "Content-Type: application/json" \
+  -d '{"preset": "forest"}'
+
+echo "設定冥想環境..."  
+curl -X POST "$BASE_URL/api/control/environment/preset" \
+  -H "Content-Type: application/json" \
+  -d '{"preset": "dawn"}'
+```
+
+**Key Learning:** Environment changes aren't just decorative—they're narrative tools:
+- **Activity Matching:** Forest for tree pose, dawn for meditation
+- **Emotional Resonance:** Environment reinforces the feeling of each segment
+- **Visual Variety:** Prevents monotony during long performances
+- **Intensity Control:** Lighting adjustments enhance drama
+
+**Best Practice:** Treat environment as an active participant in storytelling. Each environment change should have a clear narrative or emotional purpose.
+
+### ⏱️ Temporal Choreography Mastery
+
+**7. Sophisticated Timing Control**
+```bash
+echo "8b. 生成運動2動作特寫圖..."
+curl -X POST "$BASE_URL/api/take-selfie" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "description": "穿著銀色反光緊身太空服的台灣辣妹在太空中做運動2動作的特寫",
+    "position": "top-right",
+    "size": "large",
+    "duration": 40.0,
+    "aspect_ratio": "square"
+  }'
+sleep 1.0
+```
+
+**Key Learning:** The script demonstrates sophisticated timing patterns:
+- **Variable Sleep Durations:** 0.5s for quick transitions, 5.5s for speech completion
+- **Action Overlap:** New images appear while previous ones are still visible
+- **Natural Pacing:** Allows actions to complete before building on them
+- **Rhythm Variation:** Prevents mechanical feeling through timing variety
+
+**Best Practice:** Develop intuition for timing. Quick cuts create energy, longer pauses create reflection. Vary timing to match narrative needs.
+
+### 🎪 Animation Choreography Sequences
+
+**8. Complex Animation Progressions**
+```bash
+curl -X POST "$BASE_URL/api/control/character/animation" \
+  -H "Content-Type: application/json" \
+  -d '{"animation": "運動2", "loop": true}'
+
+# After observation and capture...
+
+curl -X POST "$BASE_URL/api/control/character/animation" \
+  -H "Content-Type: application/json" \
+  -d '{"animation": "舞步1", "loop": true}'
+
+# Followed by舞步2, 舞步3, then 飛1, 飛2...
+```
+
+**Key Learning:** Animation sequences tell stories through progression:
+- **Logical Flow:** Exercise → Dance → Flight follows emotional/energy arc  
+- **Skill Building:** Movements increase in complexity and dynamism
+- **Visual Documentation:** Camera captures each stage for reference
+- **Climactic Building:** Sequences build toward dramatic peaks
+
+**Best Practice:** Design animation sequences as emotional journeys. Each animation should logically follow from the previous while building toward a climax.
+
+### 🎬 Camera as Storytelling Partner
+
+**9. Strategic Camera Positioning**
+```bash
+echo "切換到特寫鏡頭..."
+curl -X POST "$BASE_URL/api/control/camera/set-frontend-preset" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "head_close_up", "duration": 1.5}'
+
+echo "切換到全景觀察動作..."
+curl -X POST "$BASE_URL/api/control/camera/set-frontend-preset" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "overview", "duration": 1.5}'
+```
+
+**Key Learning:** Camera movement serves specific narrative functions:
+- **Overview:** Establishes context and shows full-body movements
+- **Close-up:** Captures expressions and intimate moments  
+- **Transition:** Smooth movements guide viewer attention
+- **Emphasis:** Camera draws focus to important elements
+
+**Best Practice:** Plan camera movement as visual punctuation. Each camera change should have a clear purpose in directing viewer attention.
+
+### 🎭 Character State Continuity
+
+**10. Comprehensive State Management**
+```bash
+echo "25. 恢復預設狀態..."
+curl -X POST "$BASE_URL/api/control/camera/set-frontend-preset" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "overview", "duration": 2.0}'
+
+echo "25a. 恢復頭部正常大小..."
+curl -X POST "$BASE_URL/api/control/head-size" \
+  -H "Content-Type: application/json" \
+  -d '{"scaleFactor": 1.0}'
+
+echo "25a1. 恢復角色正常大小..."
+curl -X POST "$BASE_URL/api/control/character/scale" \
+  -H "Content-Type: application/json" \
+  -d '{"scale": 1.0}'
+```
+
+**Key Learning:** Professional scripts include comprehensive cleanup:
+- **State Reset:** Return all modified parameters to defaults
+- **Predictable Ending:** Ensure next performance starts from known state
+- **Resource Management:** Clean up temporary effects and settings
+- **System Health:** Prevent accumulation of unusual states
+
+**Best Practice:** Always include reset sequences at the end of complex performances. This prevents state pollution and ensures consistent behavior across multiple executions.
+
+### 🌟 The Integration Philosophy
+
+**11. Seamless Multi-Modal Integration**
+
+The script's greatest strength lies in how it seamlessly weaves together:
+- **Visual:** Images, animations, camera movements, environment changes
+- **Audio:** BGM, SFX, speech, ambient sounds
+- **Narrative:** Clear story arc with beginning, middle, and end
+- **Interactive:** Character responses, environmental reactions
+- **Technical:** Proper timing, state management, error prevention
+
+**Master Technique:** Each element reinforces others rather than competing. When the character demonstrates tree pose, everything aligns:
+- Environment: Forest setting
+- Audio: Natural, peaceful sounds  
+- Animation: Stable, balanced movements
+- Camera: Full-body view to show complete pose
+- Images: Multiple examples and variations
+- Character: Appropriate body proportions
+
+### 📚 Advanced Pattern Recognition
+
+**12. Reusable Performance Patterns**
+
+From analyzing this script, we can extract several reusable patterns:
+
+**The Demo Pattern:**
+1. Environment setup → 2. Animation demonstration → 3. Camera capture → 4. Image generation → 5. Related content display
+
+**The Transition Pattern:**  
+1. Audio cue → 2. Environment change → 3. Character adjustment → 4. Camera movement
+
+**The Climax Pattern:**
+1. Build-up animations → 2. Dramatic scaling → 3. Multiple visual layers → 4. Triumphant audio
+
+**The Reset Pattern:**
+1. Return camera to overview → 2. Reset character proportions → 3. Clear animations → 4. Stop audio
+
+### 🎯 Implementation Guidelines for Cursor
+
+When implementing similar complex sequences:
+
+1. **Start with Structure:** Define clear phases before implementing
+2. **Layer Incrementally:** Add one element type at a time (audio, then visual, then character)
+3. **Test Transitions:** Verify each phase boundary works smoothly
+4. **Time Generously:** Allow extra time for complex actions to complete
+5. **Document Intentions:** Use echo statements to mark what each section accomplishes
+6. **Plan Reset:** Always include comprehensive cleanup
+7. **Consider Reusability:** Design patterns that can be adapted for other content
+
+This script demonstrates that virtual performance creation is a sophisticated art form requiring careful orchestration of multiple systems to create cohesive, engaging experiences. The techniques shown here can be adapted and combined to create entirely new types of interactive content.
