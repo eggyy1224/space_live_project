@@ -199,19 +199,25 @@ const BackgroundSoundSystem: React.FC = () => {
       return;
     }
 
-    // 使用音量控制實現 BGM 的暫停/播放，而不是操作 AudioContext 或停止 source
+    // 處理 BGM 播放/暫停狀態
     if (bgmPlaying) {
       console.log('BGM play requested, resuming...');
       // 確保 AudioContext 正在運行
       if (audioContext.state === 'suspended') {
+        console.log('Resuming AudioContext for BGM playback...');
         audioContext.resume().catch(console.error);
       }
-      // 取消暫停 BGM
-      if (bgmPauseNodeRef.current) {
+      
+      // 如果當前有音源且暫停節點存在，則恢復播放
+      if (bgmSourceRef.current && bgmPauseNodeRef.current) {
         bgmPauseNodeRef.current.gain.value = 1;
         console.log('BGM pause node set to 1 (playing)');
+        startBgmAnalysis();
+      } else if (!bgmSourceRef.current && currentBgmRef.current) {
+        // 如果沒有音源但有當前BGM，重新載入播放
+        console.log('No BGM source found, reloading BGM:', currentBgmRef.current);
+        loadAndPlay(currentBgmRef.current);
       }
-      startBgmAnalysis();
     } else {
       console.log('BGM pause requested, muting pause node...');
       // BGM 暫停時將暫停節點音量設為 0，但保持播放源和用戶音量控制不變

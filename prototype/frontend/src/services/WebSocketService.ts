@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import logger, { LogCategory } from "../utils/LogManager";
 import { useStore } from "../store";
 import { directorBus } from "../director/bus";
-import { DirectorStateMessage } from "../../shared/director/types";
+import { DirectorStateMessage, DirectorState } from "../../../shared/director/types";
 
 // WebSocket連接配置
 const WS_URL = `ws://${window.location.hostname}:8000/ws`;
@@ -239,20 +239,35 @@ class WebSocketService {
       if (data.type === "director-state") {
         const payload = (data as DirectorStateMessage).payload;
         directorBus.emit("stateUpdate", payload);
-        useStore.getState().setRuntime(payload, { silent: true });
+        useStore.getState().setRuntime(payload as any, { silent: true });
         return;
       }
       if (data.type === "audio-control") {
         const payload = data as any;
-        if (payload.bgmUrl) {
-          useStore
-            .getState()
-            .setRuntime({ bgm: payload.bgmUrl, bgmPlaying: true }, { silent: true });
+        console.log('[WebSocket] Received audio-control:', payload);
+        
+        // 處理 BGM URL（包含空字串停止功能）
+        if (payload.bgmUrl !== undefined) {
+          if (payload.bgmUrl === "") {
+            // 空字串表示停止 BGM
+            console.log('[WebSocket] Stopping BGM (empty string)');
+            useStore.getState().setRuntime({ bgm: null, bgmPlaying: false }, { silent: true });
+          } else {
+            // 設置新的 BGM
+            console.log('[WebSocket] Setting BGM:', payload.bgmUrl);
+            useStore.getState().setRuntime({ bgm: payload.bgmUrl, bgmPlaying: true }, { silent: true });
+          }
         }
+        
+        // 處理播放/暫停控制
         if (payload.bgmPlaying !== undefined) {
+          console.log('[WebSocket] Setting BGM playing state:', payload.bgmPlaying);
           useStore.getState().setRuntime({ bgmPlaying: payload.bgmPlaying }, { silent: true });
         }
+        
+        // 處理音效
         if (payload.sfxUrl) {
+          console.log('[WebSocket] Setting effect:', payload.sfxUrl);
           useStore.getState().setRuntime({ selectedEffect: payload.sfxUrl }, { silent: true });
         }
         return;
