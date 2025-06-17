@@ -46,6 +46,17 @@ class ScriptExecutionAgent:
             "探險": ["space_story_script.sh"],
             "story": ["space_story_script.sh"],
             
+            "瑜伽": ["space_yoga2.sh"],
+            "yoga": ["space_yoga2.sh"],
+            "太空瑜伽": ["space_yoga2.sh"],
+            "space yoga": ["space_yoga2.sh"],
+            "瑜伽教室": ["space_yoga2.sh"],
+            "辣妹瑜伽": ["space_yoga2.sh"],
+            "運動": ["space_yoga2.sh"],
+            "健身": ["space_yoga2.sh"],
+            "教學": ["space_yoga2.sh"],
+            "冥想": ["space_yoga2.sh"],
+            
             "新聞": ["news_broadcast.sh"],
             "播報": ["news_broadcast.sh"],
             "廣播": ["news_broadcast.sh"],
@@ -58,7 +69,8 @@ class ScriptExecutionAgent:
             "meta_self.sh",
             "remix_scene.sh", 
             "space_story_script.sh",
-            "news_broadcast.sh"
+            "news_broadcast.sh",
+            "space_yoga2.sh"
         ]
         
         logger.info("🎬 ScriptExecutionAgent 初始化完成")
@@ -79,6 +91,18 @@ class ScriptExecutionAgent:
             # 檢查是否為停止請求
             if self._is_stop_request(request):
                 return await self._handle_stop_all_scripts()
+            
+            # 檢查是否有腳本正在執行
+            status_result = await self._handle_script_status({})
+            if status_result.get("success") and status_result.get("total_running", 0) > 0:
+                running_scripts = status_result.get("running_scripts", [])
+                logger.warning(f"⚠️ 有腳本正在執行中: {running_scripts}")
+                return {
+                    "success": False,
+                    "error": f"有腳本正在執行中: {', '.join(running_scripts)}。請等待執行完成或先停止現有腳本。",
+                    "running_scripts": running_scripts,
+                    "total_running": len(running_scripts)
+                }
             
             # 否則為執行請求：選擇並執行劇本
             selected_script = self._smart_script_selection(request)
@@ -160,11 +184,19 @@ class ScriptExecutionAgent:
         """根據請求內容智能選擇劇本"""
         request_lower = request.lower()
         
-        # 關鍵詞匹配
+        # 關鍵詞匹配 - 按關鍵詞長度降序排列，確保較長的關鍵詞優先匹配
+        matched_keywords = []
         for keyword, scripts in self.script_mapping.items():
             if keyword.lower() in request_lower:
-                logger.info(f"🎯 關鍵詞匹配: '{keyword}' -> {scripts[0]}")
-                return scripts[0]
+                matched_keywords.append((keyword, scripts[0], len(keyword)))
+        
+        # 如果有匹配的關鍵詞，選擇最長的（最具體的）
+        if matched_keywords:
+            # 按關鍵詞長度降序排列，最長的排在前面
+            matched_keywords.sort(key=lambda x: x[2], reverse=True)
+            best_match = matched_keywords[0]
+            logger.info(f"🎯 關鍵詞匹配: '{best_match[0]}' (長度: {best_match[2]}) -> {best_match[1]}")
+            return best_match[1]
         
         # 如果沒有匹配，默認選擇 meta_self.sh（最具代表性的表演）
         default_script = "meta_self.sh"
@@ -432,6 +464,14 @@ class ScriptExecutionAgent:
                 "duration": "8-12 分鐘",
                 "theme": "新聞播報、資訊傳達",
                 "suitable_for": "資訊播報、正式場合"
+            },
+            "space_yoga2.sh": {
+                "name": "space_yoga2.sh",
+                "title": "《太空辣妹瑜伽教室 2.0》",
+                "description": "太空主題的瑜伽動作教學與互動表演，融合動畫、音效與多媒體展示",
+                "duration": "15-25 分鐘",
+                "theme": "太空、瑜伽、互動教學、運動",
+                "suitable_for": "主題互動、運動教學、趣味表演"
             }
         }
         

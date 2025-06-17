@@ -17,7 +17,8 @@ REGISTERED_SCRIPTS = [
     "meta_self.sh",
     "remix_scene.sh",
     "space_story_script.sh",
-    "news_broadcast.sh"
+    "news_broadcast.sh",
+    "space_yoga2.sh"
 ]
 
 class ScriptExecutionRequest(BaseModel):
@@ -176,6 +177,54 @@ async def stop_script(script_name: str):
             status_code=500,
             detail=f"停止腳本時發生錯誤: {str(e)}"
         )
+
+@router.post("/scripts/stop-all")
+async def stop_all_scripts():
+    """
+    停止所有正在執行的腳本
+    """
+    if not running_scripts:
+        return {
+            "success": True,
+            "message": "目前沒有正在執行的腳本",
+            "stopped_scripts": []
+        }
+    
+    stopped_scripts = []
+    failed_scripts = []
+    
+    for script_name, process in list(running_scripts.items()):
+        try:
+            process.terminate()
+            
+            # 等待進程結束，超時後強制終止
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+            
+            del running_scripts[script_name]
+            stopped_scripts.append(script_name)
+            logger.info(f"腳本 {script_name} 已停止")
+            
+        except Exception as e:
+            failed_scripts.append(f"{script_name}: {str(e)}")
+            logger.error(f"停止腳本 {script_name} 時發生錯誤: {str(e)}")
+    
+    if failed_scripts:
+        return {
+            "success": False,
+            "message": f"部分腳本停止失敗",
+            "stopped_scripts": stopped_scripts,
+            "failed_scripts": failed_scripts
+        }
+    else:
+        return {
+            "success": True,
+            "message": f"成功停止 {len(stopped_scripts)} 個腳本",
+            "stopped_scripts": stopped_scripts
+        }
 
 @router.get("/scripts/status")
 async def get_scripts_status():
