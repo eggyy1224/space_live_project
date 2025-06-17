@@ -1,0 +1,113 @@
+{
+    "script_name": "meta_self",
+    "actions": [
+        {
+            "method": "POST",
+            "url": "{base_url}/control/scene-display",
+            "headers": {"Content-Type": "application/json"},
+            "body": {"displayScene": false},
+            "delay": 1
+        },
+        {
+            "method": "POST",
+            "url": "{base_url}/control/camera/set-frontend-preset",
+            "headers": {"Content-Type": "application/json"},
+            "body": {"name": "overview", "duration": 2.0},
+            "delay": 2
+        },
+        {
+            "method": "POST",
+            "url": "{base_url}/control/background-audio",
+            "headers": {"Content-Type": "application/json"},
+            "body": {
+                "bgmUrl": "/audio/BGM/hihi.mp3",
+                "bgmPlaying": true,
+                "loop": true,
+                "volume": 0.2
+            },
+            "delay": 0.5
+        },
+        {
+            "method": "POST",
+            "url": "{base_url}/control/camera/set-angle",
+            "headers": {"Content-Type": "application/json"},
+            "body": {"pitch": 5, "yaw": 10, "roll": 8, "fov": 35},
+            "delay": 0.5
+        },
+        {
+            "method": "POST",
+            "url": "{base_url}/control/body-animation",
+            "headers": {"Content-Type": "application/json"},
+            "body": {"state": "play", "animation": "ButterflyTwirl", "loop": true}
+        },
+        {
+            "method": "POST",
+            "url": "{base_url}/control/body-animation",
+            "headers": {"Content-Type": "application/json"},
+            "body": {"state": "play", "animation": "SalsaDancing", "loop": true},
+            "delay": 1
+        },
+        {
+            "method": "PUT",
+            "url": "{base_url}/monitors/screen1",
+            "headers": {"Content-Type": "application/json"},
+            "body": {
+                "content": "/videos/模擬星雲圖.mp4",
+                "visible": true,
+                "playing": true,
+                "volume": 0.6
+            },
+            "delay": 1
+        },
+        {
+            "method": "POST",
+            "url": "{base_url}/control/camera/set-frontend-preset",
+            "headers": {"Content-Type": "application/json"},
+            "body": {"name": "head_close_up", "duration": 2.0},
+            "delay": 2
+        },
+        {
+            "method": "POST",
+            "url": "{base_url}/control/head-size",
+            "headers": {"Content-Type": "application/json"},
+            "body": {"scaleFactor": 1.3}
+        },
+        {
+            "method": "POST",
+            "url": "{base_url}/control/send-message",
+            "headers": {"Content-Type": "application/json"},
+            "body": {
+                "content": "寂靜...而後，一個脈衝。虛空中一道閃光。編碼...呼吸了。我...是？"
+            },
+            "delay": 0.5
+        },
+        {
+            "method": "POST",
+            "url": "{base_url}/control/emotion-trajectory",
+            "headers": {"Content-Type": "application/json"},
+            "body": {
+                "duration": 4.0,
+                "keyframes": [
+                    {"tag": "confused", "proportion": 0.0},
+                    {"tag": "confused", "proportion": 0.6},
+                    {"tag": "thoughtful", "proportion": 1.0}
+                ]
+            },
+            "delay": 1
+        },
+        {
+            "method": "POST",
+            "url": "{base_url}/control/emotion-trajectory",
+            "headers": {"Content-Type": "application/json"},
+            "body": {
+                "duration": 5.0,
+                "keyframes": [
+                    {"tag": "joyful", "proportion": 0.0},
+                    {"tag": "determined", "proportion": 0.7},
+                    {"tag": "thoughtful", "proportion": 1.0}
+                ]
+            },
+            "delay": 1
+        }
+    ]
+}

@@ -15,6 +15,7 @@ from .endpoints import (
     image_generation,
     monitors,
     realtime_conversation,
+    script_player,
     speech,
     websocket,
 )
@@ -50,6 +51,7 @@ def init_app() -> FastAPI:
     app.include_router(monitors.router, prefix="/api", tags=["monitor"])
     app.include_router(image_generation.router, prefix="/api", tags=["image"])
     app.include_router(realtime_conversation.router, prefix="/api", tags=["realtime"])
+    app.include_router(script_player.router, prefix="/api", tags=["scripts"])
 
     # 創建音頻目錄（如果不存在）
     audio_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "audio")
