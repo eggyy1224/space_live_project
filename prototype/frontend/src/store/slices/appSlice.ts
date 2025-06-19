@@ -17,12 +17,17 @@ export interface AppSlice {
   toasts: Toast[];
   isSettingsPanelVisible: boolean;
   isCharacterControlPanelVisible: boolean;
+  isEnvironmentControlPanelVisible: boolean;
   isLoading: boolean;
   errorMessage: string | null;
   currentAction: string | null;
   userInteracted: boolean;
   micPermission: 'prompt' | 'granted' | 'denied';
   audioDuration: number | null;
+  // 背景圖片相關狀態
+  currentBackgroundPicture: string | null;
+  availableBackgroundPictures: string[];
+  backgroundPictureEnabled: boolean;
   
   // 操作
   setActiveTab: (tab: string) => void;
@@ -33,12 +38,18 @@ export interface AppSlice {
   clearToasts: () => void;
   toggleSettingsPanel: () => void;
   toggleCharacterControlPanel: () => void;
+  toggleEnvironmentControlPanel: () => void;
   setLoading: (loading: boolean) => void;
   setError: (message: string | null) => void;
   setCurrentAction: (action: string | null) => void;
   setUserInteracted: () => void;
   setMicPermission: (permission: 'prompt' | 'granted' | 'denied') => void;
   setAudioDuration: (duration: number | null) => void;
+  // 背景圖片相關操作
+  setCurrentBackgroundPicture: (picture: string | null) => void;
+  setAvailableBackgroundPictures: (pictures: string[]) => void;
+  toggleBackgroundPicture: () => void;
+  setBackgroundPictureEnabled: (enabled: boolean) => void;
 }
 
 // 創建 App Slice
@@ -50,12 +61,17 @@ export const createAppSlice: StateCreator<AppSlice> = (set) => ({
   toasts: [],
   isSettingsPanelVisible: false,
   isCharacterControlPanelVisible: false,
+  isEnvironmentControlPanelVisible: false,
   isLoading: false,
   errorMessage: null,
   currentAction: null,
   userInteracted: false,
   micPermission: 'prompt',
   audioDuration: null,
+  // 背景圖片初始狀態
+  currentBackgroundPicture: null,
+  availableBackgroundPictures: ['outerspace1.png', 'outerspace2.png', 'outerspace3.png'],
+  backgroundPictureEnabled: false,
   
   // 操作實現
   setActiveTab: (tab) => set({ activeTab: tab }),
@@ -80,6 +96,8 @@ export const createAppSlice: StateCreator<AppSlice> = (set) => ({
   
   toggleCharacterControlPanel: () => set((state) => ({ isCharacterControlPanelVisible: !state.isCharacterControlPanelVisible })),
   
+  toggleEnvironmentControlPanel: () => set((state) => ({ isEnvironmentControlPanelVisible: !state.isEnvironmentControlPanelVisible })),
+  
   setLoading: (loading) => set({ isLoading: loading }),
   
   setError: (message) => set({ errorMessage: message }),
@@ -91,4 +109,15 @@ export const createAppSlice: StateCreator<AppSlice> = (set) => ({
   setMicPermission: (permission) => set({ micPermission: permission }),
   
   setAudioDuration: (duration) => set({ audioDuration: duration }),
+  
+  // 背景圖片操作實現
+  setCurrentBackgroundPicture: (picture) => set({ currentBackgroundPicture: picture }),
+  
+  setAvailableBackgroundPictures: (pictures) => set({ availableBackgroundPictures: pictures }),
+  
+  toggleBackgroundPicture: () => set((state) => ({ 
+    backgroundPictureEnabled: !state.backgroundPictureEnabled 
+  })),
+  
+  setBackgroundPictureEnabled: (enabled) => set({ backgroundPictureEnabled: enabled }),
 }); 

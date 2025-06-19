@@ -114,6 +114,13 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const setSpeaking = useStore((state) => state.setSpeaking); // 取得設置說話狀態的函數
   const setAudioStartTime = useStore((state) => state.setAudioStartTime); // 取得設置音頻開始時間的函數
   
+  // 背景圖片相關狀態
+  const backgroundPictureEnabled = useStore((state) => state.backgroundPictureEnabled);
+  const currentBackgroundPicture = useStore((state) => state.currentBackgroundPicture);
+  const availableBackgroundPictures = useStore((state) => state.availableBackgroundPictures);
+  const toggleBackgroundPicture = useStore((state) => state.toggleBackgroundPicture);
+  const setCurrentBackgroundPicture = useStore((state) => state.setCurrentBackgroundPicture);
+  
   // 從 Zustand 獲取模型縮放值和設置方法
   const currentModelScale = useStore((state) => state.modelScale[0]); // 假設三個軸的縮放值相同，取第一個值
   const setUniformScale = useStore((state) => state.setUniformScale); // 獲取設置統一縮放的方法
@@ -295,6 +302,54 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
             <div className="text-xs text-gray-500 dark:text-gray-400">
                當前情緒: {currentEmotion} ({(emotionConfidence * 100).toFixed(1)}%)
              </div>
+          </div>
+
+          {/* --- Background Picture Controls --- */}
+          <div className="space-y-2">
+            <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">背景圖片控制</h3>
+            
+            {/* 背景圖片開關 */}
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-600 dark:text-gray-300">背景圖片顯示</span>
+              <button 
+                onClick={toggleBackgroundPicture}
+                className={buttonClasses(backgroundPictureEnabled)}
+              >
+                {backgroundPictureEnabled ? '開啟' : '關閉'}
+              </button>
+            </div>
+
+            {/* 背景圖片選擇 */}
+            {backgroundPictureEnabled && (
+              <div className="space-y-2">
+                <div className="text-xs text-gray-600 dark:text-gray-300">
+                  選擇背景圖片：
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {availableBackgroundPictures.map((picture) => (
+                    <button
+                      key={picture}
+                      onClick={() => setCurrentBackgroundPicture(picture)}
+                      className={buttonClasses(currentBackgroundPicture === picture)}
+                      title={picture}
+                    >
+                      {picture.replace('.png', '').replace('outerspace', '太空')}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setCurrentBackgroundPicture(null)}
+                    className={buttonClasses(currentBackgroundPicture === null)}
+                  >
+                    無背景
+                  </button>
+                </div>
+                
+                {/* 當前背景圖片顯示 */}
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  當前背景: {currentBackgroundPicture || '無'}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* --- Animation Controls --- */}  

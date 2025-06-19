@@ -6,6 +6,7 @@ import CharacterModel from "./CharacterModel";
 import DanceGroup from "./DanceGroup";
 import DynamicAudioBackgrounds from "./DynamicAudioBackgrounds";
 import RoomScene from "./RoomScene";
+import BackgroundPicture from "./BackgroundPicture";
 import { useStore } from "../store";
 import * as THREE from "three";
 import { useCameraManager, CameraPreset } from "../camera";
@@ -188,6 +189,9 @@ const SceneContent: React.FC<SceneContainerProps> = ({
 
   return (
     <>
+      {/* 背景圖片 - 放在最遠處 */}
+      <BackgroundPicture />
+      
       {/* 環境光照 - 關鍵的PBR材質支援，讓character模型有正確的光澤 */}
       <Environment 
         preset={environmentPreset} 

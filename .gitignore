@@ -125,10 +125,11 @@ dev-debug.log
 # OS specific
 
 Audio_Temp/
-
+dㄎ
 prototype/frontend/public/videos/
 prototype/frontend/public/scenes
 prototype/backend/api/audio
 prototype/backend/generated_images
 prototype/backend/selfies
 docs/log_reports
+prototype/frontend/public/background_pictures
