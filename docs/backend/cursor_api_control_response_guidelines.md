@@ -69,6 +69,9 @@ The request models for these routes are defined at the top of `control.py` and i
 | Method | Path | Description |
 |-------|------|-------------|
 |`POST`|`/api/generate-image`|Generate an AI image using Gemini 2.0 Flash Preview Image Generation model and broadcast via WebSocket.|
+|`POST`|`/api/generate-background-image`|Generate a background image optimized for screen aspect ratios and automatically set as scene background.|
+|`POST`|`/api/set-background-image`|Switch to an existing background image by filename.|
+|`POST`|`/api/disable-background-image`|Disable the current background image and return to default scene.|
 
 ### System Endpoint
 | Method | Path | Description |
@@ -83,8 +86,9 @@ A websocket endpoint at `/ws` provides real-time conversation handling. It manag
 2. **Monitor operations** – interpret requests about changing monitor visibility, content or volume and call the monitor endpoints.
 3. **Speech processing** – when users supply audio to convert or ask for generated speech, use the speech endpoints.
 4. **Image generation requests** – when users ask for image generation or want to create visual content, use the `/api/generate-image` endpoint.
-5. **Status queries** – requests for availability or connection information should call `/api/control/status` or `/api/health`.
-6. **Unstructured chat** – route open conversation through the websocket endpoint.
+5. **Background image requests** – when users want to change scene backgrounds or generate background images, use `/api/generate-background-image`, `/api/set-background-image`, or `/api/disable-background-image`.
+6. **Status queries** – requests for availability or connection information should call `/api/control/status` or `/api/health`.
+7. **Unstructured chat** – route open conversation through the websocket endpoint.
 
 ## Response Generation
 When an API call succeeds, include key fields from the returned JSON in natural language. For example, a successful `send-message` call should note the connection count. If an error occurs, return a concise summary of the failure and its HTTP status.
@@ -108,17 +112,19 @@ To help Cursor better understand and utilize project assets, here are some key p
 -   **Animations**: `prototype/shared/config/animations.json`
 -   **`play_audio` (songs file)**: `prototype/backend/songs`
 -   **Monitor Switching Materials**: `prototype/frontend/public/videos`
+-   **Background Pictures**: `prototype/frontend/public/background_pictures`
 
 ## ⚠️ Critical Path & Data Specifications
 
 ### Audio & Video File URL Formats
 **IMPORTANT**: Different asset sources use different URL prefixes. Using the wrong prefix will result in playback failure.
 
-| Asset Type             | Physical Path Root                 | API URL Prefix | Example Request Body (for `play-audio` or `background-audio`)          | Example for Monitor (`currentVideo`) |
-|------------------------|------------------------------------|----------------|----------------------------------------------------------------------|---------------------------------------|
-| BGM / Sound Effects    | `prototype/frontend/public/audio/` | `/audio/`        | `{"bgmUrl": "/audio/BGM/spacelive_theme.mp3"}`                     | N/A                                   |
-| Songs for `play_audio` | `prototype/backend/songs/`         | `/songs-file/`   | `{"url": "/songs-file/暴龍吼叫.mp3"}`                                 | N/A                                   |
-| Monitor Videos         | `prototype/frontend/public/videos/`| `/videos/`       | N/A                                                                  | `{"content": "/videos/太空直播中.mp4"}` (Request uses 'content') |
+| Asset Type             | Physical Path Root                 | API URL Prefix | Example Request Body (for `play-audio` or `background-audio`)          | Example for Monitor (`currentVideo`) | Example for Background |
+|------------------------|------------------------------------|----------------|----------------------------------------------------------------------|---------------------------------------|-------------------------|
+| BGM / Sound Effects    | `prototype/frontend/public/audio/` | `/audio/`        | `{"bgmUrl": "/audio/BGM/spacelive_theme.mp3"}`                     | N/A                                   | N/A                     |
+| Songs for `play_audio` | `prototype/backend/songs/`         | `/songs-file/`   | `{"url": "/songs-file/暴龍吼叫.mp3"}`                                 | N/A                                   | N/A                     |
+| Monitor Videos         | `prototype/frontend/public/videos/`| `/videos/`       | N/A                                                                  | `{"content": "/videos/太空直播中.mp4"}` (Request uses 'content') | N/A |
+| Background Pictures    | `prototype/frontend/public/background_pictures/` | `/background_pictures/` | N/A | N/A | `{"filename": "outerspace1.png"}` (Direct filename only) |
 
 **Common Path Mistakes:**
 -   ❌ **WRONG**: `/songs/filename.mp3` (This prefix is for a different static mount, will likely fail for `play_audio`)
@@ -380,6 +386,27 @@ To help Cursor better understand and utilize project assets, here are some key p
 }
 ```
 
+**27. Generate Background Image (`/api/generate-background-image`)**
+```json
+{
+  "description": "string (Required, description of the background image to generate. Examples: 'Beautiful deep space scene with nebulae and distant galaxies', 'Futuristic digital matrix with neon colors', 'Abstract geometric patterns with gradient colors')",
+  "aspect_ratio": "string (Optional, screen aspect ratio. Options: '16:9' (default), '21:9', '4:3', '1:1')"
+}
+```
+
+**28. Set Background Image (`/api/set-background-image`)**
+```json
+{
+  "filename": "string (Required, background image filename. Must exist in frontend/public/background_pictures/ directory. Examples: 'outerspace1.png', 'background_1750322123885.png')"
+}
+```
+
+**29. Disable Background Image (`/api/disable-background-image`)**
+```json
+{}
+```
+*Note: This endpoint requires no parameters.*
+
 **Image Generation & Show Existing Image Response:**
 ```json
 {
@@ -443,6 +470,87 @@ To help Cursor better understand and utilize project assets, here are some key p
 
 8.  **Monitor Backend Logs for Deeper Clues.**
     -   Logs can provide more detailed error information if an API call behaves unexpectedly.
+
+## 🖼️ Background Image Control Examples
+
+### Available Background Images
+The system comes with predefined background images and can generate new ones:
+
+**Predefined Backgrounds:**
+- `outerspace1.png` - Deep space scene with stars
+- `outerspace2.png` - Cosmic nebula view  
+- `outerspace3.png` - Galaxy cluster background
+
+**AI Generated Backgrounds:**
+- Generated backgrounds follow naming pattern: `background_[timestamp].png`
+- Automatically saved to `prototype/frontend/public/background_pictures/`
+- Synchronized to frontend via WebSocket
+
+### Background Control API Usage
+
+**1. Generate New Background:**
+```bash
+curl -X POST "http://localhost:8000/api/generate-background-image" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "description": "Beautiful deep space scene with nebulae and distant galaxies",
+    "aspect_ratio": "16:9"
+  }'
+```
+
+**2. Switch to Existing Background:**
+```bash
+# Switch to predefined space background
+curl -X POST "http://localhost:8000/api/set-background-image" \
+  -H "Content-Type: application/json" \
+  -d '{"filename": "outerspace1.png"}'
+
+# Switch to AI generated background  
+curl -X POST "http://localhost:8000/api/set-background-image" \
+  -H "Content-Type: application/json" \
+  -d '{"filename": "background_1750322123885.png"}'
+```
+
+**3. Disable Background:**
+```bash
+curl -X POST "http://localhost:8000/api/disable-background-image"
+```
+
+### WebSocket Events
+Background changes are automatically broadcasted via WebSocket:
+
+**Generated Background Event:**
+```json
+{
+  "type": "background-image-generated",
+  "filename": "background_1750322123885.png",
+  "caption": "AI generated description",
+  "aspect_ratio": "16:9",
+  "description": "User's original description",
+  "timestamp": 1750322123885
+}
+```
+
+**Background Change Event:**
+```json
+{
+  "type": "background-image-changed", 
+  "filename": "outerspace1.png",
+  "enabled": true,
+  "timestamp": 1750322123885
+}
+```
+
+### Error Handling
+- **404 Error**: Background image file not found
+- **400 Error**: Missing required parameters
+- **500 Error**: Image generation or file operations failed
+
+### Best Practices
+1. **Check file existence**: Use predefined filenames (`outerspace1.png`, etc.) for reliable results
+2. **Aspect ratio optimization**: Use `16:9` for widescreen displays, `21:9` for ultrawide
+3. **WebSocket integration**: Frontend automatically updates when background changes
+4. **File management**: Generated backgrounds accumulate over time, consider cleanup if needed
 
 9.  **Give TTS Enough Time to Speak! (Crucial for `send-message`)**
     -   The `send-message` command is non-blocking. This means the script or control flow will continue immediately after the command is sent, *not* after the Text-to-Speech (TTS) has finished speaking.

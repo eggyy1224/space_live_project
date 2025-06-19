@@ -10,6 +10,9 @@
 |`POST`|`/api/show-existing-image`|顯示已存在的圖像，支援所有顯示配置選項|
 |`POST`|`/api/take-selfie`|拍攝自拍照，支援參考圖像和多模態 AI 生成|
 |`POST`|`/api/continue-selfie`|繼續自拍（自動使用最新自拍作為參考）|
+|`POST`|`/api/generate-background-image`|生成背景圖片並設為當前背景|
+|`POST`|`/api/set-background-image`|切換到指定的背景圖片|
+|`POST`|`/api/disable-background-image`|停用背景圖片顯示|
 
 `aspect_ratio` 可選值（傳遞給 Gemini API 決定產生的圖片比例）：
 
@@ -279,4 +282,160 @@ curl -X POST http://localhost:8000/api/show-existing-image \
 curl -X POST http://localhost:8000/api/show-existing-image \
   -H "Content-Type: application/json" \
   -d '{"filename": "image_1749309153863.png", "custom_position": {"top": "30%", "left": "25%"}, "custom_size": {"width": "500px", "height": "400px"}, "duration": 35.0}'
+```
+
+## 背景圖片 API
+
+背景圖片功能提供專門的 3D 場景背景管理，與前景圖片顯示（ImageOverlay）完全分離，互不衝突。
+
+### 5. 生成背景圖片 `/api/generate-background-image`
+
+#### 功能特色
+- **專為背景設計**：自動選擇最適合的螢幕比例（預設 16:9）
+- **自動同步**：生成的圖片自動複製到前端 `background_pictures` 目錄
+- **即時切換**：生成完成後自動設為當前背景
+- **WebSocket 通知**：通過 `background-image-generated` 事件通知前端
+
+#### 請求格式
+
+```json
+{
+  "description": "浩瀚的外太空，有彩色星雲和明亮的星星",
+  "aspect_ratio": "16:9"
+}
+```
+
+#### 參數說明
+- `description` (必填): 背景圖片的描述文字
+- `aspect_ratio` (可選): 螢幕比例，可選值：
+  - `16:9` - 標準寬螢幕比例（預設）
+  - `21:9` - 超寬螢幕比例
+  - `4:3` - 傳統螢幕比例
+  - `1:1` - 正方形比例
+
+#### 回應範例
+
+```json
+{
+  "success": true,
+  "background_filename": "background_1750322123885.png",
+  "description": "浩瀚的外太空，有彩色星雲和明亮的星星",
+  "aspect_ratio": "16:9",
+  "backend_path": "/Volumes/2024data/space_live_project/prototype/backend/generated_images/background_1750322123885.png",
+  "frontend_path": "/Volumes/2024data/space_live_project/prototype/frontend/public/background_pictures/background_1750322123885.png"
+}
+```
+
+### 6. 設置背景圖片 `/api/set-background-image`
+
+#### 功能特色
+- **切換背景**：切換到指定的背景圖片
+- **檔案檢查**：自動檢查檔案是否存在
+- **WebSocket 通知**：通過 `background-image-changed` 事件通知前端
+
+#### 請求格式
+
+```json
+{
+  "filename": "outerspace1.png"
+}
+```
+
+#### 參數說明
+- `filename` (必填): 背景圖片檔名（只需檔名，不需完整路徑）
+
+#### 回應範例
+
+```json
+{
+  "success": true,
+  "background_filename": "outerspace1.png",
+  "message": "背景圖片已切換"
+}
+```
+
+### 7. 停用背景圖片 `/api/disable-background-image`
+
+#### 功能特色
+- **停用背景**：停用當前背景圖片顯示
+- **WebSocket 通知**：通過 `background-image-disabled` 事件通知前端
+
+#### 請求格式
+
+```json
+{}
+```
+
+#### 回應範例
+
+```json
+{
+  "success": true,
+  "message": "背景圖片已停用"
+}
+```
+
+## 背景圖片系統特性
+
+### 檔案管理
+- **後端儲存**：`prototype/backend/generated_images/` 目錄
+- **前端同步**：自動複製到 `prototype/frontend/public/background_pictures/` 目錄
+- **檔名格式**：`background_{timestamp}.png` (例如：`background_1750322123885.png`)
+- **預設背景**：`outerspace1.png`, `outerspace2.png`, `outerspace3.png`
+
+### WebSocket 事件
+- `background-image-generated` - 新背景圖片生成完成
+- `background-image-changed` - 背景圖片已切換
+- `background-image-disabled` - 背景圖片已停用
+
+### 與 ImageOverlay 的區別
+- **背景圖片**：設置 3D 場景的背景環境（scene.background）
+- **前景圖片**：在 3D 場景前方顯示的浮動圖片（ImageOverlay）
+- **完全分離**：兩個系統可以同時運作，互不干擾
+
+### 螢幕比例最佳化
+- **16:9**：最常見的寬螢幕比例，適合大多數顯示器
+- **21:9**：超寬螢幕比例，適合寬螢幕體驗
+- **4:3**：傳統螢幕比例，適合復古風格
+- **1:1**：正方形比例，適合特殊藝術效果
+
+## 背景圖片使用範例
+
+**生成太空背景：**
+```bash
+curl -X POST http://localhost:8000/api/generate-background-image \
+  -H "Content-Type: application/json" \
+  -d '{"description": "深邃的宇宙空間，有藍色和紫色的星雲，閃爍的星星", "aspect_ratio": "16:9"}'
+```
+
+**切換到預設背景：**
+```bash
+curl -X POST http://localhost:8000/api/set-background-image \
+  -H "Content-Type: application/json" \
+  -d '{"filename": "outerspace1.png"}'
+```
+
+**停用背景圖片：**
+```bash
+curl -X POST http://localhost:8000/api/disable-background-image \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+**完整場景設置範例：**
+```bash
+# 1. 生成並設置太空背景
+curl -X POST http://localhost:8000/api/generate-background-image \
+  -H "Content-Type: application/json" \
+  -d '{"description": "壯觀的銀河系中心，有明亮的星團和彩色星雲", "aspect_ratio": "16:9"}'
+
+# 2. 同時顯示前景圖片
+curl -X POST http://localhost:8000/api/generate-image \
+  -H "Content-Type: application/json" \
+  -d '{"description": "太空站的控制面板", "position": "bottom-right", "size": "medium", "duration": 30.0}'
+
+# 3. 拍攝自拍照
+curl -X POST http://localhost:8000/api/take-selfie \
+  -H "Content-Type: application/json" \
+  -d '{"description": "在太空中的自拍照", "position": "top-left", "size": "small", "duration": 20.0}'
 ```

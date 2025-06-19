@@ -30,8 +30,13 @@ GENERATED_DIR = os.path.join(
 SELFIES_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "selfies"
 )
+# 背景圖片目錄 - 同步到前端
+FRONTEND_BACKGROUND_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "../frontend/public/background_pictures"
+)
 os.makedirs(GENERATED_DIR, exist_ok=True)
 os.makedirs(SELFIES_DIR, exist_ok=True)
+os.makedirs(FRONTEND_BACKGROUND_DIR, exist_ok=True)
 
 
 class ImageGenerationRequest(BaseModel):
@@ -89,6 +94,11 @@ class ShowExistingImageRequest(BaseModel):
     duration: Optional[float] = 15.0
     # 圖像長寬比 (可選)
     aspect_ratio: Optional[str] = "landscape"
+
+
+class BackgroundImageRequest(BaseModel):
+    description: str  # 背景圖片描述
+    aspect_ratio: Optional[str] = "16:9"  # 螢幕比例，預設 16:9
 
 
 @router.post("/generate-image")
@@ -564,3 +574,136 @@ def _get_display_config_for_selfie(request: SelfieRequest) -> dict:
         config["size"] = size_presets.get(request.size, size_presets["large"])
     
     return config
+
+
+@router.post("/generate-background-image")
+async def generate_background_image(request: BackgroundImageRequest):
+    """生成背景圖片並同步到前端"""
+    try:
+        # 構建背景圖片描述，針對螢幕比例優化
+        aspect_map = {
+            "16:9": "in widescreen format (16:9 aspect ratio)",
+            "21:9": "in ultra-wide format (21:9 aspect ratio)", 
+            "4:3": "in standard format (4:3 aspect ratio)",
+            "1:1": "in square format (1:1 aspect ratio)"
+        }
+        
+        aspect_text = aspect_map.get(request.aspect_ratio, "in widescreen format (16:9 aspect ratio)")
+        prompt = f"Generate a stunning background image: {request.description}. Create it {aspect_text}, suitable for use as a computer screen background or wallpaper."
+        
+        # 使用 Gemini 圖像生成模型
+        response = client.models.generate_content(
+            model="gemini-2.0-flash-preview-image-generation",
+            contents=prompt,
+            config=GenerateContentConfig(
+                response_modalities=["TEXT", "IMAGE"]
+            )
+        )
+        
+        # 解析回應
+        image_data = None
+        caption = ""
+        
+        for part in response.candidates[0].content.parts:
+            if part.text:
+                caption = part.text.strip()
+            elif part.inline_data:
+                image_data = part.inline_data.data
+        
+        if not image_data:
+            raise HTTPException(status_code=500, detail="No background image generated")
+
+        # 生成檔名
+        filename = f"background_{int(time.time()*1000)}.png"
+        
+        # 儲存到後端 generated_images 資料夾
+        backend_file_path = os.path.join(GENERATED_DIR, filename)
+        with open(backend_file_path, "wb") as f:
+            f.write(image_data)
+        
+        # 同步到前端 background_pictures 資料夾
+        frontend_file_path = os.path.join(FRONTEND_BACKGROUND_DIR, filename)
+        with open(frontend_file_path, "wb") as f:
+            f.write(image_data)
+        
+        logging.info(f"Background image saved to: {backend_file_path} and {frontend_file_path}")
+        
+        # 透過 WebSocket 廣播背景圖片更新
+        await manager.broadcast(json.dumps({
+            "type": "background-image-generated",
+            "filename": filename,
+            "caption": caption,
+            "aspect_ratio": request.aspect_ratio,
+            "description": request.description,
+            "timestamp": int(time.time()*1000)
+        }))
+
+        return {
+            "success": True,
+            "filename": filename,
+            "caption": caption,
+            "aspect_ratio": request.aspect_ratio,
+            "backend_path": f"/generated-images/{filename}",
+            "frontend_path": f"/background_pictures/{filename}",
+            "description": request.description
+        }
+        
+    except Exception as e:
+        logging.error(f"Background image generation failed: {e}")
+        raise HTTPException(status_code=500, detail="Background image generation failed")
+
+
+@router.post("/set-background-image")
+async def set_background_image(request: dict):
+    """設定指定的背景圖片為當前背景"""
+    try:
+        filename = request.get("filename")
+        if not filename:
+            raise HTTPException(status_code=400, detail="Missing filename")
+        
+        # 檢查檔案是否存在於 frontend 的 background_pictures 目錄
+        frontend_file_path = os.path.join(FRONTEND_BACKGROUND_DIR, filename)
+        if not os.path.exists(frontend_file_path):
+            raise HTTPException(status_code=404, detail=f"Background image not found: {filename}")
+        
+        # 透過 WebSocket 廣播背景圖片變更
+        await manager.broadcast(json.dumps({
+            "type": "background-image-changed",
+            "filename": filename,
+            "enabled": True,
+            "timestamp": int(time.time()*1000)
+        }))
+
+        return {
+            "success": True,
+            "filename": filename,
+            "message": f"Background set to {filename}"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Set background image failed: {e}")
+        raise HTTPException(status_code=500, detail="Set background image failed")
+
+
+@router.post("/disable-background-image")
+async def disable_background_image():
+    """停用背景圖片"""
+    try:
+        # 透過 WebSocket 廣播背景圖片停用
+        await manager.broadcast(json.dumps({
+            "type": "background-image-changed",
+            "filename": None,
+            "enabled": False,
+            "timestamp": int(time.time()*1000)
+        }))
+
+        return {
+            "success": True,
+            "message": "Background image disabled"
+        }
+        
+    except Exception as e:
+        logging.error(f"Disable background image failed: {e}")
+        raise HTTPException(status_code=500, detail="Disable background image failed")

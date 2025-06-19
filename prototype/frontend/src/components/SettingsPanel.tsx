@@ -320,36 +320,37 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
             </div>
 
             {/* 背景圖片選擇 */}
-            {backgroundPictureEnabled && (
-              <div className="space-y-2">
-                <div className="text-xs text-gray-600 dark:text-gray-300">
-                  選擇背景圖片：
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {availableBackgroundPictures.map((picture) => (
-                    <button
-                      key={picture}
-                      onClick={() => setCurrentBackgroundPicture(picture)}
-                      className={buttonClasses(currentBackgroundPicture === picture)}
-                      title={picture}
-                    >
-                      {picture.replace('.png', '').replace('outerspace', '太空')}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => setCurrentBackgroundPicture(null)}
-                    className={buttonClasses(currentBackgroundPicture === null)}
-                  >
-                    無背景
-                  </button>
-                </div>
-                
-                {/* 當前背景圖片顯示 */}
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  當前背景: {currentBackgroundPicture || '無'}
-                </div>
+            <div className="space-y-2">
+              <div className="text-xs text-gray-600 dark:text-gray-300">
+                選擇背景圖片：
               </div>
-            )}
+              <div className="flex flex-wrap gap-1.5">
+                {availableBackgroundPictures.map((picture) => (
+                  <button
+                    key={picture}
+                    onClick={() => setCurrentBackgroundPicture(picture)}
+                    className={buttonClasses(currentBackgroundPicture === picture)}
+                    title={picture}
+                  >
+                    {picture.replace('.png', '').replace('outerspace', '太空').replace('background_', 'AI圖')}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setCurrentBackgroundPicture(null)}
+                  className={buttonClasses(currentBackgroundPicture === null)}
+                >
+                  無背景
+                </button>
+              </div>
+              
+              {/* 當前背景圖片顯示 */}
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                當前背景: <span className="font-mono">{currentBackgroundPicture || '無'}</span>
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                可用圖片: {availableBackgroundPictures.length} 張 (含預設 + AI生成)
+              </div>
+            </div>
           </div>
 
           {/* --- Animation Controls --- */}  
