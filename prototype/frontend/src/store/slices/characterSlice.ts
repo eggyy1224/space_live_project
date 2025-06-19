@@ -50,7 +50,7 @@ export const createCharacterSlice: StateCreator<CharacterSlice> = (set, get) => 
   characterModelLoaded: false,
   characterVisible: true,
   characterPosition: [2, 0, 0], // 放在頭部旁邊
-  characterScale: 1,
+  characterScale: 15,
   characterRotation: [0, 0, 0],
   
   // 動畫狀態
@@ -94,7 +94,7 @@ export const createCharacterSlice: StateCreator<CharacterSlice> = (set, get) => 
   
   resetCharacterTransform: () => set({
     characterPosition: [2, 0, 0],
-    characterScale: 1,
+    characterScale: 15,
     characterRotation: [0, 0, 0]
   })
 }); 

@@ -58,7 +58,7 @@ export interface RoomSlice {
 
 export const createRoomSlice = (set: any, get: any, api: any) => ({
   // 初始狀態
-  showRoomScene: true,
+  showRoomScene: false,
   currentSceneId: DEFAULT_SCENE.id,
   roomSceneUrl: DEFAULT_SCENE.url,
   roomPosition: DEFAULT_SCENE.defaultPosition || [0, 0, 0],
