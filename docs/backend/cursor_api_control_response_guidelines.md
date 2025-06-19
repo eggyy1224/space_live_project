@@ -1239,3 +1239,64 @@ When implementing similar complex sequences:
 7. **Consider Reusability:** Design patterns that can be adapted for other content
 
 This script demonstrates that virtual performance creation is a sophisticated art form requiring careful orchestration of multiple systems to create cohesive, engaging experiences. The techniques shown here can be adapted and combined to create entirely new types of interactive content.
+
+## 實戰技巧：指令串連與組合 (Practical Technique: Command Chaining & Combos)
+
+在與 API 進行即時互動時，我們發現了一些強大的技巧，可以將單一的 API 呼叫組合成富有表現力的複雜行為。核心概念是使用 `&&` 在 Shell 中串連多個 `curl` 指令，讓它們接續執行，以達到同步效果。
+
+### 關鍵發現：表情與口說的同步
+
+**最重要的一點**：角色的臉部表情 (`/api/control/emotion-trajectory`) 必須與口說 (`/api/control/send-message`) 同步觸發，前端才會正確渲染。如果只發送表情指令，角色將不會有任何反應。
+
+-   **❌ 錯誤方式**: 只發送表情指令，角色沒有反應。
+    ```bash
+    curl -X POST .../emotion-trajectory -d '{"tag": "happy", ...}'
+    ```
+-   **✅ 正確方式**: 將表情和台詞指令串連在一起，角色會在說話時帶有指定情緒。
+    ```bash
+    curl -X POST .../emotion-trajectory -d '{"tag": "happy", ...}' && curl -X POST .../send-message -d '{"content": "大家好！"}'
+    ```
+
+### API 正確區分
+
+請注意，系統中有兩套動畫 API：
+-   `/api/control/character/animation`: 控制**主要角色**的動畫。這是我們進行組合技時最常用的。
+-   `/api/control/body-animation`: 控制**舞者**的動畫，通常用於背景或特殊表演。
+
+### 組合技 (Combos)
+
+透過 `&&` 串連，我們可以堆疊出不同層次的效果，我們稱之為「組合技」。
+
+#### 基礎三重奏 (Triple Combo): 動畫 + 表情 + 台詞
+這是創造一個生動角色的基本組合。
+
+**範例**: 讓角色做出「歡呼」的動作，並帶著「興奮」的表情說話。
+```bash
+curl -X POST http://127.0.0.1:8000/api/control/character/animation -H "Content-Type: application/json" -d '{"animation": "Cheering"}' && \
+curl -X POST http://127.0.0.1:8000/api/control/emotion-trajectory -H "Content-Type: application/json" -d '{"duration": 3.0, "keyframes": [{"tag": "excited", "proportion": 0.0}, {"tag": "excited", "proportion": 1.0}]}' && \
+curl -X POST http://127.0.0.1:8000/api/control/send-message -H "Content-Type: application/json" -d '{"content": "太棒了！"}'
+```
+
+#### 進階四重奏 (Quartet Combo): 音效 + 動畫 + 表情 + 台詞
+加入音效 (`/api/control/background-audio`) 可以大幅增強戲劇效果。
+
+**範例**: 伴隨著綜藝音效，角色跳出來說話。
+```bash
+curl -X POST http://127.0.0.1:8000/api/control/background-audio -H "Content-Type: application/json" -d '{"sfxUrl": "/audio/effects/taiwan_variety_sfx_02.mp3"}' && \
+curl -X POST http://127.0.0.1:8000/api/control/character/animation -H "Content-Type: application/json" -d '{"animation": "JumpAttack"}' && \
+curl -X POST http://127.0.0.1:8000/api/control/emotion-trajectory -H "Content-Type: application/json" -d '{"duration": 3.0, "keyframes": [{"tag": "playful", "proportion": 1.0}]}' && \
+curl -X POST http://127.0.0.1:8000/api/control/send-message -H "Content-Type: application/json" -d '{"content": "嚇到了吧！"}'
+```
+
+#### 終極五重奏 (Quintet Combo): 燈光/鏡頭 + 音效 + 動畫 + 表情 + 台詞
+在四重奏的基礎上，再加入環境控制，例如燈光 (`/api/control/environment/preset`) 或鏡頭 (`/api/control/camera/set-frontend-preset`)，可以創造出最具電影感的場景。
+
+**範例**: 在夜晚的燈光下，角色跳著舞，最後聚光燈打亮。
+```bash
+curl -X POST http://127.0.0.1:8000/api/control/environment/preset -H "Content-Type: application/json" -d '{"preset": "night"}' && \
+curl -X POST http://127.0.0.1:8000/api/control/character/animation -H "Content-Type: application/json" -d '{"animation": "舞步2", "loop": true}' && \
+curl -X POST http://127.0.0.1:8000/api/control/emotion-trajectory -H "Content-Type: application/json" -d '{"duration": 6.0, "keyframes": [{"tag": "serene", "proportion": 1.0}]}' && \
+curl -X POST http://127.0.0.1:8000/api/control/send-message -H "Content-Type: application/json" -d '{"content": "在這寂靜的夜裡..."}' && \
+curl -X POST http://127.0.0.1:8000/api/control/environment/preset -H "Content-Type: application/json" -d '{"preset": "studio"}'
+```
+透過靈活運用這些組合，便能透過 API 精準地編排出豐富且生動的角色表演。
