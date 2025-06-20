@@ -66,10 +66,42 @@ curl -X POST .../generate-image -d '{"description": "璀璨舞台煙火", "posit
 
 ## 🎨 高級技巧
 
+### 圖像生成革命 ⭐ **品質突破核心**
+**從亂碼圖片到專業級品質的完整解決方案**
+
+#### 第一性原理：專業攝影術語
+```bash
+# ✅ 成功範例：構圖+光影+技術規格
+"(cinematic composition, dramatic lighting, 8K photorealistic, no text) 
+單一焦點：鳳冠華服的太空媽祖，慈祥凝視遠方，背景是璀璨星雲，
+景深虛化，專業人像攝影，高解析度，邊緣光效果"
+
+# ❌ 失敗範例：描述複雜，容易產生文字亂碼
+"媽祖在太空船裡面有很多文字說明和標語還有各種複雜的背景元素"
+```
+
+#### 參考圖片統一策略
+```bash
+# 所有圖像生成都使用統一參考 - 確保視覺一致性
+REFERENCE_IMAGE="full_body/full_body2.png"
+
+# 應用到所有圖像端點
+curl -X POST .../take-selfie -d '{"reference_image": "'$REFERENCE_IMAGE'", ...}'
+curl -X POST .../generate-background-image -d '{"reference_image": "'$REFERENCE_IMAGE'", ...}'
+curl -X POST .../generate-image -d '{"reference_image": "'$REFERENCE_IMAGE'", ...}'
+```
+
+#### 關鍵術語庫
+- **光影控制**: "戲劇性打光", "邊緣光效", "黃金時刻光線"
+- **技術規格**: "高解析度", "專業攝影", "85mm鏡頭效果"  
+- **風格定義**: "科幻寫實主義", "電影級質感"
+- **負面提示**: "(no text)", "(no words)", "高對比度"
+
 ### 圖片位置戰略
 **永遠不要擋住角色！**
 - ✅ 安全位置: `center-left`, `center-right`, `top-left`, `top-right`, `bottom-left`, `bottom-right`
 - ❌ 危險位置: `center` (會擋住角色)
+- 🎯 **太空媽祖經驗**: 圖片尺寸用 `large`，位置多用 `center-left/right`
 
 ### Monitor音量階層
 **創造聲音層次感**
@@ -98,6 +130,67 @@ curl -X POST .../camera/set-frontend-preset -d '{"name": "dramatic_angle_1", "du
 
 ## 🔥 特殊組合技
 
+### 腳本函式建構法 ⭐ **實戰精華**
+**從太空媽祖專案學到的模組化架構：讓劇本清晰易懂**
+
+```bash
+# 核心函式組合：語音+情緒的黃金組合
+speak() {
+  CONTENT=$1
+  DURATION=$2
+  EMOTION_TAG=${3:-happy}
+  echo ">> 說話: $CONTENT"
+  curl -X POST $BASE_URL/control/send-message -d "{\"content\": \"$CONTENT\"}" &
+  curl -X POST $BASE_URL/control/emotion-trajectory -d "{\"duration\": $DURATION, \"keyframes\": [{\"tag\": \"$EMOTION_TAG\", \"proportion\": 1.0}]}"
+  sleep $(echo "$DURATION * 0.8" | bc)
+}
+
+# 主角動畫 vs 舞者動畫 (重要區分！)
+animate_character() {
+  ANIMATION=$1
+  SPEED=${2:-1.0}
+  curl -X POST .../character/animation -d "{\"animation\": \"$ANIMATION\", \"speed\": $SPEED}"
+}
+
+animate_dancers() {
+  ANIMATION=$1
+  SPEED=${2:-1.0}
+  curl -X POST .../body-animation -d "{\"animation\": \"$ANIMATION\", \"speed\": $SPEED}" &
+}
+
+# 專業級圖像生成 (參考圖片+專業提示詞)
+take_selfie() {
+  DESCRIPTION=$1
+  POSITION=${2:-center-left}
+  REFERENCE_IMAGE="full_body/full_body2.png"
+  curl -X POST .../take-selfie -d "{
+    \"description\": \"Photorealistic selfie of me. $DESCRIPTION\", 
+    \"reference_image\": \"$REFERENCE_IMAGE\", 
+    \"position\": \"$POSITION\"
+  }"
+}
+
+# 音效正確使用法
+play_sound_effect() {
+  SOUND_URL=$1
+  curl -X POST .../background-audio -d "{\"sfxUrl\": \"$SOUND_URL\"}"
+}
+
+# 表演段落模板
+performance_segment() {
+  SEGMENT_NAME="$1"
+  echo "=== $SEGMENT_NAME 開始 ==="
+  # 1. 環境設定 → 2. 開場對話 → 3. 視覺效果 → 4. 互動元素 → 5. 段落收尾
+  echo "=== $SEGMENT_NAME 結束 ==="
+}
+```
+
+**為什麼這種函式建構方式這麼棒？**
+- ✅ **可讀性極高** - 一目了然每個動作的目的
+- ✅ **易於維護** - 修改參數只需要改一個地方
+- ✅ **錯誤減少** - 封裝複雜的API呼叫
+- ✅ **快速開發** - 組合函式就能創建複雜表演
+
 ### 創意循環技
 **AI圖片連續進化**
 ```bash
@@ -125,10 +218,15 @@ curl -X POST .../show-existing-image -d '{"filename": "image_aaa.png", "position
 |-----|------|------|---------|
 | POST | `/api/control/send-message` | 角色說話 | `content` (必須) |
 | POST | `/api/control/emotion-trajectory` | 表情控制 | `duration`, `keyframes` (必須) |
-| POST | `/api/control/character/animation` | 角色動作 | `animation`, `speed`, `loop` |
+| POST | `/api/control/character/animation` | 🎯主角動作 | `animation`: 漂浮/舞步1-3/運動1-2 |
+| POST | `/api/control/body-animation` | 🎭舞者動作 | `animation`: Cheering/SalsaDancing |
 | POST | `/api/control/head-size` | 頭部縮放 | `scaleFactor` (0.1-20.0) |
-| POST | `/api/control/background-audio` | 背景音樂 | `bgmUrl` |
+| POST | `/api/control/background-audio` | 音樂音效 | `bgmUrl` OR `sfxUrl` |
 | POST | `/api/control/camera/set-frontend-preset` | 鏡頭預設 | `name`, `duration` |
+
+**🚨 重要區分：動畫API兩套系統**
+- `character/animation`: 主角專用 (太空主題動作)
+- `body-animation`: 舞者群組 (標準動作庫)
 
 ### 圖片生成端點
 | 方法 | 路徑 | 用途 | 位置選項 |
@@ -167,17 +265,56 @@ ls prototype/backend/generated_images/      # 圖片重用
 3. **創造高潮** - 特效、多重刺激
 4. **優雅收尾** - 復原設定、感謝觀眾
 
-### 4. 錯誤處理策略
-- API失敗時檢查 `detail` 欄位
-- 路徑錯誤時參考上方資源表格
-- 連線問題時重新檢查 WebSocket 狀態
-- 效果不如預期時拆解測試各個組件
+### 4. 錯誤處理策略 ⭐ **實戰除錯經驗**
+- **API失敗時檢查 `detail` 欄位**
+- **路徑錯誤時參考上方資源表格**
+- **連線問題時重新檢查 WebSocket 狀態**
+- **效果不如預期時拆解測試各個組件**
 
-### 5. 創意發展原則
+**🚨 太空媽祖專案常見陷阱：**
+```bash
+# ❌ 音效API用錯端點
+curl -X POST .../play-audio -d '{"sfxUrl": "..."}'  # 錯誤！
+
+# ✅ 音效正確用法  
+curl -X POST .../background-audio -d '{"sfxUrl": "..."}'  # 正確！
+
+# ❌ 圖片路徑問題
+"/some/wrong/path/image.png"  # show-existing-image 讀不到
+
+# ✅ 圖片正確路徑
+"image_name.png"  # 必須在 generated_images/ 目錄下
+
+# ❌ 動畫API混用
+curl -X POST .../body-animation -d '{"animation": "漂浮"}'  # 主角動作用錯API
+
+# ✅ 動畫API正確區分
+curl -X POST .../character/animation -d '{"animation": "漂浮"}'  # 主角用這個
+curl -X POST .../body-animation -d '{"animation": "Cheering"}'   # 舞者用這個
+```
+
+### 5. 創意發展原則 ⭐ **節奏優化精華**
 - **不要重複** - 每次都探索新資源組合
 - **建立節奏** - 用 sleep 控制時間感
 - **層次堆疊** - 從簡單到複雜逐步建構
 - **觀眾導向** - 考慮視覺衝擊和情感反應
+
+**🎭 太空媽祖節奏優化經驗：**
+```bash
+# 經用戶反饋優化的時間設定
+SPEECH_DURATION=3      # 語音時間 (原本5-8秒太慢)
+SLEEP_SHORT=1          # 短暫停頓 (原本3秒太慢)  
+SLEEP_MEDIUM=2         # 中等停頓
+IMAGE_DURATION=5       # 圖片顯示 (原本8-15秒太久)
+
+# 鏡頭運動多樣化 - 避免視覺疲勞
+CAMERA_PRESETS=("overview" "head_close_up" "side_view" "center_orbit_high_1" 
+                "dramatic_angle_1" "fly_by_left" "fly_by_right")
+# 隨機選擇：${CAMERA_PRESETS[$((RANDOM % ${#CAMERA_PRESETS[@]}))]}
+
+# 背景變化頻率 - 前面部分常換一點
+# 每個段落 2-4 個背景變化，保持視覺新鮮感
+```
 
 ## 🎭 高級應用場景
 
@@ -205,7 +342,26 @@ curl -X POST .../character/animation -d '{"animation": "運動1", "speed": 0.8}'
 curl -X POST .../camera/set-frontend-preset -d '{"name": "overview", "duration": 3.0}'
 ```
 
-### 場景3: 新聞播報模式
+### 場景3: 太空媽祖直播模式 ⭐ **文化創新典範**
+```bash
+# 設定太空艙環境
+generate_background "(cinematic space station interior, holographic displays, no text) 太空艙控制室，藍色科技光效"
+play_bgm "/audio/BGM/太空媽祖.mp3"
+play_sound_effect "/audio/effects/spaceship_ambience_01.mp3"
+
+# 辣台妹主播登場
+speak "大家好～歡迎來到『太空媽祖直播間』，我是你們最辣的太空台妹！" 4.0 "excited"
+animate_character "運動2" 1.0
+animate_dancers "Cheering" 1.2
+move_camera "overview" 2.0
+
+# 文化融合互動
+take_selfie "(close-up portrait, dramatic lighting, no text) 我虔誠專注的表情，雙手捧著發光的數位香" "center-left" 6.0
+show_existing_image "mazu_blessing.png" "媽祖保佑" "center-right" "large" 4.0
+speak "在太空拜拜特別有效，因為離天堂比較近嘛～哈哈！" 3.0 "happy"
+```
+
+### 場景4: 新聞播報模式
 ```bash
 # 專業環境
 curl -X POST .../control/environment/preset -d '{"preset": "studio"}' && \
@@ -275,3 +431,19 @@ curl -X POST .../camera/set-frontend-preset -d '{"name": "overview", "duration":
 ```
 
 **記住：這不只是API文檔，這是創造震撼表演的藝術指南！每一次呼叫都是在創作，每一個組合都是在編舞。讓技術服務於藝術，讓API成為你的創意工具！** 🎭✨ 
+
+---
+
+## 📝 太空媽祖專案核心學習
+
+**從實戰中獲得的黃金準則：**
+
+1. **🎯 函式建構是王道** - 模組化讓劇本清晰易懂，維護超簡單
+2. **🎨 圖像品質有方法** - 專業攝影術語 + 統一參考圖片 = 專業級效果  
+3. **🚨 API區分要精確** - character/body-animation 兩套系統，絕不混用
+4. **🔊 音效端點要對準** - background-audio (sfxUrl) ≠ play-audio (url)
+5. **⚡ 節奏優化聽用戶** - 3秒語音 + 1秒停頓 = 緊湊吸引人
+6. **📸 圖片位置有戰略** - center-left/right + large尺寸，永不擋主角
+7. **🎭 測試驅動開發** - 每個功能都要實際驗證，才是真正可用
+
+**未來任何腳本開發，都請遵循這套經過實戰驗證的最佳實踐！** 🚀✨ 
