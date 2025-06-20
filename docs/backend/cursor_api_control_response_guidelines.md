@@ -72,6 +72,9 @@ The request models for these routes are defined at the top of `control.py` and i
 |`POST`|`/api/generate-background-image`|Generate a background image optimized for screen aspect ratios and automatically set as scene background.|
 |`POST`|`/api/set-background-image`|Switch to an existing background image by filename.|
 |`POST`|`/api/disable-background-image`|Disable the current background image and return to default scene.|
+|`POST`|`/api/take-selfie`|Generate AI selfie images of the character with customizable positioning and modifications.|
+|`POST`|`/api/continue-selfie`|Continue selfie generation based on the latest selfie with modifications.|
+|`POST`|`/api/show-existing-image`|Display an existing image from the generated_images directory.|
 
 ### System Endpoint
 | Method | Path | Description |
@@ -471,87 +474,6 @@ To help Cursor better understand and utilize project assets, here are some key p
 8.  **Monitor Backend Logs for Deeper Clues.**
     -   Logs can provide more detailed error information if an API call behaves unexpectedly.
 
-## 🖼️ Background Image Control Examples
-
-### Available Background Images
-The system comes with predefined background images and can generate new ones:
-
-**Predefined Backgrounds:**
-- `outerspace1.png` - Deep space scene with stars
-- `outerspace2.png` - Cosmic nebula view  
-- `outerspace3.png` - Galaxy cluster background
-
-**AI Generated Backgrounds:**
-- Generated backgrounds follow naming pattern: `background_[timestamp].png`
-- Automatically saved to `prototype/frontend/public/background_pictures/`
-- Synchronized to frontend via WebSocket
-
-### Background Control API Usage
-
-**1. Generate New Background:**
-```bash
-curl -X POST "http://localhost:8000/api/generate-background-image" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "description": "Beautiful deep space scene with nebulae and distant galaxies",
-    "aspect_ratio": "16:9"
-  }'
-```
-
-**2. Switch to Existing Background:**
-```bash
-# Switch to predefined space background
-curl -X POST "http://localhost:8000/api/set-background-image" \
-  -H "Content-Type: application/json" \
-  -d '{"filename": "outerspace1.png"}'
-
-# Switch to AI generated background  
-curl -X POST "http://localhost:8000/api/set-background-image" \
-  -H "Content-Type: application/json" \
-  -d '{"filename": "background_1750322123885.png"}'
-```
-
-**3. Disable Background:**
-```bash
-curl -X POST "http://localhost:8000/api/disable-background-image"
-```
-
-### WebSocket Events
-Background changes are automatically broadcasted via WebSocket:
-
-**Generated Background Event:**
-```json
-{
-  "type": "background-image-generated",
-  "filename": "background_1750322123885.png",
-  "caption": "AI generated description",
-  "aspect_ratio": "16:9",
-  "description": "User's original description",
-  "timestamp": 1750322123885
-}
-```
-
-**Background Change Event:**
-```json
-{
-  "type": "background-image-changed", 
-  "filename": "outerspace1.png",
-  "enabled": true,
-  "timestamp": 1750322123885
-}
-```
-
-### Error Handling
-- **404 Error**: Background image file not found
-- **400 Error**: Missing required parameters
-- **500 Error**: Image generation or file operations failed
-
-### Best Practices
-1. **Check file existence**: Use predefined filenames (`outerspace1.png`, etc.) for reliable results
-2. **Aspect ratio optimization**: Use `16:9` for widescreen displays, `21:9` for ultrawide
-3. **WebSocket integration**: Frontend automatically updates when background changes
-4. **File management**: Generated backgrounds accumulate over time, consider cleanup if needed
-
 9.  **Give TTS Enough Time to Speak! (Crucial for `send-message`)**
     -   The `send-message` command is non-blocking. This means the script or control flow will continue immediately after the command is sent, *not* after the Text-to-Speech (TTS) has finished speaking.
     -   You **MUST** use `sleep` (or equivalent pauses in your control logic) to allow sufficient time for the character to actually say the entire `content`.
@@ -583,222 +505,225 @@ Background changes are automatically broadcasted via WebSocket:
     -   **Hiding scenes**: Use `"displayScene": false` to completely hide the 3D environment.
     -   **Reset transforms**: Use `[0, 0, 0]` for position/rotation and `[1, 1, 1]` for scale to return to defaults.
 
-##🎬 Working Examples: Bringing it All Together
+## 🚀 ULTIMATE COMBO TECHNIQUES: 史上最強連續技系統 🚀
 
-**Example 1: The CORE - Synchronized Speech & Emotion (CRITICAL!)**
+Based on extensive real-world testing and performance optimization, we've discovered the most powerful combination techniques for creating spectacular live performances. These "連續技" (combo techniques) represent the pinnacle of API orchestration artistry.
+
+### 🎯 The Core Philosophy: 語音+情緒必須配對
+**THE FUNDAMENTAL RULE**: `send-message` (speech) and `emotion-trajectory` (emotion) MUST ALWAYS be paired and executed together. This is not optional - it's the foundation of all successful combos.
+
 ```bash
-# Step 1: Character Speaks (this initiates TTS and lip-sync)
-curl -X POST http://localhost:8000/api/control/send-message \
-  -H "Content-Type: application/json" \
-  -d '{"content": "大家好！今天天氣真好，心情非常愉快！"}'
-
-# Step 2: IMMEDIATELY Follow with Emotion for Perfect Sync
-curl -X POST http://localhost:8000/api/control/emotion-trajectory \
-  -H "Content-Type: application/json" \
-  -d '{"duration": 5.0, "keyframes": [{"tag": "happy", "proportion": 0.0}, {"tag": "joyful", "proportion": 1.0}]}'
+# ✅ CORRECT: The unbreakable duo
+curl -X POST http://localhost:8000/api/control/send-message -H "Content-Type: application/json" -d '{"content": "你好大家！"}' && \
+curl -X POST http://localhost:8000/api/control/emotion-trajectory -H "Content-Type: application/json" -d '{"duration": 3.0, "keyframes": [{"tag": "excited", "proportion": 0.0}, {"tag": "happy", "proportion": 1.0}]}'
 ```
 
-**Example 2: Adding a Sound Effect & Animation**
+### 🔥 Level 1: 基礎三連擊 (Basic Triple Combo)
+**Pattern**: Speech+Emotion → Animation → Camera
 ```bash
-# (Assuming Speech + Emotion from Example 1 just happened or is happening)
-# Wait for a natural pause in speech or after a key phrase, then...
-
-# Play a sound effect (e.g., a cheerful chime)
-curl -X POST http://localhost:8000/api/control/play-audio \
-  -H "Content-Type: application/json" \
-  -d '{"url": "/songs-file/your_cheerful_chime.mp3"}' # Replace with actual file
-
-# Trigger a relevant body animation
-curl -X POST http://localhost:8000/api/control/body-animation \
-  -H "Content-Type: application/json" \
-  -d '{"animation": "Cheering", "loop": false}'
+# The foundation combo: Character speaks with emotion, moves, camera responds
+curl -X POST http://localhost:8000/api/control/send-message -H "Content-Type: application/json" -d '{"content": "準備好了嗎？讓我們開始吧！"}' && \
+curl -X POST http://localhost:8000/api/control/emotion-trajectory -H "Content-Type: application/json" -d '{"duration": 4.0, "keyframes": [{"tag": "excited", "proportion": 0.0}, {"tag": "confident", "proportion": 1.0}]}' && \
+curl -X POST http://localhost:8000/api/control/character/animation -H "Content-Type: application/json" -d '{"animation": "舞步1", "loop": true, "speed": 2.0}' && \
+curl -X POST http://localhost:8000/api/control/camera/set-frontend-preset -H "Content-Type: application/json" -d '{"name": "center_orbit_default", "duration": 2.0}'
 ```
 
-**Example 3: Scene Change with Background Music, Camera, and Monitor**
+### 💥 Level 2: 進階五連擊 (Advanced Quintet Combo)
+**Pattern**: BGM → Speech+Emotion → Animation → Head Effect → Camera Movement
 ```bash
-# Start background music
-curl -X POST http://localhost:8000/api/control/background-audio \
-  -H "Content-Type: application/json" \
-  -d '{"bgmUrl": "/audio/BGM/spacelive_theme.mp3", "bgmPlaying": true}'
-
-# Transition camera to a new view
-curl -X POST http://localhost:8000/api/control/camera/transition \
-  -H "Content-Type: application/json" \
-  -d '{"pitch": 10, "yaw": -20, "roll": 0, "fov": 75, "duration": 2.5}'
-
-# Update a monitor with a new video
-curl -X PUT http://localhost:8000/api/monitors/screen1 \
-  -H "Content-Type: application/json" \
-  -d '{"content": "/videos/太空瑜伽.mp4", "visible": true, "playing": true, "volume": 0.8}'
+# Advanced combo with dramatic head scaling and music
+curl -X POST http://localhost:8000/api/control/background-audio -H "Content-Type: application/json" -d '{"bgmUrl": "/audio/BGM/heavy_metal_bgm_01.mp3"}' && \
+curl -X POST http://localhost:8000/api/control/send-message -H "Content-Type: application/json" -d '{"content": "現在是表演時間！準備迎接震撼！"}' && \
+curl -X POST http://localhost:8000/api/control/emotion-trajectory -H "Content-Type: application/json" -d '{"duration": 5.0, "keyframes": [{"tag": "excited", "proportion": 0.0}, {"tag": "amazed", "proportion": 0.5}, {"tag": "confident", "proportion": 1.0}]}' && \
+curl -X POST http://localhost:8000/api/control/character/animation -H "Content-Type: application/json" -d '{"animation": "舞步2", "loop": true, "speed": 3.0}' && \
+curl -X POST http://localhost:8000/api/control/head-size -H "Content-Type: application/json" -d '{"scaleFactor": 4.0}' && \
+curl -X POST http://localhost:8000/api/control/camera/set-frontend-preset -H "Content-Type: application/json" -d '{"name": "dramatic_angle_1", "duration": 1.5}'
 ```
 
-**Example 4: Command Frontend to Switch Camera Preset**
+### 🌟 Level 3: 超級七連擊 (Ultimate Heptuple Combo)
+**Pattern**: Background → BGM → Speech+Emotion → Animation → Head Effect → Monitor Wall → Image Generation
 ```bash
-# This tells the frontend to use its own 'side_view' preset definition,
-# with a 2-second transition.
-curl -X POST http://localhost:8000/api/control/camera/set-frontend-preset \\
-  -H "Content-Type: application/json" \\
-  -d '{"name": "side_view", "duration": 2.0}'
+# The ultimate performance combo with all systems engaged
+curl -X POST http://localhost:8000/api/generate-background-image -H "Content-Type: application/json" -d '{"description": "壯觀的太空演唱會舞台，有閃爍的霓虹燈和歡呼人群", "aspect_ratio": "16:9"}' && \
+curl -X POST http://localhost:8000/api/control/background-audio -H "Content-Type: application/json" -d '{"bgmUrl": "/audio/BGM/spacelive_theme_bgm_04.mp3"}' && \
+curl -X POST http://localhost:8000/api/control/send-message -H "Content-Type: application/json" -d '{"content": "這就是史上最強的太空演唱會！音樂響起，燈光閃爍，讓我們一起狂歡！"}' && \
+curl -X POST http://localhost:8000/api/control/emotion-trajectory -H "Content-Type: application/json" -d '{"duration": 8.0, "keyframes": [{"tag": "excited", "proportion": 0.0}, {"tag": "amazed", "proportion": 0.3}, {"tag": "happy", "proportion": 0.7}, {"tag": "confident", "proportion": 1.0}]}' && \
+curl -X POST http://localhost:8000/api/control/character/animation -H "Content-Type: application/json" -d '{"animation": "舞步3", "loop": true, "speed": 4.0}' && \
+curl -X POST http://localhost:8000/api/control/head-size -H "Content-Type: application/json" -d '{"scaleFactor": 6.0}' && \
+curl -X PUT http://localhost:8000/api/monitors/screen1 -H "Content-Type: application/json" -d '{"content": "/videos/太空辣妹跳舞.mp4", "visible": true, "playing": true, "volume": 0.8}' && \
+curl -X PUT http://localhost:8000/api/monitors/screen2 -H "Content-Type: application/json" -d '{"content": "/videos/太空史萊姆.mp4", "visible": true, "playing": true, "volume": 0.7}' && \
+curl -X PUT http://localhost:8000/api/monitors/screen3 -H "Content-Type: application/json" -d '{"content": "/videos/太空打卡.mp4", "visible": true, "playing": true, "volume": 0.6}' && \
+curl -X POST http://localhost:8000/api/generate-image -H "Content-Type: application/json" -d '{"description": "璀璨的舞台煙火和光芒四射的演出", "position": "center-left", "size": "large", "duration": 60.0}'
 ```
 
-**Example 5: Head Size Control for Dramatic Effects**
+### 🎪 Advanced Technique: 圖片位置戰略 (Image Positioning Strategy)
+**CRITICAL**: Always avoid `center` position when character is performing - use side positions to prevent blocking the character.
+
+**Safe Positioning Pattern**:
 ```bash
-# Make the head larger for emphasis
-curl -X POST http://localhost:8000/api/control/head-size \
-  -H "Content-Type: application/json" \
-  -d '{"scaleFactor": 2.5}'
-
-# Make the head smaller for a cute effect
-curl -X POST http://localhost:8000/api/control/head-size \
-  -H "Content-Type: application/json" \
-  -d '{"scaleFactor": 0.7}'
-
-# Return to normal size
-curl -X POST http://localhost:8000/api/control/head-size \
-  -H "Content-Type: application/json" \
-  -d '{"scaleFactor": 1.0}'
+# Multi-image display without blocking character
+curl -X POST http://localhost:8000/api/generate-image -H "Content-Type: application/json" -d '{"description": "太空夜店DJ台", "position": "center-left", "size": "large", "duration": 45.0}' && \
+curl -X POST http://localhost:8000/api/generate-image -H "Content-Type: application/json" -d '{"description": "炫酷燈光效果", "position": "center-right", "size": "large", "duration": 50.0}' && \
+curl -X POST http://localhost:8000/api/generate-image -H "Content-Type: application/json" -d '{"description": "舞蹈動作特效", "position": "top-left", "size": "medium", "duration": 35.0}' && \
+curl -X POST http://localhost:8000/api/generate-image -H "Content-Type: application/json" -d '{"description": "音樂波形視覺化", "position": "bottom-right", "size": "medium", "duration": 40.0}'
 ```
 
-**Example 6: Scene Display Control**
+### 🎬 Master Technique: Monitor影片牆組合技
+**The Triple Screen Orchestra**: Control all three monitors with strategic volume layering
 ```bash
-# Show the main 6-sided room scene
-curl -X POST http://localhost:8000/api/control/scene-display \
-  -H "Content-Type: application/json" \
-  -d '{"displayScene": true, "sceneName": "6面房間"}'
-
-# Switch to room A variant
-curl -X POST http://localhost:8000/api/control/scene-display \
-  -H "Content-Type: application/json" \
-  -d '{"displayScene": true, "sceneName": "6面房間A"}'
-
-# Hide the scene completely
-curl -X POST http://localhost:8000/api/control/scene-display \
-  -H "Content-Type: application/json" \
-  -d '{"displayScene": false}'
+# Monitor wall activation with volume hierarchy
+curl -X PUT http://localhost:8000/api/monitors/screen1 -H "Content-Type: application/json" -d '{"content": "/videos/太空辣妹跳舞.mp4", "visible": true, "playing": true, "volume": 1.0}' && \
+curl -X PUT http://localhost:8000/api/monitors/screen2 -H "Content-Type: application/json" -d '{"content": "/videos/太空史萊姆.mp4", "visible": true, "playing": true, "volume": 0.8}' && \
+curl -X PUT http://localhost:8000/api/monitors/screen3 -H "Content-Type: application/json" -d '{"content": "/videos/太空打卡.mp4", "visible": true, "playing": true, "volume": 0.6}'
 ```
 
-**Example 7: Room Transform Control (Position, Rotation, Scale)**
+### 💫 Elite Technique: 頭部特效進化序列
+**Head Size Progression**: Create dramatic crescendo through size scaling
 ```bash
-# Basic room positioning
-curl -X POST http://localhost:8000/api/control/scene-display \
-  -H "Content-Type: application/json" \
-  -d '{"displayScene": true, "position": [1.0, 2.0, 3.0]}'
-
-# Rotate room 90 degrees on Y-axis
-curl -X POST http://localhost:8000/api/control/scene-display \
-  -H "Content-Type: application/json" \
-  -d '{"displayScene": true, "rotation": [0.0, 90.0, 0.0]}'
-
-# Scale room uniformly to 1.5x size
-curl -X POST http://localhost:8000/api/control/scene-display \
-  -H "Content-Type: application/json" \
-  -d '{"displayScene": true, "scale": [1.5]}'
-
-# Scale room differently on each axis (create distortion effects)
-curl -X POST http://localhost:8000/api/control/scene-display \
-  -H "Content-Type: application/json" \
-  -d '{"displayScene": true, "scale": [2.0, 1.0, 0.8]}'
-
-# Combine multiple transformations with scene switching
-curl -X POST http://localhost:8000/api/control/scene-display \
-  -H "Content-Type: application/json" \
-  -d '{
-    "displayScene": true,
-    "sceneName": "6面房間A",
-    "position": [-1.0, 0.5, 2.0],
-    "rotation": [0.0, 90.0, 0.0],
-    "scale": [1.2, 1.2, 1.2]
-  }'
-
-# Hide room completely
-curl -X POST http://localhost:8000/api/control/scene-display \
-  -H "Content-Type: application/json" \
-  -d '{"displayScene": false}'
-
-# Reset room to default transforms
-curl -X POST http://localhost:8000/api/control/scene-display \
-  -H "Content-Type: application/json" \
-  -d '{
-    "displayScene": true,
-    "sceneName": "6面房間",
-    "position": [0.0, 0.0, 0.0],
-    "rotation": [0.0, 0.0, 0.0],
-    "scale": [1.0, 1.0, 1.0]
-  }'
+# Progressive head scaling for maximum impact
+curl -X POST http://localhost:8000/api/control/head-size -H "Content-Type: application/json" -d '{"scaleFactor": 2.0}' && sleep 1 && \
+curl -X POST http://localhost:8000/api/control/head-size -H "Content-Type: application/json" -d '{"scaleFactor": 4.0}' && sleep 1 && \
+curl -X POST http://localhost:8000/api/control/head-size -H "Content-Type: application/json" -d '{"scaleFactor": 6.0}' && sleep 1 && \
+curl -X POST http://localhost:8000/api/control/head-size -H "Content-Type: application/json" -d '{"scaleFactor": 8.0}' && sleep 2 && \
+curl -X POST http://localhost:8000/api/control/head-size -H "Content-Type: application/json" -d '{"scaleFactor": 1.5}'
 ```
 
-**Example 8: Head Size Control for Visual Effects**
+### 🎨 Creative Technique: 多模態圖片創意循環
+**The Creative Loop**: Use generated images as reference for new creations
 ```bash
-# Enlarge head for dramatic emphasis (2.5x size)
-curl -X POST http://localhost:8000/api/control/head-size \
-  -H "Content-Type: application/json" \
-  -d '{"scaleFactor": 2.5}'
+# Stage 1: Generate base image
+curl -X POST http://localhost:8000/api/take-selfie -H "Content-Type: application/json" -d '{"description": "太空DJ準備表演", "position": "center-left", "size": "large", "duration": 45.0}' && \
 
-# Shrink head for cute or humorous effect (0.7x size)
-curl -X POST http://localhost:8000/api/control/head-size \
-  -H "Content-Type: application/json" \
-  -d '{"scaleFactor": 0.7}'
+# Stage 2: Continue with modification (automatically uses latest selfie as reference)
+curl -X POST http://localhost:8000/api/continue-selfie -H "Content-Type: application/json" -d '{"modification": "變成超級酷炫的賽博朋克風格，戴著發光眼鏡", "position": "center-right", "size": "large", "duration": 50.0}' && \
 
-# Extremely large head for comedic effect (5.0x size)
-curl -X POST http://localhost:8000/api/control/head-size \
-  -H "Content-Type: application/json" \
-  -d '{"scaleFactor": 5.0}'
-
-# Tiny head for surreal effect (0.3x size)
-curl -X POST http://localhost:8000/api/control/head-size \
-  -H "Content-Type: application/json" \
-  -d '{"scaleFactor": 0.3}'
-
-# Return to normal size
-curl -X POST http://localhost:8000/api/control/head-size \
-  -H "Content-Type: application/json" \
-  -d '{"scaleFactor": 1.0}'
+# Stage 3: Generate background based on selfie concept
+curl -X POST http://localhost:8000/api/generate-background-image -H "Content-Type: application/json" -d '{"description": "賽博朋克太空夜店，霓虹燈閃爍，未來科技感", "aspect_ratio": "16:9"}'
 ```
 
-**Example 9: AI Image Generation**
+### ⚡ Lightning Technique: 攝影機運動編舞
+**Camera Choreography**: Create dynamic visual flow through camera movement
 ```bash
-# Basic image generation (default: center-right, medium)
-curl -X POST http://localhost:8000/api/generate-image \
-  -H "Content-Type: application/json" \
-  -d '{"description": "一隻可愛的橘貓在花園裡玩耍"}'
-
-# Position control - left side, large size
-curl -X POST http://localhost:8000/api/generate-image \
-  -H "Content-Type: application/json" \
-  -d '{"description": "台灣辣妹在太空夜市吃小籠包", "position": "center-left", "size": "large"}'
-
-# Position control - top corner, small size
-curl -X POST http://localhost:8000/api/generate-image \
-  -H "Content-Type: application/json" \
-  -d '{"description": "迷你太空機器人修理衛星", "position": "top-right", "size": "small"}'
-
-# Center large image for dramatic effect
-curl -X POST http://localhost:8000/api/generate-image \
-  -H "Content-Type: application/json" \
-  -d '{"description": "銀河中央的太空女王跳舞", "position": "center", "size": "large"}'
-
-# Custom positioning and sizing
-curl -X POST http://localhost:8000/api/generate-image \
-  -H "Content-Type: application/json" \
-  -d '{
-    "description": "太空花園裡的蝴蝶仙子",
-    "custom_position": {"bottom": "30px", "left": "30px"},
-    "custom_size": {"width": "300px", "height": "400px"}
-  }'
-
-# Multiple position presets available:
-# - center-right (default): Middle right, vertically centered
-# - center-left: Middle left, vertically centered
-# - top-right, top-left: Corner positions
-# - bottom-right, bottom-left: Bottom corner positions  
-# - center: Absolute center (dramatic effect)
-
-# Size presets: small (250x200), medium (350x280), large (450x360)
-# Custom sizes and positions override presets
-
-# Note: Generated images will automatically appear in the frontend ImageOverlay
-# with the specified position, size, and appropriate entrance animation
+# Camera dance sequence
+curl -X POST http://localhost:8000/api/control/camera/set-frontend-preset -H "Content-Type: application/json" -d '{"name": "center_orbit_default", "duration": 2.0}' && sleep 2 && \
+curl -X POST http://localhost:8000/api/control/camera/set-frontend-preset -H "Content-Type: application/json" -d '{"name": "dramatic_angle_1", "duration": 1.5}' && sleep 1.5 && \
+curl -X POST http://localhost:8000/api/control/camera/set-frontend-preset -H "Content-Type: application/json" -d '{"name": "fly_by_left", "duration": 1.0}' && sleep 1 && \
+curl -X POST http://localhost:8000/api/control/camera/set-frontend-preset -H "Content-Type: application/json" -d '{"name": "fly_by_right", "duration": 1.0}' && sleep 1 && \
+curl -X POST http://localhost:8000/api/control/camera/set-frontend-preset -H "Content-Type: application/json" -d '{"name": "center_orbit_high_2", "duration": 2.5}'
 ```
+
+### 🌪️ Tornado Technique: 連續技不停歇模式
+**Non-Stop Combo Mode**: Chain multiple combos without pause for maximum impact
+```bash
+echo "🚀 連續技不停歇模式啟動！" && \
+# Combo 1: Setup
+curl -X POST http://localhost:8000/api/control/send-message -H "Content-Type: application/json" -d '{"content": "連續技開始！第一波攻擊！"}' && \
+curl -X POST http://localhost:8000/api/control/emotion-trajectory -H "Content-Type: application/json" -d '{"duration": 3.0, "keyframes": [{"tag": "excited", "proportion": 0.0}, {"tag": "confident", "proportion": 1.0}]}' && \
+curl -X POST http://localhost:8000/api/control/character/animation -H "Content-Type: application/json" -d '{"animation": "舞步1", "loop": true, "speed": 3.0}' && \
+curl -X POST http://localhost:8000/api/control/head-size -H "Content-Type: application/json" -d '{"scaleFactor": 3.0}' && \
+# Combo 2: Escalation
+curl -X POST http://localhost:8000/api/control/send-message -H "Content-Type: application/json" -d '{"content": "第二波！更強的攻勢！"}' && \
+curl -X POST http://localhost:8000/api/control/emotion-trajectory -H "Content-Type: application/json" -d '{"duration": 2.5, "keyframes": [{"tag": "confident", "proportion": 0.0}, {"tag": "amazed", "proportion": 1.0}]}' && \
+curl -X POST http://localhost:8000/api/control/character/animation -H "Content-Type: application/json" -d '{"animation": "舞步2", "loop": true, "speed": 4.0}' && \
+curl -X POST http://localhost:8000/api/control/head-size -H "Content-Type: application/json" -d '{"scaleFactor": 5.0}' && \
+# Combo 3: Ultimate
+curl -X POST http://localhost:8000/api/control/send-message -H "Content-Type: application/json" -d '{"content": "最終奧義！史上最強連續技！"}' && \
+curl -X POST http://localhost:8000/api/control/emotion-trajectory -H "Content-Type: application/json" -d '{"duration": 4.0, "keyframes": [{"tag": "amazed", "proportion": 0.0}, {"tag": "excited", "proportion": 0.5}, {"tag": "happy", "proportion": 1.0}]}' && \
+curl -X POST http://localhost:8000/api/control/character/animation -H "Content-Type: application/json" -d '{"animation": "舞步3", "loop": true, "speed": 5.0}' && \
+curl -X POST http://localhost:8000/api/control/head-size -H "Content-Type: application/json" -d '{"scaleFactor": 8.0}' && \
+curl -X POST http://localhost:8000/api/control/camera/set-frontend-preset -H "Content-Type: application/json" -d '{"name": "center_orbit_high_1", "duration": 1.0}' && \
+# Reset
+curl -X POST http://localhost:8000/api/control/head-size -H "Content-Type: application/json" -d '{"scaleFactor": 1.5}' && \
+curl -X POST http://localhost:8000/api/control/character/animation -H "Content-Type: application/json" -d '{"animation": "舞步1", "loop": true, "speed": 1.5}'
+```
+
+### 🏆 Performance Best Practices for Combo Execution
+
+1. **Always start with Speech+Emotion pair** - This is your anchor
+2. **Layer effects progressively** - Don't dump everything at once
+3. **Use strategic timing** - Let each effect register before adding the next
+4. **Position images strategically** - Never block the character
+5. **Control monitor volumes** - Create audio hierarchy (1.0 → 0.8 → 0.6)
+6. **Plan head size progression** - Build to climax, then reset
+7. **Choreograph camera movement** - Guide viewer attention intentionally
+8. **Always include reset sequences** - Return to neutral state
+9. **Test combo components individually** - Debug one layer at a time
+10. **End with gratitude** - Always thank the audience
+
+### 📚 Resource Discovery Guide: 如何找到更多創意素材
+
+**⚠️ IMPORTANT**: Don't limit yourself to the examples below! Always explore the actual directories to discover new content and maintain creative diversity.
+
+**🎵 BGM Resources Discovery** (use `/audio/BGM/` prefix):
+- **Where to look**: `prototype/frontend/public/audio/BGM/`
+- **How to explore**: Use `ls prototype/frontend/public/audio/BGM/` to see all available BGM files
+- **Naming patterns**: Look for `heavy_metal_bgm_*.mp3`, `spacelive_theme_*.mp3`, and other creative combinations
+- **Pro tip**: Different BGM files create completely different moods - experiment with various combinations!
+
+**🎬 Video Resources Discovery** (use `/videos/` prefix):
+- **Where to look**: `prototype/frontend/public/videos/`
+- **How to explore**: Use `ls prototype/frontend/public/videos/` to discover all available videos
+- **Content variety**: Look for different themes like `太空*`, `space_*`, `daily_life_*` etc.
+- **Monitor strategy**: Mix different video types across the three monitors for visual variety
+
+**🎭 Animation Resources Discovery**:
+- **Where to look**: `prototype/shared/config/animations.json`
+- **How to explore**: Use `cat prototype/shared/config/animations.json` to see all available animations
+- **Categories**: Look for different animation types like `舞步*`, `運動*`, `飛*`, basic poses, etc.
+- **Creative mixing**: Combine different animation speeds and loop settings for unique effects
+
+**📸 Generated Images Discovery**:
+- **Where to look**: `prototype/backend/generated_images/`
+- **How to explore**: Use `ls prototype/backend/generated_images/` to see all previously generated images
+- **Reuse strategy**: Use `show-existing-image` with different positions and sizes to create new compositions
+- **Naming patterns**: Look for `image_*.png`, `selfie_*.png`, `background_*.png` patterns
+
+**🎥 Camera Presets Discovery**:
+- **Where to look**: Frontend camera configuration files
+- **How to explore**: Check `docs/backend/camera_control_api.md` for complete preset list
+- **Testing approach**: Try different presets and note which ones work best for different performance types
+- **Creative combinations**: Chain different camera movements for dynamic sequences
+
+**🔧 Monitor System**:
+- **Available monitors**: `screen1`, `screen2`, `screen3`
+- **Volume range**: 0.0 to 1.0
+- **Strategy**: Create audio hierarchy (primary at 1.0, secondary at 0.8, ambient at 0.6)
+- **Content mixing**: Use different video types simultaneously for rich visual environments
+
+**💡 Creative Discovery Tips**:
+
+1. **Always explore first**: Before using any resource, run `ls` commands to see what's actually available
+2. **Mix and match**: Combine resources from different categories for unique effects
+3. **Experiment with timing**: Same resources with different timing create completely different feels
+4. **Document discoveries**: Keep notes on particularly effective combinations
+5. **Seasonal rotation**: Regularly explore directories to find newly added content
+6. **User feedback**: Pay attention to what works well and build on successful patterns
+
+**🎯 Resource Exploration Commands**:
+```bash
+# Discover all BGM options
+ls prototype/frontend/public/audio/BGM/
+
+# Find all available videos  
+ls prototype/frontend/public/videos/
+
+# Check sound effects
+ls prototype/frontend/public/audio/effects/
+
+# See all generated images
+ls prototype/backend/generated_images/
+
+# View animation configurations
+cat prototype/shared/config/animations.json
+
+# Check background pictures
+ls prototype/frontend/public/background_pictures/
+```
+
+**🌟 The Discovery Mindset**:
+The goal is not to memorize a fixed list of resources, but to develop the skill of creative exploration. Each performance should feel fresh and unique by discovering new combinations and approaches. The system is designed to be explored, not just used mechanically!
+
+This combo system represents the pinnacle of real-time performance control, enabling the creation of spectacular, coordinated shows that combine all available systems into seamless, engaging experiences.
 
 ## 🎬 Director's Cut: The Art of the 3-Command Combo (導演進階：三連擊的藝術)
 

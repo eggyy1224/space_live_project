@@ -99,6 +99,10 @@ class ShowExistingImageRequest(BaseModel):
 class BackgroundImageRequest(BaseModel):
     description: str  # 背景圖片描述
     aspect_ratio: Optional[str] = "16:9"  # 螢幕比例，預設 16:9
+    # 參考圖像檔名 (可選，從 selfies 或 generated_images 資料夾)
+    reference_image: Optional[str] = None  
+    # 修改指令 (可選)
+    modification: Optional[str] = None  # 例如: "基於這張自拍照創造背景", "融合多張照片的風格"
 
 
 @router.post("/generate-image")
@@ -589,16 +593,79 @@ async def generate_background_image(request: BackgroundImageRequest):
         }
         
         aspect_text = aspect_map.get(request.aspect_ratio, "in widescreen format (16:9 aspect ratio)")
-        prompt = f"Generate a stunning background image: {request.description}. Create it {aspect_text}, suitable for use as a computer screen background or wallpaper."
+        base_prompt = f"Generate a stunning background image: {request.description}. Create it {aspect_text}, suitable for use as a computer screen background or wallpaper."
         
-        # 使用 Gemini 圖像生成模型
-        response = client.models.generate_content(
-            model="gemini-2.0-flash-preview-image-generation",
-            contents=prompt,
-            config=GenerateContentConfig(
-                response_modalities=["TEXT", "IMAGE"]
+        # 處理參考圖像邏輯
+        reference_image_name = request.reference_image
+        
+        # 如果有參考圖像，使用多模態輸入
+        if reference_image_name:
+            # 先檢查 selfies 資料夾，再檢查 generated_images 資料夾
+            ref_path_selfies = os.path.join(SELFIES_DIR, reference_image_name)
+            ref_path_generated = os.path.join(GENERATED_DIR, reference_image_name)
+            
+            ref_path = None
+            if os.path.exists(ref_path_selfies):
+                ref_path = ref_path_selfies
+            elif os.path.exists(ref_path_generated):
+                ref_path = ref_path_generated
+            
+            if ref_path:
+                # 讀取參考圖像
+                with open(ref_path, "rb") as f:
+                    reference_image_data = f.read()
+                
+                # 修改提示詞，指示基於參考圖像
+                if request.modification:
+                    base_prompt += f". Based on the reference image provided, {request.modification}"
+                else:
+                    base_prompt += ". Based on the reference image provided, create a background that incorporates the style, colors, or visual elements from this image"
+                
+                logging.info(f"Using reference image for background: {ref_path}, size: {len(reference_image_data)} bytes")
+                
+                # 使用多模態輸入 - 圖像 + 文字
+                try:
+                    response = client.models.generate_content(
+                        model="gemini-2.0-flash-preview-image-generation",
+                        contents=[
+                            {"role": "user", "parts": [
+                                {"inline_data": {"mime_type": "image/png", "data": base64.b64encode(reference_image_data).decode('utf-8')}},
+                                {"text": base_prompt}
+                            ]}
+                        ],
+                        config=GenerateContentConfig(
+                            response_modalities=["TEXT", "IMAGE"]
+                        )
+                    )
+                except Exception as multimodal_error:
+                    logging.error(f"Multi-modal background generation failed: {multimodal_error}")
+                    # 如果多模態失敗，回退到純文字
+                    response = client.models.generate_content(
+                        model="gemini-2.0-flash-preview-image-generation",
+                        contents=base_prompt,
+                        config=GenerateContentConfig(
+                            response_modalities=["TEXT", "IMAGE"]
+                        )
+                    )
+            else:
+                logging.warning(f"Reference image not found for background: {reference_image_name}")
+                # 如果找不到參考圖像，使用純文字生成
+                response = client.models.generate_content(
+                    model="gemini-2.0-flash-preview-image-generation",
+                    contents=base_prompt,
+                    config=GenerateContentConfig(
+                        response_modalities=["TEXT", "IMAGE"]
+                    )
+                )
+        else:
+            # 沒有參考圖像，使用純文字生成
+            response = client.models.generate_content(
+                model="gemini-2.0-flash-preview-image-generation",
+                contents=base_prompt,
+                config=GenerateContentConfig(
+                    response_modalities=["TEXT", "IMAGE"]
+                )
             )
-        )
         
         # 解析回應
         image_data = None
@@ -645,7 +712,8 @@ async def generate_background_image(request: BackgroundImageRequest):
             "aspect_ratio": request.aspect_ratio,
             "backend_path": f"/generated-images/{filename}",
             "frontend_path": f"/background_pictures/{filename}",
-            "description": request.description
+            "description": request.description,
+            "reference_image": reference_image_name
         }
         
     except Exception as e:
