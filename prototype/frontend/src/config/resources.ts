@@ -23,6 +23,7 @@ export const BGM_FILES = [
   'hihi (1).mp3',
   'hihi (2).mp3',
   'hihi (3).mp3',
+  '太空媽祖.mp3',
 ] as const;
 
 // 音效檔案清單
