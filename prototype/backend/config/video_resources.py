@@ -14,11 +14,26 @@ LIFESTYLE_VIDEOS = [
     "/videos/太空瑜伽2.mp4",
     "/videos/太空瑜伽.mp4",
     "/videos/太空直播中.mp4",
+    "/videos/太空直播中3.mp4",
     "/videos/太空泡水.mp4",
     "/videos/太空化妝.mp4",
     "/videos/太空打卡.mp4",
     "/videos/太空打卡2.mp4",
+    "/videos/太空摘帽帽.mp4",
+    "/videos/太空吃東西.mp4",
     "/videos/daily_life_1.mp4",
+]
+
+ENTERTAINMENT_VIDEOS = [
+    "/videos/太空鋪克牌.mp4",
+    "/videos/太空鋪克牌2.mp4",
+    "/videos/太空戀愛秀.mp4",
+    "/videos/太空帶貨中.mp4",
+]
+
+VR_TECH_VIDEOS = [
+    "/videos/太空VR.mp4",
+    "/videos/太空VR2.mp4",
 ]
 
 SPACE_EFFECT_VIDEOS = [
@@ -34,7 +49,7 @@ SPACE_EFFECT_VIDEOS = [
     "/videos/space_live.mp4",
 ]
 
-ALL_VIDEOS = DANCE_VIDEOS + LIFESTYLE_VIDEOS + SPACE_EFFECT_VIDEOS
+ALL_VIDEOS = DANCE_VIDEOS + LIFESTYLE_VIDEOS + ENTERTAINMENT_VIDEOS + VR_TECH_VIDEOS + SPACE_EFFECT_VIDEOS
 
 
 def is_video_file_valid(filepath: str) -> bool:

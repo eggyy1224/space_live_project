@@ -28,22 +28,114 @@ export const BGM_FILES = [
 
 // 音效檔案清單
 export const EFFECT_FILES = [
+  // 環境音效
   'winds_blowing.mp3',
-  'Energetic_fast_pace.mp3',
-  'Ambient_keyboard_cli_2.mp3',
   'spaceship_ambience_01.mp3',
   'spaceship_ambience_02.mp3',
   'spaceship_ambience_03.mp3',
   'spaceship_ambience_04.mp3',
+  
+  // 節奏音效
+  'Energetic_fast_pace.mp3',
+  'Ambient_keyboard_cli_2.mp3',
+  
+  // 綜藝節目音效
   'taiwan_variety_sfx_01.mp3',
   'taiwan_variety_sfx_02.mp3',
   'taiwan_variety_sfx_03.mp3',
   'taiwan_variety_sfx_04.mp3',
+  
+  // 測試音效
   '測試音效1.mp3',
   '測試音效2.mp3',
   '測試音效3.mp3',
   '測試音效4.mp3',
   '測試音效5.mp3',
+  
+  // 通訊音效
+  '通訊聲1.mp3',
+  '通訊聲2.mp3',
+  '通訊聲3.mp3',
+  '通訊聲4.mp3',
+  
+  // 警告音效
+  '警告音1.mp3',
+  '警告音2.mp3',
+  '警告音3.mp3',
+  
+  // 故障音效
+  '故障音1.mp3',
+  '故障音2.mp3',
+  '故障音3.mp3',
+  '故障音4.mp3',
+  
+  // 戰鬥音效
+  '電子砲1.mp3',
+  '電子砲2.mp3',
+  '電子砲3.mp3',
+  
+  // 特殊效果音效
+  '聖光音效1.mp3',
+  '聖光音效2.mp3',
+  '聖光音效3.mp3',
+  '物件漂浮音效1.mp3',
+  '物件漂浮音效2.mp3',
+  '物件漂浮音效3.mp3',
+  
+  // 文化音效
+  '媽祖遶境1.mp3',
+  '媽祖遶境2.mp3',
+  '媽祖遶境3.mp3',
+] as const;
+
+// 音效分類常數
+export const AMBIENT_EFFECTS = [
+  'winds_blowing.mp3',
+  'spaceship_ambience_01.mp3',
+  'spaceship_ambience_02.mp3',
+  'spaceship_ambience_03.mp3',
+  'spaceship_ambience_04.mp3',
+] as const;
+
+export const COMMUNICATION_EFFECTS = [
+  '通訊聲1.mp3',
+  '通訊聲2.mp3',
+  '通訊聲3.mp3',
+  '通訊聲4.mp3',
+] as const;
+
+export const WARNING_EFFECTS = [
+  '警告音1.mp3',
+  '警告音2.mp3',
+  '警告音3.mp3',
+] as const;
+
+export const MALFUNCTION_EFFECTS = [
+  '故障音1.mp3',
+  '故障音2.mp3',
+  '故障音3.mp3',
+  '故障音4.mp3',
+] as const;
+
+export const COMBAT_EFFECTS = [
+  '電子砲1.mp3',
+  '電子砲2.mp3',
+  '電子砲3.mp3',
+] as const;
+
+export const SPECIAL_EFFECTS = [
+  '聖光音效1.mp3',
+  '聖光音效2.mp3',
+  '聖光音效3.mp3',
+  '物件漂浮音效1.mp3',
+  '物件漂浮音效2.mp3',
+  '物件漂浮音效3.mp3',
+] as const;
+
+export const CULTURAL_EFFECTS = [
+  '媽祖遶境1.mp3',
+  '媽祖遶境2.mp3',
+  '媽祖遶境3.mp3',
 ] as const;
 
 // ==================== 影片資源 ====================
@@ -66,11 +158,28 @@ export const LIFESTYLE_VIDEOS = [
   '/videos/太空瑜伽2.mp4',
   '/videos/太空瑜伽.mp4',
   '/videos/太空直播中.mp4',
+  '/videos/太空直播中3.mp4',
   '/videos/太空泡水.mp4',
   '/videos/太空化妝.mp4',
   '/videos/太空打卡.mp4',
   '/videos/太空打卡2.mp4',
+  '/videos/太空摘帽帽.mp4',
+  '/videos/太空吃東西.mp4',
   '/videos/daily_life_1.mp4',
+] as const;
+
+// 娛樂類影片
+export const ENTERTAINMENT_VIDEOS = [
+  '/videos/太空鋪克牌.mp4',
+  '/videos/太空鋪克牌2.mp4',
+  '/videos/太空戀愛秀.mp4',
+  '/videos/太空帶貨中.mp4',
+] as const;
+
+// VR/科技類影片
+export const VR_TECH_VIDEOS = [
+  '/videos/太空VR.mp4',
+  '/videos/太空VR2.mp4',
 ] as const;
 
 // 太空特效類影片
@@ -91,17 +200,22 @@ export const SPACE_EFFECT_VIDEOS = [
 export const ALL_VIDEOS = [
   ...DANCE_VIDEOS,
   ...LIFESTYLE_VIDEOS,
+  ...ENTERTAINMENT_VIDEOS,
+  ...VR_TECH_VIDEOS,
   ...SPACE_EFFECT_VIDEOS,
 ] as const;
 
 // Director Panel 快速選擇的影片清單 (常用的幾個)
 export const DIRECTOR_VIDEOS = [
   '/videos/太空直播中.mp4',
+  '/videos/太空直播中3.mp4',
   '/videos/太空熱舞.mp4',
   '/videos/星際小可愛.mp4',
   '/videos/太空瑜伽.mp4',
   '/videos/火箭發射.mp4',
   '/videos/太空化妝.mp4',
+  '/videos/太空戀愛秀.mp4',
+  '/videos/太空VR.mp4',
 ] as const;
 
 // ==================== 預設配置 ====================
@@ -245,5 +359,18 @@ export function isVideoFileValid(filepath: string): boolean {
 export type BgmFile = typeof BGM_FILES[number];
 export type EffectFile = typeof EFFECT_FILES[number];
 export type VideoFile = typeof ALL_VIDEOS[number];
+export type DanceVideo = typeof DANCE_VIDEOS[number];
+export type LifestyleVideo = typeof LIFESTYLE_VIDEOS[number];
+export type EntertainmentVideo = typeof ENTERTAINMENT_VIDEOS[number];
+export type VrTechVideo = typeof VR_TECH_VIDEOS[number];
+export type SpaceEffectVideo = typeof SPACE_EFFECT_VIDEOS[number];
+export type DirectorVideo = typeof DIRECTOR_VIDEOS[number];
+export type AmbientEffect = typeof AMBIENT_EFFECTS[number];
+export type CommunicationEffect = typeof COMMUNICATION_EFFECTS[number];
+export type WarningEffect = typeof WARNING_EFFECTS[number];
+export type MalfunctionEffect = typeof MALFUNCTION_EFFECTS[number];
+export type CombatEffect = typeof COMBAT_EFFECTS[number];
+export type SpecialEffect = typeof SPECIAL_EFFECTS[number];
+export type CulturalEffect = typeof CULTURAL_EFFECTS[number];
 export type LightingPreset = typeof LIGHTING_PRESETS[number];
 export type CameraPresetName = typeof CAMERA_PRESET_NAMES[number]; 

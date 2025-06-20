@@ -720,14 +720,33 @@ def get_tools_config() -> list:
                         "type": "string", 
                         "description": "音效檔案路徑，使用 /audio/effects/ 前綴。適合搭配對話內容播放氛圍音效",
                         "enum": [
+                            # 綜藝節目音效
                             "/audio/effects/taiwan_variety_sfx_01.mp3", "/audio/effects/taiwan_variety_sfx_02.mp3", 
                             "/audio/effects/taiwan_variety_sfx_03.mp3", "/audio/effects/taiwan_variety_sfx_04.mp3",
+                            # 太空船環境音效
                             "/audio/effects/spaceship_ambience_01.mp3", "/audio/effects/spaceship_ambience_02.mp3",
                             "/audio/effects/spaceship_ambience_03.mp3", "/audio/effects/spaceship_ambience_04.mp3",
+                            # 環境音效
                             "/audio/effects/winds_blowing.mp3", "/audio/effects/Energetic_fast_pace.mp3", 
                             "/audio/effects/Ambient_keyboard_cli_2.mp3",
+                            # 測試音效
                             "/audio/effects/測試音效1.mp3", "/audio/effects/測試音效2.mp3", 
-                            "/audio/effects/測試音效3.mp3", "/audio/effects/測試音效4.mp3", "/audio/effects/測試音效5.mp3"
+                            "/audio/effects/測試音效3.mp3", "/audio/effects/測試音效4.mp3", "/audio/effects/測試音效5.mp3",
+                            # 通訊音效
+                            "/audio/effects/通訊聲1.mp3", "/audio/effects/通訊聲2.mp3",
+                            "/audio/effects/通訊聲3.mp3", "/audio/effects/通訊聲4.mp3",
+                            # 警告音效
+                            "/audio/effects/警告音1.mp3", "/audio/effects/警告音2.mp3", "/audio/effects/警告音3.mp3",
+                            # 故障音效
+                            "/audio/effects/故障音1.mp3", "/audio/effects/故障音2.mp3", 
+                            "/audio/effects/故障音3.mp3", "/audio/effects/故障音4.mp3",
+                            # 戰鬥音效
+                            "/audio/effects/電子砲1.mp3", "/audio/effects/電子砲2.mp3", "/audio/effects/電子砲3.mp3",
+                            # 特殊效果音效
+                            "/audio/effects/聖光音效1.mp3", "/audio/effects/聖光音效2.mp3", "/audio/effects/聖光音效3.mp3",
+                            "/audio/effects/物件漂浮音效1.mp3", "/audio/effects/物件漂浮音效2.mp3", "/audio/effects/物件漂浮音效3.mp3",
+                            # 文化音效
+                            "/audio/effects/媽祖遶境1.mp3", "/audio/effects/媽祖遶境2.mp3", "/audio/effects/媽祖遶境3.mp3"
                         ]
                     },
                     "bgmPlaying": {

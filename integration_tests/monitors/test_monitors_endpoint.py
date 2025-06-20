@@ -22,7 +22,10 @@ TEST_VIDEOS = [
     "/videos/太空瑜伽.mp4", 
     "/videos/星際小可愛.mp4",
     "/videos/太空直播中.mp4",
-    "/videos/黑洞.mp4"
+    "/videos/黑洞.mp4",
+    "/videos/太空直播中3.mp4",  # 新增的影片
+    "/videos/太空戀愛秀.mp4",    # 新增的影片
+    "/videos/太空VR.mp4",        # 新增的影片
 ]
 
 MONITOR_IDS = ["screen1", "screen2", "screen3"]
