@@ -598,17 +598,30 @@ def get_tools_config() -> list:
                         "type": "string",
                         "description": "要播放的音頻檔名，例如：'暴龍吼叫.mp3'、'電子音樂.mp3'、'鳥叫.mp3'等",
                         "enum": [
+                            # 歌劇系列
                             "歌劇1.mp3", "歌劇2.mp3", "歌劇3.mp3", "歌劇4.mp3",
+                            # 情緒聲音
                             "喘息.mp3", "暴龍吼叫.mp3", "電子音樂.mp3", "狂喜.mp3",
+                            # 自然音效
                             "鳥叫.mp3", "馬喘息聲.mp3", "winds_blowing.mp3",
+                            # 音樂片段
                             "Energetic_fast_pace.mp3", "Ambient_keyboard_cli_2.mp3",
+                            # 台灣少女語音
                             "11L-A_Taiwanese_teenage_-1747298242725.mp3", "11L-A_Taiwanese_teenage_-1747298241942.mp3",
                             "11L-A_Taiwanese_teenage_-1747298241002.mp3", "11L-A_Taiwanese_teenage_-1747298240041.mp3",
                             "A_young_Taiwanese_gi_4.mp3", "A_young_Taiwanese_gi_3.mp3", 
                             "A_young_Taiwanese_gi_2.mp3", "A_young_Taiwanese_gi_1.mp3",
+                            # 人聲片段
                             "female_talking1.mp3", "male_vocal.mp3", "murmur.mp3",
                             "song_singing.mp3", "A_male_vocalist_sing.mp3", "A_looping_instrument.mp3",
-                            "Ambient_keyboard_cli.mp3"
+                            "Ambient_keyboard_cli.mp3",
+                            # 動物叫聲系列
+                            "小狗叫1.mp3", "小狗叫2.mp3", "貓叫1.mp3", "貓叫2.mp3",
+                            "牛叫1.mp3", "牛叫2.mp3", "蛇叫1.mp3", "蛇叫2.mp3",
+                            "雞叫1.mp3", "雞叫2.mp3", "猴子叫1.mp3", "猴子叫2.mp3", "猴子叫3.mp3",
+                            "狼叫1.mp3", "狼叫2.mp3",
+                            # 小綠人語音系列
+                            "小綠人講話1.mp3", "小綠人講話2.mp3", "小綠人講話3.mp3"
                         ]
                     },
                     "interrupt": {

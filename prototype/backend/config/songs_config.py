@@ -614,6 +614,330 @@ SONGS_METADATA = [
             {"name": "FemaleStandingPose", "proportion": 0.9},     # 優雅站姿
             {"name": "Idle", "proportion": 1.0}                    # 結束
         ]
+    },
+    # 動物叫聲系列
+    {
+        "id": "dog_bark_1_song",
+        "title": "小狗叫1",
+        "filename": "小狗叫1.mp3",
+        "duration": 5.0,
+        "emotionalKeyframes": [
+            {"tag": "excited", "proportion": 0.0},      # 興奮吠叫
+            {"tag": "alert", "proportion": 0.3},        # 警覺
+            {"tag": "playful", "proportion": 0.6},      # 頑皮
+            {"tag": "neutral", "proportion": 1.0}       # 結束
+        ],
+        "bodyAnimationSequence": [
+            {"name": "JumpingJacks", "proportion": 0.0},       # 跳躍
+            {"name": "Cheering", "proportion": 0.3},           # 歡呼
+            {"name": "MaleDynamicPose", "proportion": 0.6},    # 動態姿勢
+            {"name": "Idle", "proportion": 1.0}                # 結束
+        ]
+    },
+    {
+        "id": "dog_bark_2_song",
+        "title": "小狗叫2",
+        "filename": "小狗叫2.mp3",
+        "duration": 5.0,
+        "emotionalKeyframes": [
+            {"tag": "alert", "proportion": 0.0},        # 警覺
+            {"tag": "curious", "proportion": 0.4},      # 好奇
+            {"tag": "friendly", "proportion": 0.8},     # 友善
+            {"tag": "neutral", "proportion": 1.0}       # 結束
+        ],
+        "bodyAnimationSequence": [
+            {"name": "LookAround", "proportion": 0.0},         # 東張西望
+            {"name": "PointingGesture", "proportion": 0.4},    # 指向手勢
+            {"name": "WavingHello", "proportion": 0.8},        # 揮手問好
+            {"name": "Idle", "proportion": 1.0}                # 結束
+        ]
+    },
+    {
+        "id": "cat_meow_1_song",
+        "title": "貓叫1",
+        "filename": "貓叫1.mp3",
+        "duration": 5.0,
+        "emotionalKeyframes": [
+            {"tag": "curious", "proportion": 0.0},      # 好奇
+            {"tag": "demanding", "proportion": 0.3},    # 要求
+            {"tag": "affectionate", "proportion": 0.7}, # 撒嬌
+            {"tag": "neutral", "proportion": 1.0}       # 結束
+        ],
+        "bodyAnimationSequence": [
+            {"name": "FemaleDancePose", "proportion": 0.0},    # 優雅姿勢
+            {"name": "ReachingOut", "proportion": 0.3},        # 伸手
+            {"name": "Kiss", "proportion": 0.7},               # 親吻
+            {"name": "Idle", "proportion": 1.0}                # 結束
+        ]
+    },
+    {
+        "id": "cat_meow_2_song",
+        "title": "貓叫2",
+        "filename": "貓叫2.mp3",
+        "duration": 5.0,
+        "emotionalKeyframes": [
+            {"tag": "sleepy", "proportion": 0.0},       # 慵懶
+            {"tag": "content", "proportion": 0.4},      # 滿足
+            {"tag": "relaxed", "proportion": 0.8},      # 放鬆
+            {"tag": "neutral", "proportion": 1.0}       # 結束
+        ],
+        "bodyAnimationSequence": [
+            {"name": "LayingIdle", "proportion": 0.0},         # 躺著
+            {"name": "FemaleLayingPose", "proportion": 0.4},   # 躺臥姿勢
+            {"name": "Stretching", "proportion": 0.8},         # 伸懶腰
+            {"name": "Idle", "proportion": 1.0}                # 結束
+        ]
+    },
+    {
+        "id": "cow_moo_1_song",
+        "title": "牛叫1",
+        "filename": "牛叫1.mp3",
+        "duration": 5.0,
+        "emotionalKeyframes": [
+            {"tag": "calm", "proportion": 0.0},         # 平靜
+            {"tag": "content", "proportion": 0.5},      # 滿足
+            {"tag": "neutral", "proportion": 1.0}       # 結束
+        ],
+        "bodyAnimationSequence": [
+            {"name": "GrazeIdle", "proportion": 0.0},          # 吃草姿勢
+            {"name": "FemaleStandingPose", "proportion": 0.5}, # 站立姿勢
+            {"name": "Idle", "proportion": 1.0}                # 結束
+        ]
+    },
+    {
+        "id": "cow_moo_2_song",
+        "title": "牛叫2", 
+        "filename": "牛叫2.mp3",
+        "duration": 5.0,
+        "emotionalKeyframes": [
+            {"tag": "calling", "proportion": 0.0},      # 呼喚
+            {"tag": "social", "proportion": 0.6},       # 社交
+            {"tag": "neutral", "proportion": 1.0}       # 結束
+        ],
+        "bodyAnimationSequence": [
+            {"name": "YellingWhileStanding", "proportion": 0.0}, # 站立呼叫
+            {"name": "WavingHello", "proportion": 0.6},          # 揮手
+            {"name": "Idle", "proportion": 1.0}                  # 結束
+        ]
+    },
+    {
+        "id": "snake_hiss_1_song",
+        "title": "蛇叫1",
+        "filename": "蛇叫1.mp3",
+        "duration": 5.0,
+        "emotionalKeyframes": [
+            {"tag": "threatening", "proportion": 0.0},  # 威脅
+            {"tag": "defensive", "proportion": 0.5},    # 防禦
+            {"tag": "neutral", "proportion": 1.0}       # 結束
+        ],
+        "bodyAnimationSequence": [
+            {"name": "Spin In Place", "proportion": 0.0},      # 盤旋
+            {"name": "MaleDynamicPose", "proportion": 0.5},    # 威嚇姿勢
+            {"name": "Idle", "proportion": 1.0}                # 結束
+        ]
+    },
+    {
+        "id": "snake_hiss_2_song",
+        "title": "蛇叫2",
+        "filename": "蛇叫2.mp3",
+        "duration": 5.0,
+        "emotionalKeyframes": [
+            {"tag": "sneaky", "proportion": 0.0},       # 潛行
+            {"tag": "calculating", "proportion": 0.6},  # 計算
+            {"tag": "neutral", "proportion": 1.0}       # 結束
+        ],
+        "bodyAnimationSequence": [
+            {"name": "Crouching", "proportion": 0.0},          # 蹲伏
+            {"name": "SlowWalk", "proportion": 0.6},           # 緩慢移動
+            {"name": "Idle", "proportion": 1.0}                # 結束
+        ]
+    },
+    {
+        "id": "rooster_crow_1_song",
+        "title": "雞叫1",
+        "filename": "雞叫1.mp3",
+        "duration": 5.0,
+        "emotionalKeyframes": [
+            {"tag": "proud", "proportion": 0.0},        # 驕傲
+            {"tag": "announcing", "proportion": 0.4},   # 宣告
+            {"tag": "confident", "proportion": 0.8},    # 自信
+            {"tag": "neutral", "proportion": 1.0}       # 結束
+        ],
+        "bodyAnimationSequence": [
+            {"name": "Cheering", "proportion": 0.0},           # 歡呼
+            {"name": "YellingWhileStanding", "proportion": 0.4}, # 站立大叫
+            {"name": "MaleDynamicPose", "proportion": 0.8},    # 動態姿勢
+            {"name": "Idle", "proportion": 1.0}                # 結束
+        ]
+    },
+    {
+        "id": "rooster_crow_2_song",
+        "title": "雞叫2",
+        "filename": "雞叫2.mp3",
+        "duration": 5.0,
+        "emotionalKeyframes": [
+            {"tag": "alert", "proportion": 0.0},        # 警覺
+            {"tag": "territorial", "proportion": 0.5},  # 宣示領域
+            {"tag": "neutral", "proportion": 1.0}       # 結束
+        ],
+        "bodyAnimationSequence": [
+            {"name": "LookAround", "proportion": 0.0},         # 東張西望
+            {"name": "Flair", "proportion": 0.5},              # 花式動作
+            {"name": "Idle", "proportion": 1.0}                # 結束
+        ]
+    },
+    {
+        "id": "monkey_chatter_1_song",
+        "title": "猴子叫1",
+        "filename": "猴子叫1.mp3",
+        "duration": 5.0,
+        "emotionalKeyframes": [
+            {"tag": "playful", "proportion": 0.0},      # 頑皮
+            {"tag": "excited", "proportion": 0.3},      # 興奮
+            {"tag": "mischievous", "proportion": 0.7},  # 調皮
+            {"tag": "neutral", "proportion": 1.0}       # 結束
+        ],
+        "bodyAnimationSequence": [
+            {"name": "JumpingJacks", "proportion": 0.0},       # 跳躍
+            {"name": "Spin In Place", "proportion": 0.3},      # 旋轉
+            {"name": "DancingTwerk", "proportion": 0.7},       # 扭臀
+            {"name": "Idle", "proportion": 1.0}                # 結束
+        ]
+    },
+    {
+        "id": "monkey_chatter_2_song",
+        "title": "猴子叫2",
+        "filename": "猴子叫2.mp3",
+        "duration": 5.0,
+        "emotionalKeyframes": [
+            {"tag": "curious", "proportion": 0.0},      # 好奇
+            {"tag": "social", "proportion": 0.4},       # 社交
+            {"tag": "amused", "proportion": 0.8},       # 開心
+            {"tag": "neutral", "proportion": 1.0}       # 結束
+        ],
+        "bodyAnimationSequence": [
+            {"name": "PointingGesture", "proportion": 0.0},    # 指向
+            {"name": "WavingHello", "proportion": 0.4},        # 揮手
+            {"name": "JazzDancing", "proportion": 0.8},        # 爵士舞
+            {"name": "Idle", "proportion": 1.0}                # 結束
+        ]
+    },
+    {
+        "id": "monkey_chatter_3_song",
+        "title": "猴子叫3",
+        "filename": "猴子叫3.mp3",
+        "duration": 5.0,
+        "emotionalKeyframes": [
+            {"tag": "energetic", "proportion": 0.0},    # 活力
+            {"tag": "wild", "proportion": 0.4},         # 野性
+            {"tag": "joyful", "proportion": 0.8},       # 歡樂
+            {"tag": "neutral", "proportion": 1.0}       # 結束
+        ],
+        "bodyAnimationSequence": [
+            {"name": "HipHopDancin", "proportion": 0.0},       # 嘻哈舞
+            {"name": "Breakdance1990", "proportion": 0.4},     # 霹靂舞
+            {"name": "Cheering", "proportion": 0.8},           # 歡呼
+            {"name": "Idle", "proportion": 1.0}                # 結束
+        ]
+    },
+    {
+        "id": "wolf_howl_1_song",
+        "title": "狼叫1",
+        "filename": "狼叫1.mp3",
+        "duration": 5.0,
+        "emotionalKeyframes": [
+            {"tag": "longing", "proportion": 0.0},      # 渴望
+            {"tag": "mournful", "proportion": 0.4},     # 哀傷
+            {"tag": "calling", "proportion": 0.8},      # 呼喚
+            {"tag": "neutral", "proportion": 1.0}       # 結束
+        ],
+        "bodyAnimationSequence": [
+            {"name": "YellingWhileStanding", "proportion": 0.0}, # 站立嚎叫
+            {"name": "Thinking", "proportion": 0.4},             # 思考
+            {"name": "ReachingOut", "proportion": 0.8},          # 伸手
+            {"name": "Idle", "proportion": 1.0}                  # 結束
+        ]
+    },
+    {
+        "id": "wolf_howl_2_song",
+        "title": "狼叫2",
+        "filename": "狼叫2.mp3",
+        "duration": 5.0,
+        "emotionalKeyframes": [
+            {"tag": "wild", "proportion": 0.0},         # 野性
+            {"tag": "pack_calling", "proportion": 0.5}, # 召集同伴
+            {"tag": "neutral", "proportion": 1.0}       # 結束
+        ],
+        "bodyAnimationSequence": [
+            {"name": "Roar", "proportion": 0.0},               # 怒吼
+            {"name": "YellingWhileStanding", "proportion": 0.5}, # 站立呼叫
+            {"name": "Idle", "proportion": 1.0}                # 結束
+        ]
+    },
+    # 小綠人語音系列
+    {
+        "id": "alien_speak_1_song",
+        "title": "小綠人講話1",
+        "filename": "小綠人講話1.mp3",
+        "duration": 20.0,
+        "emotionalKeyframes": [
+            {"tag": "curious", "proportion": 0.0},      # 好奇
+            {"tag": "mysterious", "proportion": 0.2},   # 神秘
+            {"tag": "analytical", "proportion": 0.4},   # 分析
+            {"tag": "friendly", "proportion": 0.6},     # 友善
+            {"tag": "wise", "proportion": 0.8},         # 智慧
+            {"tag": "neutral", "proportion": 1.0}       # 結束
+        ],
+        "bodyAnimationSequence": [
+            {"name": "Thinking", "proportion": 0.0},           # 思考
+            {"name": "PointingGesture", "proportion": 0.2},    # 指向
+            {"name": "ExplainingGesture", "proportion": 0.4},  # 解釋手勢
+            {"name": "WavingHello", "proportion": 0.6},        # 友善揮手
+            {"name": "FemaleDancePose", "proportion": 0.8},    # 優雅姿勢
+            {"name": "Idle", "proportion": 1.0}                # 結束
+        ]
+    },
+    {
+        "id": "alien_speak_2_song",
+        "title": "小綠人講話2",
+        "filename": "小綠人講話2.mp3",
+        "duration": 20.0,
+        "emotionalKeyframes": [
+            {"tag": "intrigued", "proportion": 0.0},    # 著迷
+            {"tag": "scientific", "proportion": 0.25},  # 科學性
+            {"tag": "explaining", "proportion": 0.5},   # 解釋
+            {"tag": "patient", "proportion": 0.75},     # 耐心
+            {"tag": "neutral", "proportion": 1.0}       # 結束
+        ],
+        "bodyAnimationSequence": [
+            {"name": "LookAround", "proportion": 0.0},         # 觀察
+            {"name": "ExplainingGesture", "proportion": 0.25}, # 解釋
+            {"name": "PointingGesture", "proportion": 0.5},    # 指向
+            {"name": "Thinking", "proportion": 0.75},          # 思考
+            {"name": "Idle", "proportion": 1.0}                # 結束
+        ]
+    },
+    {
+        "id": "alien_speak_3_song",
+        "title": "小綠人講話3",
+        "filename": "小綠人講話3.mp3",
+        "duration": 20.0,
+        "emotionalKeyframes": [
+            {"tag": "telepathic", "proportion": 0.0},   # 心靈感應
+            {"tag": "cosmic", "proportion": 0.2},       # 宇宙性
+            {"tag": "enlightened", "proportion": 0.4},  # 開悟
+            {"tag": "transcendent", "proportion": 0.6}, # 超越
+            {"tag": "peaceful", "proportion": 0.8},     # 平和
+            {"tag": "neutral", "proportion": 1.0}       # 結束
+        ],
+        "bodyAnimationSequence": [
+            {"name": "LayingIdle", "proportion": 0.0},         # 冥想姿勢
+            {"name": "ReachingOut", "proportion": 0.2},        # 伸展
+            {"name": "FemaleDancePose", "proportion": 0.4},    # 舞蹈姿勢
+            {"name": "Spin In Place", "proportion": 0.6},      # 旋轉
+            {"name": "FemaleStandingPose", "proportion": 0.8}, # 站立
+            {"name": "Idle", "proportion": 1.0}                # 結束
+        ]
     }
 ]
 
