@@ -75,6 +75,46 @@ The request models for these routes are defined at the top of `control.py` and i
 |`POST`|`/api/take-selfie`|Generate AI selfie images of the character with customizable positioning and modifications.|
 |`POST`|`/api/continue-selfie`|Continue selfie generation based on the latest selfie with modifications.|
 |`POST`|`/api/show-existing-image`|Display an existing image from the generated_images directory.|
+|`POST`|`/api/generate-map-image`|**New**: Generate a static map from Google Maps and display it.|
+
+#### New: `/api/generate-map-image`
+This endpoint generates a static map image from Google Maps Static API and displays it on the frontend. It's useful for showing geographical context, such as the current location of the International Space Station or a specific city.
+
+**Request Body (`MapGenerationRequest`)**
+```json
+{
+  "latitude": "float (Required, the latitude for the map center)",
+  "longitude": "float (Required, the longitude for the map center)",
+  "zoom": "integer (Optional, map zoom level, default: 14)",
+  "size": "string (Optional, image dimensions, e.g., '640x640', default: '640x640')",
+  "maptype": "string (Optional, 'roadmap', 'satellite', 'hybrid', 'terrain', default: 'satellite')",
+  "caption": "string (Optional, a caption for the image, default: '地圖')",
+  "duration": "float (Optional, display duration in seconds, default: 15.0)"
+}
+```
+
+**Example `curl` Request**
+```bash
+curl -X POST "http://localhost:8000/api/generate-map-image" \
+-H "Content-Type: application/json" \
+-d '{
+  "latitude": 23.9739,
+  "longitude": 120.9820,
+  "zoom": 8,
+  "caption": "Map of Taiwan"
+}'
+```
+
+**Success Response**
+The endpoint returns a JSON object with the URL of the generated map and the caption. It also broadcasts the image to the frontend via WebSocket.
+```json
+{
+  "success": true,
+  "url": "/generated-images/map_1750474857412.png",
+  "caption": "Map of Taiwan"
+}
+```
+**Important**: This endpoint requires the `GOOGLE_API_KEY` to be set in the environment and have the "Maps Static API" enabled in the Google Cloud Console.
 
 ### System Endpoint
 | Method | Path | Description |

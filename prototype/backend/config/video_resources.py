@@ -29,6 +29,9 @@ ENTERTAINMENT_VIDEOS = [
     "/videos/太空鋪克牌2.mp4",
     "/videos/太空戀愛秀.mp4",
     "/videos/太空帶貨中.mp4",
+    "/videos/小綠人動畫.mp4",
+    "/videos/小綠人動畫2.mp4",
+    "/videos/小綠人動畫3.mp4",
 ]
 
 VR_TECH_VIDEOS = [

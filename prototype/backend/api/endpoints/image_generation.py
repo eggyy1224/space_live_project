@@ -8,6 +8,7 @@ from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 import io
 import glob
+import httpx
 
 from google import genai
 from google.genai.types import GenerateContentConfig, Content, Part
@@ -103,6 +104,16 @@ class BackgroundImageRequest(BaseModel):
     reference_image: Optional[str] = None  
     # 修改指令 (可選)
     modification: Optional[str] = None  # 例如: "基於這張自拍照創造背景", "融合多張照片的風格"
+
+
+class MapGenerationRequest(BaseModel):
+    latitude: float
+    longitude: float
+    zoom: int = 14
+    size: str = "640x640"
+    maptype: Optional[str] = "satellite"
+    caption: Optional[str] = "地圖"
+    duration: Optional[float] = 15.0
 
 
 @router.post("/generate-image")
@@ -775,3 +786,70 @@ async def disable_background_image():
     except Exception as e:
         logging.error(f"Disable background image failed: {e}")
         raise HTTPException(status_code=500, detail="Disable background image failed")
+
+
+@router.post("/generate-map-image")
+async def generate_map_image(request: MapGenerationRequest):
+    """從 Google Maps Static API 產生一張地圖圖片並顯示"""
+    try:
+        if not settings.GOOGLE_API_KEY:
+            raise HTTPException(status_code=500, detail="Google API key is not configured")
+
+        map_url = (
+            f"https://maps.googleapis.com/maps/api/staticmap"
+            f"?center={request.latitude},{request.longitude}"
+            f"&zoom={request.zoom}"
+            f"&size={request.size}"
+            f"&maptype={request.maptype}"
+            f"&key={settings.GOOGLE_API_KEY}"
+        )
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.get(map_url)
+            response.raise_for_status()  # Raise an exception for bad status codes
+        
+        image_data = response.content
+
+        # 儲存圖像檔案
+        filename = f"map_{int(time.time()*1000)}.png"
+        file_path = os.path.join(GENERATED_DIR, filename)
+
+        with open(file_path, "wb") as f:
+            f.write(image_data)
+        
+        url = f"/generated-images/{filename}"
+        
+        # 使用一個簡化的 display_config，或可擴充
+        display_config = {
+            "position": {"top": "50%", "left": "50%", "transform": "translate(-50%, -50%)"},
+            "size": {"width": "640px", "height": "640px"}
+        }
+
+        # 透過WebSocket廣播結果
+        await manager.broadcast(json.dumps({
+            "type": "generated-image",
+            "url": url,
+            "caption": request.caption,
+            "display_config": display_config,
+            "duration": request.duration
+        }))
+
+        return {
+            "success": True,
+            "url": url,
+            "caption": request.caption
+        }
+
+    except httpx.HTTPStatusError as e:
+        logging.error(f"Failed to fetch map from Google Maps API: {e}")
+        # Google回傳的錯誤可能包含有用的資訊
+        error_detail = e.response.text
+        try:
+            if "API key not valid" in error_detail or "ApiTarget.ENABLE" in error_detail:
+                 raise HTTPException(status_code=400, detail="Google Maps API error: The API key is invalid or the Maps Static API is not enabled.")
+            raise HTTPException(status_code=e.response.status_code, detail=f"Google Maps API error: {error_detail}")
+        except Exception:
+             raise HTTPException(status_code=e.response.status_code, detail=f"Failed to fetch map from Google Maps API: {error_detail}")
+    except Exception as e:
+        logging.error(f"Map generation failed: {e}")
+        raise HTTPException(status_code=500, detail="Map generation failed")
