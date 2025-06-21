@@ -229,14 +229,14 @@ curl -X POST .../show-existing-image -d '{"filename": "image_aaa.png", "position
 - `body-animation`: 舞者群組 (標準動作庫)
 
 ### 圖片生成端點
-| 方法 | 路徑 | 用途 | 位置選項 |
+| 方法 | 路徑 | 用途 | 控制選項 |
 |-----|------|------|---------|
-| POST | `/api/generate-image` | 生成新圖片 | 7種位置預設 |
-| POST | `/api/generate-map-image` | 🗺️ **新功能**：生成地圖 | 7種位置預設 |
-| POST | `/api/search-nasa-image` | 🚀 **新功能**：搜尋NASA圖片 | 關鍵字搜尋 |
-| POST | `/api/take-selfie` | 角色自拍 | 可指定風格描述 |
-| POST | `/api/continue-selfie` | 自拍進化 | 自動使用最新自拍 |
-| POST | `/api/show-existing-image` | 顯示舊圖片 | 重複利用已生成 |
+| POST | `/api/generate-image` | 生成新圖片 | 7種位置/3種大小 |
+| POST | `/api/generate-map-image` | 🗺️ 生成地圖 | 可控位置/大小 |
+| POST | `/api/search-nasa-image` | 🚀 搜尋NASA圖片 | 可控位置/大小 |
+| POST | `/api/take-selfie` | 角色自拍 | 可控位置/大小 |
+| POST | `/api/continue-selfie` | 自拍進化 | 可控位置/大小 |
+| POST | `/api/show-existing-image` | 顯示舊圖片 | 可控位置/大小 |
 | POST | `/api/generate-background-image` | 背景圖片 | 16:9 最佳 |
 
 ### Monitor控制

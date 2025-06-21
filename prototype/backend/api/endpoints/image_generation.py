@@ -110,16 +110,26 @@ class MapGenerationRequest(BaseModel):
     latitude: float
     longitude: float
     zoom: int = 14
-    size: str = "640x640"
+    size_str: str = "640x640" # Renamed to avoid conflict with size preset
     maptype: Optional[str] = "satellite"
     caption: Optional[str] = "地圖"
-    duration: Optional[float] = 15.0
+    # Display controls
+    position: Optional[str] = "center"
+    size: Optional[str] = "large"
+    custom_position: Optional[dict] = None
+    custom_size: Optional[dict] = None
+    duration: Optional[float] = 25.0
 
 
 class NasaImageRequest(BaseModel):
     query: str
     caption: Optional[str] = None
-    duration: Optional[float] = 15.0
+    # Display controls
+    position: Optional[str] = "center"
+    size: Optional[str] = "large"
+    custom_position: Optional[dict] = None
+    custom_size: Optional[dict] = None
+    duration: Optional[float] = 25.0
 
 
 @router.post("/generate-image")
@@ -805,7 +815,7 @@ async def generate_map_image(request: MapGenerationRequest):
             f"https://maps.googleapis.com/maps/api/staticmap"
             f"?center={request.latitude},{request.longitude}"
             f"&zoom={request.zoom}"
-            f"&size={request.size}"
+            f"&size={request.size_str}"
             f"&maptype={request.maptype}"
             f"&key={settings.GOOGLE_API_KEY}"
         )
@@ -825,11 +835,8 @@ async def generate_map_image(request: MapGenerationRequest):
         
         url = f"/generated-images/{filename}"
         
-        # 使用一個簡化的 display_config，或可擴充
-        display_config = {
-            "position": {"top": "50%", "left": "50%", "transform": "translate(-50%, -50%)"},
-            "size": {"width": "640px", "height": "640px"}
-        }
+        # 使用通用的顯示配置邏輯
+        display_config = _get_display_config(request)
 
         # 透過WebSocket廣播結果
         await manager.broadcast(json.dumps({
@@ -888,11 +895,8 @@ async def search_nasa_image(request: NasaImageRequest):
             
         caption = request.caption or image_title or "NASA Image"
 
-        # 使用一個簡化的 display_config
-        display_config = {
-            "position": {"top": "50%", "left": "50%", "transform": "translate(-50%, -50%)"},
-            "size": {"width": "auto", "height": "auto", "max-width": "80vw", "max-height": "80vh"}
-        }
+        # 使用通用的顯示配置邏輯
+        display_config = _get_display_config(request)
 
         # 透過WebSocket廣播結果
         await manager.broadcast(json.dumps({

@@ -87,10 +87,12 @@ This endpoint generates a static map image from Google Maps Static API and displ
   "latitude": "float (Required, the latitude for the map center)",
   "longitude": "float (Required, the longitude for the map center)",
   "zoom": "integer (Optional, map zoom level, default: 14)",
-  "size": "string (Optional, image dimensions, e.g., '640x640', default: '640x640')",
+  "size_str": "string (Optional, image dimensions, e.g., '640x640', default: '640x640')",
   "maptype": "string (Optional, 'roadmap', 'satellite', 'hybrid', 'terrain', default: 'satellite')",
   "caption": "string (Optional, a caption for the image, default: '地圖')",
-  "duration": "float (Optional, display duration in seconds, default: 15.0)"
+  "position": "string (Optional, 'center', 'top-left', etc., default: 'center')",
+  "size": "string (Optional, 'small', 'medium', 'large', default: 'large')",
+  "duration": "float (Optional, display duration in seconds, default: 25.0)"
 }
 ```
 
@@ -125,7 +127,9 @@ This endpoint searches the NASA Image and Video Library API for an image based o
 {
   "query": "string (Required, the search term, e.g., 'nebula', 'apollo 11')",
   "caption": "string (Optional, a custom caption for the image. If omitted, the title from NASA will be used.)",
-  "duration": "float (Optional, display duration in seconds, default: 15.0)"
+  "position": "string (Optional, 'center', 'top-left', etc., default: 'center')",
+  "size": "string (Optional, 'small', 'medium', 'large', default: 'large')",
+  "duration": "float (Optional, display duration in seconds, default: 25.0)"
 }
 ```
 
