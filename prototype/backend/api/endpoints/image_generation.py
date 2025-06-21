@@ -116,6 +116,12 @@ class MapGenerationRequest(BaseModel):
     duration: Optional[float] = 15.0
 
 
+class NasaImageRequest(BaseModel):
+    query: str
+    caption: Optional[str] = None
+    duration: Optional[float] = 15.0
+
+
 @router.post("/generate-image")
 async def generate_image(request: ImageGenerationRequest):
     try:
@@ -734,7 +740,7 @@ async def generate_background_image(request: BackgroundImageRequest):
 
 @router.post("/set-background-image")
 async def set_background_image(request: dict):
-    """設定指定的背景圖片為當前背景"""
+    """直接設置指定的圖片為背景，並同步到前端"""
     try:
         filename = request.get("filename")
         if not filename:
@@ -853,3 +859,59 @@ async def generate_map_image(request: MapGenerationRequest):
     except Exception as e:
         logging.error(f"Map generation failed: {e}")
         raise HTTPException(status_code=500, detail="Map generation failed")
+
+
+@router.post("/search-nasa-image")
+async def search_nasa_image(request: NasaImageRequest):
+    """從 NASA Image and Video Library API 搜尋圖片並顯示"""
+    try:
+        nasa_api_url = "https://images-api.nasa.gov/search"
+        params = {"q": request.query, "media_type": "image"}
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.get(nasa_api_url, params=params)
+            response.raise_for_status()
+        
+        data = response.json()
+        items = data.get("collection", {}).get("items", [])
+        
+        if not items:
+            raise HTTPException(status_code=404, detail=f"No images found for query: '{request.query}'")
+
+        # 選擇第一張圖片
+        first_item = items[0]
+        image_url = first_item.get("links", [{}])[0].get("href")
+        image_title = first_item.get("data", [{}])[0].get("title")
+
+        if not image_url:
+            raise HTTPException(status_code=404, detail="Could not find image URL in NASA API response.")
+            
+        caption = request.caption or image_title or "NASA Image"
+
+        # 使用一個簡化的 display_config
+        display_config = {
+            "position": {"top": "50%", "left": "50%", "transform": "translate(-50%, -50%)"},
+            "size": {"width": "auto", "height": "auto", "max-width": "80vw", "max-height": "80vh"}
+        }
+
+        # 透過WebSocket廣播結果
+        await manager.broadcast(json.dumps({
+            "type": "generated-image",
+            "url": image_url,
+            "caption": caption,
+            "display_config": display_config,
+            "duration": request.duration
+        }))
+
+        return {
+            "success": True,
+            "url": image_url,
+            "caption": caption
+        }
+
+    except httpx.HTTPStatusError as e:
+        logging.error(f"Failed to fetch image from NASA API: {e}")
+        raise HTTPException(status_code=e.response.status_code, detail=f"NASA API error: {e.response.text}")
+    except Exception as e:
+        logging.error(f"NASA image search failed: {e}")
+        raise HTTPException(status_code=500, detail="NASA image search failed")

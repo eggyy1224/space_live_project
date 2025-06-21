@@ -27,6 +27,7 @@ class Settings:
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
     GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
     OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
+    NASA_API_KEY: Optional[str] = os.getenv("NASA_API_KEY", "DEMO_KEY")
     
     # AI模型配置
     AI_MODEL_NAME = "gemini-2.0-flash"

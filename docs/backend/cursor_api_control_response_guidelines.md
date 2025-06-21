@@ -76,6 +76,7 @@ The request models for these routes are defined at the top of `control.py` and i
 |`POST`|`/api/continue-selfie`|Continue selfie generation based on the latest selfie with modifications.|
 |`POST`|`/api/show-existing-image`|Display an existing image from the generated_images directory.|
 |`POST`|`/api/generate-map-image`|**New**: Generate a static map from Google Maps and display it.|
+|`POST`|`/api/search-nasa-image`|**New**: Search for an image from the NASA Image and Video Library and display it.|
 
 #### New: `/api/generate-map-image`
 This endpoint generates a static map image from Google Maps Static API and displays it on the frontend. It's useful for showing geographical context, such as the current location of the International Space Station or a specific city.
@@ -115,6 +116,39 @@ The endpoint returns a JSON object with the URL of the generated map and the cap
 }
 ```
 **Important**: This endpoint requires the `GOOGLE_API_KEY` to be set in the environment and have the "Maps Static API" enabled in the Google Cloud Console.
+
+#### New: `/api/search-nasa-image`
+This endpoint searches the NASA Image and Video Library API for an image based on a query and displays the first result. This is ideal for bringing real-world space imagery into the conversation.
+
+**Request Body (`NasaImageRequest`)**
+```json
+{
+  "query": "string (Required, the search term, e.g., 'nebula', 'apollo 11')",
+  "caption": "string (Optional, a custom caption for the image. If omitted, the title from NASA will be used.)",
+  "duration": "float (Optional, display duration in seconds, default: 15.0)"
+}
+```
+
+**Example `curl` Request**
+```bash
+curl -X POST "http://localhost:8000/api/search-nasa-image" \
+-H "Content-Type: application/json" \
+-d '{
+  "query": "James Webb Space Telescope",
+  "caption": "Image from the James Webb Space Telescope"
+}'
+```
+
+**Success Response**
+The endpoint returns the URL of the found image and its caption. It also broadcasts this information via WebSocket to the frontend.
+```json
+{
+  "success": true,
+  "url": "https://images-assets.nasa.gov/image/.../...~small.jpg",
+  "caption": "Image from the James Webb Space Telescope"
+}
+```
+**Note**: This endpoint uses the `NASA_API_KEY` from the environment. While it defaults to `DEMO_KEY` for development, it is highly recommended to obtain a free personal key from [api.nasa.gov](https://api.nasa.gov/) for better rate limits.
 
 ### System Endpoint
 | Method | Path | Description |

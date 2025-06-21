@@ -233,6 +233,7 @@ curl -X POST .../show-existing-image -d '{"filename": "image_aaa.png", "position
 |-----|------|------|---------|
 | POST | `/api/generate-image` | 生成新圖片 | 7種位置預設 |
 | POST | `/api/generate-map-image` | 🗺️ **新功能**：生成地圖 | 7種位置預設 |
+| POST | `/api/search-nasa-image` | 🚀 **新功能**：搜尋NASA圖片 | 關鍵字搜尋 |
 | POST | `/api/take-selfie` | 角色自拍 | 可指定風格描述 |
 | POST | `/api/continue-selfie` | 自拍進化 | 自動使用最新自拍 |
 | POST | `/api/show-existing-image` | 顯示舊圖片 | 重複利用已生成 |
