@@ -154,6 +154,46 @@ The endpoint returns the URL of the found image and its caption. It also broadca
 ```
 **Note**: This endpoint uses the `NASA_API_KEY` from the environment. While it defaults to `DEMO_KEY` for development, it is highly recommended to obtain a free personal key from [api.nasa.gov](https://api.nasa.gov/) for better rate limits.
 
+### News Endpoints
+| Method | Path | Description |
+|-------|------|-------------|
+|`POST`|`/api/news/speak-latest-news`|**New**: Fetches the latest space news and makes the character speak the headlines.|
+
+#### New: `/api/news/speak-latest-news`
+This endpoint fetches the latest headlines from the Spaceflight News API, formats them into a single string, and then uses the `send-message` functionality to have the character speak the news.
+
+**Request Body (`NewsRequest`)**
+```json
+{
+  "limit": "integer (Optional, the number of news articles to fetch, default: 3)",
+  "intro_text": "string (Optional, a custom introduction text. If omitted, a default anchor greeting will be used.)"
+}
+```
+
+**Example `curl` Request**
+```bash
+# Using default parameters
+curl -X POST "http://localhost:8000/api/news/speak-latest-news" -H "Content-Type: application/json" -d '{}'
+
+# Custom request
+curl -X POST "http://localhost:8000/api/news/speak-latest-news" \
+-H "Content-Type: application/json" \
+-d '{
+  "limit": 2,
+  "intro_text": "Here are the top 2 space headlines:"
+}'
+```
+
+**Success Response**
+The endpoint returns a confirmation message along with the full text that was sent for speech synthesis.
+```json
+{
+  "success": true,
+  "message": "Successfully fetched and broadcasted 3 news articles.",
+  "news_content": "各位觀眾，這裡是太空頻道，為您帶來最新頭條新聞。 第1則，... 第2則，... 第3則，..."
+}
+```
+
 ### System Endpoint
 | Method | Path | Description |
 |-------|------|-------------|

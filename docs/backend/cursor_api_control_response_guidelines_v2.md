@@ -239,6 +239,11 @@ curl -X POST .../show-existing-image -d '{"filename": "image_aaa.png", "position
 | POST | `/api/show-existing-image` | 顯示舊圖片 | 可控位置/大小 |
 | POST | `/api/generate-background-image` | 背景圖片 | 16:9 最佳 |
 
+### 新聞播報端點
+| 方法 | 路徑 | 用途 | 關鍵參數 |
+|-----|------|------|----------|
+| POST | `/api/news/speak-latest-news` | 📰播報最新太空新聞 | `limit`, `intro_text` |
+
 ### Monitor控制
 | 方法 | 路徑 | 用途 | 支援格式 |
 |-----|------|------|---------|

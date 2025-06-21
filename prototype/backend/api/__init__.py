@@ -17,6 +17,7 @@ from .endpoints import (
     realtime_conversation,
     speech,
     websocket,
+    news,
 )
 from .middleware.cors import setup_cors
 
@@ -50,6 +51,7 @@ def init_app() -> FastAPI:
     app.include_router(monitors.router, prefix="/api", tags=["monitor"])
     app.include_router(image_generation.router, prefix="/api", tags=["image"])
     app.include_router(realtime_conversation.router, prefix="/api", tags=["realtime"])
+    app.include_router(news.router, prefix="/api/news", tags=["news"])
 
     # 創建音頻目錄（如果不存在）
     audio_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "audio")
