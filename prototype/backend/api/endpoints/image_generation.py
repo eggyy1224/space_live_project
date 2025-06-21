@@ -132,6 +132,16 @@ class NasaImageRequest(BaseModel):
     duration: Optional[float] = 25.0
 
 
+class EpicImageRequest(BaseModel):
+    date: Optional[str] = None  # YYYY-MM-DD
+    # Display controls
+    position: Optional[str] = "center"
+    size: Optional[str] = "large"
+    custom_position: Optional[dict] = None
+    custom_size: Optional[dict] = None
+    duration: Optional[float] = 25.0
+
+
 @router.post("/generate-image")
 async def generate_image(request: ImageGenerationRequest):
     try:
@@ -919,3 +929,61 @@ async def search_nasa_image(request: NasaImageRequest):
     except Exception as e:
         logging.error(f"NASA image search failed: {e}")
         raise HTTPException(status_code=500, detail="NASA image search failed")
+
+
+@router.post("/get-epic-image")
+async def get_epic_image(request: EpicImageRequest):
+    """從 NASA EPIC API 獲取最新的地球全盤影像"""
+    try:
+        if request.date:
+            # 驗證日期格式
+            try:
+                datetime.strptime(request.date, '%Y-%m-%d')
+                epic_api_url = f"https://api.nasa.gov/EPIC/api/natural/date/{request.date}"
+            except ValueError:
+                raise HTTPException(status_code=400, detail="無效的日期格式，請使用 YYYY-MM-DD。")
+        else:
+            epic_api_url = "https://api.nasa.gov/EPIC/api/natural"
+            
+        params = {"api_key": settings.NASA_API_KEY}
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(epic_api_url, params=params)
+            response.raise_for_status()
+        
+        images_metadata = response.json()
+        
+        if not images_metadata:
+            raise HTTPException(status_code=404, detail=f"在 {request.date or '最新'} 日期找不到 EPIC 影像。")
+
+        latest_image_meta = images_metadata[-1]
+        
+        image_name = latest_image_meta.get("image")
+        image_date_str = latest_image_meta.get("date", "").split(" ")[0]
+        
+        if not image_name or not image_date_str:
+            raise HTTPException(status_code=500, detail="無法從 EPIC API 回應中解析圖片元資料。")
+            
+        year, month, day = image_date_str.split('-')
+        
+        image_url = f"https://epic.gsfc.nasa.gov/archive/natural/{year}/{month}/{day}/png/{image_name}.png"
+        caption = latest_image_meta.get("caption", f"地球影像攝於 {image_date_str}")
+
+        display_config = _get_display_config(request)
+
+        await manager.broadcast(json.dumps({
+            "type": "generated-image",
+            "url": image_url,
+            "caption": caption,
+            "display_config": display_config,
+            "duration": request.duration
+        }))
+
+        return {"success": True, "url": image_url, "caption": caption}
+
+    except httpx.HTTPStatusError as e:
+        logging.error(f"從 NASA EPIC API 獲取影像失敗: {e.response.text}")
+        raise HTTPException(status_code=e.response.status_code, detail=f"NASA EPIC API 錯誤: {e.response.text}")
+    except Exception as e:
+        logging.error(f"EPIC 影像處理失敗: {e}")
+        raise HTTPException(status_code=500, detail="EPIC 影像處理失敗。")

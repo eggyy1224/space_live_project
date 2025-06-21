@@ -77,6 +77,7 @@ The request models for these routes are defined at the top of `control.py` and i
 |`POST`|`/api/show-existing-image`|Display an existing image from the generated_images directory.|
 |`POST`|`/api/generate-map-image`|**New**: Generate a static map from Google Maps and display it.|
 |`POST`|`/api/search-nasa-image`|**New**: Search for an image from the NASA Image and Video Library and display it.|
+|`POST`|`/api/get-epic-image`|**New**: Fetches a full-disc image of Earth from NASA's EPIC API and displays it.|
 
 #### New: `/api/generate-map-image`
 This endpoint generates a static map image from Google Maps Static API and displays it on the frontend. It's useful for showing geographical context, such as the current location of the International Space Station or a specific city.
@@ -153,6 +154,45 @@ The endpoint returns the URL of the found image and its caption. It also broadca
 }
 ```
 **Note**: This endpoint uses the `NASA_API_KEY` from the environment. While it defaults to `DEMO_KEY` for development, it is highly recommended to obtain a free personal key from [api.nasa.gov](https://api.nasa.gov/) for better rate limits.
+
+#### New: `/api/get-epic-image`
+This endpoint fetches a daily full-disc image of Earth from NASA's EPIC (Earth Polychromatic Imaging Camera) API. It retrieves the most recent image available for the specified date, or the latest image overall if no date is provided.
+
+**Request Body (`EpicImageRequest`)**
+```json
+{
+  "date": "string (Optional, format: YYYY-MM-DD. Fetches images for a specific date.)",
+  "position": "string (Optional, 'center', 'top-left', etc., default: 'center')",
+  "size": "string (Optional, 'small', 'medium', 'large', default: 'large')",
+  "duration": "float (Optional, display duration in seconds, default: 25.0)"
+}
+```
+
+**Example `curl` Request**
+```bash
+# Get the latest available image
+curl -X POST "http://localhost:8000/api/get-epic-image" -H "Content-Type: application/json" -d '{}'
+
+# Get an image from a specific date and place it on the bottom left
+curl -X POST "http://localhost:8000/api/get-epic-image" \
+-H "Content-Type: application/json" \
+-d '{
+  "date": "2024-07-21",
+  "position": "bottom-left",
+  "size": "medium"
+}'
+```
+
+**Success Response**
+The endpoint returns the full URL of the constructed image and its caption. It also broadcasts this information via WebSocket to the frontend.
+```json
+{
+  "success": true,
+  "url": "https://epic.gsfc.nasa.gov/archive/natural/2024/07/21/png/epic_1b_20240721xxxxxx.png",
+  "caption": "This image was taken by NASA's EPIC camera..."
+}
+```
+**Note**: This endpoint also uses the `NASA_API_KEY`. The availability of images for any given day is not guaranteed.
 
 ### News Endpoints
 | Method | Path | Description |

@@ -234,6 +234,7 @@ curl -X POST .../show-existing-image -d '{"filename": "image_aaa.png", "position
 | POST | `/api/generate-image` | 生成新圖片 | 7種位置/3種大小 |
 | POST | `/api/generate-map-image` | 🗺️ 生成地圖 | 可控位置/大小 |
 | POST | `/api/search-nasa-image` | 🚀 搜尋NASA圖片 | 可控位置/大小 |
+| POST | `/api/get-epic-image` | 🌍 **新功能**：取得地球全圖 | 可控位置/大小 |
 | POST | `/api/take-selfie` | 角色自拍 | 可控位置/大小 |
 | POST | `/api/continue-selfie` | 自拍進化 | 可控位置/大小 |
 | POST | `/api/show-existing-image` | 顯示舊圖片 | 可控位置/大小 |
