@@ -137,60 +137,22 @@ const ImageOverlay: React.FC = () => {
         >
           <img
             src={img.url}
-          alt="Generated"
-          style={{
-            width: '100%',
-            height: 'auto',
-            objectFit: 'contain',
-            borderRadius: '13px',
-            display: 'block'
-          }}
-          onError={(e) => {
-            console.error('圖片載入失敗:', img.url);
-            console.error('錯誤詳情:', e);
-          }}
-          onLoad={() => {
-            console.log('圖片載入成功:', img.url);
-          }}
-        />
-        {/* 添加一個小標籤顯示這是 AI 生成的圖片 */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '8px',
-            left: '8px',
-            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-            color: 'white',
-            padding: '4px 8px',
-            borderRadius: '8px',
-            fontSize: '12px',
-            fontWeight: 'bold',
-          }}
-        >
-          AI 生成
-        </div>
-        {/* 如果有 caption，顯示在右下角 */}
-        {img.caption && (
-          <div
+            alt="Generated"
             style={{
-              position: 'absolute',
-              bottom: '8px',
-              right: '8px',
-              backgroundColor: 'rgba(0, 0, 0, 0.7)',
-              color: 'white',
-              padding: '4px 8px',
-              borderRadius: '8px',
-              fontSize: '10px',
-              maxWidth: '60%',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
+              width: '100%',
+              height: 'auto',
+              objectFit: 'contain',
+              borderRadius: '13px',
+              display: 'block'
             }}
-            title={img.caption}
-          >
-            💬
-          </div>
-        )}
+            onError={(e) => {
+              console.error('圖片載入失敗:', img.url);
+              console.error('錯誤詳情:', e);
+            }}
+            onLoad={() => {
+              console.log('圖片載入成功:', img.url);
+            }}
+          />
         </div>
       ))}
     </>
