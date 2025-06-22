@@ -41,6 +41,7 @@ import { type MessageType } from './services/ChatService';
 import { useStore } from './store'
 import logger, { LogCategory } from './utils/LogManager'
 import { toast } from 'react-hot-toast'
+import { Formation } from './store/slices/danceSlice';
 
 // --- 引入模型設定 ---
 // import { AVAILABLE_MODELS } from './config/modelConfig';
@@ -91,6 +92,12 @@ function App() {
   const isSettingsPanelVisible = useStore((state) => state.isSettingsPanelVisible);
   const toggleSettingsPanel = useStore((state) => state.toggleSettingsPanel);
   // <--- 結束 --->
+  
+  // --- 從 Zustand Store 獲取舞團控制 actions ---
+  const setFormation = useStore((state) => state.setFormation);
+  const setDancerCount = useStore((state) => state.setDancerCount);
+  const setDanceGroupPosition = useStore((state) => state.setDanceGroupPosition);
+  const setDanceGroupScale = useStore((state) => state.setDanceGroupScale);
   
   // <--- 從 Zustand Store 獲取角色控制面板狀態和操作 --->
   const isCharacterControlPanelVisible = useStore((state) => state.isCharacterControlPanelVisible);
@@ -222,9 +229,12 @@ function App() {
     // Assert lastJsonMessage to our more comprehensive type
     const currentMessage = lastJsonMessage as BackendMessage | null;
 
-    // 檢查是否是 chat-message 類型並且包含 message 負載
-    if (currentMessage && currentMessage.type === 'chat-message') {
-        logger.debug('[AppWS Parse Effect] Condition 1 passed: Message exists and type is chat-message.', LogCategory.WEBSOCKET);
+    if (!currentMessage || !currentMessage.type) {
+      return;
+    }
+
+    switch (currentMessage.type) {
+      case 'chat-message':
         if (currentMessage.message && typeof currentMessage.message === 'object') {
             logger.debug('[AppWS Parse Effect] Condition 2 passed: Message payload exists and is object.', LogCategory.WEBSOCKET);
             
@@ -277,11 +287,26 @@ function App() {
         } else {
              logger.debug('[AppWS Parse Effect] Condition 2 FAILED: Message payload does not exist or is not an object.', LogCategory.WEBSOCKET);
         }
-    } else {
-         logger.debug('[AppWS Parse Effect] Condition 1 FAILED: Message is null or type is not chat-message.', LogCategory.WEBSOCKET);
+        break;
+
+      case 'dance_group_update':
+        if (currentMessage.payload) {
+          logger.info('[AppWS] Received dance group update.', LogCategory.WEBSOCKET);
+          const { formation, dancerCount, position, scale } = currentMessage.payload;
+          if (formation) setFormation(formation as Formation);
+          if (dancerCount) setDancerCount(dancerCount);
+          if (position && position.length === 3) {
+            setDanceGroupPosition('x', position[0]);
+            setDanceGroupPosition('y', position[1]);
+            setDanceGroupPosition('z', position[2]);
+          }
+          if (scale) setDanceGroupScale(scale);
+        }
+        break;
+
+      // ... (other cases like 'emotionalTrajectory')
     }
-    // 可以添加對其他消息類型的處理
-  }, [lastJsonMessage, availableAnimations, setSuggestedAnimationName, setAnimationSequence]); // 依賴項添加 setAnimationSequence
+  }, [lastJsonMessage, availableAnimations, setSuggestedAnimationName, setAnimationSequence, setFormation, setDancerCount, setDanceGroupPosition, setDanceGroupScale]);
   // ------------------------------------
 
   // --- 同步身體動畫與語音狀態 ---

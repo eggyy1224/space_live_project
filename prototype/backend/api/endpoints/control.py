@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from services.camera_control import CameraControlService
 
 from ..endpoints.websocket import manager, murmur_service
@@ -90,6 +90,14 @@ class BodyAnimationCommand(BaseModel):
     loopCount: Optional[int] = None
     speed: Optional[float] = None
     transitionDuration: Optional[float] = None
+
+
+class DanceGroupRequest(BaseModel):
+    """Request model for controlling the dance group."""
+    formation: str = Field(..., description="The formation of the dancers (e.g., 'circle', 'grid', 'line').")
+    dancerCount: int = Field(..., gt=0, description="The number of dancers.")
+    position: List[float] = Field(..., min_items=3, max_items=3, description="The [x, y, z] position of the group.")
+    scale: float = Field(..., gt=0, description="The scale of each dancer.")
 
 
 @router.post("/control/send-message")
@@ -1065,3 +1073,30 @@ async def get_environment_status():
     except Exception as e:
         logger.error(f"API 獲取環境光照狀態失敗: {e}")
         raise HTTPException(status_code=500, detail=f"獲取環境光照狀態失敗: {str(e)}")
+
+
+@router.post("/control/dance_group")
+async def control_dance_group(request: DanceGroupRequest):
+    """Controls the formation, count, position, and scale of the dance group."""
+    try:
+        if not manager.active_connections:
+            raise HTTPException(status_code=503, detail="No active frontend connections.")
+
+        message_data = {
+            "type": "dance_group_update",
+            "payload": request.dict()
+        }
+
+        await manager.broadcast(json.dumps(message_data))
+
+        logger.info(f"API broadcasting dance group update: {request.dict()}")
+
+        return {
+            "success": True,
+            "message": "Dance group update broadcasted to frontend.",
+            "data": request.dict()
+        }
+
+    except Exception as e:
+        logger.error(f"API failed to control dance group: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to control dance group: {str(e)}")

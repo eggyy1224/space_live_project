@@ -223,6 +223,7 @@ curl -X POST .../show-existing-image -d '{"filename": "image_aaa.png", "position
 | POST | `/api/control/head-size` | 頭部縮放 | `scaleFactor` (0.1-20.0) |
 | POST | `/api/control/background-audio` | 音樂音效 | `bgmUrl` OR `sfxUrl` |
 | POST | `/api/control/camera/set-frontend-preset` | 鏡頭預設 | `name`, `duration` |
+| POST | `/api/control/dance_group` | 🕺舞團控制 | `formation`, `dancerCount`, `position`, `scale` |
 
 **🚨 重要區分：動畫API兩套系統**
 - `character/animation`: 主角專用 (太空主題動作)
@@ -239,6 +240,7 @@ curl -X POST .../show-existing-image -d '{"filename": "image_aaa.png", "position
 | POST | `/api/continue-selfie` | 自拍進化 | 可控位置/大小 |
 | POST | `/api/show-existing-image` | 顯示舊圖片 | 可控位置/大小 |
 | POST | `/api/generate-background-image` | 背景圖片 | 16:9 最佳 |
+| POST | `/api/control/dance_group` | 舞團控制 | - |
 
 ### 新聞播報端點
 | 方法 | 路徑 | 用途 | 關鍵參數 |
@@ -250,6 +252,41 @@ curl -X POST .../show-existing-image -d '{"filename": "image_aaa.png", "position
 |-----|------|------|---------|
 | PUT | `/api/monitors/{screen1/screen2/screen3}` | 影片控制 | MP4影片檔 |
 | GET | `/api/monitors` | 查看狀態 | 三螢幕同步 |
+
+### 舞團控制 (Dance Group)
+| 方法 | 路徑 | 用途 |
+|-----|------|------|
+| POST | `/api/control/dance_group` | 控制舞團的陣型、人數、位置和大小 |
+
+- **`formation`**: `string` - 陣型名稱 ('circle', 'grid', 'line').
+- **`dancerCount`**: `integer` - 舞者數量.
+- **`position`**: `array[float]` - `[x, y, z]` 座標.
+- **`scale`**: `float` - 舞者縮放大小.
+
+**範例 Curl:**
+```bash
+curl -X POST http://127.0.0.1:8000/api/control/dance_group \
+-H "Content-Type: application/json" \
+-d '{
+  "formation": "grid",
+  "dancerCount": 50,
+  "position": [0, -30, -40],
+  "scale": 7.5
+}'
+```
+**對應 WebSocket 訊息:**
+後端會廣播以下訊息，前端收到後會更新舞團狀態。
+```json
+{
+  "type": "dance_group_update",
+  "payload": {
+    "formation": "grid",
+    "dancerCount": 50,
+    "position": [0, -30, -40],
+    "scale": 7.5
+  }
+}
+```
 
 ## ⚡ 實戰最佳實踐
 

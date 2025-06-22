@@ -49,6 +49,7 @@ The application registers these routes in `prototype/backend/api/__init__.py`.
 |`POST`|`/api/control/environment/config`|Batch set environment lighting configuration.|
 |`POST`|`/api/control/environment/reset`|Reset environment lighting to default values.|
 |`GET`|`/api/control/environment/status`|Get current environment lighting status.|
+|`POST`|`/api/control/dance_group`|Control the dance group's formation, count, position, and scale.|
 
 The request models for these routes are defined at the top of `control.py` and include fields such as `content`, `url`, `duration`, `keyframes`, and camera angles.
 
@@ -969,7 +970,7 @@ sleep 5
 ## 🔍 Troubleshooting Common Issues
 
 -   **Audio Not Playing?**
-    1.  **Wrong URL Prefix?** Double-check the **Audio & Video File URL Formats** table. (`/songs-file/` for `play_audio`, `/audio/` for BGM/SFX).
+    1.  **Wrong URL Prefix?** Double-check the **Audio & Video File URL Formats** table. (`/songs-file/` for `play-audio`, `/audio/` for BGM/SFX).
     2.  **File Exists?** Ensure the audio file is present at the correct physical path on the server.
     3.  **API Response?** Successful `play-audio` call should return `{"success":true, ...}`.
 
@@ -1491,3 +1492,42 @@ curl -X POST http://127.0.0.1:8000/api/control/send-message -H "Content-Type: ap
 curl -X POST http://127.0.0.1:8000/api/control/environment/preset -H "Content-Type: application/json" -d '{"preset": "studio"}'
 ```
 透過靈活運用這些組合，便能透過 API 精準地編排出豐富且生動的角色表演。
+
+#### New: `/api/control/dance_group`
+This endpoint allows for comprehensive control over the dance group in the 3D scene. You can specify the formation, number of dancers, the group's overall position, and the scale of each dancer. This is useful for creating dynamic visual backdrops and choreographing large-scale movements.
+
+**Request Body (`DanceGroupRequest`)**
+```json
+{
+  "formation": "string (Required, the formation of the dancers, e.g., 'circle', 'grid', 'line')",
+  "dancerCount": "integer (Required, the number of dancers, must be > 0)",
+  "position": "array[float] (Required, the [x, y, z] position of the group)",
+  "scale": "float (Required, the uniform scale of each dancer, must be > 0)"
+}
+```
+
+**Example `curl` Request**
+```bash
+curl -X POST "http://localhost:8000/api/control/dance_group" \
+-H "Content-Type: application/json" \
+-d '{
+  "formation": "grid",
+  "dancerCount": 50,
+  "position": [0, -30, -40],
+  "scale": 7.5
+}'
+```
+
+**WebSocket Broadcast**
+On a successful request, the backend broadcasts a WebSocket message to all clients with the following structure, which the frontend uses to update the scene.
+```json
+{
+  "type": "dance_group_update",
+  "payload": {
+    "formation": "grid",
+    "dancerCount": 50,
+    "position": [0, -30, -40],
+    "scale": 7.5
+  }
+}
+```
