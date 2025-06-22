@@ -127,8 +127,10 @@ const SceneContent: React.FC<SceneContainerProps> = ({
   // 舞團陣型
   const currentFormation = useStore((s) => s.currentFormation);
   const dancerCount = useStore((s) => s.dancerCount);
+  const danceGroupPosition = useStore((s) => s.danceGroupPosition);
+  const danceGroupScale = useStore((s) => s.danceGroupScale);
 
-  const danceGroupPositions = useMemo(() => {
+  const calculatedDanceGroupPositions = useMemo(() => {
     let formationType: FormationType;
     let options = {};
 
@@ -137,9 +139,7 @@ const SceneContent: React.FC<SceneContainerProps> = ({
         formationType = 'circle';
         options = { radius: 180 };
         break;
-      case 'grid-small':
-      case 'grid-medium':
-      case 'grid-large':
+      case 'grid':
         formationType = 'grid';
         break;
       case 'line':
@@ -270,12 +270,11 @@ const SceneContent: React.FC<SceneContainerProps> = ({
         <CharacterModel />
         {(() => {
           // 圓形軍隊陣列：100個人圍成圓圈
-          const armyPosition: [number, number, number] = [0, -25, 0]; // 再往下移動更多
           return (
-            <group position={armyPosition}>
+            <group position={danceGroupPosition}>
               <DanceGroup
-                scale={8}
-                positions={danceGroupPositions}
+                scale={danceGroupScale}
+                positions={calculatedDanceGroupPositions}
               />
             </group>
           );

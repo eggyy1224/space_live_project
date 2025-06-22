@@ -136,6 +136,10 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const setFormation = useStore((state) => state.setFormation);
   const dancerCount = useStore((state) => state.dancerCount);
   const setDancerCount = useStore((state) => state.setDancerCount);
+  const danceGroupPosition = useStore((state) => state.danceGroupPosition);
+  const setDanceGroupPosition = useStore((state) => state.setDanceGroupPosition);
+  const danceGroupScale = useStore((state) => state.danceGroupScale);
+  const setDanceGroupScale = useStore((state) => state.setDanceGroupScale);
 
   const handlePresetApply = useCallback(async (preset: string) => {
     logger.info(`[SettingsPanel] Applying preset: ${preset}`, LogCategory.MODEL);
@@ -640,12 +644,57 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     id="dancer-count-slider"
                     type="range"
                     min="1"
-                    max="100"
+                    max="300"
                     value={dancerCount}
                     onChange={(e) => setDancerCount(parseInt(e.target.value, 10))}
                     className="flex-grow h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full appearance-none cursor-pointer accent-green-500 dark:accent-green-400"
                   />
                   <span className="text-sm text-gray-600 dark:text-gray-400 w-8 text-right">{dancerCount}</span>
+                </div>
+                {/* Position and Scale Controls */}
+                <div className="flex items-center space-x-2">
+                  <label className="text-sm text-gray-700 dark:text-gray-300 w-12">位移 X</label>
+                  <input
+                    type="number"
+                    step="1"
+                    value={danceGroupPosition[0]}
+                    onChange={(e) => setDanceGroupPosition('x', parseFloat(e.target.value))}
+                    className="w-20 p-1 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-500 rounded-md"
+                  />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <label className="text-sm text-gray-700 dark:text-gray-300 w-12">位移 Y</label>
+                  <input
+                    type="number"
+                    step="1"
+                    value={danceGroupPosition[1]}
+                    onChange={(e) => setDanceGroupPosition('y', parseFloat(e.target.value))}
+                    className="w-20 p-1 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-500 rounded-md"
+                  />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <label className="text-sm text-gray-700 dark:text-gray-300 w-12">位移 Z</label>
+                  <input
+                    type="number"
+                    step="5"
+                    value={danceGroupPosition[2]}
+                    onChange={(e) => setDanceGroupPosition('z', parseFloat(e.target.value))}
+                    className="w-20 p-1 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-500 rounded-md"
+                  />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <label htmlFor="dancer-scale-slider" className="text-sm text-gray-700 dark:text-gray-300 w-12">大小</label>
+                  <input
+                    id="dancer-scale-slider"
+                    type="range"
+                    min="1"
+                    max="20"
+                    step="0.5"
+                    value={danceGroupScale}
+                    onChange={(e) => setDanceGroupScale(parseFloat(e.target.value))}
+                    className="flex-grow h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full appearance-none cursor-pointer accent-purple-500 dark:accent-purple-400"
+                  />
+                  <span className="text-sm text-gray-600 dark:text-gray-400 w-8 text-right">{danceGroupScale.toFixed(1)}</span>
                 </div>
               </div>
             )}
