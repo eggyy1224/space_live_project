@@ -245,7 +245,6 @@ const SceneContent: React.FC<SceneContainerProps> = ({
               <DanceGroup
                 count={100}
                 scale={8}
-                enableFloating={false}
                 forceCircular={true}
                 circleRadius={180}
               />
