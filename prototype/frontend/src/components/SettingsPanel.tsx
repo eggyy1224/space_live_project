@@ -7,6 +7,7 @@ import { availableEmotionTags } from '../config/emotionMappings';
 import logger, { LogCategory } from '../utils/LogManager'; // Import logger
 import Draggable from 'react-draggable'; // Import Draggable
 import AudioMixer from './AudioMixer';
+import { formations, Formation } from '../store/slices/danceSlice'; // 引入陣型定義
 
 // --- 子組件: Morph Target 控制條 (Tailwind 樣式) ---
 interface MorphTargetBarProps {
@@ -128,8 +129,13 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   // --- State for presets UI --- 
   const [isPresetsCollapsed, setIsPresetsCollapsed] = useState(true); // Start collapsed
   const [currentAppliedPreset, setCurrentAppliedPreset] = useState<string | null>('neutral'); // Track last applied preset
+  const [isDanceGroupCollapsed, setIsDanceGroupCollapsed] = useState(true); // 舞團控制
 
-  // --- Remove old preset state/logic (already done) --- 
+  // 從 store 取得舞團相關狀態
+  const currentFormation = useStore((state) => state.currentFormation);
+  const setFormation = useStore((state) => state.setFormation);
+  const dancerCount = useStore((state) => state.dancerCount);
+  const setDancerCount = useStore((state) => state.setDancerCount);
 
   const handlePresetApply = useCallback(async (preset: string) => {
     logger.info(`[SettingsPanel] Applying preset: ${preset}`, LogCategory.MODEL);
@@ -138,8 +144,6 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
       setCurrentAppliedPreset(preset); // Update current preset state on success
     }
   }, [applyPresetExpression]);
-
-  // --- Remove preset translation (already done) --- 
 
   const handleMorphTargetChange = useCallback((name: string, value: number) => {
     // logger.info(`[SettingsPanel] Setting MorphTarget: ${name} = ${value}`, LogCategory.MODEL);
@@ -248,7 +252,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
         ref={nodeRef} // Attach ref for Draggable
         className={`fixed bottom-5 right-5 z-40 w-96 max-w-[calc(100vw-2.5rem)] max-h-[70vh] bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden 
                     transition-opacity duration-300 ease-in-out ${isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-        // Size is fixed by Tailwind classes (w-96, max-h-[70vh])
+        style={{ zIndex: 1000 }} // 確保在最上層
       >
         {/* Panel Header - Add panel-header class for handle */}
         <div className="panel-header flex justify-between items-center p-3 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex-shrink-0 cursor-move">
@@ -603,6 +607,49 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
             </div>
           </div>
           {/* --- 測試工具區塊結束 --- */}
+
+          {/* Dance Group Controls */}
+          <div className="border-t border-gray-200 dark:border-gray-600 pt-3">
+            <h3 
+              className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2 cursor-pointer flex justify-between items-center"
+              onClick={() => setIsDanceGroupCollapsed(!isDanceGroupCollapsed)}
+            >
+              <span>舞團控制 (Dance Group)</span>
+              <span className={`transform transition-transform ${isDanceGroupCollapsed ? 'rotate-0' : 'rotate-180'}`}>▼</span>
+            </h3>
+            {!isDanceGroupCollapsed && (
+              <div className="space-y-3 pl-2">
+                <div className="flex items-center space-x-2">
+                  <label htmlFor="formation-select" className="text-sm text-gray-700 dark:text-gray-300 w-12">陣型</label>
+                  <select
+                    id="formation-select"
+                    value={currentFormation}
+                    onChange={(e) => setFormation(e.target.value as Formation)}
+                    className="flex-grow p-1.5 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    {formations.map((formation) => (
+                      <option key={formation} value={formation}>
+                        {formation}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <label htmlFor="dancer-count-slider" className="text-sm text-gray-700 dark:text-gray-300 w-12">人數</label>
+                  <input
+                    id="dancer-count-slider"
+                    type="range"
+                    min="1"
+                    max="100"
+                    value={dancerCount}
+                    onChange={(e) => setDancerCount(parseInt(e.target.value, 10))}
+                    className="flex-grow h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full appearance-none cursor-pointer accent-green-500 dark:accent-green-400"
+                  />
+                  <span className="text-sm text-gray-600 dark:text-gray-400 w-8 text-right">{dancerCount}</span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </Draggable>

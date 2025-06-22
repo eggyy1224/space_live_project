@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
+// import { immer } from 'zustand/middleware/immer'; // 移除 immer
 
 import { WebSocketSlice, createWebSocketSlice } from './slices/webSocketSlice';
 import { ChatSlice, createChatSlice } from './slices/chatSlice';
@@ -13,11 +14,12 @@ import { BackgroundAudioSlice, createBackgroundAudioSlice } from './slices/backg
 import { SpeechTextSlice, createSpeechTextSlice } from './slices/speechTextSlice';
 import { RuntimeSlice, createRuntimeSlice } from './slices/runtimeSlice';
 import { RoomSlice, createRoomSlice } from './slices/roomSlice';
+import { createDanceSlice, DanceSlice } from './slices/danceSlice';
 // import { EmotionSlice, createEmotionSlice } from './slices/emotionSlice';
 // import { AudioSlice, createAudioSlice } from './slices/audioSlice';
 
-// 合併所有 slice 類型為最終 Store 類型
-export type Store =
+// 定義完整的 Zustand State
+export type AppState =
   WebSocketSlice &
   ChatSlice &
   HeadSlice &
@@ -29,24 +31,26 @@ export type Store =
   BackgroundAudioSlice &
   SpeechTextSlice &
   RuntimeSlice &
-  RoomSlice;
+  RoomSlice &
+  DanceSlice;
 
 // 創建 Zustand Store
-export const useStore = create<Store>()(
+export const useStore = create<AppState>()(
   devtools(
-    (set, get, api) => ({
-      ...createWebSocketSlice(set, get, api),
-      ...createChatSlice(set, get, api),
-      ...createHeadSlice(set, get, api),
-      ...createAppSlice(set, get, api),
-      ...createMediaSlice(set, get, api),
-      ...createBodySlice(set, get, api),
-      ...createCharacterSlice(set, get, api),
-      ...createAudioSettingsSlice(set, get, api),
-      ...createBackgroundAudioSlice(set, get, api),
-      ...createSpeechTextSlice(set, get, api),
-      ...createRuntimeSlice(set, get, api),
-      ...createRoomSlice(set, get, api),
+    (...a) => ({
+      ...createWebSocketSlice(...a),
+      ...createChatSlice(...a),
+      ...createHeadSlice(...a),
+      ...createAppSlice(...a),
+      ...createMediaSlice(...a),
+      ...createBodySlice(...a),
+      ...createCharacterSlice(...a),
+      ...createAudioSettingsSlice(...a),
+      ...createBackgroundAudioSlice(...a),
+      ...createSpeechTextSlice(...a),
+      ...createRuntimeSlice(...a),
+      ...createRoomSlice(...a),
+      ...createDanceSlice(...a),
     }),
     { name: 'AppStore' } // Optional: Name for Redux DevTools
   )

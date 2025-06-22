@@ -1,9 +1,9 @@
-import React, { Suspense, useRef, useEffect } from "react";
+import React, { Suspense, useRef, useEffect, useMemo } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls, Stars, Environment } from "@react-three/drei";
+import { OrbitControls, Stars, Environment, PresentationControls } from "@react-three/drei";
 import { HeadModel } from "./HeadModel";
 import CharacterModel from "./CharacterModel";
-import DanceGroup from "./DanceGroup";
+import DanceGroup, { generatePositions, FormationType } from "./DanceGroup";
 import DynamicAudioBackgrounds from "./DynamicAudioBackgrounds";
 import RoomScene from "./RoomScene";
 import BackgroundPicture from "./BackgroundPicture";
@@ -124,6 +124,37 @@ const SceneContent: React.FC<SceneContainerProps> = ({
   const environmentIntensity = useStore((s) => s.environmentIntensity);
   const environmentBackground = useStore((s) => s.environmentBackground);
 
+  // 舞團陣型
+  const currentFormation = useStore((s) => s.currentFormation);
+  const dancerCount = useStore((s) => s.dancerCount);
+
+  const danceGroupPositions = useMemo(() => {
+    let formationType: FormationType;
+    let options = {};
+
+    switch (currentFormation) {
+      case 'circle':
+        formationType = 'circle';
+        options = { radius: 180 };
+        break;
+      case 'grid-small':
+      case 'grid-medium':
+      case 'grid-large':
+        formationType = 'grid';
+        break;
+      case 'line':
+        formationType = 'line';
+        break;
+      default:
+        formationType = 'circle';
+        options = { radius: 180 };
+        break;
+    }
+    
+    return generatePositions(dancerCount, formationType, options);
+
+  }, [currentFormation, dancerCount]);
+
   // 監聽手動相機預設變化
   useEffect(() => {
     if (!randomMode && cameraPreset && cameraPreset !== "roam") {
@@ -243,10 +274,8 @@ const SceneContent: React.FC<SceneContainerProps> = ({
           return (
             <group position={armyPosition}>
               <DanceGroup
-                count={100}
                 scale={8}
-                forceCircular={true}
-                circleRadius={180}
+                positions={danceGroupPositions}
               />
             </group>
           );
