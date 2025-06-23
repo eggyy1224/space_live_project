@@ -608,7 +608,7 @@ To help Cursor better understand and utilize project assets, here are some key p
     -   Before sending any commands, especially at the start of a sequence, call `GET /api/control/status` to ensure there's an active frontend connection. If `active_connections` is 0, commands won't be received.
 
 2.  **Master Your Asset Paths!**
-    -   Refer to the **Audio & Video File URL Formats** table. Using the wrong prefix (e.g., `/songs/` instead of `/songs-file/` for `play_audio`) is a common source of errors.
+    -   Refer to the **Audio & Video File URL Formats** table. Using the wrong prefix (e.g., `/songs/` instead of `/songs-file/` for `play-audio`) is a common source of errors.
 
 3.  **⚠️ THE GOLDEN RULE: Speech & Emotion are a DUO! ⚠️**
     -   **`send-message` (Speech) and `emotion-trajectory` (Emotion) commands MUST be sent back-to-back, as a single, indivisible unit.** Think of it as: "Character says X *while feeling* Y."
@@ -1499,7 +1499,7 @@ This endpoint allows for comprehensive control over the dance group in the 3D sc
 **Request Body (`DanceGroupRequest`)**
 ```json
 {
-  "formation": "string (Required, the formation of the dancers, e.g., 'circle', 'grid', 'line')",
+  "formation": "string (Required, the formation of the dancers, e.g., 'circle', 'grid', 'line', 'wall')",
   "dancerCount": "integer (Required, the number of dancers, must be > 0)",
   "position": "array[float] (Required, the [x, y, z] position of the group)",
   "scale": "float (Required, the uniform scale of each dancer, must be > 0)"

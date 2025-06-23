@@ -4,7 +4,8 @@ import { StateCreator } from 'zustand';
 export const formations = [
   'circle', 
   'grid', 
-  'line'
+  'line',
+  'wall'
 ] as const;
 
 export type Formation = typeof formations[number];

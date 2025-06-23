@@ -145,6 +145,9 @@ const SceneContent: React.FC<SceneContainerProps> = ({
       case 'line':
         formationType = 'line';
         break;
+      case 'wall':
+        formationType = 'wall';
+        break;
       default:
         formationType = 'circle';
         options = { radius: 180 };

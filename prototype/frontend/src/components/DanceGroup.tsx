@@ -12,7 +12,7 @@ interface DanceGroupProps {
   count?: number;
 }
 
-export type FormationType = 'circle' | 'grid' | 'line';
+export type FormationType = 'circle' | 'grid' | 'line' | 'wall';
 
 interface GeneratePositionsOptions {
   radius?: number;
@@ -61,6 +61,25 @@ export const generatePositions = (
           const x = startX + col * spacing;
           const z = (row - (rows - 1) / 2) * spacing;
           positions.push([x, 0, z]);
+          currentIndex++;
+        }
+      }
+      break;
+    }
+
+    case 'wall': {
+      const cols = Math.ceil(Math.sqrt(count));
+      const rows = Math.ceil(count / cols);
+      
+      let currentIndex = 0;
+      for (let row = 0; row < rows && currentIndex < count; row++) {
+        const currentRowCols = Math.min(cols, count - currentIndex);
+        const startX = -((currentRowCols - 1) * spacing) / 2;
+        
+        for (let col = 0; col < currentRowCols; col++) {
+          const x = startX + col * spacing;
+          const y = (row - (rows - 1) / 2) * spacing;
+          positions.push([x, y, 0]);
           currentIndex++;
         }
       }

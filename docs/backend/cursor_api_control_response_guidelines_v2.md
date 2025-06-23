@@ -258,10 +258,9 @@ curl -X POST .../show-existing-image -d '{"filename": "image_aaa.png", "position
 |-----|------|------|
 | POST | `/api/control/dance_group` | 控制舞團的陣型、人數、位置和大小 |
 
-- **`formation`**: `string` - 陣型名稱 ('circle', 'grid', 'line').
+- **`formation`**: `string` - 陣型名稱 ('circle', 'grid', 'line', 'wall').
 - **`dancerCount`**: `integer` - 舞者數量.
 - **`position`**: `array[float]` - `[x, y, z]` 座標.
-- **`scale`**: `float` - 舞者縮放大小.
 
 **範例 Curl:**
 ```bash
