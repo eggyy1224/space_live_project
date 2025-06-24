@@ -129,9 +129,50 @@ def emotion_transition(start_emotion: str, end_emotion: str, duration: float = 5
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
+@mcp.tool
+def character_animation(animation: str, loop: bool = True, speed: float = 1.0) -> str:
+    """
+    控制 AI 角色的動畫動作
+    
+    Args:
+        animation: 動畫名稱，可用選項包括：
+            運動類: 運動1, 運動2, 飛1, 飛2
+            日常類: 漂浮, 漂浮2, 划手機, 臥躺, 不穩, Tpose
+            舞蹈類: 舞步1, 舞步2, 舞步3
+        loop: 是否循環播放，預設為 True
+        speed: 播放速度，預設為 1.0 (正常速度)
+    
+    Returns:
+        操作結果描述
+    """
+    try:
+        # 構建角色動畫 payload
+        payload = {
+            "animation": animation,
+            "loop": loop,
+            "speed": speed
+        }
+        
+        animation_endpoint = f"{BASE_URL}/api/control/character/animation"
+        response = requests.post(animation_endpoint, json=payload, timeout=10)
+        
+        if response.status_code == 200:
+            result = response.json()
+            loop_text = "循環播放" if loop else "播放一次"
+            return f"✅ 角色動畫設置成功！AI 角色現在執行 '{animation}' 動作，{loop_text}，速度 {speed}x"
+        else:
+            return f"❌ 角色動畫設置失敗 (HTTP {response.status_code}): {response.text}"
+            
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+    except requests.exceptions.Timeout:
+        return "❌ 請求超時，服務器可能忙碌中"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
 if __name__ == "__main__":
     print("🚀 太空直播系統 MCP 服務器啟動中...", file=sys.stderr)
-    print("📡 提供工具: send_message, set_emotion, emotion_transition", file=sys.stderr)
+    print("📡 提供工具: send_message, set_emotion, emotion_transition, character_animation", file=sys.stderr)
     print("🔗 連接後端: http://localhost:8000", file=sys.stderr)
     print("\n要在 Cursor 中使用，請在 settings.json 中添加此服務器配置", file=sys.stderr)
     
