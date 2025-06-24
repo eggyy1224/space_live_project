@@ -170,9 +170,46 @@ def character_animation(animation: str, loop: bool = True, speed: float = 1.0) -
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
+@mcp.tool
+def play_song(song_name: str, interrupt: bool = True) -> str:
+    """
+    讓 AI 角色播放歌曲或特殊音效（例如唱歌、動物叫聲等）。
+    這會讓角色看起來像在唱歌或發出那個聲音。
+    
+    Args:
+        song_name: 歌曲的檔案名稱。可以使用 `prototype/backend/songs/` 目錄中的任何檔案。
+                   範例: '歌劇1.mp3', '電子音樂.mp3', '雞叫1.mp3', '貓叫1.mp3' 等。
+                   要查看所有可用選項，可執行 `ls prototype/backend/songs/` 指令。
+        interrupt: 是否中斷目前正在說的話。預設為 True。
+    
+    Returns:
+        操作結果描述
+    """
+    try:
+        # 構建播放歌曲 payload
+        payload = {
+            "url": f"/songs-file/{song_name}",
+            "interrupt": interrupt
+        }
+        
+        play_audio_endpoint = f"{BASE_URL}/api/control/play-audio"
+        response = requests.post(play_audio_endpoint, json=payload, timeout=10)
+        
+        if response.status_code == 200:
+            return f"✅ 歌曲播放成功！AI 角色正在演唱 '{song_name}'。"
+        else:
+            return f"❌ 歌曲播放失敗 (HTTP {response.status_code}): {response.text}"
+            
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+    except requests.exceptions.Timeout:
+        return "❌ 請求超時，服務器可能忙碌中"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
 if __name__ == "__main__":
     print("🚀 太空直播系統 MCP 服務器啟動中...", file=sys.stderr)
-    print("📡 提供工具: send_message, set_emotion, emotion_transition, character_animation", file=sys.stderr)
+    print("📡 提供工具: send_message, set_emotion, emotion_transition, character_animation, play_song", file=sys.stderr)
     print("🔗 連接後端: http://localhost:8000", file=sys.stderr)
     print("\n要在 Cursor 中使用，請在 settings.json 中添加此服務器配置", file=sys.stderr)
     
