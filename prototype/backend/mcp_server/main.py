@@ -786,9 +786,152 @@ def show_existing_image(
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
+@mcp.tool
+def speak_latest_space_news(limit: int = 3, intro_text: str = None) -> str:
+    """
+    獲取最新的太空新聞頭條，並讓 AI 角色播報出來。
+
+    Args:
+        limit: 要獲取的新聞數量。預設 3。
+        intro_text: (可選) 自訂的開場白。
+
+    Returns:
+        操作結果描述
+    """
+    try:
+        payload = {"limit": limit, "intro_text": intro_text}
+        payload = {k: v for k, v in payload.items() if v is not None}
+        response = requests.post(f"{BASE_URL}/api/news/speak-latest-news", json=payload, timeout=30)
+        if response.status_code == 200:
+            return f"✅ 新聞播報成功！內容: {response.json().get('news_content')}"
+        else:
+            return f"❌ 新聞播報失敗 (HTTP {response.status_code}): {response.text}"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool
+def generate_map_image(
+    latitude: float,
+    longitude: float,
+    zoom: int = 14,
+    caption: str = None,
+    position: str = 'center',
+    size: str = 'large',
+    duration: float = 25.0
+) -> str:
+    """
+    根據經緯度生成一張 Google 地圖圖片並顯示。
+
+    Args:
+        latitude: 地圖中心的緯度。
+        longitude: 地圖中心的經度。
+        zoom: 縮放等級。預設 14。
+        caption: (可選) 圖片的說明文字。
+        position: 圖片顯示位置。預設 'center'。
+        size: 圖片尺寸。預設 'large'。
+        duration: 顯示持續時間（秒）。預設 25.0。
+
+    Returns:
+        操作結果描述
+    """
+    try:
+        payload = {
+            "latitude": latitude,
+            "longitude": longitude,
+            "zoom": zoom,
+            "caption": caption,
+            "position": position,
+            "size": size,
+            "duration": duration
+        }
+        payload = {k: v for k, v in payload.items() if v is not None}
+        response = requests.post(f"{BASE_URL}/api/generate-map-image", json=payload, timeout=20)
+        if response.status_code == 200:
+            return f"✅ 地圖生成成功！URL: {response.json().get('url')}"
+        else:
+            return f"❌ 地圖生成失敗 (HTTP {response.status_code}): {response.text}"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool
+def search_nasa_image(
+    query: str,
+    caption: str = None,
+    position: str = 'center',
+    size: str = 'large',
+    duration: float = 25.0
+) -> str:
+    """
+    從 NASA 圖庫中搜尋圖片並顯示。
+
+    Args:
+        query: 搜尋的關鍵字 (例如 'nebula', 'apollo 11')。
+        caption: (可選) 自訂的圖片說明文字。
+        position: 圖片顯示位置。預設 'center'。
+        size: 圖片尺寸。預設 'large'。
+        duration: 顯示持續時間（秒）。預設 25.0。
+
+    Returns:
+        操作結果描述
+    """
+    try:
+        payload = {
+            "query": query,
+            "caption": caption,
+            "position": position,
+            "size": size,
+            "duration": duration
+        }
+        payload = {k: v for k, v in payload.items() if v is not None}
+        response = requests.post(f"{BASE_URL}/api/search-nasa-image", json=payload, timeout=30)
+        if response.status_code == 200:
+            return f"✅ NASA 圖片搜尋成功！URL: {response.json().get('url')}"
+        else:
+            return f"❌ NASA 圖片搜尋失敗 (HTTP {response.status_code}): {response.text}"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool
+def get_epic_image(
+    date: str = None,
+    caption: str = None,
+    position: str = 'center',
+    size: str = 'large',
+    duration: float = 25.0
+) -> str:
+    """
+    獲取 NASA EPIC 相機拍攝的地球全貌圖並顯示。
+
+    Args:
+        date: (可選) 指定日期 (格式: YYYY-MM-DD)。若無，則抓取最新圖片。
+        caption: (可選) 圖片的說明文字。
+        position: 圖片顯示位置。預設 'center'。
+        size: 圖片尺寸。預設 'large'。
+        duration: 顯示持續時間（秒）。預設 25.0。
+
+    Returns:
+        操作結果描述
+    """
+    try:
+        payload = {
+            "date": date,
+            "caption": caption,
+            "position": position,
+            "size": size,
+            "duration": duration
+        }
+        payload = {k: v for k, v in payload.items() if v is not None}
+        response = requests.post(f"{BASE_URL}/api/get-epic-image", json=payload, timeout=30)
+        if response.status_code == 200:
+            return f"✅ EPIC 地球圖片獲取成功！URL: {response.json().get('url')}"
+        else:
+            return f"❌ EPIC 地球圖片獲取失敗 (HTTP {response.status_code}): {response.text}"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
 if __name__ == "__main__":
     print("🚀 太空直播系統 MCP 服務器啟動中...", file=sys.stderr)
-    print("📡 提供工具: send_message, set_emotion, emotion_transition, character_animation, dance_group_animation, set_dance_group, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size, set_character_scale, set_character_position, set_character_rotation, reset_character_transform, set_character_morph, set_body_shape, set_monitor_content, generate_image_overlay, generate_background_image, take_selfie, show_existing_image", file=sys.stderr)
+    print("📡 提供工具: send_message, set_emotion, emotion_transition, character_animation, dance_group_animation, set_dance_group, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size, set_character_scale, set_character_position, set_character_rotation, reset_character_transform, set_character_morph, set_body_shape, set_monitor_content, generate_image_overlay, generate_background_image, take_selfie, show_existing_image, speak_latest_space_news, generate_map_image, search_nasa_image, get_epic_image", file=sys.stderr)
     print("🔗 連接後端: http://localhost:8000", file=sys.stderr)
     print("\n要在 Cursor 中使用，請在 settings.json 中添加此服務器配置", file=sys.stderr)
     
