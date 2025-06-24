@@ -560,6 +560,79 @@ def set_character_morph(morph_name: str, value: float) -> str:
         return f"❌ 發生錯誤: {str(e)}"
 
 @mcp.tool
+def set_environment_preset(preset: str) -> str:
+    """
+    設置場景的環境光照預設。
+
+    Args:
+        preset: 預設名稱。可用選項包括:
+                'studio'(工作室), 'sunset'(夕陽), 'sunrise'(黎明), 'night'(夜晚), 
+                'warehouse'(倉庫), 'forest'(森林), 'apartment'(公寓), 'city'(城市), 
+                'park'(公園), 'hall'(大廳)
+
+    Returns:
+        操作結果描述
+    """
+    try:
+        endpoint = f"{BASE_URL}/api/control/environment/preset"
+        payload = {"preset": preset}
+        response = requests.post(endpoint, json=payload, timeout=10)
+        
+        if response.status_code == 200:
+            return f"✅ 環境光照預設已成功設置為 '{preset}'"
+        else:
+            return f"❌ 設置環境預設失敗 (HTTP {response.status_code}): {response.text}"
+            
+    except requests.exceptions.RequestException as e:
+        return f"❌ 請求失敗: {e}"
+
+@mcp.tool
+def set_light_intensity(intensity: float) -> str:
+    """
+    設置場景光照的強度。
+
+    Args:
+        intensity: 光照強度值，建議範圍 0.1 到 3.0。
+
+    Returns:
+        操作結果描述
+    """
+    try:
+        endpoint = f"{BASE_URL}/api/control/environment/intensity"
+        payload = {"intensity": intensity}
+        response = requests.post(endpoint, json=payload, timeout=10)
+        
+        if response.status_code == 200:
+            return f"✅ 光照強度已成功設置為 {intensity}"
+        else:
+            return f"❌ 設置光照強度失敗 (HTTP {response.status_code}): {response.text}"
+            
+    except requests.exceptions.RequestException as e:
+        return f"❌ 請求失敗: {e}"
+
+@mcp.tool
+def reset_environment_settings() -> str:
+    """
+    將所有環境光照設定重置為預設值。
+
+    Returns:
+        操作結果描述
+    """
+    try:
+        endpoint = f"{BASE_URL}/api/control/environment/reset"
+        # 根據測試腳本，發送一個包含任意內容的JSON payload
+        payload = {"reset": True} 
+        response = requests.post(endpoint, json=payload, timeout=10)
+        
+        if response.status_code == 200:
+            return "✅ 環境光照設定已成功重置為預設值。"
+        else:
+            return f"❌ 重置環境設定失敗 (HTTP {response.status_code}): {response.text}"
+            
+    except requests.exceptions.RequestException as e:
+        return f"❌ 請求失敗: {e}"
+
+@mcp.tool
 async def set_body_shape(value: float):
     """
     Sets the character's body shape.
