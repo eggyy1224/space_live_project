@@ -593,9 +593,59 @@ async def set_body_shape(value: float):
         print(error_message)
         return f"Failed to set body shape. Check the server logs. Details: {error_message}"
 
+@mcp.tool
+def set_monitor_content(
+    monitor_id: str,
+    video_name: str = None,
+    volume: float = None,
+    visible: bool = None,
+    playing: bool = None,
+    playback_speed: float = None
+) -> str:
+    """
+    控制指定的螢幕（Monitor）
+
+    Args:
+        monitor_id: 螢幕的 ID (例如: 'screen1', 'screen2')
+        video_name: 要播放的影片檔案名稱。必須是 'prototype/frontend/public/videos/' 中存在的檔案。
+        volume: 音量 (0.0 到 1.0)
+        visible: 是否可見 (True 或 False)
+        playing: 是否播放 (True 或 False)
+        playback_speed: 影片播放速度 (例如: 1.0 為正常速度, 2.0 為兩倍速)
+
+    Returns:
+        操作結果描述
+    """
+    try:
+        payload = {}
+        if video_name:
+            payload['content'] = f"/videos/{video_name}"
+        if volume is not None:
+            payload['volume'] = volume
+        if visible is not None:
+            payload['visible'] = visible
+        if playing is not None:
+            payload['playing'] = playing
+        if playback_speed is not None:
+            payload['playbackSpeed'] = playback_speed
+
+        if not payload:
+            return "⚠️ 沒有提供任何要更新的參數。"
+
+        endpoint = f"{BASE_URL}/api/monitors/{monitor_id}"
+        response = requests.put(endpoint, json=payload, timeout=10)
+
+        if response.status_code == 200:
+            return f"✅ 螢幕 {monitor_id} 更新成功: {json.dumps(payload)}"
+        else:
+            return f"❌ 更新螢幕 {monitor_id} 失敗 (HTTP {response.status_code}): {response.text}"
+            
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
 if __name__ == "__main__":
     print("🚀 太空直播系統 MCP 服務器啟動中...", file=sys.stderr)
-    print("📡 提供工具: send_message, set_emotion, emotion_transition, character_animation, dance_group_animation, set_dance_group, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size, set_character_scale, set_character_position, set_character_rotation, reset_character_transform, set_character_morph, set_body_shape", file=sys.stderr)
+    print("📡 提供工具: send_message, set_emotion, emotion_transition, character_animation, dance_group_animation, set_dance_group, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size, set_character_scale, set_character_position, set_character_rotation, reset_character_transform, set_character_morph, set_body_shape, set_monitor_content", file=sys.stderr)
     print("🔗 連接後端: http://localhost:8000", file=sys.stderr)
     print("\n要在 Cursor 中使用，請在 settings.json 中添加此服務器配置", file=sys.stderr)
     
