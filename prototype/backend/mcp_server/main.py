@@ -209,6 +209,49 @@ def dance_group_animation(animation: str, speed: float = 1.0, loop: bool = True)
         return f"❌ 發生錯誤: {str(e)}"
 
 @mcp.tool
+def set_dance_group(
+    formation: str = 'circle', 
+    count: int = 10, 
+    scale: float = 5.0, 
+    x: float = 0, 
+    y: float = -25, 
+    z: float = 0
+) -> str:
+    """
+    一次性設置舞群的多個屬性，包括隊形、人數、大小和位移。
+    如果未提供參數，將使用預設值。
+
+    Args:
+        formation: 隊形名稱 (預設: 'circle')
+        count: 舞群人數 (預設: 10)
+        scale: 舞群的整體縮放比例 (預設: 5.0)
+        x: X 軸位移 (預設: 0)
+        y: Y 軸位移 (預設: -25)
+        z: Z 軸位移 (預設: 0)
+
+    Returns:
+        操作結果描述
+    """
+    try:
+        # 後端要求所有欄位都必須存在
+        payload = {
+            "formation": formation,
+            "dancerCount": count,
+            "scale": scale,
+            "position": [x, y, z]
+        }
+
+        response = requests.post(f"{BASE_URL}/api/control/dance_group", json=payload, timeout=10)
+        
+        if response.status_code == 200:
+            return f"✅ 舞群屬性更新成功: {json.dumps(payload)}"
+        else:
+            return f"❌ 更新舞群屬性失敗 (HTTP {response.status_code}): {response.text}"
+            
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool
 def play_song(song_name: str, interrupt: bool = True) -> str:
     """
     讓 AI 角色播放歌曲或特殊音效（例如唱歌、動物叫聲等）。
@@ -552,7 +595,7 @@ async def set_body_shape(value: float):
 
 if __name__ == "__main__":
     print("🚀 太空直播系統 MCP 服務器啟動中...", file=sys.stderr)
-    print("📡 提供工具: send_message, set_emotion, emotion_transition, character_animation, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size, set_character_scale, set_character_position, set_character_rotation, reset_character_transform, set_character_morph, set_body_shape", file=sys.stderr)
+    print("📡 提供工具: send_message, set_emotion, emotion_transition, character_animation, dance_group_animation, set_dance_group, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size, set_character_scale, set_character_position, set_character_rotation, reset_character_transform, set_character_morph, set_body_shape", file=sys.stderr)
     print("🔗 連接後端: http://localhost:8000", file=sys.stderr)
     print("\n要在 Cursor 中使用，請在 settings.json 中添加此服務器配置", file=sys.stderr)
     
