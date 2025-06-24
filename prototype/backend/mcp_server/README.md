@@ -26,11 +26,13 @@ python main.py
 
 後端應該在 `http://localhost:8000` 運行。
 
-### 3. 測試 MCP 服務器
+### 3. 檢查 MCP 服務器
 
 ```bash
 cd prototype/backend
-python mcp_server/test_mcp.py
+# 檢查 MCP 服務器工具和生成報告
+source venv/bin/activate
+fastmcp inspect mcp_server/main.py -o mcp_server/server-info.json
 ```
 
 ### 4. 啟動 MCP 服務器
