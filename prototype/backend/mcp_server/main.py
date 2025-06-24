@@ -8,6 +8,7 @@ import json
 import sys
 import requests
 from fastmcp import FastMCP
+from typing import List
 
 # 後端 API 設定
 BASE_URL = "http://localhost:8000"
@@ -643,9 +644,143 @@ def set_monitor_content(
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
+@mcp.tool
+def generate_image_overlay(
+    prompt: str,
+    position: str = 'center',
+    size: str = 'large',
+    duration: float = 10.0,
+    aspect_ratio: str = 'square'
+) -> str:
+    """
+    根據文字描述生成一張圖片，並作為浮動圖層顯示在畫面上。
+
+    Args:
+        prompt: 用於生成圖片的文字描述。
+        position: 圖片顯示位置 ('center', 'top-left', 'bottom-right' 等)。預設 'center'。
+        size: 圖片的預設尺寸 ('small', 'medium', 'large')。預設 'large'。
+        duration: 圖片顯示的持續時間（秒）。預設 10.0。
+        aspect_ratio: 圖片的長寬比 ('square', 'portrait', 'landscape')。預設 'square'。
+
+    Returns:
+        操作結果描述
+    """
+    try:
+        payload = {
+            "description": prompt,
+            "position": position,
+            "size": size,
+            "duration": duration,
+            "aspect_ratio": aspect_ratio
+        }
+        response = requests.post(f"{BASE_URL}/api/generate-image", json=payload, timeout=60)
+        if response.status_code == 200:
+            return f"✅ 圖片浮層生成成功！URL: {response.json().get('url')}"
+        else:
+            return f"❌ 圖片浮層生成失敗 (HTTP {response.status_code}): {response.text}"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool
+def generate_background_image(prompt: str, aspect_ratio: str = 'landscape') -> str:
+    """
+    根據文字描述生成一張背景圖片，並自動設為場景背景。
+
+    Args:
+        prompt: 用於生成圖片的文字描述。
+        aspect_ratio: 圖片的長寬比 ('square', 'portrait', 'landscape')。預設 'landscape'。
+
+    Returns:
+        操作結果描述
+    """
+    try:
+        payload = {"prompt": prompt, "aspect_ratio": aspect_ratio}
+        response = requests.post(f"{BASE_URL}/api/generate-background-image", json=payload, timeout=60)
+        if response.status_code == 200:
+            return f"✅ 背景圖片生成並設置成功！URL: {response.json().get('url')}"
+        else:
+            return f"❌ 背景圖片生成失敗 (HTTP {response.status_code}): {response.text}"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool
+def take_selfie(
+    prompt: str,
+    reference_images: List[str] = None,
+    position: str = 'center',
+    size: str = 'large',
+    duration: float = 15.0
+) -> str:
+    """
+    讓 AI 角色拍一張自拍照。可以基於現有圖片進行修改。
+
+    Args:
+        prompt: 自拍的描述或對參考圖片的修改指令。
+        reference_images: (可選) 參考圖片的檔案名稱列表 (例如 ['selfie_123.png', 'image_456.png'])。
+        position: 圖片顯示位置。預設 'center'。
+        size: 圖片尺寸。預設 'large'。
+        duration: 顯示持續時間（秒）。預設 15.0。
+
+    Returns:
+        操作結果描述
+    """
+    try:
+        payload = {
+            "description": prompt,
+            "modification": prompt, # description 和 modification 都用同一個 prompt
+            "reference_images": reference_images,
+            "position": position,
+            "size": size,
+            "duration": duration
+        }
+        response = requests.post(f"{BASE_URL}/api/take-selfie", json=payload, timeout=60)
+        if response.status_code == 200:
+            return f"✅ 自拍成功！URL: {response.json().get('url')}"
+        else:
+            return f"❌ 自拍失敗 (HTTP {response.status_code}): {response.text}"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool
+def show_existing_image(
+    filename: str,
+    caption: str = None,
+    position: str = 'center',
+    size: str = 'large',
+    duration: float = 15.0
+) -> str:
+    """
+    顯示伺服器上已經存在的圖片。
+
+    Args:
+        filename: 要顯示的圖片檔案名稱。
+        caption: (可選) 圖片的說明文字。
+        position: 圖片顯示位置。預設 'center'。
+        size: 圖片尺寸。預設 'large'。
+        duration: 顯示持續時間（秒）。預設 15.0。
+
+    Returns:
+        操作結果描述
+    """
+    try:
+        payload = {
+            "filename": filename,
+            "caption": caption,
+            "position": position,
+            "size": size,
+            "duration": duration
+        }
+        response = requests.post(f"{BASE_URL}/api/show-existing-image", json=payload, timeout=10)
+        if response.status_code == 200:
+            return f"✅ 成功顯示圖片 '{filename}'。"
+        else:
+            return f"❌ 顯示圖片失敗 (HTTP {response.status_code}): {response.text}"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
 if __name__ == "__main__":
     print("🚀 太空直播系統 MCP 服務器啟動中...", file=sys.stderr)
-    print("📡 提供工具: send_message, set_emotion, emotion_transition, character_animation, dance_group_animation, set_dance_group, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size, set_character_scale, set_character_position, set_character_rotation, reset_character_transform, set_character_morph, set_body_shape, set_monitor_content", file=sys.stderr)
+    print("📡 提供工具: send_message, set_emotion, emotion_transition, character_animation, dance_group_animation, set_dance_group, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size, set_character_scale, set_character_position, set_character_rotation, reset_character_transform, set_character_morph, set_body_shape, set_monitor_content, generate_image_overlay, generate_background_image, take_selfie, show_existing_image", file=sys.stderr)
     print("🔗 連接後端: http://localhost:8000", file=sys.stderr)
     print("\n要在 Cursor 中使用，請在 settings.json 中添加此服務器配置", file=sys.stderr)
     
