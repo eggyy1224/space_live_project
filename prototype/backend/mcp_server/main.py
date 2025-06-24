@@ -207,9 +207,70 @@ def play_song(song_name: str, interrupt: bool = True) -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
+@mcp.tool
+def play_background_music(bgm_name: str) -> str:
+    """
+    播放背景音樂(BGM)。音樂會循環播放。
+
+    Args:
+        bgm_name: BGM 的檔案名稱。必須是 'prototype/frontend/public/audio/BGM/' 目錄中存在的檔案。
+                  範例: 'spacelive_theme.mp3', 'heavy_metal_bgm_01.mp3'
+                  要查看所有可用選項，可執行 `ls prototype/frontend/public/audio/BGM/`
+
+    Returns:
+        操作結果描述
+    """
+    try:
+        payload = {"bgmUrl": f"/audio/BGM/{bgm_name}"}
+        response = requests.post(f"{BASE_URL}/api/control/background-audio", json=payload, timeout=10)
+        if response.status_code == 200:
+            return f"✅ 背景音樂 '{bgm_name}' 開始播放。"
+        else:
+            return f"❌ 播放背景音樂失敗 (HTTP {response.status_code}): {response.text}"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool
+def stop_background_music() -> str:
+    """
+    停止目前正在播放的背景音樂。
+    """
+    try:
+        payload = {"bgmUrl": ""}
+        response = requests.post(f"{BASE_URL}/api/control/background-audio", json=payload, timeout=10)
+        if response.status_code == 200:
+            return "✅ 背景音樂已停止。"
+        else:
+            return f"❌ 停止背景音樂失敗 (HTTP {response.status_code}): {response.text}"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool
+def play_sound_effect(effect_name: str) -> str:
+    """
+    播放一次性的音效(SFX)。
+
+    Args:
+        effect_name: 音效的檔案名稱。必須是 'prototype/frontend/public/audio/effects/' 目錄中存在的檔案。
+                     範例: '電子砲1.mp3', '警告音1.mp3'
+                     要查看所有可用選項，可執行 `ls prototype/frontend/public/audio/effects/`
+
+    Returns:
+        操作結果描述
+    """
+    try:
+        payload = {"sfxUrl": f"/audio/effects/{effect_name}"}
+        response = requests.post(f"{BASE_URL}/api/control/background-audio", json=payload, timeout=10)
+        if response.status_code == 200:
+            return f"✅ 音效 '{effect_name}' 已播放。"
+        else:
+            return f"❌ 播放音效失敗 (HTTP {response.status_code}): {response.text}"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
 if __name__ == "__main__":
     print("🚀 太空直播系統 MCP 服務器啟動中...", file=sys.stderr)
-    print("📡 提供工具: send_message, set_emotion, emotion_transition, character_animation, play_song", file=sys.stderr)
+    print("📡 提供工具: send_message, set_emotion, emotion_transition, character_animation, play_song, play_background_music, stop_background_music, play_sound_effect", file=sys.stderr)
     print("🔗 連接後端: http://localhost:8000", file=sys.stderr)
     print("\n要在 Cursor 中使用，請在 settings.json 中添加此服務器配置", file=sys.stderr)
     
