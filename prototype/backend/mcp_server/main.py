@@ -91,7 +91,7 @@ def set_emotion(emotion: str, duration: float = 3.0) -> str:
         return f"❌ 發生錯誤: {str(e)}"
 
 @mcp.tool
-def emotion_transition(start_emotion: str, end_emotion: str, duration: float = 5.0) -> str:
+async def emotion_transition(start_emotion: str, end_emotion: str, duration: float = 5.0):
     """
     創建表情轉換動畫，從一種表情平滑過渡到另一種表情
     
@@ -437,15 +437,84 @@ def reset_character_transform() -> str:
     try:
         response = requests.post(f"{BASE_URL}/api/control/character/reset-transform", json={}, timeout=10)
         if response.status_code == 200:
-            return "✅ 角色變換已重置為預設值。"
+            return "✅ 角色變換已重置。"
         else:
             return f"❌ 重置角色變換失敗 (HTTP {response.status_code}): {response.text}"
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
+@mcp.tool
+def set_character_morph(morph_name: str, value: float) -> str:
+    """
+    設定 AI 角色的指定 Morph Target
+    
+    Args:
+        morph_name: 要控制的 Morph Target 名稱 (大小寫敏感)
+        value: Morph Target 的強度值 (通常在 0.0 到 1.0 之間)
+    
+    Returns:
+        操作結果描述
+    """
+    try:
+        payload = {
+            "outfit_morphs": {
+                morph_name: value
+            }
+        }
+        
+        outfit_endpoint = f"{BASE_URL}/api/control/character/outfit"
+        response = requests.post(outfit_endpoint, json=payload, timeout=10)
+        
+        if response.status_code == 200:
+            return f"✅ 成功設定 Morph Target: '{morph_name}' 為 {value}"
+        else:
+            return f"❌ 設定 Morph Target 失敗 (HTTP {response.status_code}): {response.text}"
+            
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+    except requests.exceptions.Timeout:
+        return "❌ 請求超時，服務器可能忙碌中"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool
+async def set_body_shape(value: float):
+    """
+    Sets the character's body shape.
+
+    Args:
+        value (float): The value for the body shape, from 0.0 (thinnest) to 1.0 (fattest).
+                       The value will be clamped between 0.0 and 1.0.
+    """
+    # Correct endpoint based on control.py
+    base_url = "{BASE_URL}/api/control/character/outfit"
+    
+    # Clamp the value to be between 0.0 and 1.0
+    clamped_value = max(0.0, min(1.0, value))
+
+    # Correct payload structure based on CharacterOutfitRequest in control.py
+    payload = {
+        "outfit_morphs": {
+            "鍵 1": clamped_value,
+            "錯置": clamped_value,
+            "錯置.001": clamped_value
+        }
+    }
+    
+    try:
+        response = requests.post(base_url, json=payload)
+        response.raise_for_status()  # Raise an exception for bad status codes
+        return f"Body shape set to {clamped_value}. API response: {response.json()}"
+    except requests.exceptions.RequestException as e:
+        error_message = f"Error setting body shape: {e}"
+        if e.response is not None:
+            error_message += f" - Response: {e.response.text}"
+        print(error_message)
+        return f"Failed to set body shape. Check the server logs. Details: {error_message}"
+
 if __name__ == "__main__":
     print("🚀 太空直播系統 MCP 服務器啟動中...", file=sys.stderr)
-    print("📡 提供工具: send_message, set_emotion, emotion_transition, character_animation, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size, set_character_scale, set_character_position, set_character_rotation, reset_character_transform", file=sys.stderr)
+    print("📡 提供工具: send_message, set_emotion, emotion_transition, character_animation, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size, set_character_scale, set_character_position, set_character_rotation, reset_character_transform, set_character_morph, set_body_shape", file=sys.stderr)
     print("🔗 連接後端: http://localhost:8000", file=sys.stderr)
     print("\n要在 Cursor 中使用，請在 settings.json 中添加此服務器配置", file=sys.stderr)
     
