@@ -268,9 +268,100 @@ def play_sound_effect(effect_name: str) -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
+@mcp.tool
+def set_camera_preset(preset_name: str, duration: float = 2.0) -> str:
+    """
+    設置攝影機預設位置，創造戲劇性的視覺效果
+    
+    Args:
+        preset_name: 攝影機預設名稱，可用選項包括：
+            基本視角: overview(總覽), head_close_up(頭部特寫), side_view(側面視角)
+            環繞視角: center_orbit_high_1, center_orbit_high_2, center_orbit_low_1, center_orbit_low_2
+            戲劇視角: dramatic_angle_1, dramatic_angle_2, low_angle_head(低角度頭部)
+            動態視角: fly_by_left(左側飛越), fly_by_right(右側飛越), frontal_dynamic_low, frontal_dynamic_high
+            特殊視角: top_down_center(俯視中心), behind_head_looking_out(頭後向外看)
+            舞蹈視角: dance_circle_view(舞蹈圓圈視角), full_shot_dancers(舞者全景)
+            頭部特寫: orbit_head_1, orbit_head_2
+        duration: 鏡頭轉換時間（秒），預設 2.0 秒
+    
+    Returns:
+        操作結果描述
+    """
+    try:
+        payload = {
+            "name": preset_name,
+            "duration": duration
+        }
+        
+        camera_endpoint = f"{BASE_URL}/api/control/camera/set-frontend-preset"
+        response = requests.post(camera_endpoint, json=payload, timeout=10)
+        
+        if response.status_code == 200:
+            return f"✅ 攝影機預設成功！鏡頭切換到 '{preset_name}' 位置，轉換時間 {duration} 秒"
+        else:
+            return f"❌ 攝影機設置失敗 (HTTP {response.status_code}): {response.text}"
+            
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+    except requests.exceptions.Timeout:
+        return "❌ 請求超時，服務器可能忙碌中"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool 
+def set_head_size(scale_factor: float) -> str:
+    """
+    調整 AI 角色的頭部大小，創造戲劇效果
+    
+    Args:
+        scale_factor: 頭部縮放係數 (0.1 到 20.0)
+                     1.0 = 正常大小
+                     2.0-4.0 = 稍微放大，增加存在感 
+                     5.0-10.0 = 明顯放大，戲劇效果
+                     15.0+ = 極度放大，喜劇效果
+    
+    Returns:
+        操作結果描述
+    """
+    try:
+        # 限制縮放係數範圍
+        scale_factor = max(0.1, min(20.0, scale_factor))
+        
+        payload = {
+            "scaleFactor": scale_factor
+        }
+        
+        head_size_endpoint = f"{BASE_URL}/api/control/head-size"
+        response = requests.post(head_size_endpoint, json=payload, timeout=10)
+        
+        if response.status_code == 200:
+            if scale_factor == 1.0:
+                effect_desc = "正常大小"
+            elif scale_factor < 1.0:
+                effect_desc = "縮小效果"
+            elif scale_factor <= 2.0:
+                effect_desc = "稍微放大"
+            elif scale_factor <= 5.0:
+                effect_desc = "明顯放大，增加戲劇感"
+            elif scale_factor <= 10.0:
+                effect_desc = "大幅放大，強烈視覺衝擊"
+            else:
+                effect_desc = "極度放大，喜劇效果"
+                
+            return f"✅ 頭部大小調整成功！縮放係數: {scale_factor}x ({effect_desc})"
+        else:
+            return f"❌ 頭部大小調整失敗 (HTTP {response.status_code}): {response.text}"
+            
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+    except requests.exceptions.Timeout:
+        return "❌ 請求超時，服務器可能忙碌中"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
 if __name__ == "__main__":
     print("🚀 太空直播系統 MCP 服務器啟動中...", file=sys.stderr)
-    print("📡 提供工具: send_message, set_emotion, emotion_transition, character_animation, play_song, play_background_music, stop_background_music, play_sound_effect", file=sys.stderr)
+    print("📡 提供工具: send_message, set_emotion, emotion_transition, character_animation, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size", file=sys.stderr)
     print("🔗 連接後端: http://localhost:8000", file=sys.stderr)
     print("\n要在 Cursor 中使用，請在 settings.json 中添加此服務器配置", file=sys.stderr)
     
