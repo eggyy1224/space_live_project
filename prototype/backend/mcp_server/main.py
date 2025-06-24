@@ -359,9 +359,93 @@ def set_head_size(scale_factor: float) -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
+@mcp.tool
+def set_character_scale(scale: float) -> str:
+    """
+    調整 AI 角色的整體大小
+    
+    Args:
+        scale: 縮放倍數 (建議範圍 0.1 到 3.0)
+    
+    Returns:
+        操作結果描述
+    """
+    try:
+        payload = {"scale": scale}
+        response = requests.post(f"{BASE_URL}/api/control/character/scale", json=payload, timeout=10)
+        if response.status_code == 200:
+            return f"✅ 角色大小已設為 {scale} 倍。"
+        else:
+            return f"❌ 設定角色大小失敗 (HTTP {response.status_code}): {response.text}"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool
+def set_character_position(x: float, y: float, z: float) -> str:
+    """
+    設定 AI 角色的位置
+    
+    Args:
+        x: X 軸座標
+        y: Y 軸座標
+        z: Z 軸座標
+        
+    Returns:
+        操作結果描述
+    """
+    try:
+        payload = {"position": [x, y, z]}
+        response = requests.post(f"{BASE_URL}/api/control/character/position", json=payload, timeout=10)
+        if response.status_code == 200:
+            return f"✅ 角色位置已設為 (X: {x}, Y: {y}, Z: {z})。"
+        else:
+            return f"❌ 設定角色位置失敗 (HTTP {response.status_code}): {response.text}"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool
+def set_character_rotation(x: float, y: float, z: float) -> str:
+    """
+    設定 AI 角色的旋轉角度 (使用弧度)
+    
+    Args:
+        x: X 軸旋轉角度 (弧度)
+        y: Y 軸旋轉角度 (弧度)
+        z: Z 軸旋轉角度 (弧度)
+        
+    Returns:
+        操作結果描述
+    """
+    try:
+        payload = {"rotation": [x, y, z]}
+        response = requests.post(f"{BASE_URL}/api/control/character/rotation", json=payload, timeout=10)
+        if response.status_code == 200:
+            return f"✅ 角色已旋轉至 (X: {x}, Y: {y}, Z: {z}) 弧度。"
+        else:
+            return f"❌ 設定角色旋轉失敗 (HTTP {response.status_code}): {response.text}"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool
+def reset_character_transform() -> str:
+    """
+    一鍵重置 AI 角色的位置、旋轉和大小
+    
+    Returns:
+        操作結果描述
+    """
+    try:
+        response = requests.post(f"{BASE_URL}/api/control/character/reset-transform", json={}, timeout=10)
+        if response.status_code == 200:
+            return "✅ 角色變換已重置為預設值。"
+        else:
+            return f"❌ 重置角色變換失敗 (HTTP {response.status_code}): {response.text}"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
 if __name__ == "__main__":
     print("🚀 太空直播系統 MCP 服務器啟動中...", file=sys.stderr)
-    print("📡 提供工具: send_message, set_emotion, emotion_transition, character_animation, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size", file=sys.stderr)
+    print("📡 提供工具: send_message, set_emotion, emotion_transition, character_animation, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size, set_character_scale, set_character_position, set_character_rotation, reset_character_transform", file=sys.stderr)
     print("🔗 連接後端: http://localhost:8000", file=sys.stderr)
     print("\n要在 Cursor 中使用，請在 settings.json 中添加此服務器配置", file=sys.stderr)
     
