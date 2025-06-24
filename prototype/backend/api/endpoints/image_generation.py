@@ -59,7 +59,7 @@ class ImageGenerationRequest(BaseModel):
 class SelfieRequest(BaseModel):
     description: str = "拍一張自拍照"  # 自拍描述
     # 參考圖像檔名 (可選，從 selfies 或 generated_images 資料夾)
-    reference_image: Optional[str] = None  
+    reference_images: Optional[list[str]] = None
     # 修改指令 (可選)
     modification: Optional[str] = None  # 例如: "換個表情", "換個姿勢", "改變背景"
     # 是否自動使用最新的自拍作為參考 (可選)
@@ -101,7 +101,7 @@ class BackgroundImageRequest(BaseModel):
     description: str  # 背景圖片描述
     aspect_ratio: Optional[str] = "16:9"  # 螢幕比例，預設 16:9
     # 參考圖像檔名 (可選，從 selfies 或 generated_images 資料夾)
-    reference_image: Optional[str] = None  
+    reference_images: Optional[list[str]] = None
     # 修改指令 (可選)
     modification: Optional[str] = None  # 例如: "基於這張自拍照創造背景", "融合多張照片的風格"
 
@@ -427,99 +427,77 @@ async def continue_selfie(request: dict):
 
 @router.post("/take-selfie")
 async def take_selfie(request: SelfieRequest):
-    """拍自拍照 - 可以基於參考圖像生成新的自拍"""
+    """
+    生成角色的自拍照。
+    可以基於最新的自拍或指定的參考圖片進行修改。
+    """
     try:
-        # 構建自拍提示
-        base_prompt = f"Take a selfie: {request.description}"
+        # 準備發送給GenAI的內容
+        contents = []
         
+        # 處理參考圖片
+        ref_image_filenames = []
+        # 如果要求使用最新自拍且未提供參考圖片列表，則自動查找
+        if request.use_latest_selfie and not request.reference_images:
+            latest_selfie_filename = _get_latest_selfie()
+            if latest_selfie_filename:
+                ref_image_filenames.append(latest_selfie_filename)
+                print(f"自動使用最新自拍作為參考: {latest_selfie_filename}")
+        # 否則，使用請求中提供的圖片列表
+        elif request.reference_images:
+            ref_image_filenames.extend(request.reference_images)
+
+        image_parts = []
+        if ref_image_filenames:
+            print(f"使用 {len(ref_image_filenames)} 張參考圖片: {', '.join(ref_image_filenames)}")
+            for filename in ref_image_filenames:
+                ref_image_path = None
+                # 在多個目錄中查找參考圖片
+                possible_paths = [
+                    os.path.join(SELFIES_DIR, filename),
+                    os.path.join(GENERATED_DIR, filename)
+                ]
+                for path in possible_paths:
+                    if os.path.exists(path):
+                        ref_image_path = path
+                        break
+                
+                if ref_image_path:
+                    print(f"  - 載入: {ref_image_path}")
+                    # 修正：直接讀取圖片數據，而不是使用 from_uri
+                    with open(ref_image_path, "rb") as f:
+                        image_data = f.read()
+                    img_part = Part(inline_data={"mime_type": "image/png", "data": image_data})
+                    image_parts.append(img_part)
+                else:
+                    print(f"  - 警告: 找不到參考圖片 '{filename}'")
+        
+        # 組合最終的請求內容：圖片在前，文字描述在後
+        final_prompt = request.description
+        if request.modification:
+            final_prompt += f"\n修改指令: {request.modification}"
+            
+        contents = image_parts + [final_prompt]
+
+        # 構建長寬比資訊
         if request.aspect_ratio:
             aspect_map = {
                 "square": "in a square format (1:1 aspect ratio)",
-                "portrait": "in a portrait format (3:4 aspect ratio)", 
+                "portrait": "in a portrait format (3:4 aspect ratio)",
                 "landscape": "in a landscape format (4:3 aspect ratio)"
             }
             aspect_text = aspect_map.get(request.aspect_ratio, "")
             if aspect_text:
-                base_prompt += f" {aspect_text}"
+                final_prompt += f" {aspect_text}"
         
-        # 處理參考圖像邏輯
-        reference_image_name = request.reference_image
-        
-        # 如果啟用了自動使用最新自拍，且沒有指定參考圖像
-        if request.use_latest_selfie and not reference_image_name:
-            latest_selfie = _get_latest_selfie()
-            if latest_selfie:
-                reference_image_name = latest_selfie
-                logging.info(f"Auto-using latest selfie as reference: {latest_selfie}")
-        
-        # 如果有參考圖像，使用多模態輸入
-        if reference_image_name:
-            # 先檢查 selfies 資料夾，再檢查 generated_images 資料夾
-            ref_path_selfies = os.path.join(SELFIES_DIR, reference_image_name)
-            ref_path_generated = os.path.join(GENERATED_DIR, reference_image_name)
-            
-            ref_path = None
-            if os.path.exists(ref_path_selfies):
-                ref_path = ref_path_selfies
-            elif os.path.exists(ref_path_generated):
-                ref_path = ref_path_generated
-            
-            if ref_path:
-                # 讀取參考圖像
-                with open(ref_path, "rb") as f:
-                    reference_image_data = f.read()
-                
-                # 修改提示詞，指示基於參考圖像
-                if request.modification:
-                    base_prompt += f". Based on the reference selfie image provided, {request.modification}"
-                else:
-                    base_prompt += ". Based on the reference selfie image provided, create a similar but slightly different selfie with natural variations in pose, expression, or lighting"
-                
-                logging.info(f"Using reference image: {ref_path}, size: {len(reference_image_data)} bytes")
-                
-                # 使用多模態輸入 - 圖像 + 文字
-                try:
-                    response = client.models.generate_content(
-                        model="gemini-2.0-flash-preview-image-generation",
-                        contents=[
-                            {"role": "user", "parts": [
-                                {"inline_data": {"mime_type": "image/png", "data": base64.b64encode(reference_image_data).decode('utf-8')}},
-                                {"text": base_prompt}
-                            ]}
-                        ],
-                        config=GenerateContentConfig(
-                            response_modalities=["TEXT", "IMAGE"]
-                        )
-                    )
-                except Exception as multimodal_error:
-                    logging.error(f"Multi-modal input failed: {multimodal_error}")
-                    # 如果多模態失敗，回退到純文字
-                    response = client.models.generate_content(
-                        model="gemini-2.0-flash-preview-image-generation",
-                        contents=base_prompt,
-                        config=GenerateContentConfig(
-                            response_modalities=["TEXT", "IMAGE"]
-                        )
-                    )
-            else:
-                logging.warning(f"Reference image not found: {reference_image_name}")
-                # 如果找不到參考圖像，使用純文字生成
-                response = client.models.generate_content(
-                    model="gemini-2.0-flash-preview-image-generation",
-                    contents=base_prompt,
-                    config=GenerateContentConfig(
-                        response_modalities=["TEXT", "IMAGE"]
-                    )
-                )
-        else:
-            # 沒有參考圖像，使用純文字生成
-            response = client.models.generate_content(
-                model="gemini-2.0-flash-preview-image-generation",
-                contents=base_prompt,
-                config=GenerateContentConfig(
-                    response_modalities=["TEXT", "IMAGE"]
-                )
+        # 使用Gemini模型生成內容
+        response = client.models.generate_content(
+            model="gemini-2.0-flash-preview-image-generation",
+            contents=contents,
+            config=GenerateContentConfig(
+                response_modalities=["TEXT", "IMAGE"]
             )
+        )
         
         # 解析回應
         image_data = None
@@ -576,7 +554,7 @@ async def take_selfie(request: SelfieRequest):
             "duration": request.duration,
             "aspect_ratio": request.aspect_ratio,
             "selfie_filename": filename,
-            "reference_image": reference_image_name
+            "reference_images": ref_image_filenames
         }
         
     except Exception as e:
@@ -619,90 +597,59 @@ def _get_display_config_for_selfie(request: SelfieRequest) -> dict:
 
 @router.post("/generate-background-image")
 async def generate_background_image(request: BackgroundImageRequest):
-    """生成背景圖片並同步到前端"""
+    """
+    生成背景圖片，可選地基於參考圖片。
+    生成的圖片會被存儲並通過WebSocket廣播以設置為背景。
+    """
     try:
-        # 構建背景圖片描述，針對螢幕比例優化
+        prompt = f"Generate a background image of: {request.description}"
+        if request.modification:
+            prompt += f"\nModification instructions: {request.modification}"
+
         aspect_map = {
-            "16:9": "in widescreen format (16:9 aspect ratio)",
-            "21:9": "in ultra-wide format (21:9 aspect ratio)", 
-            "4:3": "in standard format (4:3 aspect ratio)",
-            "1:1": "in square format (1:1 aspect ratio)"
+            "16:9": "in a widescreen 16:9 aspect ratio",
+            "9:16": "in a vertical 9:16 aspect ratio",
+            "square": "in a square 1:1 aspect ratio"
         }
+        aspect_text = aspect_map.get(request.aspect_ratio, aspect_map["16:9"])
+        prompt += f" {aspect_text}"
         
-        aspect_text = aspect_map.get(request.aspect_ratio, "in widescreen format (16:9 aspect ratio)")
-        base_prompt = f"Generate a stunning background image: {request.description}. Create it {aspect_text}, suitable for use as a computer screen background or wallpaper."
-        
-        # 處理參考圖像邏輯
-        reference_image_name = request.reference_image
-        
-        # 如果有參考圖像，使用多模態輸入
-        if reference_image_name:
-            # 先檢查 selfies 資料夾，再檢查 generated_images 資料夾
-            ref_path_selfies = os.path.join(SELFIES_DIR, reference_image_name)
-            ref_path_generated = os.path.join(GENERATED_DIR, reference_image_name)
-            
-            ref_path = None
-            if os.path.exists(ref_path_selfies):
-                ref_path = ref_path_selfies
-            elif os.path.exists(ref_path_generated):
-                ref_path = ref_path_generated
-            
-            if ref_path:
-                # 讀取參考圖像
-                with open(ref_path, "rb") as f:
-                    reference_image_data = f.read()
+        # 處理參考圖片
+        image_parts = []
+        if request.reference_images:
+            print(f"使用 {len(request.reference_images)} 張參考圖片生成背景: {', '.join(request.reference_images)}")
+            for filename in request.reference_images:
+                ref_image_path = None
+                possible_paths = [
+                    os.path.join(SELFIES_DIR, filename),
+                    os.path.join(GENERATED_DIR, filename)
+                ]
+                for path in possible_paths:
+                    if os.path.exists(path):
+                        ref_image_path = path
+                        break
                 
-                # 修改提示詞，指示基於參考圖像
-                if request.modification:
-                    base_prompt += f". Based on the reference image provided, {request.modification}"
+                if ref_image_path:
+                    print(f"  - 載入: {ref_image_path}")
+                    # 修正：直接讀取圖片數據，而不是使用 from_uri
+                    with open(ref_image_path, "rb") as f:
+                        image_data = f.read()
+                    img_part = Part(inline_data={"mime_type": "image/png", "data": image_data})
+                    image_parts.append(img_part)
                 else:
-                    base_prompt += ". Based on the reference image provided, create a background that incorporates the style, colors, or visual elements from this image"
-                
-                logging.info(f"Using reference image for background: {ref_path}, size: {len(reference_image_data)} bytes")
-                
-                # 使用多模態輸入 - 圖像 + 文字
-                try:
-                    response = client.models.generate_content(
-                        model="gemini-2.0-flash-preview-image-generation",
-                        contents=[
-                            {"role": "user", "parts": [
-                                {"inline_data": {"mime_type": "image/png", "data": base64.b64encode(reference_image_data).decode('utf-8')}},
-                                {"text": base_prompt}
-                            ]}
-                        ],
-                        config=GenerateContentConfig(
-                            response_modalities=["TEXT", "IMAGE"]
-                        )
-                    )
-                except Exception as multimodal_error:
-                    logging.error(f"Multi-modal background generation failed: {multimodal_error}")
-                    # 如果多模態失敗，回退到純文字
-                    response = client.models.generate_content(
-                        model="gemini-2.0-flash-preview-image-generation",
-                        contents=base_prompt,
-                        config=GenerateContentConfig(
-                            response_modalities=["TEXT", "IMAGE"]
-                        )
-                    )
-            else:
-                logging.warning(f"Reference image not found for background: {reference_image_name}")
-                # 如果找不到參考圖像，使用純文字生成
-                response = client.models.generate_content(
-                    model="gemini-2.0-flash-preview-image-generation",
-                    contents=base_prompt,
-                    config=GenerateContentConfig(
-                        response_modalities=["TEXT", "IMAGE"]
-                    )
-                )
-        else:
-            # 沒有參考圖像，使用純文字生成
-            response = client.models.generate_content(
-                model="gemini-2.0-flash-preview-image-generation",
-                contents=base_prompt,
-                config=GenerateContentConfig(
-                    response_modalities=["TEXT", "IMAGE"]
-                )
+                    print(f"  - 警告: 找不到參考圖片 '{filename}'")
+        
+        # 結合參考圖片和提示詞
+        contents = image_parts + [prompt]
+
+        # 使用Gemini模型生成內容
+        response = client.models.generate_content(
+            model="gemini-2.0-flash-preview-image-generation",
+            contents=contents,
+            config=GenerateContentConfig(
+                response_modalities=["TEXT", "IMAGE"]
             )
+        )
         
         # 解析回應
         image_data = None
@@ -750,7 +697,7 @@ async def generate_background_image(request: BackgroundImageRequest):
             "backend_path": f"/generated-images/{filename}",
             "frontend_path": f"/background_pictures/{filename}",
             "description": request.description,
-            "reference_image": reference_image_name
+            "reference_images": request.reference_images
         }
         
     except Exception as e:

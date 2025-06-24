@@ -8,11 +8,11 @@
 **THE UNBREAKABLE RULE**: `send-message` 和 `emotion-trajectory` 必須成對使用，這是所有表演的基礎。
 ```bash
 # ✅ 正確：生動的角色
-curl -X POST .../send-message -d '{"content": "大家好！"}' && \
-curl -X POST .../emotion-trajectory -d '{"duration": 3.0, "keyframes": [{"tag": "excited", "proportion": 1.0}]}'
+curl -X POST http://localhost:8000/api/control/send-message -H "Content-Type: application/json" -d '{"content": "大家好！"}' && \
+curl -X POST http://localhost:8000/api/control/emotion-trajectory -H "Content-Type: application/json" -d '{"duration": 3.0, "keyframes": [{"tag": "excited", "proportion": 1.0}]}'
 
 # ❌ 錯誤：沒有生命力的機器人
-curl -X POST .../send-message -d '{"content": "大家好！"}'  # 只有聲音沒有情感
+curl -X POST http://localhost:8000/api/control/send-message -H "Content-Type: application/json" -d '{"content": "大家好！"}'  # 只有聲音沒有情感
 ```
 
 ## 📁 快速導航：資源在哪裡找？
@@ -32,36 +32,36 @@ curl -X POST .../send-message -d '{"content": "大家好！"}'  # 只有聲音�
 ### Level 1: 基礎連續技 (3連擊)
 **模式**: 語音+情緒 → 動作 → 鏡頭
 ```bash
-curl -X POST .../send-message -d '{"content": "開始表演！"}' && \
-curl -X POST .../emotion-trajectory -d '{"duration": 3.0, "keyframes": [{"tag": "excited", "proportion": 1.0}]}' && \
-curl -X POST .../character/animation -d '{"animation": "舞步1", "speed": 2.0}' && \
-curl -X POST .../camera/set-frontend-preset -d '{"name": "center_orbit_default", "duration": 2.0}'
+curl -X POST http://localhost:8000/api/control/send-message -H "Content-Type: application/json" -d '{"content": "開始表演！"}' && \
+curl -X POST http://localhost:8000/api/control/emotion-trajectory -H "Content-Type: application/json" -d '{"duration": 3.0, "keyframes": [{"tag": "excited", "proportion": 1.0}]}' && \
+curl -X POST http://localhost:8000/api/control/character/animation -H "Content-Type: application/json" -d '{"animation": "舞步1", "speed": 2.0}' && \
+curl -X POST http://localhost:8000/api/control/camera/set-frontend-preset -H "Content-Type: application/json" -d '{"name": "center_orbit_default", "duration": 2.0}'
 ```
 
 ### Level 2: 進階連續技 (5連擊)
 **模式**: BGM → 語音+情緒 → 動作 → 頭部特效 → 鏡頭運動
 ```bash
-curl -X POST .../background-audio -d '{"bgmUrl": "/audio/BGM/heavy_metal_bgm_01.mp3"}' && \
-curl -X POST .../send-message -d '{"content": "準備震撼！"}' && \
-curl -X POST .../emotion-trajectory -d '{"duration": 4.0, "keyframes": [{"tag": "excited", "proportion": 0.0}, {"tag": "amazed", "proportion": 1.0}]}' && \
-curl -X POST .../character/animation -d '{"animation": "舞步2", "speed": 3.0}' && \
-curl -X POST .../head-size -d '{"scaleFactor": 4.0}' && \
-curl -X POST .../camera/set-frontend-preset -d '{"name": "dramatic_angle_1", "duration": 1.5}'
+curl -X POST http://localhost:8000/api/control/background-audio -H "Content-Type: application/json" -d '{"bgmUrl": "/audio/BGM/heavy_metal_bgm_01.mp3"}' && \
+curl -X POST http://localhost:8000/api/control/send-message -H "Content-Type: application/json" -d '{"content": "準備震撼！"}' && \
+curl -X POST http://localhost:8000/api/control/emotion-trajectory -H "Content-Type: application/json" -d '{"duration": 4.0, "keyframes": [{"tag": "excited", "proportion": 0.0}, {"tag": "amazed", "proportion": 1.0}]}' && \
+curl -X POST http://localhost:8000/api/control/character/animation -H "Content-Type: application/json" -d '{"animation": "舞步2", "speed": 3.0}' && \
+curl -X POST http://localhost:8000/api/control/head-size -H "Content-Type: application/json" -d '{"scaleFactor": 4.0}' && \
+curl -X POST http://localhost:8000/api/control/camera/set-frontend-preset -H "Content-Type: application/json" -d '{"name": "dramatic_angle_1", "duration": 1.5}'
 ```
 
 ### Level 3: 終極連續技 (7+連擊)
 **模式**: 背景 → BGM → 語音+情緒 → 動作 → 頭部特效 → Monitor牆 → 圖片生成
 ```bash
-curl -X POST .../generate-background-image -d '{"description": "太空演唱會舞台", "aspect_ratio": "16:9"}' && \
-curl -X POST .../background-audio -d '{"bgmUrl": "/audio/BGM/spacelive_theme_bgm_04.mp3"}' && \
-curl -X POST .../send-message -d '{"content": "史上最強演唱會開始！"}' && \
-curl -X POST .../emotion-trajectory -d '{"duration": 8.0, "keyframes": [{"tag": "excited", "proportion": 0.0}, {"tag": "amazed", "proportion": 0.5}, {"tag": "confident", "proportion": 1.0}]}' && \
-curl -X POST .../character/animation -d '{"animation": "舞步3", "speed": 4.0}' && \
-curl -X POST .../head-size -d '{"scaleFactor": 6.0}' && \
-curl -X PUT .../monitors/screen1 -d '{"content": "/videos/太空辣妹跳舞.mp4", "volume": 0.8, "visible": true, "playing": true}' && \
-curl -X PUT .../monitors/screen2 -d '{"content": "/videos/太空史萊姆.mp4", "volume": 0.7, "visible": true, "playing": true}' && \
-curl -X PUT .../monitors/screen3 -d '{"content": "/videos/太空打卡.mp4", "volume": 0.6, "visible": true, "playing": true}' && \
-curl -X POST .../generate-image -d '{"description": "璀璨舞台煙火", "position": "center-left", "size": "large", "duration": 60.0}'
+curl -X POST http://localhost:8000/api/generate-background-image -H "Content-Type: application/json" -d '{"prompt": "太空演唱會舞台", "aspect_ratio": "16:9"}' && \
+curl -X POST http://localhost:8000/api/control/background-audio -H "Content-Type: application/json" -d '{"bgmUrl": "/audio/BGM/spacelive_theme_bgm_04.mp3"}' && \
+curl -X POST http://localhost:8000/api/control/send-message -H "Content-Type: application/json" -d '{"content": "史上最強演唱會開始！"}' && \
+curl -X POST http://localhost:8000/api/control/emotion-trajectory -H "Content-Type: application/json" -d '{"duration": 8.0, "keyframes": [{"tag": "excited", "proportion": 0.0}, {"tag": "amazed", "proportion": 0.5}, {"tag": "confident", "proportion": 1.0}]}' && \
+curl -X POST http://localhost:8000/api/control/character/animation -H "Content-Type: application/json" -d '{"animation": "舞步3", "speed": 4.0}' && \
+curl -X POST http://localhost:8000/api/control/head-size -H "Content-Type: application/json" -d '{"scaleFactor": 6.0}' && \
+curl -X PUT http://localhost:8000/api/monitors/screen1 -H "Content-Type: application/json" -d '{"content": "/videos/太空辣妹跳舞.mp4", "volume": 0.8, "visible": true, "playing": true}' && \
+curl -X PUT http://localhost:8000/api/monitors/screen2 -H "Content-Type: application/json" -d '{"content": "/videos/太空史萊姆.mp4", "volume": 0.7, "visible": true, "playing": true}' && \
+curl -X PUT http://localhost:8000/api/monitors/screen3 -H "Content-Type: application/json" -d '{"content": "/videos/太空打卡.mp4", "volume": 0.6, "visible": true, "playing": true}' && \
+curl -X POST http://localhost:8000/api/generate-image -H "Content-Type: application/json" -d '{"prompt": "璀璨舞台煙火", "position": "center-left", "size": "large", "duration": 60.0}'
 ```
 
 ## 🎨 高級技巧
@@ -80,15 +80,31 @@ curl -X POST .../generate-image -d '{"description": "璀璨舞台煙火", "posit
 "媽祖在太空船裡面有很多文字說明和標語還有各種複雜的背景元素"
 ```
 
-#### 參考圖片統一策略
-```bash
-# 所有圖像生成都使用統一參考 - 確保視覺一致性
-REFERENCE_IMAGE="full_body/full_body2.png"
+#### 核心原理二：多參考圖融合技法 (Multi-Reference Fusion)
+以前我們只能用一張參考圖，現在系統升級了！我們可以同時提供 **多張參考圖**，並用精準的 **"食譜式提示詞"**，告訴AI如何融合這些圖片的特徵，創造出前所未有的新角色、新場景。
 
-# 應用到所有圖像端點
-curl -X POST .../take-selfie -d '{"reference_image": "'$REFERENCE_IMAGE'", ...}'
-curl -X POST .../generate-background-image -d '{"reference_image": "'$REFERENCE_IMAGE'", ...}'
-curl -X POST .../generate-image -d '{"reference_image": "'$REFERENCE_IMAGE'", ...}'
+**食譜式提示詞 (Recipe-style Prompting) 的精髓：**
+不要只說「混合它們」，要像寫食譜一樣，明確指示每個「食材」(參考圖) 的哪個部分要用、怎麼用。
+
+**🔥終極範例：四圖融合創造全新角色**
+這個例子融合了四張圖片，創造出一個全新的、具有複雜特徵的角色。
+
+```bash
+# 注意：`reference_images` 現在是一個列表！
+curl -X POST 'http://localhost:8000/api/take-selfie' \
+-H 'Content-Type: application/json' \
+-d '{
+    "prompt": "請你扮演一位頂尖的電影概念設計師，運用你對角色設計的深刻理解，融合以下四張參考圖片的特點，創造一個全新的、獨一無二的科幻角色。這是一份你的創作食譜：\n\n- **主要結構與輪廓**: 請以 `girl_pepe.png` 作為角色的基礎骨架和主要人形輪廓。這是我們的畫布。\n- **服裝與盔甲**: 借鑒 `silver_girl.png` 中那套閃亮的銀色緊身衣，將它的金屬質感和流線型設計融入角色的服裝中。\n- **色彩與氛圍**: 注入 `purple_girl.png` 的視覺風格。我需要你大量使用那種充滿活力的紫色和霓虹燈般的粉紅色調，讓整個角色散發出賽博龐克的迷幻氛圍。\n- **臉部特徵**: 最後，也是最關鍵的一步，請將 `green_alien.png` 的臉部特徵——特別是那雙富有表現力的大眼睛和獨特的頭部形狀——完美地移植到新角色上。我們既要保留外星人的奇異感，又要讓它與人形身體和諧共存。\n\n**最終目標**：創造一個看起來像是來自《銀翼殺手》或《攻殼機動隊》世界的角色，他/她既是人類，又是外星人；既有金屬的冰冷，又有霓虹的溫暖。這是一個關於身份融合與視覺衝擊的藝術挑戰。開始創作吧！",
+    "reference_images": [
+        "imgs/girl_pepe.png",
+        "imgs/silver_girl.png",
+        "imgs/purple_girl.png",
+        "imgs/green_alien.png"
+    ],
+    "position": "center",
+    "size": "large",
+    "duration": 60
+}'
 ```
 
 #### 關鍵術語庫
@@ -113,22 +129,39 @@ curl -X POST .../generate-image -d '{"reference_image": "'$REFERENCE_IMAGE'", ..
 **戲劇性漸進式放大**
 ```bash
 # 建立張力
-curl -X POST .../head-size -d '{"scaleFactor": 2.0}' && sleep 1 && \
-curl -X POST .../head-size -d '{"scaleFactor": 4.0}' && sleep 1 && \
-curl -X POST .../head-size -d '{"scaleFactor": 8.0}' && sleep 2 && \
+curl -X POST http://localhost:8000/api/control/head-size -H "Content-Type: application/json" -d '{"scaleFactor": 2.0}' && sleep 1 && \
+curl -X POST http://localhost:8000/api/control/head-size -H "Content-Type: application/json" -d '{"scaleFactor": 4.0}' && sleep 1 && \
+curl -X POST http://localhost:8000/api/control/head-size -H "Content-Type: application/json" -d '{"scaleFactor": 8.0}' && sleep 2 && \
 # 回歸正常
-curl -X POST .../head-size -d '{"scaleFactor": 1.5}'
+curl -X POST http://localhost:8000/api/control/head-size -H "Content-Type: application/json" -d '{"scaleFactor": 1.5}'
 ```
 
 ### 攝影機編舞
 **引導觀眾視線**
 ```bash
-curl -X POST .../camera/set-frontend-preset -d '{"name": "center_orbit_default", "duration": 2.0}' && sleep 2 && \
-curl -X POST .../camera/set-frontend-preset -d '{"name": "fly_by_left", "duration": 1.0}' && sleep 1 && \
-curl -X POST .../camera/set-frontend-preset -d '{"name": "dramatic_angle_1", "duration": 1.5}'
+curl -X POST http://localhost:8000/api/control/camera/set-frontend-preset -H "Content-Type: application/json" -d '{"name": "center_orbit_default", "duration": 2.0}' && sleep 2 && \
+curl -X POST http://localhost:8000/api/control/camera/set-frontend-preset -H "Content-Type: application/json" -d '{"name": "fly_by_left", "duration": 1.0}' && sleep 1 && \
+curl -X POST http://localhost:8000/api/control/camera/set-frontend-preset -H "Content-Type: application/json" -d '{"name": "dramatic_angle_1", "duration": 1.5}'
 ```
 
 ## 🔥 特殊組合技
+
+### 場景一體化生成：畫中有人
+這是一個更高級的技巧。我們不只生成背景，而是生成一張「本身就包含角色」的插畫，並將其作為背景。這樣可以創造出極具藝術感的「畫中畫」效果，讓3D角色與2D背景完美融合。
+
+**創作理念：** 將我們剛剛創造的融合角色，放置在一個宏大的、與其風格匹配的場景中。
+
+```bash
+curl -X POST 'http://localhost:8000/api/generate-background-image' \
+-H 'Content-Type: application/json' \
+-d '{
+    "prompt": "請你扮演一位史詩級的科幻插畫大師。你的任務是創作一幅宏偉的場景，將我們提供的兩個角色無縫地融入其中。這是一份你的創作食譜：\n\n- **參考角色1 (`selfie_1.png`)**: 這位角色擁有獨特的外星人頭部和紫色調的服裝。請將她作為畫面的前景或中景的主要焦點之一。確保她的姿態和表情與宏大的背景相得益彰。\n- **參考角色2 (`selfie_2.png`)**: 這位角色穿著黑色的高科技服裝。讓她以一種動態的、富有故事性的方式出現在場景中，可以是在遠處，或是在一個不同的視覺層次上，與角色1形成對比或互動。\n- **場景設計**: 構建一個巨大的、充滿未來感的城市景觀。想像一下《銀翼殺手2049》那樣的巨型建築、全息廣告牌和飛行器。整個城市需要被一種介於藍色和紫色之間的極光或能量場所籠罩，營造出夢幻而又有些許反烏托邦的感覺。\n- **氛圍與光影**: 使用強烈的戲劇性打光，突出兩個角色和城市的輪廓。光線應該是複雜的，既有來自城市本身的霓虹燈光，也有來自天空極光的漫反射。整體色調要統一在冷色系的藍、紫、黑之中，但可以用少量的暖色（如角色的眼睛或服裝細節）作為點綴。\n\n**最終目標**：創作一幅不僅僅是背景，而是一張完整的、帶有敘事感的電影級概念插畫。觀眾第一眼看到的是宏偉的場景，但細看之下會發現我們的主角們就生活在這個世界裡。開始你的傑作吧！",
+    "reference_images": [
+        "generated_images/selfie_1.png",
+        "generated_images/selfie_2.png"
+    ]
+}'
+```
 
 ### 腳本函式建構法 ⭐ **實戰精華**
 **從太空媽祖專案學到的模組化架構：讓劇本清晰易懂**
@@ -140,8 +173,8 @@ speak() {
   DURATION=$2
   EMOTION_TAG=${3:-happy}
   echo ">> 說話: $CONTENT"
-  curl -X POST $BASE_URL/control/send-message -d "{\"content\": \"$CONTENT\"}" &
-  curl -X POST $BASE_URL/control/emotion-trajectory -d "{\"duration\": $DURATION, \"keyframes\": [{\"tag\": \"$EMOTION_TAG\", \"proportion\": 1.0}]}"
+  curl -X POST http://localhost:8000/api/control/send-message -H "Content-Type: application/json" -d "{\"content\": \"$CONTENT\"}" &
+  curl -X POST http://localhost:8000/api/control/emotion-trajectory -H "Content-Type: application/json" -d "{\"duration\": $DURATION, \"keyframes\": [{\"tag\": \"$EMOTION_TAG\", \"proportion\": 1.0}]}"
   sleep $(echo "$DURATION * 0.8" | bc)
 }
 
@@ -149,23 +182,25 @@ speak() {
 animate_character() {
   ANIMATION=$1
   SPEED=${2:-1.0}
-  curl -X POST .../character/animation -d "{\"animation\": \"$ANIMATION\", \"speed\": $SPEED}"
+  curl -X POST http://localhost:8000/api/control/character/animation -H "Content-Type: application/json" -d "{\"animation\": \"$ANIMATION\", \"speed\": $SPEED}"
 }
 
 animate_dancers() {
   ANIMATION=$1
   SPEED=${2:-1.0}
-  curl -X POST .../body-animation -d "{\"animation\": \"$ANIMATION\", \"speed\": $SPEED}" &
+  curl -X POST http://localhost:8000/api/control/body-animation -H "Content-Type: application/json" -d "{\"animation\": \"$ANIMATION\", \"speed\": $SPEED}" &
 }
 
-# 專業級圖像生成 (參考圖片+專業提示詞)
+# 專業級圖像生成 (多參考圖片+專業提示詞)
 take_selfie() {
-  DESCRIPTION=$1
+  PROMPT=$1
   POSITION=${2:-center-left}
-  REFERENCE_IMAGE="full_body/full_body2.png"
-  curl -X POST .../take-selfie -d "{
-    \"description\": \"Photorealistic selfie of me. $DESCRIPTION\", 
-    \"reference_image\": \"$REFERENCE_IMAGE\", 
+  # 將圖片路徑作為一個JSON字串數組傳遞 e.g., '["imgs/img1.png","imgs/img2.png"]'
+  IMAGES_JSON_ARRAY=${3:-'[]'}
+  
+  curl -X POST http://localhost:8000/api/take-selfie -H "Content-Type: application/json" -d "{
+    \"prompt\": \"$PROMPT\", 
+    \"reference_images\": $IMAGES_JSON_ARRAY, 
     \"position\": \"$POSITION\"
   }"
 }
@@ -173,7 +208,7 @@ take_selfie() {
 # 音效正確使用法
 play_sound_effect() {
   SOUND_URL=$1
-  curl -X POST .../background-audio -d "{\"sfxUrl\": \"$SOUND_URL\"}"
+  curl -X POST http://localhost:8000/api/control/background-audio -H "Content-Type: application/json" -d "{\"sfxUrl\": \"$SOUND_URL\"}"
 }
 
 # 表演段落模板
@@ -195,20 +230,20 @@ performance_segment() {
 **AI圖片連續進化**
 ```bash
 # 第一階段：基礎自拍
-curl -X POST .../take-selfie -d '{"description": "太空DJ", "position": "center-left", "duration": 45.0}' && \
+curl -X POST http://localhost:8000/api/take-selfie -H "Content-Type: application/json" -d '{"description": "太空DJ", "position": "center-left", "duration": 45.0}' && \
 # 第二階段：風格進化 (自動使用前一張作為參考)
-curl -X POST .../continue-selfie -d '{"modification": "變成賽博朋克風格", "position": "center-right", "duration": 50.0}' && \
+curl -X POST http://localhost:8000/api/continue-selfie -H "Content-Type: application/json" -d '{"modification": "變成賽博朋克風格", "position": "center-right", "duration": 50.0}' && \
 # 第三階段：背景呼應
-curl -X POST .../generate-background-image -d '{"description": "賽博朋克太空夜店", "aspect_ratio": "16:9"}'
+curl -X POST http://localhost:8000/api/generate-background-image -H "Content-Type: application/json" -d '{"description": "賽博朋克太空夜店", "aspect_ratio": "16:9"}'
 ```
 
 ### 多圖同時展示技
 **四角同時爆發**
 ```bash
-curl -X POST .../show-existing-image -d '{"filename": "image_xxx.png", "position": "top-left", "size": "medium", "duration": 30.0}' && \
-curl -X POST .../show-existing-image -d '{"filename": "selfie_yyy.png", "position": "top-right", "size": "medium", "duration": 35.0}' && \
-curl -X POST .../show-existing-image -d '{"filename": "background_zzz.png", "position": "bottom-left", "size": "medium", "duration": 40.0}' && \
-curl -X POST .../show-existing-image -d '{"filename": "image_aaa.png", "position": "bottom-right", "size": "medium", "duration": 45.0}'
+curl -X POST http://localhost:8000/api/show-existing-image -H "Content-Type: application/json" -d '{"filename": "image_xxx.png", "position": "top-left", "size": "medium", "duration": 30.0}' && \
+curl -X POST http://localhost:8000/api/show-existing-image -H "Content-Type: application/json" -d '{"filename": "selfie_yyy.png", "position": "top-right", "size": "medium", "duration": 35.0}' && \
+curl -X POST http://localhost:8000/api/show-existing-image -H "Content-Type: application/json" -d '{"filename": "background_zzz.png", "position": "bottom-left", "size": "medium", "duration": 40.0}' && \
+curl -X POST http://localhost:8000/api/show-existing-image -H "Content-Type: application/json" -d '{"filename": "image_aaa.png", "position": "bottom-right", "size": "medium", "duration": 45.0}'
 ```
 
 ## 📋 完整API參考
@@ -260,234 +295,4 @@ curl -X POST .../show-existing-image -d '{"filename": "image_aaa.png", "position
 
 - **`formation`**: `string` - 陣型名稱 ('circle', 'grid', 'line', 'wall').
 - **`dancerCount`**: `integer` - 舞者數量.
-- **`position`**: `array[float]` - `[x, y, z]` 座標.
-
-**範例 Curl:**
-```bash
-curl -X POST http://127.0.0.1:8000/api/control/dance_group \
--H "Content-Type: application/json" \
--d '{
-  "formation": "grid",
-  "dancerCount": 50,
-  "position": [0, -30, -40],
-  "scale": 7.5
-}'
-```
-**對應 WebSocket 訊息:**
-後端會廣播以下訊息，前端收到後會更新舞團狀態。
-```json
-{
-  "type": "dance_group_update",
-  "payload": {
-    "formation": "grid",
-    "dancerCount": 50,
-    "position": [0, -30, -40],
-    "scale": 7.5
-  }
-}
-```
-
-## ⚡ 實戰最佳實踐
-
-### 1. 表演前檢查
-```bash
-# 確認連線狀態
-curl -X GET http://localhost:8000/api/control/status
-```
-
-### 2. 資源探索習慣
-```bash
-# 每次表演前都先探索可用資源
-ls prototype/frontend/public/audio/BGM/     # 音樂選擇
-ls prototype/frontend/public/videos/        # 影片選擇  
-ls prototype/backend/generated_images/      # 圖片重用
-```
-
-### 3. 組合技執行順序
-1. **建立基礎** - 語音+情緒 (核心)
-2. **加入層次** - 音樂、動作、視覺
-3. **創造高潮** - 特效、多重刺激
-4. **優雅收尾** - 復原設定、感謝觀眾
-
-### 4. 錯誤處理策略 ⭐ **實戰除錯經驗**
-- **API失敗時檢查 `detail` 欄位**
-- **路徑錯誤時參考上方資源表格**
-- **連線問題時重新檢查 WebSocket 狀態**
-- **效果不如預期時拆解測試各個組件**
-
-**🚨 太空媽祖專案常見陷阱：**
-```bash
-# ❌ 音效API用錯端點
-curl -X POST .../play-audio -d '{"sfxUrl": "..."}'  # 錯誤！
-
-# ✅ 音效正確用法  
-curl -X POST .../background-audio -d '{"sfxUrl": "..."}'  # 正確！
-
-# ❌ 圖片路徑問題
-"/some/wrong/path/image.png"  # show-existing-image 讀不到
-
-# ✅ 圖片正確路徑
-"image_name.png"  # 必須在 generated_images/ 目錄下
-
-# ❌ 動畫API混用
-curl -X POST .../body-animation -d '{"animation": "漂浮"}'  # 主角動作用錯API
-
-# ✅ 動畫API正確區分
-curl -X POST .../character/animation -d '{"animation": "漂浮"}'  # 主角用這個
-curl -X POST .../body-animation -d '{"animation": "Cheering"}'   # 舞者用這個
-```
-
-### 5. 創意發展原則 ⭐ **節奏優化精華**
-- **不要重複** - 每次都探索新資源組合
-- **建立節奏** - 用 sleep 控制時間感
-- **層次堆疊** - 從簡單到複雜逐步建構
-- **觀眾導向** - 考慮視覺衝擊和情感反應
-
-**🎭 太空媽祖節奏優化經驗：**
-```bash
-# 經用戶反饋優化的時間設定
-SPEECH_DURATION=3      # 語音時間 (原本5-8秒太慢)
-SLEEP_SHORT=1          # 短暫停頓 (原本3秒太慢)  
-SLEEP_MEDIUM=2         # 中等停頓
-IMAGE_DURATION=5       # 圖片顯示 (原本8-15秒太久)
-
-# 鏡頭運動多樣化 - 避免視覺疲勞
-CAMERA_PRESETS=("overview" "head_close_up" "side_view" "center_orbit_high_1" 
-                "dramatic_angle_1" "fly_by_left" "fly_by_right")
-# 隨機選擇：${CAMERA_PRESETS[$((RANDOM % ${#CAMERA_PRESETS[@]}))]}
-
-# 背景變化頻率 - 前面部分常換一點
-# 每個段落 2-4 個背景變化，保持視覺新鮮感
-```
-
-## 🎭 高級應用場景
-
-### 場景1: 太空夜店模式
-```bash
-# 環境建立
-curl -X POST .../generate-background-image -d '{"description": "霓虹閃爍的太空夜店", "aspect_ratio": "16:9"}' && \
-curl -X POST .../background-audio -d '{"bgmUrl": "/audio/BGM/heavy_metal_bgm_02.mp3"}' && \
-# 角色表演
-curl -X POST .../send-message -d '{"content": "歡迎來到太空夜店！今晚我們徹夜狂歡！"}' && \
-curl -X POST .../emotion-trajectory -d '{"duration": 6.0, "keyframes": [{"tag": "excited", "proportion": 0.0}, {"tag": "happy", "proportion": 1.0}]}' && \
-curl -X POST .../character/animation -d '{"animation": "舞步2", "speed": 3.5}' && \
-curl -X POST .../head-size -d '{"scaleFactor": 5.0}'
-```
-
-### 場景2: 太空瑜伽教學
-```bash
-# 寧靜環境
-curl -X POST .../control/environment/preset -d '{"preset": "dawn"}' && \
-curl -X POST .../background-audio -d '{"bgmUrl": "/audio/BGM/spacelive_theme_bgm_01.mp3"}' && \
-# 教學開始
-curl -X POST .../send-message -d '{"content": "讓我們在太空中找到內心的平靜，開始瑜伽練習"}' && \
-curl -X POST .../emotion-trajectory -d '{"duration": 8.0, "keyframes": [{"tag": "serene", "proportion": 1.0}]}' && \
-curl -X POST .../character/animation -d '{"animation": "運動1", "speed": 0.8}' && \
-curl -X POST .../camera/set-frontend-preset -d '{"name": "overview", "duration": 3.0}'
-```
-
-### 場景3: 太空媽祖直播模式 ⭐ **文化創新典範**
-```bash
-# 設定太空艙環境
-generate_background "(cinematic space station interior, holographic displays, no text) 太空艙控制室，藍色科技光效"
-play_bgm "/audio/BGM/太空媽祖.mp3"
-play_sound_effect "/audio/effects/spaceship_ambience_01.mp3"
-
-# 辣台妹主播登場
-speak "大家好～歡迎來到『太空媽祖直播間』，我是你們最辣的太空台妹！" 4.0 "excited"
-animate_character "運動2" 1.0
-animate_dancers "Cheering" 1.2
-move_camera "overview" 2.0
-
-# 文化融合互動
-take_selfie "(close-up portrait, dramatic lighting, no text) 我虔誠專注的表情，雙手捧著發光的數位香" "center-left" 6.0
-show_existing_image "mazu_blessing.png" "媽祖保佑" "center-right" "large" 4.0
-speak "在太空拜拜特別有效，因為離天堂比較近嘛～哈哈！" 3.0 "happy"
-```
-
-### 場景4: 新聞播報模式
-```bash
-# 專業環境
-curl -X POST .../control/environment/preset -d '{"preset": "studio"}' && \
-curl -X POST .../camera/set-frontend-preset -d '{"name": "head_close_up", "duration": 2.0}' && \
-# 播報開始
-curl -X POST .../send-message -d '{"content": "這裡是太空新聞中心，我是您的主播，為您帶來最新的宇宙動態"}' && \
-curl -X POST .../emotion-trajectory -d '{"duration": 10.0, "keyframes": [{"tag": "confident", "proportion": 0.0}, {"tag": "professional", "proportion": 1.0}]}' && \
-curl -X POST .../character/animation -d '{"animation": "Idle", "speed": 1.0}'
-```
-
-## 🚀 終極連續技範例
-
-### 史上最強10連擊
-```bash
-echo "🚀 史上最強連續技開始！" && \
-# 1. 場景設定
-curl -X POST .../generate-background-image -d '{"description": "史詩太空競技場", "aspect_ratio": "16:9"}' && \
-# 2. 音樂啟動
-curl -X POST .../background-audio -d '{"bgmUrl": "/audio/BGM/heavy_metal_bgm_03.mp3"}' && \
-# 3. 開場白 (語音+情緒)
-curl -X POST .../send-message -d '{"content": "準備迎接史上最震撼的太空表演！"}' && \
-curl -X POST .../emotion-trajectory -d '{"duration": 5.0, "keyframes": [{"tag": "excited", "proportion": 0.0}, {"tag": "amazed", "proportion": 1.0}]}' && \
-# 4. 動作表演
-curl -X POST .../character/animation -d '{"animation": "舞步3", "speed": 4.0}' && \
-# 5. 頭部特效
-curl -X POST .../head-size -d '{"scaleFactor": 7.0}' && \
-# 6-8. 三螢幕影片牆
-curl -X PUT .../monitors/screen1 -d '{"content": "/videos/太空辣妹跳舞.mp4", "volume": 1.0, "visible": true, "playing": true}' && \
-curl -X PUT .../monitors/screen2 -d '{"content": "/videos/太空史萊姆.mp4", "volume": 0.8, "visible": true, "playing": true}' && \
-curl -X PUT .../monitors/screen3 -d '{"content": "/videos/space_live_video_1.mp4", "volume": 0.6, "visible": true, "playing": true}' && \
-# 9. 圖片特效
-curl -X POST .../generate-image -d '{"description": "爆炸性煙火特效", "position": "center-left", "size": "large", "duration": 60.0}' && \
-# 10. 攝影機運動
-curl -X POST .../camera/set-frontend-preset -d '{"name": "center_orbit_high_1", "duration": 2.0}' && \
-echo "🎉 連續技完成！"
-```
-
----
-
-## 📝 快速備忘錄
-
-### 必記口訣
-1. **語音情緒不分離** - send-message + emotion-trajectory
-2. **資源探索不死記** - 用 ls 指令找新內容  
-3. **圖片位置避中央** - 不要擋住角色
-4. **音量層次要分明** - 1.0 → 0.8 → 0.6
-5. **頭部特效要漸進** - 建立戲劇張力
-6. **表演結束要復原** - 回到預設狀態
-
-### 常用指令速查
-```bash
-# 狀態檢查
-curl -X GET http://localhost:8000/api/control/status
-
-# 基礎表演 (語音+情緒)
-curl -X POST .../send-message -d '{"content": "內容"}' && \
-curl -X POST .../emotion-trajectory -d '{"duration": 3.0, "keyframes": [{"tag": "happy", "proportion": 1.0}]}'
-
-# 資源探索
-ls prototype/frontend/public/audio/BGM/
-ls prototype/frontend/public/videos/
-ls prototype/backend/generated_images/
-
-# 重置狀態
-curl -X POST .../head-size -d '{"scaleFactor": 1.0}'
-curl -X POST .../camera/set-frontend-preset -d '{"name": "overview", "duration": 2.0}'
-```
-
-**記住：這不只是API文檔，這是創造震撼表演的藝術指南！每一次呼叫都是在創作，每一個組合都是在編舞。讓技術服務於藝術，讓API成為你的創意工具！** 🎭✨ 
-
----
-
-## 📝 太空媽祖專案核心學習
-
-**從實戰中獲得的黃金準則：**
-
-1. **🎯 函式建構是王道** - 模組化讓劇本清晰易懂，維護超簡單
-2. **🎨 圖像品質有方法** - 專業攝影術語 + 統一參考圖片 = 專業級效果  
-3. **🚨 API區分要精確** - character/body-animation 兩套系統，絕不混用
-4. **🔊 音效端點要對準** - background-audio (sfxUrl) ≠ play-audio (url)
-5. **⚡ 節奏優化聽用戶** - 3秒語音 + 1秒停頓 = 緊湊吸引人
-6. **📸 圖片位置有戰略** - center-left/right + large尺寸，永不擋主角
-7. **🎭 測試驅動開發** - 每個功能都要實際驗證，才是真正可用
-
-**未來任何腳本開發，都請遵循這套經過實戰驗證的最佳實踐！** 🚀✨ 
+- **`position`**: `array[float]` - `[x, y, z]`

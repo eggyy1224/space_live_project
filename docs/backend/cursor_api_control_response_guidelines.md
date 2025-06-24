@@ -1531,3 +1531,58 @@ On a successful request, the backend broadcasts a WebSocket message to all clien
   }
 }
 ```
+
+#### New: `/api/take-selfie`
+This endpoint generates AI selfie images of the character. It can take one or more reference images to influence the generation, allowing for creative style and feature mixing. The generated selfie is displayed on the frontend.
+
+**Request Body (`SelfieRequest`)**
+```json
+{
+  "prompt": "string (Required, the text prompt to guide the image generation)",
+  "reference_images": "list[str] (Optional, a list of filenames for reference images located in 'docs/imgs')",
+  "position": "string (Optional, 'center', 'top-left', etc., default: 'center')",
+  "size": "string (Optional, 'small', 'medium', 'large', default: 'large')",
+  "duration": "float (Optional, display duration in seconds, default: 25.0)"
+}
+```
+
+**Example `curl` Request (Single Reference)**
+```bash
+curl -X POST "http://localhost:8000/api/take-selfie" \
+-H "Content-Type: application/json" \
+-d '{
+  "prompt": "A picture of me in a pop art style",
+  "reference_images": ["pop_art_example.jpg"]
+}'
+```
+
+**Example `curl` Request (Multiple References for Fusion)**
+```bash
+curl -X POST "http://localhost:8000/api/take-selfie" \
+-H "Content-Type: application/json" \
+-d '{
+  "prompt": "A character that combines the metallic texture of the first image with the bright color palette of the second image.",
+  "reference_images": ["robot.png", "colorful_painting.jpg"]
+}'
+```
+
+#### New: `/api/generate-background-image`
+This endpoint generates a background image and automatically applies it to the 3D scene. It can also use multiple reference images to create complex and stylized backgrounds.
+
+**Request Body (`BackgroundImageRequest`)**
+```json
+{
+  "prompt": "string (Required, the text prompt for the background)",
+  "reference_images": "list[str] (Optional, a list of filenames for reference images located in 'docs/imgs')"
+}
+```
+
+**Example `curl` Request**
+```bash
+curl -X POST "http://localhost:8000/api/generate-background-image" \
+-H "Content-Type: application/json" \
+-d '{
+  "prompt": "A futuristic city skyline at dawn, with the art style of a watercolor painting.",
+  "reference_images": ["futuristic_city.jpg", "watercolor_sky.jpg"]
+}'
+```
