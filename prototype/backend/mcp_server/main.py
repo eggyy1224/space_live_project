@@ -171,6 +171,44 @@ def character_animation(animation: str, loop: bool = True, speed: float = 1.0) -
         return f"❌ 發生錯誤: {str(e)}"
 
 @mcp.tool
+def dance_group_animation(animation: str, speed: float = 1.0, loop: bool = True) -> str:
+    """
+    控制舞群的動畫動作
+
+    Args:
+        animation: 動畫名稱，必須是 `prototype/shared/config/animations.json` 中定義的名稱
+        speed: 播放速度，預設為 1.0
+        loop: 是否循環播放，預設為 True
+
+    Returns:
+        操作結果描述
+    """
+    try:
+        # 構建舞群動畫 payload
+        payload = {
+            "animation": animation,
+            "speed": speed,
+            "loop": loop
+        }
+        
+        animation_endpoint = f"{BASE_URL}/api/control/body-animation"
+        response = requests.post(animation_endpoint, json=payload, timeout=10)
+        
+        if response.status_code == 200:
+            result = response.json()
+            loop_text = "循環播放" if loop else "播放一次"
+            return f"✅ 舞群動畫設置成功！舞群現在執行 '{animation}' 動作，{loop_text}，速度 {speed}x"
+        else:
+            return f"❌ 舞群動畫設置失敗 (HTTP {response.status_code}): {response.text}"
+            
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+    except requests.exceptions.Timeout:
+        return "❌ 請求超時，服務器可能忙碌中"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool
 def play_song(song_name: str, interrupt: bool = True) -> str:
     """
     讓 AI 角色播放歌曲或特殊音效（例如唱歌、動物叫聲等）。
