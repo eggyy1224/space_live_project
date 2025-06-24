@@ -682,19 +682,27 @@ def generate_image_overlay(
         return f"❌ 發生錯誤: {str(e)}"
 
 @mcp.tool
-def generate_background_image(prompt: str, aspect_ratio: str = 'landscape') -> str:
+def generate_background_image(prompt: str, aspect_ratio: str = 'landscape', reference_images: List[str] = None) -> str:
     """
     根據文字描述生成一張背景圖片，並自動設為場景背景。
 
     Args:
         prompt: 用於生成圖片的文字描述。
         aspect_ratio: 圖片的長寬比 ('square', 'portrait', 'landscape')。預設 'landscape'。
+        reference_images: (可選) 參考圖片的檔案名稱列表。
 
     Returns:
         操作結果描述
     """
     try:
-        payload = {"prompt": prompt, "aspect_ratio": aspect_ratio}
+        payload = {
+            "description": prompt, 
+            "aspect_ratio": aspect_ratio,
+            "reference_images": reference_images
+        }
+        # 移除 payload 中值為 None 的鍵
+        payload = {k: v for k, v in payload.items() if v is not None}
+        
         response = requests.post(f"{BASE_URL}/api/generate-background-image", json=payload, timeout=60)
         if response.status_code == 200:
             return f"✅ 背景圖片生成並設置成功！URL: {response.json().get('url')}"
