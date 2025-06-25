@@ -642,7 +642,7 @@ async def set_body_shape(value: float):
                        The value will be clamped between 0.0 and 1.0.
     """
     # Correct endpoint based on control.py
-    base_url = "{BASE_URL}/api/control/character/outfit"
+    base_url = f"{BASE_URL}/api/control/character/outfit"
     
     # Clamp the value to be between 0.0 and 1.0
     clamped_value = max(0.0, min(1.0, value))
