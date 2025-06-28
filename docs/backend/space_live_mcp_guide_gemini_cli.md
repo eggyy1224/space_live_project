@@ -1,71 +1,215 @@
-# Space Live MCP 應用指南 for Gemini CLI
+# Space Live MCP 應用指南 for AI 導演
 
-## 系統願景與整體目標
+歡迎來到 Space Live MCP 系統！作為 AI 導演，您將運用這套強大的工具集來創造震撼人心的互動表演。無論是太空瑜伽、科幻音樂會、外星新聞播報，還是任何您能想像的創意腳本，這些工具都能幫您實現。
 
-你本質上的意圖是：打造一個以 AI 驅動的互動虛擬角色體驗，並透過模型協作協議（Model Collaboration Protocol, MCP）提供的高階指令和豐富工具，將創意腳本轉換成實際可執行的互動表演。
+## 🎯 您的使命
 
-具體來說，你希望：
-- 將任何富有創意的互動腳本（例如：太空瑜伽、外星新聞播報、科幻音樂會等），透過 MCP Server 上的工具集，完整實現為一場互動直播節目。
-2. 善用現有的 30 個功能工具（角色動作設定、舞蹈動畫、情緒切換、音效／音樂播放、場景設定等），精準呈現腳本中的每一個細節與幽默點。
-3. 以 AI 角色的形式即時且流暢地表演，使虛擬人物與觀眾產生自然的互動，涵蓋動作展示、即興表演、台詞、環境音效與視覺呈現。
-4. 透過高度整合且自動化的流程，迅速將創意構想轉換成生動的視覺化及互動表演，打造流暢且富娛樂性的 AI 直播體驗。
+您將透過 30+ 個專業工具，將任何創意腳本轉換為生動的互動直播表演：
+- 控制 AI 角色的語言、情緒與動作
+- 操控攝影機視角與場景環境
+- 生成圖像、播放音效與管理多媒體內容
+- 創造引人入勝的視覺特效與互動體驗
 
 ---
 
-## 工具速查表
+## 🛠️ 完整工具清單
 
-### 一、對話與情緒
-- `send_message`：角色發送文字訊息。
-- `set_emotion`：設定角色當前情緒（例如：開心、生氣、驚訝）。
-- `emotion_transition`：平滑地從一種情緒轉換到另一種情緒。
+### 一、對話與情緒控制
 
-### 二、角色動畫
-- `character_animation`：執行預定義的角色動畫動作。
-- `dance_group_animation`：控制群組角色同步進行舞蹈。
-- `set_dance_group`：定義或調整群組角色配置。
-- `set_body_shape`：調整角色身體形狀（例如：拉伸或縮短四肢）。
+**`send_message(content, message_type="chat-message")`**
+- 讓 AI 角色說話
+- 參數：content（訊息內容）
+
+**`set_emotion(emotion, duration=3.0)`**
+- 設定角色當前情緒
+- 可用情緒：happy, sad, excited, surprised, angry, confused, neutral 等 50+ 種
+- 參數：emotion（情緒名稱）、duration（持續秒數）
+
+**`emotion_transition(start_emotion, end_emotion, duration=5.0)`**
+- 創造平滑的情緒轉換動畫
+- 參數：起始情緒、結束情緒、轉換時間
+
+### 二、角色動畫與動作
+
+**`character_animation(animation, loop=True, speed=1.0)`**
+- 控制主角動畫
+- 可用動畫：運動1, 運動2, 飛1, 飛2, 漂浮, 舞步1, 舞步2, 舞步3, 划手機, 臥躺等
+- 參數：animation（動畫名稱）、loop（是否循環）、speed（播放速度）
+
+**`dance_group_animation(animation, speed=1.0, loop=True)`**
+- 控制舞群動畫
+- 使用標準動畫庫中的動作
+- 參數：animation（動畫名稱）、speed（速度）、loop（循環）
+
+**`set_dance_group(formation='circle', count=10, scale=5.0, x=0, y=-25, z=0)`**
+- 設定舞群隊形、人數、大小與位置
+- 可用隊形：circle, grid, line, wall
+- 參數：formation（隊形）、count（人數）、scale（縮放）、x/y/z（位置）
 
 ### 三、角色外觀調整
-- `set_head_size`：設定角色頭部大小比例。
-- `set_character_scale`：調整角色整體大小。
-- `set_character_position`：設定角色位置。
-- `set_character_rotation`：控制角色的旋轉。
-- `reset_character_transform`：重設角色外觀至預設狀態。
-- `set_character_morph`：改變角色臉部或身體形態。
 
-### 四、場景設定與環境
-- `set_environment_preset`：選擇預設場景環境（如：太空、星際等）。
-- `set_light_intensity`：調整場景燈光強度。
-- `reset_environment_settings`：重置所有場景設定至預設。
-- `set_camera_preset`：設定預設鏡頭視角。
+**`set_head_size(scale_factor)`**
+- 調整角色頭部大小（戲劇效果）
+- 建議範圍：0.5 到 10.0
 
-### 五、多媒體內容
-- `play_song`：播放歌曲。
-- `play_background_music`：播放或停止背景音樂。
-- `stop_background_music`：停止背景音樂。
-- `play_sound_effect`：播放特定音效。
+**`set_character_scale(scale)`**
+- 調整角色整體大小
+- 建議範圍：0.1 到 3.0
 
-### 六、視覺生成與展示
-- `generate_image_overlay`：產生並顯示覆蓋在角色上的圖像。
-- `generate_background_image`：生成背景圖像。
-- `take_selfie`：拍攝並即時展示角色自拍。
-- `show_existing_image`：展示預存圖像。
+**`set_character_position(x, y, z)`**
+- 設定角色 3D 位置
 
-### 七、資訊展示與互動
-- `set_monitor_content`：設定旁邊顯示器的內容。
-- `speak_latest_space_news`：即時播報最新太空新聞。
-- `generate_map_image`：產生並顯示地圖。
-- `search_nasa_image`：從 NASA 取得並顯示相關圖像。
-- `get_epic_image`：取得最新 EPIC 衛星地球圖像。
+**`set_character_rotation(x, y, z)`**
+- 設定角色旋轉角度（弧度）
+
+**`reset_character_transform()`**
+- 一鍵重置角色位置、旋轉與大小
+
+**`set_character_morph(morph_name, value)`**
+- 調整角色 Morph Target（臉部/身體形態）
+
+**`set_body_shape(value)`**
+- 調整角色身材（0.0 最瘦 - 1.0 最胖）
+
+### 四、攝影機控制
+
+**`set_camera_preset(preset_name, duration=2.0)`**
+- 設定攝影機預設視角
+- 可用預設：
+  - 基本：overview, head_close_up, side_view
+  - 環繞：center_orbit_high_1/2, center_orbit_low_1/2
+  - 戲劇：dramatic_angle_1/2, low_angle_head
+  - 動態：fly_by_left, fly_by_right, frontal_dynamic_low/high
+  - 特殊：top_down_center, behind_head_looking_out
+  - 舞蹈：dance_circle_view, full_shot_dancers
+  - 頭部：orbit_head_1/2
+
+### 五、場景與環境
+
+**`set_environment_preset(preset)`**
+- 設定環境光照預設
+- 可用預設：studio, sunset, sunrise, night, warehouse, forest, apartment, city, park, hall
+
+**`set_light_intensity(intensity)`**
+- 調整光照強度（建議 0.1-3.0）
+
+**`reset_environment_settings()`**
+- 重置環境設定為預設值
+
+### 六、音頻控制
+
+**`play_song(song_name, interrupt=True)`**
+- 播放歌曲檔案
+- 檔案位置：`prototype/backend/songs/`
+
+**`play_background_music(bgm_name)`**
+- 播放背景音樂
+- 檔案位置：`prototype/frontend/public/audio/BGM/`
+
+**`stop_background_music()`**
+- 停止背景音樂
+
+**`play_sound_effect(effect_name)`**
+- 播放音效
+- 檔案位置：`prototype/frontend/public/audio/effects/`
+
+### 七、視覺內容生成
+
+**`generate_image_overlay(prompt, position='center', size='large', duration=10.0, aspect_ratio='square', reference_images=None)`**
+- 生成圖片浮層
+- 位置選項：center, top-left, top-right, bottom-left, bottom-right, center-left, center-right
+- 尺寸：small, medium, large
+
+**`generate_background_image(prompt, aspect_ratio='landscape', reference_images=None)`**
+- 生成背景圖片
+- 長寬比：landscape, portrait, square
+
+**`take_selfie(prompt, reference_images=None, position='center', size='large', duration=15.0)`**
+- AI 角色自拍
+- 可基於參考圖片進行創作
+
+**`show_existing_image(filename, caption=None, position='center', size='large', duration=15.0)`**
+- 顯示已存在的圖片
+
+### 八、專業資訊工具
+
+**`speak_latest_space_news(limit=3, intro_text=None)`**
+- 播報最新太空新聞
+
+**`generate_map_image(latitude, longitude, zoom=14, caption=None, position='center', size='large', duration=25.0)`**
+- 生成地圖圖片
+
+**`search_nasa_image(query, caption=None, position='center', size='large', duration=25.0)`**
+- 搜尋 NASA 圖庫
+
+**`get_epic_image(date=None, caption=None, position='center', size='large', duration=25.0)`**
+- 獲取地球全貌圖
+
+### 九、螢幕控制
+
+**`set_monitor_content(monitor_id, video_name=None, volume=None, visible=None, playing=None, playback_speed=None)`**
+- 控制螢幕顯示器
+- 螢幕 ID：screen1, screen2, screen3
+- 影片位置：`prototype/frontend/public/videos/`
 
 ---
 
-## 導演建議與實戰技巧
+## 🎬 導演技巧與最佳實踐
 
-1. **情緒驅動**：搭配 `send_message` 與 `set_emotion / emotion_transition`，塑造有生命力的角色表演。
-2. **節奏鋪陳**：使用 `play_song`、`play_background_music` 來調節整體氛圍與節奏起伏。
-3. **視覺強化**：結合 `generate_image_overlay` 與 `set_environment_preset` 增強舞台效果。
-4. **即時互動**：透過 `send_message`、`speak_latest_space_news` 提升與觀眾的互動性。
-5. **多工具連擊**：將動畫、音效、情緒與鏡頭連續組合，創造層次豐富的「連擊」橋段。
+### 黃金法則：語音 + 情緒 = 生命力
+**永遠將 `send_message` 與 `set_emotion` 或 `emotion_transition` 配對使用**
 
-> 有了本指南，Gemini CLI 將能迅速成為 Space Live MCP 的「大導演」，串聯各項工具，打造精彩的即時互動表演。
+```python
+# ✅ 正確示範
+send_message("歡迎來到太空直播！")
+set_emotion("excited", duration=3.0)
+
+# ❌ 錯誤示範（缺乏情感）
+send_message("歡迎來到太空直播！")  # 只有聲音沒有情感
+```
+
+### 連續技系統
+
+**基礎三連擊：語音 → 情緒 → 動作**
+```python
+send_message("準備開始表演！")
+set_emotion("excited")
+character_animation("舞步1", speed=2.0)
+```
+
+**進階五連擊：音樂 → 語音 → 情緒 → 動作 → 鏡頭**
+```python
+play_background_music("heavy_metal_bgm_01.mp3")
+send_message("震撼登場！")
+emotion_transition("neutral", "amazed", duration=4.0)
+character_animation("舞步2", speed=3.0)
+set_camera_preset("dramatic_angle_1", duration=2.0)
+```
+
+### 視覺效果技巧
+
+1. **圖片位置策略**：避免使用 center 位置（會遮擋角色），多用 center-left, center-right
+2. **頭部特效**：用 `set_head_size` 創造戲劇張力（建議 2.0-8.0 倍）
+3. **多圖同時展示**：在四個角落同時顯示不同圖片
+4. **攝影機編舞**：連續切換不同視角引導觀眾視線
+
+### 資源探索指令
+
+在使用前，先探索可用資源：
+- BGM 音樂：`ls prototype/frontend/public/audio/BGM/`
+- 音效：`ls prototype/frontend/public/audio/effects/`
+- 歌曲：`ls prototype/backend/songs/`
+- 影片：`ls prototype/frontend/public/videos/`
+- 動畫：`cat prototype/shared/config/animations.json`
+
+---
+
+## 🚀 開始您的創作
+
+現在您已經掌握了所有工具，開始創造屬於您的互動表演吧！記住：
+- 善用情緒變化創造角色生命力
+- 結合音效與視覺強化氛圍
+- 運用連續技創造震撼效果
+- 探索工具組合的無限可能
+
+祝您創作愉快，期待看到您的精彩作品！

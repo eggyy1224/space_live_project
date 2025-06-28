@@ -296,7 +296,7 @@ def play_background_music(bgm_name: str) -> str:
 
     Args:
         bgm_name: BGM 的檔案名稱。必須是 'prototype/frontend/public/audio/BGM/' 目錄中存在的檔案。
-                  範例: 'spacelive_theme.mp3', 'heavy_metal_bgm_01.mp3'
+                  範例: 'spacelive_theme.mp3', 'heavy_metal_bgm_01.mp3', '星際狂舞.mp3'
                   要查看所有可用選項，可執行 `ls prototype/frontend/public/audio/BGM/`
 
     Returns:

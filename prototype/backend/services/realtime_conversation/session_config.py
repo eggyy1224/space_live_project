@@ -726,7 +726,8 @@ def get_tools_config() -> list:
                             "", "/audio/BGM/spacelive_theme.mp3", "/audio/BGM/spacelive_theme2.mp3",
                             "/audio/BGM/space_live_country_theme1.mp3", "/audio/BGM/space_live_country_theme2.mp3",
                             "/audio/BGM/heavy_metal_bgm_01.mp3", "/audio/BGM/heavy_metal_bgm_02.mp3", "/audio/BGM/heavy_metal_bgm_03.mp3",
-                            "/audio/BGM/hihi.mp3", "/audio/BGM/hihi (1).mp3", "/audio/BGM/hihi (2).mp3", "/audio/BGM/hihi (3).mp3"
+                            "/audio/BGM/hihi.mp3", "/audio/BGM/hihi (1).mp3", "/audio/BGM/hihi (2).mp3", "/audio/BGM/hihi (3).mp3",
+                            "/audio/BGM/太空媽祖.mp3", "/audio/BGM/星際狂舞.mp3"
                         ]
                     },
                     "sfxUrl": {
