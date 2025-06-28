@@ -723,7 +723,8 @@ def generate_image_overlay(
     position: str = 'center',
     size: str = 'large',
     duration: float = 10.0,
-    aspect_ratio: str = 'square'
+    aspect_ratio: str = 'square',
+    reference_images: List[str] = None
 ) -> str:
     """
     根據文字描述生成一張圖片，並作為浮動圖層顯示在畫面上。
@@ -734,6 +735,7 @@ def generate_image_overlay(
         size: 圖片的預設尺寸 ('small', 'medium', 'large')。預設 'large'。
         duration: 圖片顯示的持續時間（秒）。預設 10.0。
         aspect_ratio: 圖片的長寬比 ('square', 'portrait', 'landscape')。預設 'square'。
+        reference_images: (可選) 參考圖片的檔案名稱列表。
 
     Returns:
         操作結果描述
@@ -744,8 +746,12 @@ def generate_image_overlay(
             "position": position,
             "size": size,
             "duration": duration,
-            "aspect_ratio": aspect_ratio
+            "aspect_ratio": aspect_ratio,
+            "reference_images": reference_images
         }
+        # 移除 payload 中值為 None 的鍵
+        payload = {k: v for k, v in payload.items() if v is not None}
+
         response = requests.post(f"{BASE_URL}/api/generate-image", json=payload, timeout=60)
         if response.status_code == 200:
             return f"✅ 圖片浮層生成成功！URL: {response.json().get('url')}"
