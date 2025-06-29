@@ -369,14 +369,22 @@ def set_dance_group(
 @mcp.tool
 def play_song(song_name: str, interrupt: bool = True) -> str:
     """
-    讓 AI 角色播放歌曲或特殊音效（例如唱歌、動物叫聲等）。
-    這會讓角色看起來像在唱歌或發出那個聲音。
+    播放歌曲檔案
+    
+    ⚠️ 重要：使用前必須先探索可用資源！不要猜測檔案名稱！
+    
+    探索指令：ls prototype/backend/songs/
     
     Args:
-        song_name: 歌曲的檔案名稱。可以使用 `prototype/backend/songs/` 目錄中的任何檔案。
-                   範例: '歌劇1.mp3', '電子音樂.mp3', '雞叫1.mp3', '貓叫1.mp3' 等。
-                   要查看所有可用選項，可執行 `ls prototype/backend/songs/` 指令。
-        interrupt: 是否中斷目前正在說的話。預設為 True。
+        song_name: 歌曲檔案名稱（必須是實際存在的檔案）
+                  範例格式：'檔案名.mp3'
+                  📁 檔案位置：prototype/backend/songs/
+        interrupt: 是否中斷當前播放的歌曲，預設為 True
+        
+    使用步驟：
+    1. 先執行：ls prototype/backend/songs/
+    2. 選擇實際存在的檔案
+    3. 再調用此工具
     
     Returns:
         操作結果描述
@@ -406,13 +414,22 @@ def play_song(song_name: str, interrupt: bool = True) -> str:
 @mcp.tool
 def play_background_music(bgm_name: str) -> str:
     """
-    播放背景音樂(BGM)。音樂會循環播放。
-
+    播放背景音樂檔案
+    
+    ⚠️ 重要：使用前必須先探索可用資源！不要猜測檔案名稱！
+    
+    探索指令：ls prototype/frontend/public/audio/BGM/
+    
     Args:
-        bgm_name: BGM 的檔案名稱。必須是 'prototype/frontend/public/audio/BGM/' 目錄中存在的檔案。
-                  範例: 'spacelive_theme.mp3', 'heavy_metal_bgm_01.mp3', '星際狂舞.mp3'
-                  要查看所有可用選項，可執行 `ls prototype/frontend/public/audio/BGM/`
-
+        bgm_name: BGM 檔案名稱（必須是實際存在的檔案）
+                 範例格式：'檔案名.mp3'
+                 📁 檔案位置：prototype/frontend/public/audio/BGM/
+                 
+    使用步驟：
+    1. 先執行：ls prototype/frontend/public/audio/BGM/
+    2. 選擇實際存在的檔案
+    3. 再調用此工具
+    
     Returns:
         操作結果描述
     """
@@ -444,13 +461,22 @@ def stop_background_music() -> str:
 @mcp.tool
 def play_sound_effect(effect_name: str) -> str:
     """
-    播放一次性的音效(SFX)。
-
+    播放音效檔案
+    
+    ⚠️ 重要：使用前必須先探索可用資源！不要猜測檔案名稱！
+    
+    探索指令：ls prototype/frontend/public/audio/effects/
+    
     Args:
-        effect_name: 音效的檔案名稱。必須是 'prototype/frontend/public/audio/effects/' 目錄中存在的檔案。
-                     範例: '電子砲1.mp3', '警告音1.mp3'
-                     要查看所有可用選項，可執行 `ls prototype/frontend/public/audio/effects/`
-
+        effect_name: 音效檔案名稱（必須是實際存在的檔案）
+                    範例格式：'檔案名.mp3'
+                    📁 檔案位置：prototype/frontend/public/audio/effects/
+                    
+    使用步驟：
+    1. 先執行：ls prototype/frontend/public/audio/effects/
+    2. 選擇實際存在的檔案
+    3. 再調用此工具
+    
     Returns:
         操作結果描述
     """
@@ -850,16 +876,27 @@ def set_monitor_content(
     playback_speed: float = None
 ) -> str:
     """
-    控制指定的螢幕（Monitor）
-
+    控制螢幕顯示器的內容和播放狀態
+    
+    ⚠️ 重要：使用影片前必須先探索可用資源！不要猜測檔案名稱！
+    
+    探索指令：ls prototype/frontend/public/videos/
+    
     Args:
-        monitor_id: 螢幕的 ID (例如: 'screen1', 'screen2')
-        video_name: 要播放的影片檔案名稱。必須是 'prototype/frontend/public/videos/' 中存在的檔案。
-        volume: 音量 (0.0 到 1.0)
-        visible: 是否可見 (True 或 False)
-        playing: 是否播放 (True 或 False)
-        playback_speed: 影片播放速度 (例如: 1.0 為正常速度, 2.0 為兩倍速)
-
+        monitor_id: 螢幕 ID，可選值: "screen1", "screen2", "screen3"
+        video_name: 影片檔案名稱（必須是實際存在的檔案）
+                   📁 檔案位置：prototype/frontend/public/videos/
+                   使用前請先執行：ls prototype/frontend/public/videos/
+        volume: 音量 (0.0-1.0)，可選
+        visible: 是否顯示螢幕，可選
+        playing: 是否播放，可選
+        playback_speed: 播放速度，可選（例如 1.0=正常, 2.0=雙倍速度）
+        
+    使用步驟（設定影片時）：
+    1. 先執行：ls prototype/frontend/public/videos/
+    2. 選擇實際存在的檔案
+    3. 再調用此工具
+    
     Returns:
         操作結果描述
     """
@@ -903,7 +940,9 @@ def generate_image_overlay(
     根據文字描述生成一張圖片，並作為浮動圖層顯示在畫面上。
 
     Args:
-        prompt: 用於生成圖片的文字描述。
+        prompt: 💡 建議使用英文描述獲得更好的生成效果！
+                正確範例: 'A massive supernova exploding in vibrant colors and cosmic energy'
+                也可使用中文: '一個巨大的超新星爆炸，充滿鮮豔色彩和宇宙能量'
         position: 圖片顯示位置 ('center', 'top-left', 'bottom-right' 等)。預設 'center'。
         size: 圖片的預設尺寸 ('small', 'medium', 'large')。預設 'large'。
         duration: 圖片顯示的持續時間（秒）。預設 10.0。
@@ -939,7 +978,9 @@ def generate_background_image(prompt: str, aspect_ratio: str = 'landscape', refe
     根據文字描述生成一張背景圖片，並自動設為場景背景。
 
     Args:
-        prompt: 用於生成圖片的文字描述。
+        prompt: 💡 建議使用英文描述獲得更好的生成效果！
+                正確範例: 'A futuristic space station interior with glowing control panels and stars visible through windows'
+                也可使用中文: '未來感的太空站內部，發光的控制面板和透過窗戶可見的星星'
         aspect_ratio: 圖片的長寬比 ('square', 'portrait', 'landscape')。預設 'landscape'。
         reference_images: (可選) 參考圖片的檔案名稱列表。
 
@@ -975,7 +1016,9 @@ def take_selfie(
     讓 AI 角色拍一張自拍照。可以基於現有圖片進行修改。
 
     Args:
-        prompt: 自拍的描述或對參考圖片的修改指令。
+        prompt: 💡 建議使用英文描述獲得更好的生成效果！
+                正確範例: 'AI character taking a selfie in space with Earth and stars in the background'
+                也可使用中文: 'AI角色在太空中自拍，背景是地球和星星'
         reference_images: (可選) 參考圖片的檔案名稱列表 (例如 ['selfie_123.png', 'image_456.png'])。
         position: 圖片顯示位置。預設 'center'。
         size: 圖片尺寸。預設 'large'。
@@ -1117,7 +1160,9 @@ def search_nasa_image(
     從 NASA 圖庫中搜尋圖片並顯示。
 
     Args:
-        query: 搜尋的關鍵字 (例如 'nebula', 'apollo 11')。
+        query: ⚠️ 【重要】搜尋關鍵字必須使用英文！NASA API 只接受英文查詢。
+               正確範例: 'nebula', 'apollo 11', 'mars rover', 'hubble telescope', 'space station'
+               錯誤範例: '星雲', '阿波羅', '火星探測器' (中文會導致搜尋失敗)
         caption: (可選) 自訂的圖片說明文字。
         position: 圖片顯示位置。預設 'center'。
         size: 圖片尺寸。預設 'large'。
