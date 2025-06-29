@@ -1226,9 +1226,76 @@ def get_epic_image(
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
+@mcp.tool
+def web_search(query: str, num_results: int = 5, language: str = "zh-TW") -> str:
+    """
+    使用 Google 進行網頁搜尋
+    
+    Args:
+        query: 搜尋查詢關鍵字
+        num_results: 返回結果數量 (1-10)，預設為 5
+        language: 搜尋語言，預設為 "zh-TW" (繁體中文)
+    
+    Returns:
+        搜尋結果摘要
+    """
+    try:
+        payload = {
+            "query": query,
+            "num_results": min(max(num_results, 1), 10),  # 限制在 1-10 之間
+            "language": language,
+            "safe_search": "active"
+        }
+        
+        search_endpoint = f"{BASE_URL}/api/web-search"
+        response = requests.post(search_endpoint, json=payload, timeout=15)
+        
+        if response.status_code == 200:
+            result = response.json()
+            
+            if result["success"] and result["results"]:
+                # 格式化搜尋結果
+                search_summary = f"🔍 搜尋「{query}」找到 {len(result['results'])} 個結果：\n\n"
+                
+                for i, item in enumerate(result["results"], 1):
+                    search_summary += f"{i}. **{item['title']}**\n"
+                    search_summary += f"   {item['snippet']}\n"
+                    search_summary += f"   🔗 {item['link']}\n\n"
+                
+                # 添加搜尋統計
+                if result.get("total_results"):
+                    search_summary += f"📊 總共找到約 {result['total_results']} 個相關結果"
+                    
+                if result.get("search_time"):
+                    search_summary += f"（搜尋耗時 {result['search_time']} 秒）"
+                
+                return search_summary
+            else:
+                return f"🔍 搜尋「{query}」沒有找到相關結果"
+                
+        elif response.status_code == 429:
+            return "❌ Google 搜尋配額已用完，請稍後再試"
+        elif response.status_code == 403:
+            return "❌ Google API 金鑰無效或權限不足，請檢查配置"
+        elif response.status_code == 500:
+            error_text = response.text
+            if "配置不完整" in error_text:
+                return "❌ Google 搜尋 API 未配置。請設定 GOOGLE_SEARCH_API_KEY 和 GOOGLE_SEARCH_ENGINE_ID 環境變數"
+            else:
+                return f"❌ 搜尋服務器內部錯誤: {error_text}"
+        else:
+            return f"❌ 搜尋失敗 (HTTP {response.status_code}): {response.text}"
+            
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+    except requests.exceptions.Timeout:
+        return "❌ 搜尋請求超時，請稍後再試"
+    except Exception as e:
+        return f"❌ 搜尋時發生錯誤: {str(e)}"
+
 if __name__ == "__main__":
     print("🚀 太空直播系統 MCP 服務器啟動中...", file=sys.stderr)
-    print("📡 提供工具: send_message, set_emotion, emotion_transition, character_animation, dance_group_animation, set_dance_group, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size, set_character_scale, set_character_position, set_character_rotation, reset_character_transform, set_character_morph, set_body_shape, set_monitor_content, generate_image_overlay, generate_background_image, take_selfie, show_existing_image, speak_latest_space_news, generate_map_image, search_nasa_image, get_epic_image", file=sys.stderr)
+    print("📡 提供工具: send_message, set_emotion, emotion_transition, character_animation, dance_group_animation, set_dance_group, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size, set_character_scale, set_character_position, set_character_rotation, reset_character_transform, set_character_morph, set_body_shape, set_monitor_content, generate_image_overlay, generate_background_image, take_selfie, show_existing_image, speak_latest_space_news, generate_map_image, search_nasa_image, get_epic_image, web_search", file=sys.stderr)
     print("🔗 連接後端: http://localhost:8000", file=sys.stderr)
     print("\n要在 Cursor 中使用，請在 settings.json 中添加此服務器配置", file=sys.stderr)
     

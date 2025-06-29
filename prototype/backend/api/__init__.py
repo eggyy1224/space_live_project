@@ -18,6 +18,7 @@ from .endpoints import (
     speech,
     websocket,
     news,
+    web_search,
 )
 from .middleware.cors import setup_cors
 
@@ -52,6 +53,7 @@ def init_app() -> FastAPI:
     app.include_router(image_generation.router, prefix="/api", tags=["image"])
     app.include_router(realtime_conversation.router, prefix="/api", tags=["realtime"])
     app.include_router(news.router, prefix="/api/news", tags=["news"])
+    app.include_router(web_search.router, prefix="/api", tags=["search"])
 
     # 創建音頻目錄（如果不存在）
     audio_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "audio")

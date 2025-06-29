@@ -4,10 +4,11 @@
 
 ## 🎯 您的使命
 
-您將透過 30+ 個專業工具，將任何創意腳本轉換為生動的互動直播表演：
+您將透過 34 個專業工具，將任何創意腳本轉換為生動的互動直播表演：
 - 控制 AI 角色的語言、情緒與動作
 - 操控攝影機視角與場景環境
 - 生成圖像、播放音效與管理多媒體內容
+- 即時網頁搜尋與資訊獲取
 - 創造引人入勝的視覺特效與互動體驗
 
 ---
@@ -167,6 +168,16 @@
 
 **`get_epic_image(date=None, caption=None, position='center', size='large', duration=25.0)`**
 - 獲取地球全貌圖
+
+**`web_search(query, num_results=5, language="zh-TW")` 🔍 NEW**
+- 使用 Google 進行即時網頁搜尋
+- 參數：
+  - query（搜尋關鍵字）
+  - num_results（結果數量，1-10，預設5）
+  - language（搜尋語言，預設"zh-TW"）
+- **⚠️ 重要：需要先配置 Google API！**
+  - 設定環境變數：`GOOGLE_SEARCH_API_KEY` 和 `GOOGLE_SEARCH_ENGINE_ID`
+  - 取得 API 金鑰：https://developers.google.com/custom-search/v1/introduction
 
 ### 九、螢幕控制
 
