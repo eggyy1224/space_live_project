@@ -40,6 +40,7 @@ The application registers these routes in `prototype/backend/api/__init__.py`.
 |`POST`|`/api/control/character/rotation`|Set character rotation [x, y, z] in radians.|
 |`POST`|`/api/control/character/outfit`|Control character outfit morph targets (outfit_shoes030_1 etc.).|
 |`POST`|`/api/control/character/animation`|Set character animation.|
+|`POST`|`/api/control/character/animation-mix`|**NEW**: Set character animation blending with multiple animations and weights.|
 |`POST`|`/api/control/character/visibility`|Toggle character visibility.|
 |`POST`|`/api/control/character/reset-transform`|Reset character transform (position, rotation, scale).|
 |`GET`|`/api/control/character/status`|Get current character status.|
@@ -423,14 +424,63 @@ To help Cursor better understand and utilize project assets, here are some key p
 }
 ```
 
-**14. Character Visibility (`/api/control/character/visibility`)**
+**14. Character Animation Mix (`/api/control/character/animation-mix`) ⭐ NEW**
+```json
+{
+  "animations": "array (Required, list of animation configurations, each containing: {name: string, weight: float 0.0-1.0, loop: boolean optional, speed: float optional})",
+  "blendMode": "string (Optional, blending mode: 'normal', 'additive', 'override', default: 'normal')",
+  "transitionDuration": "float (Optional, transition time to blend mode in seconds, default: 0.5)"
+}
+```
+
+**Animation Mix Configuration:**
+- **animations**: Array of animation objects, each with:
+  - `name`: Animation name (same as single animation endpoint)
+  - `weight`: Blend weight 0.0-1.0 (how much this animation influences the final result)
+  - `loop`: Whether to loop this animation (optional, default: true)
+  - `speed`: Playback speed multiplier (optional, default: 1.0)
+- **blendMode**: 
+  - `normal`: Standard blending (most common)
+  - `additive`: Adds animation transforms together
+  - `override`: Later animations override earlier ones
+- **transitionDuration**: Smooth transition time when switching to blend mode
+
+**Example Usage:**
+```bash
+# Basic blend: 70% 運動1 + 30% 舞步1
+curl -X POST http://localhost:8000/api/control/character/animation-mix \
+  -H "Content-Type: application/json" \
+  -d '{
+    "animations": [
+      {"name": "運動1", "weight": 0.7, "loop": true, "speed": 1.0},
+      {"name": "舞步1", "weight": 0.3, "loop": true, "speed": 1.2}
+    ],
+    "blendMode": "normal",
+    "transitionDuration": 0.5
+  }'
+
+# Complex 3-animation blend for space floating dance
+curl -X POST http://localhost:8000/api/control/character/animation-mix \
+  -H "Content-Type: application/json" \
+  -d '{
+    "animations": [
+      {"name": "漂浮", "weight": 0.5, "loop": true, "speed": 0.8},
+      {"name": "舞步2", "weight": 0.3, "loop": true, "speed": 1.0},
+      {"name": "飛1", "weight": 0.2, "loop": true, "speed": 1.5}
+    ],
+    "blendMode": "additive",
+    "transitionDuration": 1.0
+  }'
+```
+
+**15. Character Visibility (`/api/control/character/visibility`)**
 ```json
 {
   "visible": "boolean (Required, true to show, false to hide)"
 }
 ```
 
-**15. Character Reset Transform (`/api/control/character/reset-transform`)**
+**16. Character Reset Transform (`/api/control/character/reset-transform`)**
 ```json
 {
   "reset_position": "boolean (Optional, default: true)",
@@ -439,14 +489,14 @@ To help Cursor better understand and utilize project assets, here are some key p
 }
 ```
 
-**16. Head Size Control (`/api/control/head-size`)**
+**17. Head Size Control (`/api/control/head-size`)**
 ```json
 {
   "scaleFactor": "float (Scale multiplier for head model, range: 0.1 to 20.0, required. 1.0 = normal size, 2.0 = double size, 0.5 = half size)"
 }
 ```
 
-**17. Scene Display Control (`/api/control/scene-display`)**
+**18. Scene Display Control (`/api/control/scene-display`)**
 ```json
 {
   "displayScene": "boolean (Whether to show or hide the 3D scene, required)",
@@ -457,7 +507,7 @@ To help Cursor better understand and utilize project assets, here are some key p
 }
 ```
 
-**18. Image Generation (`/api/generate-image`)**
+**19. Image Generation (`/api/generate-image`)**
 ```json
 {
   "description": "string (Text description of the image to generate, required. Can be in Chinese or English. Examples: '一隻可愛的橘貓在花園裡', 'a beautiful sunset over mountains')",
@@ -470,7 +520,7 @@ To help Cursor better understand and utilize project assets, here are some key p
 }
 ```
 
-**19. Show Existing Image (`/api/show-existing-image`)**
+**20. Show Existing Image (`/api/show-existing-image`)**
 ```json
 {
   "filename": "string (Required, image filename in generated_images directory. Example: 'image_1749309153863.png')",
@@ -484,7 +534,7 @@ To help Cursor better understand and utilize project assets, here are some key p
 }
 ```
 
-**20. Take Selfie (`/api/take-selfie`)**
+**21. Take Selfie (`/api/take-selfie`)**
 ```json
 {
   "description": "string (Optional, selfie description, default: '拍一張自拍照')",
@@ -501,7 +551,7 @@ To help Cursor better understand and utilize project assets, here are some key p
 }
 ```
 
-**21. Continue Selfie (`/api/continue-selfie`)**
+**22. Continue Selfie (`/api/continue-selfie`)**
 ```json
 {
   "modification": "string (Optional, modification instructions, default: '稍微改變一下表情和姿勢')",
@@ -511,28 +561,28 @@ To help Cursor better understand and utilize project assets, here are some key p
 }
 ```
 
-**22. Environment Preset (`/api/control/environment/preset`)**
+**23. Environment Preset (`/api/control/environment/preset`)**
 ```json
 {
   "preset": "string (Required, environment preset name. Options: 'studio', 'sunset', 'dawn', 'night', 'warehouse', 'forest', 'apartment', 'city', 'park', 'lobby')"
 }
 ```
 
-**23. Environment Intensity (`/api/control/environment/intensity`)**
+**24. Environment Intensity (`/api/control/environment/intensity`)**
 ```json
 {
   "intensity": "float (Required, lighting intensity value, range: 0.1 to 3.0. 1.0 = normal intensity, 2.0 = double brightness, 0.5 = half brightness)"
 }
 ```
 
-**24. Environment Background (`/api/control/environment/background`)**
+**25. Environment Background (`/api/control/environment/background`)**
 ```json
 {
   "background": "boolean (Required, true to show environment as background, false to hide background)"
 }
 ```
 
-**25. Environment Config (`/api/control/environment/config`)**
+**26. Environment Config (`/api/control/environment/config`)**
 ```json
 {
   "preset": "string (Optional, environment preset name)",
@@ -541,14 +591,14 @@ To help Cursor better understand and utilize project assets, here are some key p
 }
 ```
 
-**26. Environment Reset (`/api/control/environment/reset`)**
+**27. Environment Reset (`/api/control/environment/reset`)**
 ```json
 {
   "reset_to_defaults": "boolean (Optional, default: true. Reset all environment settings to default values)"
 }
 ```
 
-**27. Generate Background Image (`/api/generate-background-image`)**
+**28. Generate Background Image (`/api/generate-background-image`)**
 ```json
 {
   "description": "string (Required, description of the background image to generate. Examples: 'Beautiful deep space scene with nebulae and distant galaxies', 'Futuristic digital matrix with neon colors', 'Abstract geometric patterns with gradient colors')",
@@ -556,14 +606,14 @@ To help Cursor better understand and utilize project assets, here are some key p
 }
 ```
 
-**28. Set Background Image (`/api/set-background-image`)**
+**29. Set Background Image (`/api/set-background-image`)**
 ```json
 {
   "filename": "string (Required, background image filename. Must exist in frontend/public/background_pictures/ directory. Examples: 'outerspace1.png', 'background_1750322123885.png')"
 }
 ```
 
-**29. Disable Background Image (`/api/disable-background-image`)**
+**30. Disable Background Image (`/api/disable-background-image`)**
 ```json
 {}
 ```

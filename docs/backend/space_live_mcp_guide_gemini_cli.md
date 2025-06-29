@@ -36,6 +36,18 @@
 - 可用動畫：運動1, 運動2, 飛1, 飛2, 漂浮, 舞步1, 舞步2, 舞步3, 划手機, 臥躺等
 - 參數：animation（動畫名稱）、loop（是否循環）、speed（播放速度）
 
+**`character_animation_mix(animations_config, blend_mode="normal", transition_duration=0.5)` ⭐ NEW**
+- 控制主角的多重動畫混合，可同時播放多個動畫並控制權重
+- 參數：
+  - animations_config（動畫配置JSON字串）
+  - blend_mode（混合模式：normal, additive, override）
+  - transition_duration（過渡時間秒數）
+- 動畫配置格式：'[{"name": "動畫名稱", "weight": 權重0.0-1.0, "loop": true/false, "speed": 播放速度}]'
+
+**`stop_character_animation_mix()` ⭐ NEW**
+- 停止動畫混合，回到單一動畫模式
+- 無參數
+
 **`dance_group_animation(animation, speed=1.0, loop=True)`**
 - 控制舞群動畫
 - 使用標準動畫庫中的動作
@@ -186,12 +198,43 @@ character_animation("舞步2", speed=3.0)
 set_camera_preset("dramatic_angle_1", duration=2.0)
 ```
 
+**🎭 NEW 動畫混合連續技：音樂 → 語音 → 情緒 → 混合動畫 → 鏡頭**
+```python
+play_background_music("spacelive_theme_bgm_04.mp3")
+send_message("史無前例的太空漂浮舞蹈！")
+emotion_transition("excited", "transcendent", duration=6.0)
+character_animation_mix(
+    '[{"name": "漂浮", "weight": 0.6, "speed": 0.8}, {"name": "舞步1", "weight": 0.4, "speed": 1.2}]',
+    blend_mode="normal",
+    transition_duration=1.0
+)
+set_camera_preset("center_orbit_high_1", duration=2.0)
+```
+
+**🚀 終極混合技：複雜多動畫混合**
+```python
+# 太空漂浮舞蹈：三個動畫同時混合
+character_animation_mix(
+    '[{"name": "漂浮", "weight": 0.4}, {"name": "舞步2", "weight": 0.3}, {"name": "飛1", "weight": 0.3}]',
+    blend_mode="additive",
+    transition_duration=2.0
+)
+
+# 停止混合，回到單一動畫
+stop_character_animation_mix()
+```
+
 ### 視覺效果技巧
 
 1. **圖片位置策略**：避免使用 center 位置（會遮擋角色），多用 center-left, center-right
 2. **頭部特效**：用 `set_head_size` 創造戲劇張力（建議 2.0-8.0 倍）
 3. **多圖同時展示**：在四個角落同時顯示不同圖片
 4. **攝影機編舞**：連續切換不同視角引導觀眾視線
+5. **🎭 動畫混合藝術**：
+   - 基礎混合：運動 + 舞蹈 (0.7 + 0.3)
+   - 太空主題：漂浮 + 舞步 + 飛行 (0.4 + 0.3 + 0.3)
+   - 情緒混合：用 additive 模式創造豐富動作
+   - 權重調整：總重量保持在 1.0 左右以獲得最佳效果
 
 ### 資源探索指令
 
@@ -204,12 +247,66 @@ set_camera_preset("dramatic_angle_1", duration=2.0)
 
 ---
 
+## 🎭 動畫混合實戰範例
+
+### 太空瑜伽表演
+```python
+# 設定太空瑜伽背景
+generate_background_image("平靜的太空瑜伽工作室，有漂浮的星雲", aspect_ratio="landscape")
+play_background_music("太空瑜伽.mp3")
+
+# 開場介紹
+send_message("歡迎來到太空瑜伽課程，讓我們在無重力環境中找到內在平衡")
+set_emotion("serene", duration=3.0)
+
+# 太空瑜伽混合動作：漂浮 + 運動
+character_animation_mix(
+    '[{"name": "漂浮", "weight": 0.8, "speed": 0.6}, {"name": "運動1", "weight": 0.2, "speed": 0.4}]',
+    blend_mode="normal",
+    transition_duration=2.0
+)
+set_camera_preset("center_orbit_low_1", duration=3.0)
+```
+
+### 太空DJ表演
+```python
+# 電子音樂背景
+generate_background_image("未來主義的太空DJ台，霓虹燈閃爍", aspect_ratio="landscape") 
+play_background_music("星際狂舞.mp3")
+
+# 興奮開場
+send_message("太空音樂節開始！讓我們一起在星際中狂歡！")
+emotion_transition("excited", "ecstatic", duration=4.0)
+
+# 複雜DJ混合動作：舞蹈 + 划手機 + 飛行
+character_animation_mix(
+    '[{"name": "舞步2", "weight": 0.5, "speed": 2.0}, {"name": "划手機", "weight": 0.3, "speed": 1.5}, {"name": "飛1", "weight": 0.2, "speed": 1.8}]',
+    blend_mode="additive",
+    transition_duration=1.5
+)
+set_head_size(4.0)  # 戲劇化效果
+```
+
 ## 🚀 開始您的創作
 
-現在您已經掌握了所有工具，開始創造屬於您的互動表演吧！記住：
+現在您已經掌握了所有工具，包括**革命性的動畫混合系統**！開始創造屬於您的互動表演吧！記住：
+
+### ✨ 核心創作原則
 - 善用情緒變化創造角色生命力
 - 結合音效與視覺強化氛圍
 - 運用連續技創造震撼效果
-- 探索工具組合的無限可能
+- **🎭 NEW**: 善用動畫混合創造前所未有的動作表現
 
-祝您創作愉快，期待看到您的精彩作品！
+### 🎭 動畫混合創作秘訣
+- **基礎組合**: 運動 + 舞蹈 = 活力四射
+- **太空主題**: 漂浮 + 任何動作 = 零重力效果
+- **情緒表達**: 用 additive 模式疊加細微動作
+- **戲劇高潮**: 三個動畫混合 + 頭部放大 = 震撼登場
+
+### 🚀 無限可能
+- 探索工具組合的無限可能
+- 創造獨特的太空故事情境
+- 運用動畫混合表達複雜情感
+- 建構多層次的視聽饗宴
+
+祝您創作愉快，期待看到您運用動畫混合系統創造的精彩作品！

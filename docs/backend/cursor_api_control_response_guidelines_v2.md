@@ -49,6 +49,17 @@ curl -X POST http://localhost:8000/api/control/head-size -H "Content-Type: appli
 curl -X POST http://localhost:8000/api/control/camera/set-frontend-preset -H "Content-Type: application/json" -d '{"name": "dramatic_angle_1", "duration": 1.5}'
 ```
 
+### Level 2.5: 🎭 **NEW** 動畫混合連續技 (5連擊+混合)
+**模式**: BGM → 語音+情緒 → **動畫混合** → 頭部特效 → 鏡頭運動
+```bash
+curl -X POST http://localhost:8000/api/control/background-audio -H "Content-Type: application/json" -d '{"bgmUrl": "/audio/BGM/spacelive_theme_bgm_04.mp3"}' && \
+curl -X POST http://localhost:8000/api/control/send-message -H "Content-Type: application/json" -d '{"content": "史無前例的太空漂浮舞蹈！"}' && \
+curl -X POST http://localhost:8000/api/control/emotion-trajectory -H "Content-Type: application/json" -d '{"duration": 6.0, "keyframes": [{"tag": "excited", "proportion": 0.0}, {"tag": "amazed", "proportion": 0.5}, {"tag": "transcendent", "proportion": 1.0}]}' && \
+curl -X POST http://localhost:8000/api/control/character/animation-mix -H "Content-Type: application/json" -d '{"animations": [{"name": "漂浮", "weight": 0.6, "loop": true, "speed": 0.8}, {"name": "舞步1", "weight": 0.4, "loop": true, "speed": 1.2}], "blendMode": "normal", "transitionDuration": 1.0}' && \
+curl -X POST http://localhost:8000/api/control/head-size -H "Content-Type: application/json" -d '{"scaleFactor": 3.0}' && \
+curl -X POST http://localhost:8000/api/control/camera/set-frontend-preset -H "Content-Type: application/json" -d '{"name": "center_orbit_high_1", "duration": 2.0}'
+```
+
 ### Level 3: 終極連續技 (7+連擊)
 **模式**: 背景 → BGM → 語音+情緒 → 動作 → 頭部特效 → Monitor牆 → 圖片生成
 ```bash
@@ -62,6 +73,22 @@ curl -X PUT http://localhost:8000/api/monitors/screen1 -H "Content-Type: applica
 curl -X PUT http://localhost:8000/api/monitors/screen2 -H "Content-Type: application/json" -d '{"content": "/videos/太空史萊姆.mp4", "volume": 0.7, "visible": true, "playing": true}' && \
 curl -X PUT http://localhost:8000/api/monitors/screen3 -H "Content-Type: application/json" -d '{"content": "/videos/太空打卡.mp4", "volume": 0.6, "visible": true, "playing": true}' && \
 curl -X POST http://localhost:8000/api/generate-image -H "Content-Type: application/json" -d '{"prompt": "璀璨舞台煙火", "position": "center-left", "size": "large", "duration": 60.0}'
+```
+
+### Level 4: 🎭 **NEW** 終極混合技 (8+連擊 + 動畫混合)
+**模式**: 背景 → BGM → 語音+情緒 → **複雜動畫混合** → 頭部特效 → Monitor牆 → 多圖生成
+```bash
+curl -X POST http://localhost:8000/api/generate-background-image -H "Content-Type: application/json" -d '{"prompt": "璀璨的太空舞廳，霓虹燈與星雲交織", "aspect_ratio": "16:9"}' && \
+curl -X POST http://localhost:8000/api/control/background-audio -H "Content-Type: application/json" -d '{"bgmUrl": "/audio/BGM/星際狂舞.mp3"}' && \
+curl -X POST http://localhost:8000/api/control/send-message -H "Content-Type: application/json" -d '{"content": "見證史上最瘋狂的太空混合舞蹈！"}' && \
+curl -X POST http://localhost:8000/api/control/emotion-trajectory -H "Content-Type: application/json" -d '{"duration": 10.0, "keyframes": [{"tag": "excited", "proportion": 0.0}, {"tag": "ecstatic", "proportion": 0.3}, {"tag": "transcendent", "proportion": 0.7}, {"tag": "euphoric", "proportion": 1.0}]}' && \
+curl -X POST http://localhost:8000/api/control/character/animation-mix -H "Content-Type: application/json" -d '{"animations": [{"name": "漂浮", "weight": 0.4, "loop": true, "speed": 0.7}, {"name": "舞步2", "weight": 0.3, "loop": true, "speed": 2.0}, {"name": "飛1", "weight": 0.3, "loop": true, "speed": 1.5}], "blendMode": "additive", "transitionDuration": 2.0}' && \
+curl -X POST http://localhost:8000/api/control/head-size -H "Content-Type: application/json" -d '{"scaleFactor": 8.0}' && \
+curl -X PUT http://localhost:8000/api/monitors/screen1 -H "Content-Type: application/json" -d '{"content": "/videos/太空辣妹跳舞.mp4", "volume": 1.0, "visible": true, "playing": true}' && \
+curl -X PUT http://localhost:8000/api/monitors/screen2 -H "Content-Type: application/json" -d '{"content": "/videos/太空史萊姆.mp4", "volume": 0.8, "visible": true, "playing": true}' && \
+curl -X PUT http://localhost:8000/api/monitors/screen3 -H "Content-Type: application/json" -d '{"content": "/videos/太空打卡.mp4", "volume": 0.7, "visible": true, "playing": true}' && \
+curl -X POST http://localhost:8000/api/generate-image -H "Content-Type: application/json" -d '{"prompt": "多彩極光爆炸效果", "position": "top-left", "size": "large", "duration": 90.0}' && \
+curl -X POST http://localhost:8000/api/generate-image -H "Content-Type: application/json" -d '{"prompt": "璀璨星際煙火", "position": "top-right", "size": "large", "duration": 90.0}'
 ```
 
 ## 🎨 高級技巧
@@ -185,6 +212,26 @@ animate_character() {
   curl -X POST http://localhost:8000/api/control/character/animation -H "Content-Type: application/json" -d "{\"animation\": \"$ANIMATION\", \"speed\": $SPEED}"
 }
 
+# 🎭 **NEW**: 主角動畫混合 - 革命性多動畫同時播放！
+animate_character_mix() {
+  ANIMATIONS_JSON=$1  # JSON字串，例如：'[{"name":"運動1","weight":0.7},{"name":"舞步1","weight":0.3}]'
+  BLEND_MODE=${2:-normal}  # normal, additive, override
+  TRANSITION_DURATION=${3:-0.5}
+  
+  echo ">> 🎭 動畫混合: $ANIMATIONS_JSON (模式: $BLEND_MODE)"
+  curl -X POST http://localhost:8000/api/control/character/animation-mix -H "Content-Type: application/json" -d "{
+    \"animations\": $ANIMATIONS_JSON,
+    \"blendMode\": \"$BLEND_MODE\",
+    \"transitionDuration\": $TRANSITION_DURATION
+  }"
+}
+
+# 停止動畫混合，回到單一動畫
+stop_character_mix() {
+  echo ">> ⏹️ 停止動畫混合"
+  curl -X POST http://localhost:8000/api/control/character/animation -H "Content-Type: application/json" -d "{\"animation\": \"Tpose\", \"loop\": true, \"speed\": 1.0}"
+}
+
 animate_dancers() {
   ANIMATION=$1
   SPEED=${2:-1.0}
@@ -254,6 +301,7 @@ curl -X POST http://localhost:8000/api/show-existing-image -H "Content-Type: app
 | POST | `/api/control/send-message` | 角色說話 | `content` (必須) |
 | POST | `/api/control/emotion-trajectory` | 表情控制 | `duration`, `keyframes` (必須) |
 | POST | `/api/control/character/animation` | 🎯主角動作 | `animation`: 漂浮/舞步1-3/運動1-2 |
+| POST | `/api/control/character/animation-mix` | 🎭**NEW**: 主角動畫混合 | `animations`: JSON陣列, `blendMode`: normal/additive/override |
 | POST | `/api/control/body-animation` | 🎭舞者動作 | `animation`: Cheering/SalsaDancing |
 | POST | `/api/control/head-size` | 頭部縮放 | `scaleFactor` (0.1-20.0) |
 | POST | `/api/control/background-audio` | 音樂音效 | `bgmUrl` OR `sfxUrl` |
