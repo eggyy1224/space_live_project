@@ -524,6 +524,12 @@ class CharacterAnimationRequest(BaseModel):
     loop: Optional[bool] = True
     speed: Optional[float] = 1.0
 
+class CharacterAnimationMixRequest(BaseModel):
+    """角色動畫混合控制請求模型"""
+    animations: List[Dict[str, Any]]  # 動畫配置列表 [{"name": "run", "weight": 0.7, "loop": True, "speed": 1.0}]
+    transitionDuration: Optional[float] = 0.5  # 切換到混合狀態的過渡時間
+    blendMode: Optional[str] = "normal"  # normal, additive, override
+
 class CharacterVisibilityRequest(BaseModel):
     """角色可見性控制請求模型"""
     visible: bool
@@ -740,6 +746,57 @@ async def set_character_animation(request: CharacterAnimationRequest):
     except Exception as e:
         logger.error(f"API 設置角色動畫失敗: {e}")
         raise HTTPException(status_code=500, detail=f"設置角色動畫失敗: {str(e)}")
+
+@router.post("/control/character/animation-mix")
+async def set_character_animation_mix(request: CharacterAnimationMixRequest):
+    """設置角色動畫混合"""
+    try:
+        if not manager.active_connections:
+            raise HTTPException(status_code=503, detail="沒有活動的前端連接")
+
+        # 驗證動畫配置
+        total_weight = 0
+        for anim_config in request.animations:
+            if not anim_config.get("name"):
+                raise HTTPException(status_code=400, detail="每個動畫配置必須包含 'name' 欄位")
+            weight = anim_config.get("weight", 1.0)
+            if not isinstance(weight, (int, float)) or weight < 0 or weight > 1:
+                raise HTTPException(status_code=400, detail="動畫權重必須在 0-1 之間")
+            total_weight += weight
+        
+        # 警告權重總和異常（但不阻止執行）
+        if total_weight > 1.1:
+            logger.warning(f"動畫權重總和 {total_weight:.2f} 超過 1.0，可能導致不自然的效果")
+
+        # 構建控制消息
+        control_data = {
+            "type": "character-control",
+            "action": "animation-mix",
+            "payload": {
+                "animations": request.animations,
+                "transitionDuration": request.transitionDuration,
+                "blendMode": request.blendMode
+            }
+        }
+
+        await manager.broadcast(json.dumps(control_data))
+
+        logger.info(f"API 設置角色動畫混合: {len(request.animations)} 個動畫")
+
+        return {
+            "success": True,
+            "message": "角色動畫混合已設置",
+            "animationCount": len(request.animations),
+            "totalWeight": total_weight,
+            "blendMode": request.blendMode,
+            "connections": len(manager.active_connections),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"API 設置角色動畫混合失敗: {e}")
+        raise HTTPException(status_code=500, detail=f"設置角色動畫混合失敗: {str(e)}")
 
 @router.post("/control/character/visibility")
 async def set_character_visibility(request: CharacterVisibilityRequest):

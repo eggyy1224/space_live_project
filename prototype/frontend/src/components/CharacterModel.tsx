@@ -36,6 +36,11 @@ export function CharacterModel() {
   const { calculateCurrentTrajectoryWeights } = useEmotionalSpeaking();
   const isSpeaking = useStore((state) => state.isSpeaking);
 
+  // 添加動畫混合狀態
+  const animationMixMode = useStore((state) => state.animationMixMode);
+  const currentAnimationMix = useStore((state) => state.currentAnimationMix);
+  const animationMixBlendMode = useStore((state) => state.animationMixBlendMode);
+
   const group = useRef<Group>(null);
 
   // 預加載模型
@@ -152,30 +157,72 @@ export function CharacterModel() {
     }
   }, [clonedScene, setCharacterMorphTargetDictionary, setCharacterModelLoaded]);
 
-  // 控制動畫播放
+  // 控制動畫播放（支援混合模式）
   useEffect(() => {
-    if (!mixer || !actions || !currentCharacterAnimation) return;
+    if (!mixer || !actions) return;
 
-    // 停止所有當前動畫
-    Object.values(actions).forEach((action) => {
+    if (animationMixMode && currentAnimationMix.length > 0) {
+      // 動畫混合模式
+      logger.info(`[CharacterModel] Entering animation mix mode with ${currentAnimationMix.length} animations`, LogCategory.ANIMATION);
+      
+      // 停止所有不在混合列表中的動畫
+      Object.entries(actions).forEach(([name, action]) => {
+        if (action) {
+          const isInMix = currentAnimationMix.some(mix => mix.name === name);
+          if (!isInMix && action.isRunning()) {
+            action.fadeOut(0.3);
+          }
+        }
+      });
+
+      // 設置混合動畫
+      currentAnimationMix.forEach((animConfig) => {
+        const action = actions[animConfig.name];
+        if (action) {
+          // 設置動畫屬性
+          action.loop = animConfig.loop ? THREE.LoopRepeat : THREE.LoopOnce;
+          action.timeScale = animConfig.speed;
+          action.weight = animConfig.weight;
+          action.enabled = true;
+
+          // 如果動畫沒有在運行，啟動它
+          if (!action.isRunning()) {
+            action.reset().fadeIn(0.3).play();
+          } else {
+            // 如果已經在運行，更新權重
+            action.setEffectiveWeight(animConfig.weight);
+          }
+
+          logger.info(`[CharacterModel] Mix animation: ${animConfig.name} (weight: ${animConfig.weight}, speed: ${animConfig.speed})`, LogCategory.ANIMATION);
+        } else {
+          logger.warn(`[CharacterModel] Mix animation not found: ${animConfig.name}`, LogCategory.ANIMATION);
+        }
+      });
+    } else if (currentCharacterAnimation) {
+      // 單一動畫模式（原有邏輯）
+      logger.info(`[CharacterModel] Single animation mode: ${currentCharacterAnimation}`, LogCategory.ANIMATION);
+
+      // 停止所有當前動畫
+      Object.values(actions).forEach((action) => {
+        if (action) {
+          action.fadeOut(0.3);
+        }
+      });
+
+      // 播放指定動畫
+      const action = actions[currentCharacterAnimation];
       if (action) {
-        action.fadeOut(0.3);
+        action.reset().fadeIn(0.3).play();
+        logger.info(`[CharacterModel] Playing animation: ${currentCharacterAnimation}`, LogCategory.ANIMATION);
+      } else {
+        logger.warn(`[CharacterModel] Animation not found: ${currentCharacterAnimation}`, LogCategory.ANIMATION);
       }
-    });
-
-    // 播放指定動畫
-    const action = actions[currentCharacterAnimation];
-    if (action) {
-      action.reset().fadeIn(0.3).play();
-      logger.info(`[CharacterModel] Playing animation: ${currentCharacterAnimation}`, LogCategory.ANIMATION);
-    } else {
-      logger.warn(`[CharacterModel] Animation not found: ${currentCharacterAnimation}`, LogCategory.ANIMATION);
     }
 
     return () => {
       // 清理函數
     };
-  }, [mixer, actions, currentCharacterAnimation]);
+  }, [mixer, actions, currentCharacterAnimation, animationMixMode, currentAnimationMix, animationMixBlendMode]);
 
   // 應用變形目標 (同步表情 + 語音驅動 + 情緒軌跡)
   useEffect(() => {

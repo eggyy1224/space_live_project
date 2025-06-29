@@ -33,6 +33,11 @@ export const CharacterControlPanel: React.FC<CharacterControlPanelProps> = ({
   const setCharacterScale = useStore((state) => state.setCharacterScale);
   const setCurrentCharacterAnimation = useStore((state) => state.setCurrentCharacterAnimation);
 
+  // 動畫混合相關狀態和方法 (新增)
+  const animationMixMode = useStore((state) => state.animationMixMode);
+  const currentAnimationMix = useStore((state) => state.currentAnimationMix);
+  const characterService = useCharacterService();
+
   const [selectedMorphTarget, setSelectedMorphTarget] = useState<string>('');
 
   if (!isVisible) return null;
@@ -270,6 +275,70 @@ export const CharacterControlPanel: React.FC<CharacterControlPanelProps> = ({
             </button>
           ))}
         </div>
+      </div>
+
+      {/* 動畫混合控制 (新增) */}
+      <div className="mb-4">
+        <h3 className="text-md font-semibold mb-2">動畫混合控制</h3>
+        
+        {/* 混合模式狀態顯示 */}
+        <div className="mb-2">
+          <div className="text-sm text-gray-300">
+            模式: {animationMixMode ? '🎭 混合模式' : '🎯 單一動畫'}
+          </div>
+          {animationMixMode && currentAnimationMix.length > 0 && (
+            <div className="text-xs text-gray-400">
+              混合 {currentAnimationMix.length} 個動畫
+            </div>
+          )}
+        </div>
+
+        {/* 混合控制按鈕 */}
+        <div className="grid grid-cols-2 gap-2 mb-2">
+          <button
+            onClick={() => {
+              // 示例：播放跑步+跳躍混合
+              characterService.playAnimationMix([
+                { name: "運動1", weight: 0.7 },
+                { name: "舞步1", weight: 0.3 }
+              ]);
+            }}
+            className="px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded text-xs"
+          >
+            混合示例
+          </button>
+          <button
+            onClick={() => characterService.stopAnimationMix()}
+            className="px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-xs"
+          >
+            停止混合
+          </button>
+        </div>
+
+        {/* 當前混合動畫權重調整 */}
+        {animationMixMode && currentAnimationMix.length > 0 && (
+          <div className="space-y-2">
+            <div className="text-xs text-gray-300">權重調整:</div>
+            {currentAnimationMix.map((anim, index) => (
+              <div key={`${anim.name}-${index}`} className="flex items-center space-x-2">
+                <div className="text-xs text-gray-300 w-16 truncate">{anim.name}</div>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value={anim.weight}
+                  onChange={(e) => {
+                    const newWeight = parseFloat(e.target.value);
+                    characterService.adjustAnimationWeight(anim.name, newWeight);
+                  }}
+                  className="flex-1"
+                />
+                <div className="text-xs text-gray-300 w-8">{anim.weight.toFixed(1)}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* 表情控制 */}

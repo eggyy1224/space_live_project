@@ -20,6 +20,16 @@ export interface CharacterSlice {
   availableCharacterAnimations: string[];
   currentCharacterAnimation: string | null;
   
+  // 動畫混合相關 (新增)
+  animationMixMode: boolean; // 是否在混合模式
+  currentAnimationMix: Array<{
+    name: string;
+    weight: number;
+    loop: boolean;
+    speed: number;
+  }>; // 當前混合的動畫配置
+  animationMixBlendMode: 'normal' | 'additive' | 'override';
+  
   // 表情同步狀態 (與 HeadSlice 獨立，但可以同步)
   characterMorphTargets: Record<string, number>; // 角色專屬的手動表情
   characterAudioLipsyncTargets: Record<string, number>; // 角色專屬的語音口型
@@ -34,6 +44,18 @@ export interface CharacterSlice {
   setAvailableCharacterAnimations: (animations: string[]) => void;
   setCurrentCharacterAnimation: (animation: string | null) => void;
   setCharacterMorphTargetDictionary: (dictionary: Record<string, number> | null) => void;
+  
+  // 動畫混合操作方法 (新增)
+  setAnimationMixMode: (enabled: boolean) => void;
+  setCurrentAnimationMix: (animations: Array<{
+    name: string;
+    weight: number;
+    loop: boolean;
+    speed: number;
+  }>) => void;
+  setAnimationMixBlendMode: (mode: 'normal' | 'additive' | 'override') => void;
+  updateAnimationMixWeight: (animationName: string, weight: number) => void;
+  clearAnimationMix: () => void;
   
   // 表情同步操作方法
   setCharacterMorphTargets: (targets: Record<string, number>) => void;
@@ -57,6 +79,11 @@ export const createCharacterSlice: StateCreator<CharacterSlice> = (set, get) => 
   availableCharacterAnimations: CHARACTER_ANIMATIONS,
   currentCharacterAnimation: "Tpose", // 默認姿勢
   
+  // 動畫混合相關 (新增)
+  animationMixMode: false,
+  currentAnimationMix: [],
+  animationMixBlendMode: 'normal',
+  
   // 表情同步狀態
   characterMorphTargets: {},
   characterAudioLipsyncTargets: {},
@@ -79,7 +106,27 @@ export const createCharacterSlice: StateCreator<CharacterSlice> = (set, get) => 
   
   setCharacterMorphTargetDictionary: (dictionary: Record<string, number> | null) => set({ characterMorphTargetDictionary: dictionary }),
   
-  // 表情同步操作實現
+  // 動畫混合操作方法 (新增)
+  setAnimationMixMode: (enabled: boolean) => set({ animationMixMode: enabled }),
+  
+  setCurrentAnimationMix: (animations: Array<{
+    name: string;
+    weight: number;
+    loop: boolean;
+    speed: number;
+  }>) => set({ currentAnimationMix: animations }),
+  
+  setAnimationMixBlendMode: (mode: 'normal' | 'additive' | 'override') => set({ animationMixBlendMode: mode }),
+  
+  updateAnimationMixWeight: (animationName: string, weight: number) => set((state) => ({
+    currentAnimationMix: state.currentAnimationMix.map((animation) =>
+      animation.name === animationName ? { ...animation, weight } : animation
+    )
+  })),
+  
+  clearAnimationMix: () => set({ currentAnimationMix: [] }),
+  
+  // 表情同步操作方法
   setCharacterMorphTargets: (targets: Record<string, number>) => set({ characterMorphTargets: targets }),
   
   updateCharacterMorphTarget: (key: string, value: number) => set((state) => ({

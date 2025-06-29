@@ -444,7 +444,40 @@ class WebSocketService {
           case "animation":
             if (typeof payload.animation === "string") {
               useStore.getState().setCurrentCharacterAnimation(payload.animation);
+              // 退出混合模式
+              useStore.getState().setAnimationMixMode(false);
               logger.info(`API 設置角色動畫: ${payload.animation}`, LogCategory.WEBSOCKET);
+            }
+            break;
+
+          case "animation-mix":
+            if (Array.isArray(payload.animations) && payload.animations.length > 0) {
+              // 驗證動畫配置格式
+              const validAnimations = payload.animations.filter((anim: any) => {
+                return anim && 
+                       typeof anim.name === 'string' && 
+                       typeof anim.weight === 'number' &&
+                       anim.weight >= 0 && anim.weight <= 1;
+              });
+
+              if (validAnimations.length > 0) {
+                // 設置混合模式
+                useStore.getState().setAnimationMixMode(true);
+                useStore.getState().setCurrentAnimationMix(validAnimations.map((anim: any) => ({
+                  name: anim.name,
+                  weight: anim.weight,
+                  loop: anim.loop !== undefined ? anim.loop : true,
+                  speed: anim.speed !== undefined ? anim.speed : 1.0
+                })));
+                
+                if (payload.blendMode) {
+                  useStore.getState().setAnimationMixBlendMode(payload.blendMode);
+                }
+
+                logger.info(`API 設置角色動畫混合: ${validAnimations.length} 個動畫`, LogCategory.WEBSOCKET);
+              } else {
+                logger.warn("動畫混合配置格式無效", LogCategory.WEBSOCKET);
+              }
             }
             break;
 

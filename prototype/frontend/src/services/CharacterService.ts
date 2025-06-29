@@ -22,6 +22,11 @@ export const useCharacterService = () => {
   const availableCharacterAnimations = useStore((state) => state.availableCharacterAnimations);
   const currentCharacterAnimation = useStore((state) => state.currentCharacterAnimation);
   
+  // 動畫混合相關狀態 (新增)
+  const animationMixMode = useStore((state) => state.animationMixMode);
+  const currentAnimationMix = useStore((state) => state.currentAnimationMix);
+  const animationMixBlendMode = useStore((state) => state.animationMixBlendMode);
+  
   // 角色專屬的表情狀態
   const characterMorphTargets = useStore((state) => state.characterMorphTargets);
   const characterAudioLipsyncTargets = useStore((state) => state.characterAudioLipsyncTargets);
@@ -47,6 +52,13 @@ export const useCharacterService = () => {
   const setCharacterAudioLipsyncTarget = useStore((state) => state.setCharacterAudioLipsyncTarget);
   const resetCharacterTransform = useStore((state) => state.resetCharacterTransform);
   
+  // 動畫混合相關操作方法 (新增)
+  const setAnimationMixMode = useStore((state) => state.setAnimationMixMode);
+  const setCurrentAnimationMix = useStore((state) => state.setCurrentAnimationMix);
+  const setAnimationMixBlendMode = useStore((state) => state.setAnimationMixBlendMode);
+  const updateAnimationMixWeight = useStore((state) => state.updateAnimationMixWeight);
+  const clearAnimationMix = useStore((state) => state.clearAnimationMix);
+  
   // 從 HeadSlice 獲取操作方法 (用於反向同步)
   const updateHeadMorphTarget = useStore((state) => state.updateMorphTarget);
   const setHeadMorphTargets = useStore((state) => state.setMorphTargets);
@@ -71,6 +83,42 @@ export const useCharacterService = () => {
     });
     logger.info(`[CharacterService] Applied synchronized expression with ${Object.keys(expression).length} morph targets`, LogCategory.MODEL);
   }, [updateCharacterMorphTarget, updateHeadMorphTarget]);
+
+  // 動畫混合便利方法 (新增)
+  const playAnimationMix = useCallback((animations: Array<{
+    name: string;
+    weight: number;
+    loop?: boolean;
+    speed?: number;
+  }>, blendMode: 'normal' | 'additive' | 'override' = 'normal') => {
+    const formattedAnimations = animations.map(anim => ({
+      name: anim.name,
+      weight: anim.weight,
+      loop: anim.loop !== undefined ? anim.loop : true,
+      speed: anim.speed !== undefined ? anim.speed : 1.0
+    }));
+    
+    setAnimationMixMode(true);
+    setCurrentAnimationMix(formattedAnimations);
+    setAnimationMixBlendMode(blendMode);
+    
+    logger.info(`[CharacterService] Playing animation mix with ${animations.length} animations (${blendMode} mode)`, LogCategory.MODEL);
+  }, [setAnimationMixMode, setCurrentAnimationMix, setAnimationMixBlendMode]);
+
+  const stopAnimationMix = useCallback(() => {
+    setAnimationMixMode(false);
+    clearAnimationMix();
+    logger.info(`[CharacterService] Stopped animation mix`, LogCategory.MODEL);
+  }, [setAnimationMixMode, clearAnimationMix]);
+
+  const adjustAnimationWeight = useCallback((animationName: string, weight: number) => {
+    if (weight < 0 || weight > 1) {
+      logger.warn(`[CharacterService] Invalid weight ${weight} for animation ${animationName}, must be 0-1`, LogCategory.MODEL);
+      return;
+    }
+    updateAnimationMixWeight(animationName, weight);
+    logger.info(`[CharacterService] Adjusted ${animationName} weight to ${weight}`, LogCategory.MODEL);
+  }, [updateAnimationMixWeight]);
 
   // 同步 HeadSlice 的手動表情到 Character
   useEffect(() => {
@@ -125,6 +173,11 @@ export const useCharacterService = () => {
     availableCharacterAnimations,
     currentCharacterAnimation,
     
+    // 動畫混合相關狀態 (新增)
+    animationMixMode,
+    currentAnimationMix,
+    animationMixBlendMode,
+    
     // 表情狀態 - 使用合併後的狀態 (確保同步)
     morphTargets: { ...characterMorphTargets, ...headMorphTargets }, // 合併手動表情
     audioLipsyncTargets: { ...characterAudioLipsyncTargets, ...headAudioLipsyncTargets }, // 合併語音口型
@@ -157,5 +210,13 @@ export const useCharacterService = () => {
       setHeadMorphTargets(targets); // 同步到 Head
       logger.info(`[CharacterService] Set morph targets for both models`, LogCategory.MODEL);
     },
+    setAnimationMixMode,
+    setCurrentAnimationMix,
+    setAnimationMixBlendMode,
+    updateAnimationMixWeight,
+    clearAnimationMix,
+    playAnimationMix,
+    stopAnimationMix,
+    adjustAnimationWeight,
   };
 }; 
