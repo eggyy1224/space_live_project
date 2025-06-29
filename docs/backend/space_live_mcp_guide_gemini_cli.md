@@ -163,6 +163,7 @@
 
 **`search_nasa_image(query, caption=None, position='center', size='large', duration=25.0)`**
 - 搜尋 NASA 圖庫
+- **⚠️ 重要：query 參數必須使用英文！NASA API 只接受英文查詢**
 
 **`get_epic_image(date=None, caption=None, position='center', size='large', duration=25.0)`**
 - 獲取地球全貌圖
@@ -206,6 +207,25 @@ generate_sound_effect("太空船引擎聲音", duration_seconds=8)  # 會產生�
 - **機械音效**: "electronic malfunction", "servo motor whirring", "hydraulic systems", "computer processing"
 - **環境音效**: "deep space ambient", "cosmic radiation", "distant nebula", "stellar wind"
 - **戲劇音效**: "dramatic tension build", "suspenseful atmosphere", "triumphant fanfare", "ethereal mystical"
+
+### 🛰️ NASA API 黃金法則：必須使用英文搜尋
+**基於實戰驗證，中文搜尋會導致 HTTP 500 錯誤！**
+
+```python
+# ✅ 正確示範：英文搜尋詞
+search_nasa_image("nebula", caption="美麗的星雲景象")
+search_nasa_image("mars rover", caption="火星探測車")
+
+# ❌ 錯誤示範：中文搜尋詞會失敗
+search_nasa_image("星雲", caption="星雲")      # ❌ HTTP 500 錯誤
+search_nasa_image("火星探測器", caption="探測器") # ❌ HTTP 500 錯誤
+```
+
+**高品質英文搜尋詞庫**
+- **天體現象**: "nebula", "galaxy", "supernova", "aurora", "solar eclipse"
+- **太空探索**: "apollo mission", "space shuttle", "mars rover", "space station"  
+- **宇宙景觀**: "earth from space", "saturn rings", "jupiter storms", "milky way"
+- **科學設備**: "hubble telescope", "james webb", "voyager probe", "cassini spacecraft"
 
 ### 連續技系統
 
@@ -455,7 +475,8 @@ set_camera_preset("dramatic_angle_1", duration=3.0)
 
 #### ❌ 不穩定功能 (成功率 <70%)
 - **NASA 圖片搜尋 `search_nasa_image`**: ~30% 成功率 ⚠️
-  - 經常出現 HTTP 500 錯誤
+  - **根本原因**: 使用中文搜尋導致 HTTP 500 錯誤
+  - **解決方案**: **必須使用英文 prompt**！NASA API 只接受英文查詢
   - **建議**: 優先使用 `get_epic_image` 或預存圖片
   - 如需使用，請準備備用方案
 
@@ -560,11 +581,33 @@ generate_image_overlay("A massive supernova exploding in vibrant colors", durati
 - **現象**: 音效生成成功但前端無聲
 - **解決**: 檢查前端音量設定，確認瀏覽器允許自動播放
 
+#### 🛰️ NASA API 英文 Prompt 黃金法則
+**基於實戰驗證，中文 prompt 會導致 HTTP 500 錯誤！**
+
+```python
+# ✅ 正確示範：必須使用英文搜尋
+search_nasa_image("nebula", caption="宇宙星雲")           # 搜尋詞用英文
+search_nasa_image("apollo 11", caption="阿波羅11號")      # 搜尋詞用英文
+search_nasa_image("mars rover", caption="火星探測器")    # 搜尋詞用英文
+search_nasa_image("hubble telescope", caption="哈伯望遠鏡") # 搜尋詞用英文
+
+# ❌ 錯誤示範：中文搜尋會導致失敗
+search_nasa_image("星雲", caption="宇宙星雲")           # ❌ 會導致 HTTP 500
+search_nasa_image("阿波羅", caption="太空任務")         # ❌ 會導致 HTTP 500
+search_nasa_image("火星探測器", caption="火星探測")     # ❌ 會導致 HTTP 500
+```
+
+**高品質英文搜尋詞範例**：
+- **太空天體**: "nebula", "galaxy", "supernova", "black hole", "pulsar"
+- **太空任務**: "apollo 11", "mars rover", "space shuttle", "international space station"
+- **天文設備**: "hubble telescope", "james webb telescope", "voyager", "cassini"
+- **行星系統**: "saturn rings", "jupiter storms", "mars surface", "venus atmosphere"
+
 #### NASA API 失敗處理
 ```python
 # 備用方案：改用 EPIC 地球圖片
 try:
-    search_nasa_image("nebula", caption="宇宙星雲")
+    search_nasa_image("nebula", caption="宇宙星雲")  # 注意：搜尋詞必須用英文
 except:
     get_epic_image(caption="地球全貌作為備用背景")
 ```
