@@ -8,6 +8,7 @@ import { CameraPreset } from '../camera';
 export const AUDIO_PATHS = {
   BGM: '/audio/BGM/',
   EFFECTS: '/audio/effects/',
+  GENERATED_SOUNDS: '/audio/generated_sounds/',
 } as const;
 
 // BGM 音樂檔案清單
@@ -340,7 +341,21 @@ export function getEffectPath(filename: string): string {
   if (filename.startsWith('/')) {
     return filename;
   }
+  // 檢查是否為生成的音效（包含 "generated_" 前綴）
+  if (filename.includes('generated_')) {
+    return `${AUDIO_PATHS.GENERATED_SOUNDS}${filename}`;
+  }
   return `${AUDIO_PATHS.EFFECTS}${filename}`;
+}
+
+export function getGeneratedSoundPath(filename: string): string {
+  if (filename.startsWith('http://') || filename.startsWith('https://')) {
+    return filename;
+  }
+  if (filename.startsWith('/')) {
+    return filename;
+  }
+  return `${AUDIO_PATHS.GENERATED_SOUNDS}${filename}`;
 }
 
 /**

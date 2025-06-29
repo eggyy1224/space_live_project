@@ -125,6 +125,16 @@
 - 播放音效
 - 檔案位置：`prototype/frontend/public/audio/effects/`
 
+**`generate_sound_effect(prompt, duration_seconds=5, filename=None, play_immediately=True)` 🎵 NEW**
+- 使用 ElevenLabs AI 即時生成音效
+- **重要：prompt 必須使用英文，中文會導致品質極差**
+- 參數：
+  - prompt（英文音效描述）
+  - duration_seconds（持續秒數，建議 3-15）
+  - filename（可選，自訂檔名）
+  - play_immediately（是否立即播放）
+- 生成的音效保存在：`prototype/frontend/public/audio/generated_sounds/`
+
 ### 七、視覺內容生成
 
 **`generate_image_overlay(prompt, position='center', size='large', duration=10.0, aspect_ratio='square', reference_images=None)`**
@@ -180,6 +190,23 @@ set_emotion("excited", duration=3.0)
 send_message("歡迎來到太空直播！")  # 只有聲音沒有情感
 ```
 
+### 🎵 音效生成黃金法則：必須使用英文 Prompt
+**基於實戰驗證，中文 Prompt 會產生品質極差的音效！**
+
+```python
+# ✅ 正確示範：專業英文描述
+generate_sound_effect("spaceship engine humming and vibrating steadily", duration_seconds=8)
+
+# ❌ 錯誤示範：中文描述品質差
+generate_sound_effect("太空船引擎聲音", duration_seconds=8)  # 會產生劣質音效
+```
+
+**專業英文音效術語庫**
+- **太空主題**: "spaceship engine", "cosmic wind", "stellar atmosphere", "zero gravity ambience"
+- **機械音效**: "electronic malfunction", "servo motor whirring", "hydraulic systems", "computer processing"
+- **環境音效**: "deep space ambient", "cosmic radiation", "distant nebula", "stellar wind"
+- **戲劇音效**: "dramatic tension build", "suspenseful atmosphere", "triumphant fanfare", "ethereal mystical"
+
 ### 連續技系統
 
 **基礎三連擊：語音 → 情緒 → 動作**
@@ -224,6 +251,26 @@ character_animation_mix(
 stop_character_animation_mix()
 ```
 
+**🎵 NEW 音效生成連續技：音效 → 語音 → 情緒 → 動作**
+```python
+generate_sound_effect("spaceship preparing for takeoff with engines warming up", duration_seconds=5)
+send_message("準備起飛！")
+set_emotion("excited")
+character_animation("飛1", speed=1.5)
+```
+
+**🚀 進階音效編排：BGM → 生成音效 → 語音 → 情緒 → 混合動畫**
+```python
+play_background_music("spacelive_theme_bgm_04.mp3")
+generate_sound_effect("electronic systems powering up with beeps and whirs", duration_seconds=4)
+send_message("系統啟動完成！")
+emotion_transition("neutral", "confident", duration=4.0)
+character_animation_mix(
+    '[{"name": "運動1", "weight": 0.7}, {"name": "舞步1", "weight": 0.3}]',
+    blend_mode="normal"
+)
+```
+
 ### 視覺效果技巧
 
 1. **圖片位置策略**：避免使用 center 位置（會遮擋角色），多用 center-left, center-right
@@ -241,6 +288,7 @@ stop_character_animation_mix()
 在使用前，先探索可用資源：
 - BGM 音樂：`ls prototype/frontend/public/audio/BGM/`
 - 音效：`ls prototype/frontend/public/audio/effects/`
+- 生成音效：`ls prototype/frontend/public/audio/generated_sounds/`
 - 歌曲：`ls prototype/backend/songs/`
 - 影片：`ls prototype/frontend/public/videos/`
 - 動畫：`cat prototype/shared/config/animations.json`
@@ -254,6 +302,9 @@ stop_character_animation_mix()
 # 設定太空瑜伽背景
 generate_background_image("平靜的太空瑜伽工作室，有漂浮的星雲", aspect_ratio="landscape")
 play_background_music("太空瑜伽.mp3")
+
+# 🎵 NEW: 添加太空環境音效
+generate_sound_effect("gentle cosmic wind with distant stellar ambience", duration_seconds=8, play_immediately=False)
 
 # 開場介紹
 send_message("歡迎來到太空瑜伽課程，讓我們在無重力環境中找到內在平衡")
@@ -274,6 +325,9 @@ set_camera_preset("center_orbit_low_1", duration=3.0)
 generate_background_image("未來主義的太空DJ台，霓虹燈閃爍", aspect_ratio="landscape") 
 play_background_music("星際狂舞.mp3")
 
+# 🎵 NEW: 添加電子音效
+generate_sound_effect("electronic beat drops with synthesizer swells and digital glitches", duration_seconds=6)
+
 # 興奮開場
 send_message("太空音樂節開始！讓我們一起在星際中狂歡！")
 emotion_transition("excited", "ecstatic", duration=4.0)
@@ -287,6 +341,34 @@ character_animation_mix(
 set_head_size(4.0)  # 戲劇化效果
 ```
 
+### 🎵 NEW 太空引擎啟動表演
+```python
+# 太空船控制室背景
+generate_background_image("高科技太空船控制室，儀表板閃爍", aspect_ratio="landscape")
+
+# 引擎預熱音效
+generate_sound_effect("spaceship engines warming up with mechanical hums and electrical charges", 
+                     duration_seconds=10, filename="engine_warmup.mp3")
+
+send_message("準備啟動引擎，所有系統檢查完畢")
+set_emotion("focused", duration=3.0)
+
+# 引擎啟動音效
+generate_sound_effect("powerful spaceship engine ignition with roaring flames and metallic vibrations", 
+                     duration_seconds=8, filename="engine_ignition.mp3")
+
+send_message("引擎點火成功！準備進入超空間！")
+emotion_transition("focused", "exhilarated", duration=5.0)
+
+# 飛行動作配合
+character_animation_mix(
+    '[{"name": "飛1", "weight": 0.6}, {"name": "運動2", "weight": 0.4}]',
+    blend_mode="normal",
+    transition_duration=2.0
+)
+set_camera_preset("dramatic_angle_1", duration=3.0)
+```
+
 ## 🚀 開始您的創作
 
 現在您已經掌握了所有工具，包括**革命性的動畫混合系統**！開始創造屬於您的互動表演吧！記住：
@@ -296,6 +378,7 @@ set_head_size(4.0)  # 戲劇化效果
 - 結合音效與視覺強化氛圍
 - 運用連續技創造震撼效果
 - **🎭 NEW**: 善用動畫混合創造前所未有的動作表現
+- **🎵 NEW**: 善用音效生成創造沉浸式聽覺體驗
 
 ### 🎭 動畫混合創作秘訣
 - **基礎組合**: 運動 + 舞蹈 = 活力四射
@@ -303,10 +386,18 @@ set_head_size(4.0)  # 戲劇化效果
 - **情緒表達**: 用 additive 模式疊加細微動作
 - **戲劇高潮**: 三個動畫混合 + 頭部放大 = 震撼登場
 
+### 🎵 音效生成創作秘訣
+- **英文描述**: 必須使用專業英文術語，避免中文
+- **質感描述**: 加入 "crackling", "humming", "vibrating" 等質感詞彙
+- **複合效果**: 結合多種元素，如 "laser charging with electronic whir"
+- **情境匹配**: 音效要與場景和角色動作完美配合
+- **時長控制**: 建議 3-15 秒，太長會影響品質
+
 ### 🚀 無限可能
 - 探索工具組合的無限可能
 - 創造獨特的太空故事情境
 - 運用動畫混合表達複雜情感
+- **🎵 NEW**: 運用音效生成打造專屬聽覺世界
 - 建構多層次的視聽饗宴
 
-祝您創作愉快，期待看到您運用動畫混合系統創造的精彩作品！
+祝您創作愉快，期待看到您運用動畫混合系統和音效生成功能創造的精彩作品！

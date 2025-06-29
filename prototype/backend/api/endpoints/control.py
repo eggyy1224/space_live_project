@@ -2,6 +2,8 @@ import asyncio
 import json
 import logging
 import uuid
+import os
+import requests
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -24,6 +26,15 @@ router = APIRouter()
 # Service instance to manage camera presets
 camera_service = CameraControlService()
 
+# ElevenLabs API 配置
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
+ELEVENLABS_API_URL = "https://api.elevenlabs.io/v1/sound-generation"
+
+# 生成音效的保存目錄
+GENERATED_SOUNDS_DIR = os.path.join(os.path.dirname(__file__), "../../../frontend/public/audio/generated_sounds")
+
+# 創建目錄如果不存在
+os.makedirs(GENERATED_SOUNDS_DIR, exist_ok=True)
 
 # 定義請求模型
 class SendMessageRequest(BaseModel):
@@ -98,6 +109,15 @@ class DanceGroupRequest(BaseModel):
     dancerCount: int = Field(..., gt=0, description="The number of dancers.")
     position: List[float] = Field(..., min_items=3, max_items=3, description="The [x, y, z] position of the group.")
     scale: float = Field(..., gt=0, description="The scale of each dancer.")
+
+
+class GenerateSoundEffectRequest(BaseModel):
+    """Request model for generating sound effects using ElevenLabs."""
+    prompt: str = Field(..., description="Text description of the sound effect to generate")
+    duration_seconds: Optional[float] = Field(3.0, ge=0.5, le=22.0, description="Duration in seconds (0.5-22.0)")
+    prompt_influence: Optional[float] = Field(0.6, ge=0.0, le=1.0, description="How closely to follow the prompt (0.0-1.0)")
+    filename: Optional[str] = Field(None, description="Custom filename (without extension)")
+    play_immediately: Optional[bool] = Field(True, description="Whether to play the generated sound immediately")
 
 
 @router.post("/control/send-message")
@@ -1157,3 +1177,103 @@ async def control_dance_group(request: DanceGroupRequest):
     except Exception as e:
         logger.error(f"API failed to control dance group: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to control dance group: {str(e)}")
+
+
+@router.post("/control/generate-sound-effect")
+async def generate_sound_effect(request: GenerateSoundEffectRequest):
+    """
+    使用 ElevenLabs API 生成音效並保存到 generated_sounds 目錄
+    """
+    try:
+        if not ELEVENLABS_API_KEY:
+            raise HTTPException(status_code=500, detail="ElevenLabs API key not configured")
+        
+        # 準備 API 請求
+        headers = {
+            "xi-api-key": ELEVENLABS_API_KEY,
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "text": request.prompt,
+            "duration_seconds": request.duration_seconds,
+            "prompt_influence": request.prompt_influence
+        }
+        
+        logger.info(f"Generating sound effect: '{request.prompt}', duration: {request.duration_seconds}s")
+        
+        # 調用 ElevenLabs API
+        response = requests.post(
+            f"{ELEVENLABS_API_URL}?output_format=mp3_44100_128",
+            headers=headers,
+            json=payload,
+            timeout=30
+        )
+        
+        if response.status_code != 200:
+            logger.error(f"ElevenLabs API error: {response.status_code} - {response.text}")
+            raise HTTPException(
+                status_code=response.status_code, 
+                detail=f"ElevenLabs API error: {response.text}"
+            )
+        
+        # 生成文件名
+        if request.filename:
+            filename = f"{request.filename}.mp3"
+        else:
+            # 使用時間戳和提示詞的簡化版本作為文件名
+            timestamp = int(datetime.now().timestamp())
+            safe_prompt = "".join(c for c in request.prompt[:20] if c.isalnum() or c in (' ', '-', '_')).rstrip()
+            safe_prompt = safe_prompt.replace(' ', '_')
+            filename = f"generated_{timestamp}_{safe_prompt}.mp3"
+        
+        # 保存音效文件
+        file_path = os.path.join(GENERATED_SOUNDS_DIR, filename)
+        with open(file_path, 'wb') as f:
+            f.write(response.content)
+            f.flush()  # 刷新緩衝區
+            os.fsync(f.fileno())  # 強制刷新到磁盤
+        
+        logger.info(f"Sound effect saved: {filename}")
+        
+        # 如果需要立即播放
+        if request.play_immediately:
+            # 增加延遲時間並添加檔案完整性檢查
+            await asyncio.sleep(0.3)  # 300ms 延遲，對大文件更安全
+            
+            # 驗證文件完整性
+            try:
+                file_size = os.path.getsize(file_path)
+                expected_size = len(response.content)
+                if file_size != expected_size:
+                    logger.warning(f"File size mismatch: expected {expected_size}, got {file_size}")
+                    await asyncio.sleep(0.2)  # 額外延遲
+            except Exception as e:
+                logger.warning(f"File integrity check failed: {e}")
+                await asyncio.sleep(0.2)  # 額外延遲
+            
+            # 使用 background-audio 端點播放音效
+            sfx_url = f"/audio/generated_sounds/{filename}"
+            play_request = BackgroundAudioRequest(sfxUrl=sfx_url)
+            await background_audio_control(play_request)
+            logger.info(f"Generated sound effect played: {sfx_url}")
+        
+        return {
+            "success": True,
+            "message": f"音效生成成功: {filename}",
+            "filename": filename,
+            "file_path": f"/audio/generated_sounds/{filename}",
+            "duration": request.duration_seconds,
+            "prompt": request.prompt,
+            "played_immediately": request.play_immediately
+        }
+        
+    except requests.exceptions.Timeout:
+        logger.error("ElevenLabs API timeout")
+        raise HTTPException(status_code=504, detail="音效生成超時，請稍後再試")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"ElevenLabs API request failed: {e}")
+        raise HTTPException(status_code=500, detail=f"音效生成請求失敗: {str(e)}")
+    except Exception as e:
+        logger.error(f"Sound effect generation failed: {e}")
+        raise HTTPException(status_code=500, detail=f"音效生成失敗: {str(e)}")

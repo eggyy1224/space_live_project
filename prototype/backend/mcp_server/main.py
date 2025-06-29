@@ -465,6 +465,65 @@ def play_sound_effect(effect_name: str) -> str:
         return f"❌ 發生錯誤: {str(e)}"
 
 @mcp.tool
+def generate_sound_effect(
+    prompt: str, 
+    duration_seconds: float = 3.0, 
+    prompt_influence: float = 0.6,
+    filename: str = None,
+    play_immediately: bool = True
+) -> str:
+    """
+    使用 ElevenLabs API 即時生成客製化音效。
+
+    ⚠️  重要：prompt 必須使用精確的英文描述，中文會導致音效品質不佳！
+    
+    建議的英文 prompt 範例：
+    - "spaceship engine humming and vibrating steadily" (太空船引擎穩定嗡嗡聲)
+    - "electronic malfunction with sparks crackling and warning beeps" (電子故障配電火花和警報聲)
+    - "deep space ambient cosmic wind and distant rumbling" (深空環境宇宙風和遠方隆隆聲) 
+    - "metal blast door sliding open with heavy mechanical sound" (金屬防爆門滑開的重機械聲)
+    - "urgent warning alarm beeping rapidly with echo" (緊急警報快速嗶聲帶回音)
+    - "rocket engine ignition with powerful thrust roar" (火箭引擎點火強力推進咆哮)
+    - "atmospheric entry rumbling and plasma whistling" (大氣層進入隆隆聲和電漿嘯叫)
+    - "reactor core humming with electrical discharge" (反應爐核心嗡嗡聲配電流放電)
+
+    Args:
+        prompt: 音效的英文描述文字，請使用專業的英文環境音效術語
+        duration_seconds: 音效長度（秒），範圍 0.5-22.0，預設 3.0 秒
+        prompt_influence: 對描述的遵循度，範圍 0.0-1.0，0.6 是平衡值
+        filename: 自訂檔名（不含副檔名），不設定則自動產生
+        play_immediately: 是否立即播放生成的音效，預設 True
+
+    Returns:
+        操作結果描述
+    """
+    try:
+        payload = {
+            "prompt": prompt,
+            "duration_seconds": duration_seconds,
+            "prompt_influence": prompt_influence,
+            "play_immediately": play_immediately
+        }
+        
+        if filename:
+            payload["filename"] = filename
+        
+        response = requests.post(f"{BASE_URL}/api/control/generate-sound-effect", json=payload, timeout=60)
+        
+        if response.status_code == 200:
+            result = response.json()
+            message = f"✅ 音效生成成功！檔案: {result['filename']}"
+            if result.get('played_immediately'):
+                message += " 已立即播放"
+            return message
+        else:
+            return f"❌ 音效生成失敗 (HTTP {response.status_code}): {response.text}"
+    except requests.exceptions.Timeout:
+        return "❌ 音效生成超時（這通常需要 10-30 秒），請稍後再試"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool
 def set_camera_preset(preset_name: str, duration: float = 2.0) -> str:
     """
     設置攝影機預設位置，創造戲劇性的視覺效果

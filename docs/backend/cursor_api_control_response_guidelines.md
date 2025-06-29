@@ -24,6 +24,7 @@ The application registers these routes in `prototype/backend/api/__init__.py`.
 |`POST`|`/api/control/murmur-mode`|Enable or disable the murmur feature.|
 |`POST`|`/api/control/play-audio`|Play an audio clip on the frontend.|
 |`POST`|`/api/control/background-audio`|Control background music or sound effects.|
+|`POST`|`/api/control/generate-sound-effect`|🎵**NEW**: Generate AI sound effects using ElevenLabs API.|
 |`POST`|`/api/control/emotion-trajectory`|Send an emotional keyframe sequence.|
 |`GET`|`/api/control/status`|Return current websocket connection status.|
 |`POST`|`/api/control/broadcast`|Broadcast a custom message payload.|
@@ -1636,3 +1637,120 @@ curl -X POST "http://localhost:8000/api/generate-background-image" \
   "reference_images": ["futuristic_city.jpg", "watercolor_sky.jpg"]
 }'
 ```
+
+### New: `/api/control/generate-sound-effect`
+This endpoint generates custom sound effects using ElevenLabs AI audio generation. It's perfect for creating immersive audio experiences that match your specific needs without requiring pre-recorded sound libraries.
+
+**⚠️ CRITICAL REQUIREMENT: English Prompts Only**
+Based on extensive testing, **Chinese prompts produce extremely poor quality audio**. Always use professional English descriptions for optimal results.
+
+**Request Body (`SoundEffectRequest`)**
+```json
+{
+  "prompt": "string (Required, English description of the sound effect)",
+  "duration_seconds": "integer (Optional, duration in seconds, 3-15 recommended, default: 5)",
+  "prompt_influence": "float (Optional, how closely to follow the prompt, 0.0-1.0, default: 0.3)",
+  "filename": "string (Optional, custom filename without extension, auto-generated if not provided)",
+  "play_immediately": "boolean (Optional, whether to play the sound immediately, default: true)"
+}
+```
+
+**✅ High-Quality English Prompt Examples:**
+```bash
+# Space theme sound effects
+curl -X POST "http://localhost:8000/api/control/generate-sound-effect" \
+-H "Content-Type: application/json" \
+-d '{
+  "prompt": "spaceship engine humming and vibrating steadily",
+  "duration_seconds": 8,
+  "filename": "spaceship_engine_start.mp3",
+  "play_immediately": true
+}'
+
+# Mechanical malfunction
+curl -X POST "http://localhost:8000/api/control/generate-sound-effect" \
+-H "Content-Type: application/json" \
+-d '{
+  "prompt": "electronic malfunction with sparks crackling and warning beeps",
+  "duration_seconds": 6,
+  "filename": "electronic_malfunction.mp3",
+  "play_immediately": true
+}'
+
+# Ambient space environment
+curl -X POST "http://localhost:8000/api/control/generate-sound-effect" \
+-H "Content-Type: application/json" \
+-d '{
+  "prompt": "deep space ambient cosmic wind and distant rumbling",
+  "duration_seconds": 10,
+  "filename": "cosmic_ambient.mp3",
+  "play_immediately": false
+}'
+```
+
+**❌ Poor Quality Examples (Avoid):**
+```bash
+# This will produce poor quality audio
+curl -X POST "http://localhost:8000/api/control/generate-sound-effect" \
+-H "Content-Type: application/json" \
+-d '{
+  "prompt": "太空船引擎聲音",  # Chinese description leads to poor quality
+  "duration_seconds": 8
+}'
+```
+
+**Professional English Audio Terms:**
+- **Space Theme**: "spaceship engine", "cosmic wind", "stellar atmosphere", "zero gravity ambience", "asteroid field", "warp drive activation"
+- **Mechanical**: "electronic malfunction", "servo motor whirring", "hydraulic systems", "computer processing", "robotic movements", "engine startup sequence"
+- **Environment**: "deep space ambient", "cosmic radiation", "distant nebula", "stellar wind", "planetary atmosphere", "space station interior"
+- **Dramatic**: "dramatic tension build", "suspenseful atmosphere", "triumphant fanfare", "ethereal mystical", "epic orchestral swell", "cinematic impact"
+
+**Success Response**
+```json
+{
+  "success": true,
+  "message": "Sound effect generated and saved successfully",
+  "filename": "spaceship_engine_start.mp3",
+  "file_path": "/audio/generated_sounds/spaceship_engine_start.mp3",
+  "duration": 8,
+  "play_immediately": true
+}
+```
+
+**WebSocket Broadcast (if play_immediately is true)**
+```json
+{
+  "type": "background_audio_update",
+  "payload": {
+    "sfxUrl": "/audio/generated_sounds/spaceship_engine_start.mp3",
+    "action": "play"
+  }
+}
+```
+
+**File Storage**
+Generated sound effects are automatically saved to:
+- **Backend Path**: `prototype/frontend/public/audio/generated_sounds/`
+- **Frontend URL**: `/audio/generated_sounds/filename.mp3`
+- **File Format**: MP3, optimized for web playback
+
+**Integration with Existing Audio System**
+The generated sound effects seamlessly integrate with the existing audio system:
+- Can be played immediately via `play_immediately: true`
+- Can be referenced later using `/audio/generated_sounds/filename.mp3`
+- Compatible with all existing sound effect APIs
+- Supports the same volume and playback controls
+
+**Best Practices for Sound Effect Generation:**
+1. **Use Descriptive English**: "spaceship engine warming up with metallic resonance"
+2. **Specify Duration**: Keep between 3-15 seconds for optimal quality
+3. **Include Texture Details**: "crackling", "humming", "vibrating", "echoing"
+4. **Combine Multiple Elements**: "laser charging with electronic whir and energy buildup"
+5. **Consider Context**: Match the sound to the scene and character actions
+6. **Test and Iterate**: Generate variations to find the perfect match
+
+**Error Handling**
+- Returns error 400 if prompt is missing or invalid
+- Returns error 500 if ElevenLabs API is unavailable
+- Returns error 503 if file storage fails
+- Provides detailed error messages for troubleshooting
