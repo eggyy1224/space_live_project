@@ -1227,6 +1227,193 @@ def get_epic_image(
         return f"❌ 發生錯誤: {str(e)}"
 
 @mcp.tool
+def get_available_songs() -> str:
+    """
+    取得系統中所有可用的歌曲檔案
+    
+    Returns:
+        歌曲清單的詳細資訊
+    """
+    try:
+        response = requests.get(f"{BASE_URL}/api/resources/songs", timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            songs_list = "\n".join([f"• {song['name']} ({song['size']} bytes)" for song in data['files']])
+            return f"✅ 找到 {data['count']} 個歌曲檔案:\n\n{songs_list}"
+        else:
+            return f"❌ 無法取得歌曲清單 (HTTP {response.status_code}): {response.text}"
+            
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool
+def get_available_bgm() -> str:
+    """
+    取得系統中所有可用的背景音樂檔案
+    
+    Returns:
+        BGM 清單的詳細資訊
+    """
+    try:
+        response = requests.get(f"{BASE_URL}/api/resources/bgm", timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            bgm_list = "\n".join([f"• {bgm['name']} ({bgm['size']} bytes)" for bgm in data['files']])
+            return f"✅ 找到 {data['count']} 個 BGM 檔案:\n\n{bgm_list}"
+        else:
+            return f"❌ 無法取得 BGM 清單 (HTTP {response.status_code}): {response.text}"
+            
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool
+def get_available_effects() -> str:
+    """
+    取得系統中所有可用的音效檔案
+    
+    Returns:
+        音效清單的詳細資訊
+    """
+    try:
+        response = requests.get(f"{BASE_URL}/api/resources/effects", timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            effects_list = "\n".join([f"• {effect['name']} ({effect['size']} bytes)" for effect in data['files']])
+            return f"✅ 找到 {data['count']} 個音效檔案:\n\n{effects_list}"
+        else:
+            return f"❌ 無法取得音效清單 (HTTP {response.status_code}): {response.text}"
+            
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool
+def get_available_videos() -> str:
+    """
+    取得系統中所有可用的影片檔案
+    
+    Returns:
+        影片清單的詳細資訊
+    """
+    try:
+        response = requests.get(f"{BASE_URL}/api/resources/videos", timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            videos_list = "\n".join([f"• {video['name']} ({video['size']} bytes)" for video in data['files']])
+            return f"✅ 找到 {data['count']} 個影片檔案:\n\n{videos_list}"
+        else:
+            return f"❌ 無法取得影片清單 (HTTP {response.status_code}): {response.text}"
+            
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool
+def get_available_animations() -> str:
+    """
+    取得系統中所有可用的動畫檔案
+    
+    Returns:
+        動畫清單的詳細資訊
+    """
+    try:
+        response = requests.get(f"{BASE_URL}/api/resources/animations", timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            animations_list = "\n".join([f"• {anim['name']} ({anim['size']} bytes)" for anim in data['files']])
+            return f"✅ 找到 {data['count']} 個動畫檔案:\n\n{animations_list}"
+        else:
+            return f"❌ 無法取得動畫清單 (HTTP {response.status_code}): {response.text}"
+            
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool
+def get_all_resources() -> str:
+    """
+    取得系統中所有類型的媒體資源總覽
+    
+    Returns:
+        所有資源的統計資訊
+    """
+    try:
+        response = requests.get(f"{BASE_URL}/api/resources/all", timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            summary = data['summary']
+            
+            return f"""✅ 系統資源總覽:
+📊 總檔案數: {summary['total_files']}
+🎵 歌曲檔案: {summary['songs_count']}
+🎼 背景音樂: {summary['bgm_count']}
+🔊 音效檔案: {summary['effects_count']}
+🎬 影片檔案: {summary['videos_count']}
+💃 動畫檔案: {summary['animations_count']}
+
+💡 提示: 使用其他資源查詢工具來查看具體檔案清單"""
+        else:
+            return f"❌ 無法取得資源總覽 (HTTP {response.status_code}): {response.text}"
+            
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool
+def search_resources(query: str, resource_type: str = None, limit: int = 10) -> str:
+    """
+    搜索媒體資源
+    
+    Args:
+        query: 搜索關鍵字
+        resource_type: 限制搜索的資源類型，可選值: songs, bgm, effects, videos, animations
+        limit: 結果數量限制，預設為 10
+    
+    Returns:
+        搜索結果
+    """
+    try:
+        params = {"query": query, "limit": limit}
+        if resource_type:
+            params["resource_type"] = resource_type
+            
+        response = requests.get(f"{BASE_URL}/api/resources/search", params=params, timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            
+            if data['count'] == 0:
+                return f"🔍 搜索關鍵字 '{query}' 沒有找到任何匹配的檔案"
+            
+            results_list = []
+            for result in data['results']:
+                results_list.append(f"• {result['name']} ({result['category']}) - {result['size']} bytes")
+            
+            results_text = "\n".join(results_list)
+            return f"🔍 搜索 '{query}' 找到 {data['count']} 個結果:\n\n{results_text}"
+        else:
+            return f"❌ 搜索失敗 (HTTP {response.status_code}): {response.text}"
+            
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool
 def web_search(query: str, num_results: int = 5, language: str = "zh-TW") -> str:
     """
     使用 Google 進行網頁搜尋
