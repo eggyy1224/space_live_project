@@ -131,9 +131,9 @@ async def emotion_transition(start_emotion: str, end_emotion: str, duration: flo
         return f"❌ 發生錯誤: {str(e)}"
 
 @mcp.tool
-def character_animation(animation: str, loop: bool = True, speed: float = 1.0) -> str:
+def set_main_character_animation(animation: str, loop: bool = True, speed: float = 1.0) -> str:
     """
-    控制 AI 角色的動畫動作
+    控制主要 AI 角色的動畫動作
     
     Args:
         animation: 動畫名稱，可用選項包括：
@@ -160,9 +160,9 @@ def character_animation(animation: str, loop: bool = True, speed: float = 1.0) -
         if response.status_code == 200:
             result = response.json()
             loop_text = "循環播放" if loop else "播放一次"
-            return f"✅ 角色動畫設置成功！AI 角色現在執行 '{animation}' 動作，{loop_text}，速度 {speed}x"
+            return f"✅ 主角動畫設置成功！AI 角色現在執行 '{animation}' 動作，{loop_text}，速度 {speed}x"
         else:
-            return f"❌ 角色動畫設置失敗 (HTTP {response.status_code}): {response.text}"
+            return f"❌ 主角動畫設置失敗 (HTTP {response.status_code}): {response.text}"
             
     except requests.exceptions.ConnectionError:
         return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
@@ -172,9 +172,9 @@ def character_animation(animation: str, loop: bool = True, speed: float = 1.0) -
         return f"❌ 發生錯誤: {str(e)}"
 
 @mcp.tool
-def character_animation_mix(animations_config: str, blend_mode: str = "normal", transition_duration: float = 0.5) -> str:
+def set_main_character_animation_mix(animations_config: str, blend_mode: str = "normal", transition_duration: float = 0.5) -> str:
     """
-    控制 AI 角色的多重動畫混合，可以同時播放多個動畫並控制它們的權重
+    控制主要 AI 角色的多重動畫混合，可以同時播放多個動畫並控制它們的權重
     
     Args:
         animations_config: 動畫配置的 JSON 字串，格式為:
@@ -255,28 +255,22 @@ def character_animation_mix(animations_config: str, blend_mode: str = "normal", 
         return f"❌ 發生錯誤: {str(e)}"
 
 @mcp.tool
-def stop_character_animation_mix() -> str:
+def stop_main_character_animation_mix() -> str:
     """
-    停止角色動畫混合，回到單一動畫模式
+    停止主要 AI 角色的動畫混合，回到單一動畫模式
     
     Returns:
         操作結果描述
     """
     try:
-        # 發送單一動畫請求來退出混合模式
-        payload = {
-            "animation": "Tpose",
-            "loop": True,
-            "speed": 1.0
-        }
-        
-        animation_endpoint = f"{BASE_URL}/api/control/character/animation"
-        response = requests.post(animation_endpoint, json=payload, timeout=10)
+        animation_mix_endpoint = f"{BASE_URL}/api/control/character/animation-mix/stop"
+        response = requests.post(animation_mix_endpoint, timeout=10)
         
         if response.status_code == 200:
-            return "✅ 角色動畫混合已停止，回到基礎姿勢 (Tpose)"
+            result = response.json()
+            return f"✅ 主角動畫混合已停止！AI 角色回到單一動畫模式"
         else:
-            return f"❌ 停止動畫混合失敗 (HTTP {response.status_code}): {response.text}"
+            return f"❌ 停止主角動畫混合失敗 (HTTP {response.status_code}): {response.text}"
             
     except requests.exceptions.ConnectionError:
         return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
@@ -1319,22 +1313,28 @@ def get_available_videos() -> str:
         return f"❌ 發生錯誤: {str(e)}"
 
 @mcp.tool
-def get_available_animations() -> str:
+def get_available_dance_group_animations() -> str:
     """
-    取得系統中所有可用的動畫檔案
+    取得系統中所有可用的舞群動畫檔案
     
     Returns:
-        動畫清單的詳細資訊
+        舞群動畫清單的詳細資訊
     """
     try:
         response = requests.get(f"{BASE_URL}/api/resources/animations", timeout=10)
         
         if response.status_code == 200:
             data = response.json()
-            animations_list = "\n".join([f"• {anim['name']} ({anim['size']} bytes)" for anim in data['files']])
-            return f"✅ 找到 {data['count']} 個動畫檔案:\n\n{animations_list}"
+            # 清理動畫名稱，移除 .glb 後綴
+            clean_animations = []
+            for anim in data['files']:
+                clean_name = anim['name'].replace('_animation.glb', '').replace('.glb', '')
+                clean_animations.append(f"• {clean_name} ({anim['size']} bytes)")
+            
+            animations_list = "\n".join(clean_animations)
+            return f"✅ 找到 {data['count']} 個舞群動畫檔案:\n\n{animations_list}\n\n💡 提示: 使用動畫時請直接輸入乾淨的名稱，例如: 'DancingTwerk', 'Breakdance1990' 等"
         else:
-            return f"❌ 無法取得動畫清單 (HTTP {response.status_code}): {response.text}"
+            return f"❌ 無法取得舞群動畫清單 (HTTP {response.status_code}): {response.text}"
             
     except requests.exceptions.ConnectionError:
         return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
@@ -1414,75 +1414,155 @@ def search_resources(query: str, resource_type: str = None, limit: int = 10) -> 
         return f"❌ 發生錯誤: {str(e)}"
 
 @mcp.tool
-def web_search(query: str, num_results: int = 5, language: str = "zh-TW") -> str:
+def get_available_main_character_animations() -> str:
     """
-    使用 Google 進行網頁搜尋
-    
-    Args:
-        query: 搜尋查詢關鍵字
-        num_results: 返回結果數量 (1-10)，預設為 5
-        language: 搜尋語言，預設為 "zh-TW" (繁體中文)
+    取得主要 AI 角色可用的動畫清單
     
     Returns:
-        搜尋結果摘要
+        主角動畫清單（系統預設動畫集合）
+    """
+    # 主角專用動畫清單（系統中實際可用的動畫）
+    main_character_animations = [
+        # 運動類
+        "運動1 - 運動動作1",
+        "運動2 - 運動動作2", 
+        "飛1 - 飛行動作1",
+        "飛2 - 飛行動作2",
+        
+        # 日常類
+        "漂浮 - 漂浮動作",
+        "漂浮2 - 漂浮動作2",
+        "划手機 - 滑手機動作",
+        "臥躺 - 躺下動作",
+        "不穩 - 不穩定動作",
+        "Tpose - T字型姿勢",
+        
+        # 舞蹈類
+        "舞步1 - 舞蹈動作1",
+        "舞步2 - 舞蹈動作2",
+        "舞步3 - 舞蹈動作3"
+    ]
+    
+    animations_text = "\n".join([f"• {anim}" for anim in main_character_animations])
+    
+    return f"""✅ 主要 AI 角色可用動畫清單 ({len(main_character_animations)} 個):
+
+{animations_text}
+
+💡 提示: 這些是系統中實際可用的主角動畫，請使用 set_main_character_animation() 來播放
+⚠️ 注意: 使用時請直接輸入動畫名稱，例如: "運動1", "漂浮", "舞步1" 等"""
+
+@mcp.tool
+def set_main_character_animation_mix(animations_config: str, blend_mode: str = "normal", transition_duration: float = 0.5) -> str:
+    """
+    控制主要 AI 角色的多重動畫混合，可以同時播放多個動畫並控制它們的權重
+    
+    Args:
+        animations_config: 動畫配置的 JSON 字串，格式為:
+            [{"name": "動畫名稱", "weight": 權重值, "loop": 是否循環, "speed": 播放速度}, ...]
+            範例: '[{"name": "運動1", "weight": 0.7, "loop": true, "speed": 1.0}, {"name": "舞步1", "weight": 0.3, "loop": true, "speed": 1.2}]'
+            可用動畫: 運動1, 運動2, 飛1, 飛2, 漂浮, 漂浮2, 划手機, 臥躺, 不穩, Tpose, 舞步1, 舞步2, 舞步3
+            權重範圍: 0.0-1.0，建議總權重保持在 1.0 左右
+        blend_mode: 混合模式，可選項: "normal", "additive", "override"，預設為 "normal"
+        transition_duration: 切換到混合模式的過渡時間（秒），預設為 0.5
+    
+    Returns:
+        操作結果描述
     """
     try:
+        # 解析動畫配置 JSON
+        import json
+        try:
+            animations = json.loads(animations_config)
+        except json.JSONDecodeError as e:
+            return f"❌ 動畫配置 JSON 格式錯誤: {str(e)}"
+        
+        # 驗證動畫配置格式
+        if not isinstance(animations, list) or len(animations) == 0:
+            return "❌ 動畫配置必須是非空的陣列"
+        
+        # 驗證每個動畫配置
+        total_weight = 0
+        valid_animations = []
+        for anim in animations:
+            if not isinstance(anim, dict):
+                return "❌ 每個動畫配置必須是對象"
+            
+            if "name" not in anim or "weight" not in anim:
+                return "❌ 每個動畫配置必須包含 'name' 和 'weight' 欄位"
+            
+            weight = anim.get("weight", 1.0)
+            if not isinstance(weight, (int, float)) or weight < 0 or weight > 1:
+                return f"❌ 動畫 '{anim['name']}' 的權重必須在 0-1 之間"
+            
+            total_weight += weight
+            
+            # 設置預設值
+            valid_anim = {
+                "name": anim["name"],
+                "weight": weight,
+                "loop": anim.get("loop", True),
+                "speed": anim.get("speed", 1.0)
+            }
+            valid_animations.append(valid_anim)
+        
+        # 檢查權重總和
+        if total_weight > 1.1:
+            return f"❌ 動畫權重總和 {total_weight:.2f} 過大，建議保持在 1.0 左右"
+        
+        # 構建角色動畫混合 payload
         payload = {
-            "query": query,
-            "num_results": min(max(num_results, 1), 10),  # 限制在 1-10 之間
-            "language": language,
-            "safe_search": "active"
+            "animations": valid_animations,
+            "blendMode": blend_mode,
+            "transitionDuration": transition_duration
         }
         
-        search_endpoint = f"{BASE_URL}/api/web-search"
-        response = requests.post(search_endpoint, json=payload, timeout=15)
+        animation_mix_endpoint = f"{BASE_URL}/api/control/character/animation-mix"
+        response = requests.post(animation_mix_endpoint, json=payload, timeout=10)
         
         if response.status_code == 200:
             result = response.json()
-            
-            if result["success"] and result["results"]:
-                # 格式化搜尋結果
-                search_summary = f"🔍 搜尋「{query}」找到 {len(result['results'])} 個結果：\n\n"
-                
-                for i, item in enumerate(result["results"], 1):
-                    search_summary += f"{i}. **{item['title']}**\n"
-                    search_summary += f"   {item['snippet']}\n"
-                    search_summary += f"   🔗 {item['link']}\n\n"
-                
-                # 添加搜尋統計
-                if result.get("total_results"):
-                    search_summary += f"📊 總共找到約 {result['total_results']} 個相關結果"
-                    
-                if result.get("search_time"):
-                    search_summary += f"（搜尋耗時 {result['search_time']} 秒）"
-                
-                return search_summary
-            else:
-                return f"🔍 搜尋「{query}」沒有找到相關結果"
-                
-        elif response.status_code == 429:
-            return "❌ Google 搜尋配額已用完，請稍後再試"
-        elif response.status_code == 403:
-            return "❌ Google API 金鑰無效或權限不足，請檢查配置"
-        elif response.status_code == 500:
-            error_text = response.text
-            if "配置不完整" in error_text:
-                return "❌ Google 搜尋 API 未配置。請設定 GOOGLE_SEARCH_API_KEY 和 GOOGLE_SEARCH_ENGINE_ID 環境變數"
-            else:
-                return f"❌ 搜尋服務器內部錯誤: {error_text}"
+            anim_names = [anim["name"] for anim in valid_animations]
+            weights = [f"{anim['name']}({anim['weight']:.1f})" for anim in valid_animations]
+            return f"✅ 角色動畫混合設置成功！AI 角色現在同時執行 {len(valid_animations)} 個動畫: {', '.join(weights)}，混合模式: {blend_mode}"
         else:
-            return f"❌ 搜尋失敗 (HTTP {response.status_code}): {response.text}"
+            return f"❌ 角色動畫混合設置失敗 (HTTP {response.status_code}): {response.text}"
             
     except requests.exceptions.ConnectionError:
         return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
     except requests.exceptions.Timeout:
-        return "❌ 搜尋請求超時，請稍後再試"
+        return "❌ 請求超時，服務器可能忙碌中"
     except Exception as e:
-        return f"❌ 搜尋時發生錯誤: {str(e)}"
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool
+def stop_main_character_animation_mix() -> str:
+    """
+    停止主要 AI 角色的動畫混合，回到單一動畫模式
+    
+    Returns:
+        操作結果描述
+    """
+    try:
+        animation_mix_endpoint = f"{BASE_URL}/api/control/character/animation-mix/stop"
+        response = requests.post(animation_mix_endpoint, timeout=10)
+        
+        if response.status_code == 200:
+            result = response.json()
+            return f"✅ 主角動畫混合已停止！AI 角色回到單一動畫模式"
+        else:
+            return f"❌ 停止主角動畫混合失敗 (HTTP {response.status_code}): {response.text}"
+            
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+    except requests.exceptions.Timeout:
+        return "❌ 請求超時，服務器可能忙碌中"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
 
 if __name__ == "__main__":
     print("🚀 太空直播系統 MCP 服務器啟動中...", file=sys.stderr)
-    print("📡 提供工具: send_message, set_emotion, emotion_transition, character_animation, dance_group_animation, set_dance_group, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size, set_character_scale, set_character_position, set_character_rotation, reset_character_transform, set_character_morph, set_body_shape, set_monitor_content, generate_image_overlay, generate_background_image, take_selfie, show_existing_image, speak_latest_space_news, generate_map_image, search_nasa_image, get_epic_image, web_search", file=sys.stderr)
+    print("📡 提供工具: send_message, set_emotion, emotion_transition, set_main_character_animation, set_main_character_animation_mix, stop_main_character_animation_mix, dance_group_animation, set_dance_group, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size, set_character_scale, set_character_position, set_character_rotation, reset_character_transform, set_character_morph, set_body_shape, set_monitor_content, generate_image_overlay, generate_background_image, take_selfie, show_existing_image, speak_latest_space_news, generate_map_image, search_nasa_image, get_epic_image, get_available_songs, get_available_bgm, get_available_effects, get_available_videos, get_available_main_character_animations, get_available_dance_group_animations, get_all_resources, search_resources", file=sys.stderr)
     print("🔗 連接後端: http://localhost:8000", file=sys.stderr)
     print("\n要在 Cursor 中使用，請在 settings.json 中添加此服務器配置", file=sys.stderr)
     
