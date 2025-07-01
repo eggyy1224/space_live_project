@@ -57,7 +57,7 @@ export const createHeadSlice: StateCreator<HeadSlice> = (set) => ({
   headModelUrl: HEAD_MODEL_URL, // 使用導入的常數
   modelScale: [15, 15, 15], // 調整頭部模型預設大小為15
   modelRotation: [0, 0, 0],
-  modelPosition: [0, -1, 0], // 這個位置可能需要針對頭部調整
+  modelPosition: [10, 3, 0], // 頭模型向右移動50個單位
   morphTargets: {},
   audioLipsyncTargets: {}, // <-- 初始化新狀態
   audioAverageVolume: 0, // <-- 初始化新狀態

@@ -258,13 +258,20 @@ const SceneContent: React.FC<SceneContainerProps> = ({
         )}
 
         {(() => {
-          // 調整頭部位置：移到圓圈中央
+          // 從 store 讀取頭模型的位置和旋轉
+          const modelPosition = useStore((s) => s.modelPosition);
+          const modelRotation = useStore((s) => s.modelRotation);
           const baseScale = 10;
           const basePosition: [number, number, number] = [0, -5, 0]; // 中央位置
 
           return (
             <group position={basePosition} scale={baseScale}>
-              <HeadModel headModelUrl={headModelUrl} scale={modelScale} />
+              <HeadModel 
+                headModelUrl={headModelUrl} 
+                scale={modelScale}
+                position={modelPosition}
+                rotation={modelRotation}
+              />
             </group>
           );
         })()}

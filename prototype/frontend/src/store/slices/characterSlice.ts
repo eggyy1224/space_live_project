@@ -71,7 +71,7 @@ export const createCharacterSlice: StateCreator<CharacterSlice> = (set, get) => 
   // 初始狀態
   characterModelLoaded: false,
   characterVisible: true,
-  characterPosition: [40, 0, 0], // 調整到右側，避免與頭部重疊
+  characterPosition: [0, 0, 0], // 主要角色移動到原點位置
   characterScale: 15,
   characterRotation: [0, 0, 0],
   
@@ -140,7 +140,7 @@ export const createCharacterSlice: StateCreator<CharacterSlice> = (set, get) => 
   })),
   
   resetCharacterTransform: () => set({
-    characterPosition: [40, 0, 0],
+    characterPosition: [0, 0, 0],
     characterScale: 15,
     characterRotation: [0, 0, 0]
   })
