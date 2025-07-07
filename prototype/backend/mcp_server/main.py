@@ -1560,9 +1560,271 @@ def stop_main_character_animation_mix() -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
+@mcp.tool
+def configure_obs_connection(host: str = "localhost", port: int = 4455, password: str = "", timeout: int = 10) -> str:
+    """
+    配置 OBS WebSocket 連接參數並重新連接
+    
+    Args:
+        host: OBS WebSocket 主機位址，預設為 "localhost"
+        port: OBS WebSocket 連接埠，預設為 4455
+        password: OBS WebSocket 密碼，預設為空字串
+        timeout: 連接逾時時間（秒），預設為 10 秒
+    
+    Returns:
+        連接配置結果描述
+    """
+    try:
+        # 建構連接設定 payload
+        payload = {
+            "host": host,
+            "port": port,
+            "password": password,
+            "timeout": timeout
+        }
+        
+        connection_endpoint = f"{BASE_URL}/api/perception/obs/connection"
+        response = requests.post(connection_endpoint, json=payload, timeout=15)
+        
+        if response.status_code == 200:
+            result = response.json()
+            
+            if result.get("success", False):
+                status = result.get("status", {})
+                obs_version = status.get("obs_version", "未知")
+                websocket_version = status.get("websocket_version", "未知")
+                current_scene = status.get("current_scene", "未知")
+                streaming = "🔴 串流中" if status.get("streaming", False) else "⚪ 未串流"
+                recording = "🔴 錄影中" if status.get("recording", False) else "⚪ 未錄影"
+                
+                return f"✅ OBS 連接設定成功！\n🔗 連接位址: {host}:{port}\n🔑 密碼: {'已設定' if password else '無密碼'}\n⏱️ 逾時: {timeout}秒\n\n📊 OBS 狀態:\n• OBS 版本: {obs_version}\n• WebSocket 版本: {websocket_version}\n• 當前場景: {current_scene}\n• 串流狀態: {streaming}\n• 錄影狀態: {recording}"
+            else:
+                error_msg = result.get("message", "連接失敗")
+                error_detail = result.get("error", "")
+                return f"❌ OBS 連接設定失敗\n原因: {error_msg}\n詳情: {error_detail}"
+        else:
+            return f"❌ 連接設定請求失敗 (HTTP {response.status_code}): {response.text}"
+            
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+    except requests.exceptions.Timeout:
+        return "❌ 連接設定請求超時，後端服務器可能忙碌中"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool
+def start_obs_streaming() -> str:
+    """
+    開始 OBS 串流
+    
+    Returns:
+        串流開始結果描述
+    """
+    try:
+        stream_endpoint = f"{BASE_URL}/api/perception/obs/stream/start"
+        response = requests.post(stream_endpoint, timeout=15)
+        
+        if response.status_code == 200:
+            result = response.json()
+            
+            if result.get("success", False):
+                streaming = result.get("streaming", False)
+                message = result.get("message", "串流已開始")
+                
+                if streaming:
+                    return f"🔴 {message}\n✅ OBS 串流現在正在進行中！"
+                else:
+                    return f"⚠️ {message}\n❓ 串流狀態可能需要稍等才會生效"
+            else:
+                error_msg = result.get("message", "開始串流失敗")
+                return f"❌ 開始串流失敗\n原因: {error_msg}"
+        else:
+            return f"❌ 串流請求失敗 (HTTP {response.status_code}): {response.text}"
+            
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+    except requests.exceptions.Timeout:
+        return "❌ 串流請求超時，後端服務器可能忙碌中"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool
+def stop_obs_streaming() -> str:
+    """
+    停止 OBS 串流
+    
+    Returns:
+        串流停止結果描述
+    """
+    try:
+        stream_endpoint = f"{BASE_URL}/api/perception/obs/stream/stop"
+        response = requests.post(stream_endpoint, timeout=15)
+        
+        if response.status_code == 200:
+            result = response.json()
+            
+            if result.get("success", False):
+                streaming = result.get("streaming", True)
+                message = result.get("message", "串流已停止")
+                
+                if not streaming:
+                    return f"⚪ {message}\n✅ OBS 串流已完全停止！"
+                else:
+                    return f"⚠️ {message}\n❓ 串流狀態可能需要稍等才會生效"
+            else:
+                error_msg = result.get("message", "停止串流失敗")
+                return f"❌ 停止串流失敗\n原因: {error_msg}"
+        else:
+            return f"❌ 串流請求失敗 (HTTP {response.status_code}): {response.text}"
+            
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+    except requests.exceptions.Timeout:
+        return "❌ 串流請求超時，後端服務器可能忙碌中"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool
+def connect_and_start_streaming(host: str = "localhost", port: int = 4455, password: str = "", timeout: int = 10) -> str:
+    """
+    連接 OBS 並立即開始串流
+    
+    Args:
+        host: OBS WebSocket 主機位址，預設為 "localhost"
+        port: OBS WebSocket 連接埠，預設為 4455
+        password: OBS WebSocket 密碼，預設為空字串
+        timeout: 連接逾時時間（秒），預設為 10 秒
+    
+    Returns:
+        連接並開始串流的結果描述
+    """
+    try:
+        # 步驟 1: 配置 OBS 連接
+        connection_payload = {
+            "host": host,
+            "port": port,
+            "password": password,
+            "timeout": timeout
+        }
+        
+        connection_endpoint = f"{BASE_URL}/api/perception/obs/connection"
+        connection_response = requests.post(connection_endpoint, json=connection_payload, timeout=15)
+        
+        if connection_response.status_code != 200:
+            return f"❌ OBS 連接失敗 (HTTP {connection_response.status_code}): {connection_response.text}"
+        
+        connection_result = connection_response.json()
+        if not connection_result.get("success", False):
+            error_msg = connection_result.get("message", "連接失敗")
+            error_detail = connection_result.get("error", "")
+            return f"❌ OBS 連接失敗\n原因: {error_msg}\n詳情: {error_detail}"
+        
+        # 步驟 2: 開始串流
+        stream_endpoint = f"{BASE_URL}/api/perception/obs/stream/start"
+        stream_response = requests.post(stream_endpoint, timeout=15)
+        
+        if stream_response.status_code != 200:
+            return f"✅ OBS 連接成功，但串流開始失敗 (HTTP {stream_response.status_code}): {stream_response.text}"
+        
+        stream_result = stream_response.json()
+        
+        # 取得 OBS 狀態資訊
+        status = connection_result.get("status", {})
+        obs_version = status.get("obs_version", "未知")
+        current_scene = status.get("current_scene", "未知")
+        
+        if stream_result.get("success", False):
+            streaming = stream_result.get("streaming", False)
+            stream_message = stream_result.get("message", "串流已開始")
+            
+            if streaming:
+                return f"🎯 連接並開始串流成功！\n\n🔗 連接資訊:\n• 位址: {host}:{port}\n• OBS 版本: {obs_version}\n• 當前場景: {current_scene}\n\n🔴 串流狀態: {stream_message}\n✅ 串流正在進行中！"
+            else:
+                return f"🔗 OBS 連接成功，但串流狀態異常\n• 位址: {host}:{port}\n• OBS 版本: {obs_version}\n⚠️ 串流訊息: {stream_message}"
+        else:
+            stream_error = stream_result.get("message", "開始串流失敗")
+            return f"🔗 OBS 連接成功，但無法開始串流\n• 位址: {host}:{port}\n• OBS 版本: {obs_version}\n❌ 串流錯誤: {stream_error}"
+            
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+    except requests.exceptions.Timeout:
+        return "❌ 連接或串流請求超時，後端服務器可能忙碌中"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool
+def get_browser_screenshot() -> str:
+    """
+    擷取 OBS 中瀏覽器來源的即時截圖，並下載到本地 screen_shots 資料夾
+    
+    Returns:
+        截圖結果描述和本地檔案路徑
+    """
+    import os
+    from pathlib import Path
+    
+    try:
+        # 建立本地 screen_shots 資料夾
+        local_screenshots_dir = Path("screen_shots")
+        local_screenshots_dir.mkdir(exist_ok=True)
+        
+        # 調用後端 OBS 截圖 API，指定來源為「瀏覽器」
+        payload = {
+            "source_name": "瀏覽器",
+            "width": 1280,
+            "height": 720,
+            "image_format": "png"
+        }
+        
+        screenshot_endpoint = f"{BASE_URL}/api/perception/obs/screenshot"
+        response = requests.post(screenshot_endpoint, json=payload, timeout=15)
+        
+        if response.status_code == 200:
+            result = response.json()
+            
+            if result.get("success", False):
+                filename = result.get("filename")
+                file_size = result.get("file_size", 0)
+                timestamp = result.get("timestamp")
+                
+                # 建構圖片下載 URL
+                image_url = f"{BASE_URL}/api/perception/obs/screenshot/{filename}"
+                
+                # 下載圖片到本地
+                download_response = requests.get(image_url, timeout=30)
+                
+                if download_response.status_code == 200:
+                    # 儲存到本地 screen_shots 資料夾
+                    local_file_path = local_screenshots_dir / filename
+                    
+                    with open(local_file_path, 'wb') as f:
+                        f.write(download_response.content)
+                    
+                    # 驗證檔案是否成功儲存
+                    if local_file_path.exists():
+                        local_file_size = local_file_path.stat().st_size
+                        
+                        return f"✅ 瀏覽器截圖成功並已下載到本地！\n📷 檔案: {filename}\n📊 大小: {file_size:,} bytes\n🕐 時間戳: {timestamp}\n📁 本地路徑: {local_file_path.absolute()}\n💾 本地檔案大小: {local_file_size:,} bytes"
+                    else:
+                        return f"❌ 截圖成功但本地儲存失敗"
+                else:
+                    return f"❌ 截圖成功但下載失敗 (HTTP {download_response.status_code})"
+            else:
+                error_msg = result.get("error", "未知錯誤")
+                return f"❌ 瀏覽器截圖失敗: {error_msg}"
+        else:
+            return f"❌ 截圖請求失敗 (HTTP {response.status_code}): {response.text}"
+            
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+    except requests.exceptions.Timeout:
+        return "❌ 截圖請求超時，OBS 或服務器可能忙碌中"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
 if __name__ == "__main__":
     print("🚀 太空直播系統 MCP 服務器啟動中...", file=sys.stderr)
-    print("📡 提供工具: send_message, set_emotion, emotion_transition, set_main_character_animation, set_main_character_animation_mix, stop_main_character_animation_mix, dance_group_animation, set_dance_group, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size, set_character_scale, set_character_position, set_character_rotation, reset_character_transform, set_character_morph, set_body_shape, set_monitor_content, generate_image_overlay, generate_background_image, take_selfie, show_existing_image, speak_latest_space_news, generate_map_image, search_nasa_image, get_epic_image, get_available_songs, get_available_bgm, get_available_effects, get_available_videos, get_available_main_character_animations, get_available_dance_group_animations, get_all_resources, search_resources", file=sys.stderr)
+    print("📡 提供工具: send_message, set_emotion, emotion_transition, set_main_character_animation, set_main_character_animation_mix, stop_main_character_animation_mix, dance_group_animation, set_dance_group, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size, set_character_scale, set_character_position, set_character_rotation, reset_character_transform, set_character_morph, set_body_shape, set_monitor_content, generate_image_overlay, generate_background_image, take_selfie, show_existing_image, speak_latest_space_news, generate_map_image, search_nasa_image, get_epic_image, get_available_songs, get_available_bgm, get_available_effects, get_available_videos, get_available_main_character_animations, get_available_dance_group_animations, get_all_resources, search_resources, configure_obs_connection, start_obs_streaming, stop_obs_streaming, connect_and_start_streaming, get_browser_screenshot", file=sys.stderr)
     print("🔗 連接後端: http://localhost:8000", file=sys.stderr)
     print("\n要在 Cursor 中使用，請在 settings.json 中添加此服務器配置", file=sys.stderr)
     

@@ -288,6 +288,166 @@ class OBSScreenshotService:
                 "success": False,
                 "error": str(e)
             }
+    
+    def start_streaming(self) -> Dict[str, Any]:
+        """
+        開始 OBS 串流
+        
+        Returns:
+            Dict[str, Any]: 串流開始結果
+        """
+        try:
+            client = self._get_client()
+            
+            # 檢查目前串流狀態
+            stream_status = client.get_stream_status()
+            if stream_status.output_active:
+                return {
+                    "success": False,
+                    "message": "串流已經在進行中",
+                    "streaming": True
+                }
+            
+            # 開始串流
+            client.start_stream()
+            logger.info("OBS 串流已開始")
+            
+            # 再次檢查狀態確認串流已開始
+            stream_status = client.get_stream_status()
+            
+            return {
+                "success": True,
+                "message": "串流已成功開始",
+                "streaming": stream_status.output_active
+            }
+            
+        except Exception as e:
+            logger.error(f"開始串流失敗: {e}")
+            return {
+                "success": False,
+                "message": f"開始串流失敗: {str(e)}",
+                "streaming": False
+            }
+    
+    def stop_streaming(self) -> Dict[str, Any]:
+        """
+        停止 OBS 串流
+        
+        Returns:
+            Dict[str, Any]: 串流停止結果
+        """
+        try:
+            client = self._get_client()
+            
+            # 檢查目前串流狀態
+            stream_status = client.get_stream_status()
+            if not stream_status.output_active:
+                return {
+                    "success": False,
+                    "message": "串流並未進行中",
+                    "streaming": False
+                }
+            
+            # 停止串流
+            client.stop_stream()
+            logger.info("OBS 串流已停止")
+            
+            # 再次檢查狀態確認串流已停止
+            stream_status = client.get_stream_status()
+            
+            return {
+                "success": True,
+                "message": "串流已成功停止",
+                "streaming": stream_status.output_active
+            }
+            
+        except Exception as e:
+            logger.error(f"停止串流失敗: {e}")
+            return {
+                "success": False,
+                "message": f"停止串流失敗: {str(e)}",
+                "streaming": True
+            }
+    
+    def start_recording(self) -> Dict[str, Any]:
+        """
+        開始 OBS 錄影
+        
+        Returns:
+            Dict[str, Any]: 錄影開始結果
+        """
+        try:
+            client = self._get_client()
+            
+            # 檢查目前錄影狀態
+            record_status = client.get_record_status()
+            if record_status.output_active:
+                return {
+                    "success": False,
+                    "message": "錄影已經在進行中",
+                    "recording": True
+                }
+            
+            # 開始錄影
+            client.start_record()
+            logger.info("OBS 錄影已開始")
+            
+            # 再次檢查狀態確認錄影已開始
+            record_status = client.get_record_status()
+            
+            return {
+                "success": True,
+                "message": "錄影已成功開始",
+                "recording": record_status.output_active
+            }
+            
+        except Exception as e:
+            logger.error(f"開始錄影失敗: {e}")
+            return {
+                "success": False,
+                "message": f"開始錄影失敗: {str(e)}",
+                "recording": False
+            }
+    
+    def stop_recording(self) -> Dict[str, Any]:
+        """
+        停止 OBS 錄影
+        
+        Returns:
+            Dict[str, Any]: 錄影停止結果
+        """
+        try:
+            client = self._get_client()
+            
+            # 檢查目前錄影狀態
+            record_status = client.get_record_status()
+            if not record_status.output_active:
+                return {
+                    "success": False,
+                    "message": "錄影並未進行中",
+                    "recording": False
+                }
+            
+            # 停止錄影
+            client.stop_record()
+            logger.info("OBS 錄影已停止")
+            
+            # 再次檢查狀態確認錄影已停止
+            record_status = client.get_record_status()
+            
+            return {
+                "success": True,
+                "message": "錄影已成功停止",
+                "recording": record_status.output_active
+            }
+            
+        except Exception as e:
+            logger.error(f"停止錄影失敗: {e}")
+            return {
+                "success": False,
+                "message": f"停止錄影失敗: {str(e)}",
+                "recording": True
+            }
 
 
 # 建立全域服務實例

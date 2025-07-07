@@ -270,4 +270,136 @@ async def disconnect_obs():
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"中斷連接失敗: {str(e)}"
+        )
+
+
+@router.post("/perception/obs/stream/start")
+async def start_obs_streaming():
+    """
+    開始 OBS 串流
+    
+    Returns:
+        dict: 串流開始結果
+    """
+    try:
+        logger.info("正在開始 OBS 串流...")
+        result = obs_service.start_streaming()
+        
+        if result.get("success", False):
+            return {
+                "success": True,
+                "message": result.get("message", "串流已開始"),
+                "streaming": result.get("streaming", False)
+            }
+        else:
+            return {
+                "success": False,
+                "message": result.get("message", "開始串流失敗"),
+                "streaming": result.get("streaming", False)
+            }
+        
+    except Exception as e:
+        logger.error(f"開始 OBS 串流時發生錯誤: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"開始串流失敗: {str(e)}"
+        )
+
+
+@router.post("/perception/obs/stream/stop")
+async def stop_obs_streaming():
+    """
+    停止 OBS 串流
+    
+    Returns:
+        dict: 串流停止結果
+    """
+    try:
+        logger.info("正在停止 OBS 串流...")
+        result = obs_service.stop_streaming()
+        
+        if result.get("success", False):
+            return {
+                "success": True,
+                "message": result.get("message", "串流已停止"),
+                "streaming": result.get("streaming", False)
+            }
+        else:
+            return {
+                "success": False,
+                "message": result.get("message", "停止串流失敗"),
+                "streaming": result.get("streaming", True)
+            }
+        
+    except Exception as e:
+        logger.error(f"停止 OBS 串流時發生錯誤: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"停止串流失敗: {str(e)}"
+        )
+
+
+@router.post("/perception/obs/record/start")
+async def start_obs_recording():
+    """
+    開始 OBS 錄影
+    
+    Returns:
+        dict: 錄影開始結果
+    """
+    try:
+        logger.info("正在開始 OBS 錄影...")
+        result = obs_service.start_recording()
+        
+        if result.get("success", False):
+            return {
+                "success": True,
+                "message": result.get("message", "錄影已開始"),
+                "recording": result.get("recording", False)
+            }
+        else:
+            return {
+                "success": False,
+                "message": result.get("message", "開始錄影失敗"),
+                "recording": result.get("recording", False)
+            }
+        
+    except Exception as e:
+        logger.error(f"開始 OBS 錄影時發生錯誤: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"開始錄影失敗: {str(e)}"
+        )
+
+
+@router.post("/perception/obs/record/stop")
+async def stop_obs_recording():
+    """
+    停止 OBS 錄影
+    
+    Returns:
+        dict: 錄影停止結果
+    """
+    try:
+        logger.info("正在停止 OBS 錄影...")
+        result = obs_service.stop_recording()
+        
+        if result.get("success", False):
+            return {
+                "success": True,
+                "message": result.get("message", "錄影已停止"),
+                "recording": result.get("recording", False)
+            }
+        else:
+            return {
+                "success": False,
+                "message": result.get("message", "停止錄影失敗"),
+                "recording": result.get("recording", True)
+            }
+        
+    except Exception as e:
+        logger.error(f"停止 OBS 錄影時發生錯誤: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"停止錄影失敗: {str(e)}"
         ) 
