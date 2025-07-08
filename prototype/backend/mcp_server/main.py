@@ -17,7 +17,7 @@ SEND_MESSAGE_ENDPOINT = f"{BASE_URL}/api/control/send-message"
 # 建立 MCP 服務器
 mcp = FastMCP("SpaceLiveServer")
 
-@mcp.tool
+@mcp.tool()
 def send_message(content: str, message_type: str = "chat-message") -> str:
     """
     向太空直播系統發送訊息，讓 AI 角色說話
@@ -50,7 +50,7 @@ def send_message(content: str, message_type: str = "chat-message") -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def set_emotion(emotion: str, duration: float = 3.0) -> str:
     """
     設置 AI 角色的表情
@@ -91,7 +91,7 @@ def set_emotion(emotion: str, duration: float = 3.0) -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 async def emotion_transition(start_emotion: str, end_emotion: str, duration: float = 5.0):
     """
     創建表情轉換動畫，從一種表情平滑過渡到另一種表情
@@ -130,7 +130,7 @@ async def emotion_transition(start_emotion: str, end_emotion: str, duration: flo
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def set_main_character_animation(animation: str, loop: bool = True, speed: float = 1.0) -> str:
     """
     控制主要 AI 角色的動畫動作
@@ -171,7 +171,7 @@ def set_main_character_animation(animation: str, loop: bool = True, speed: float
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def set_main_character_animation_mix(animations_config: str, blend_mode: str = "normal", transition_duration: float = 0.5) -> str:
     """
     控制主要 AI 角色的多重動畫混合，可以同時播放多個動畫並控制它們的權重
@@ -254,7 +254,7 @@ def set_main_character_animation_mix(animations_config: str, blend_mode: str = "
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def stop_main_character_animation_mix() -> str:
     """
     停止主要 AI 角色的動畫混合，回到單一動畫模式
@@ -279,7 +279,7 @@ def stop_main_character_animation_mix() -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def dance_group_animation(animation: str, speed: float = 1.0, loop: bool = True) -> str:
     """
     控制舞群的動畫動作
@@ -317,7 +317,7 @@ def dance_group_animation(animation: str, speed: float = 1.0, loop: bool = True)
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def set_dance_group(
     formation: str = 'circle', 
     count: int = 10, 
@@ -360,7 +360,7 @@ def set_dance_group(
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def play_song(song_name: str, interrupt: bool = True) -> str:
     """
     播放歌曲檔案
@@ -405,7 +405,7 @@ def play_song(song_name: str, interrupt: bool = True) -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def play_background_music(bgm_name: str) -> str:
     """
     播放背景音樂檔案
@@ -437,7 +437,7 @@ def play_background_music(bgm_name: str) -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def stop_background_music() -> str:
     """
     停止目前正在播放的背景音樂。
@@ -452,7 +452,7 @@ def stop_background_music() -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def play_sound_effect(effect_name: str) -> str:
     """
     播放音效檔案
@@ -484,7 +484,7 @@ def play_sound_effect(effect_name: str) -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def generate_sound_effect(
     prompt: str, 
     duration_seconds: float = 3.0, 
@@ -543,7 +543,7 @@ def generate_sound_effect(
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def set_camera_preset(preset_name: str, duration: float = 2.0) -> str:
     """
     設置攝影機預設位置，創造戲劇性的視覺效果
@@ -583,7 +583,7 @@ def set_camera_preset(preset_name: str, duration: float = 2.0) -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool 
+@mcp.tool() 
 def set_head_size(scale_factor: float) -> str:
     """
     調整 AI 角色的頭部大小，創造戲劇效果
@@ -634,7 +634,7 @@ def set_head_size(scale_factor: float) -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def set_character_scale(scale: float) -> str:
     """
     調整 AI 角色的整體大小
@@ -655,7 +655,7 @@ def set_character_scale(scale: float) -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def set_character_position(x: float, y: float, z: float) -> str:
     """
     設定 AI 角色的位置
@@ -678,7 +678,7 @@ def set_character_position(x: float, y: float, z: float) -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def set_character_rotation(x: float, y: float, z: float) -> str:
     """
     設定 AI 角色的旋轉角度 (使用弧度)
@@ -701,7 +701,7 @@ def set_character_rotation(x: float, y: float, z: float) -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def reset_character_transform() -> str:
     """
     一鍵重置 AI 角色的位置、旋轉和大小
@@ -718,7 +718,7 @@ def reset_character_transform() -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def set_character_morph(morph_name: str, value: float) -> str:
     """
     設定 AI 角色的指定 Morph Target
@@ -752,7 +752,7 @@ def set_character_morph(morph_name: str, value: float) -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def set_environment_preset(preset: str) -> str:
     """
     設置場景的環境光照預設。
@@ -779,7 +779,7 @@ def set_environment_preset(preset: str) -> str:
     except requests.exceptions.RequestException as e:
         return f"❌ 請求失敗: {e}"
 
-@mcp.tool
+@mcp.tool()
 def set_light_intensity(intensity: float) -> str:
     """
     設置場景光照的強度。
@@ -803,7 +803,7 @@ def set_light_intensity(intensity: float) -> str:
     except requests.exceptions.RequestException as e:
         return f"❌ 請求失敗: {e}"
 
-@mcp.tool
+@mcp.tool()
 def reset_environment_settings() -> str:
     """
     將所有環境光照設定重置為預設值。
@@ -825,7 +825,7 @@ def reset_environment_settings() -> str:
     except requests.exceptions.RequestException as e:
         return f"❌ 請求失敗: {e}"
 
-@mcp.tool
+@mcp.tool()
 async def set_body_shape(value: float):
     """
     Sets the character's body shape.
@@ -860,7 +860,7 @@ async def set_body_shape(value: float):
         print(error_message)
         return f"Failed to set body shape. Check the server logs. Details: {error_message}"
 
-@mcp.tool
+@mcp.tool()
 def set_monitor_content(
     monitor_id: str,
     video_name: str = None,
@@ -921,7 +921,7 @@ def set_monitor_content(
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def generate_image_overlay(
     prompt: str,
     position: str = 'center',
@@ -966,7 +966,7 @@ def generate_image_overlay(
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def generate_background_image(prompt: str, aspect_ratio: str = 'landscape', reference_images: List[str] = None) -> str:
     """
     根據文字描述生成一張背景圖片，並自動設為場景背景。
@@ -998,7 +998,7 @@ def generate_background_image(prompt: str, aspect_ratio: str = 'landscape', refe
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def take_selfie(
     prompt: str,
     reference_images: List[str] = None,
@@ -1038,7 +1038,7 @@ def take_selfie(
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def show_existing_image(
     filename: str,
     caption: str = None,
@@ -1075,7 +1075,7 @@ def show_existing_image(
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def speak_latest_space_news(limit: int = 3, intro_text: str = None) -> str:
     """
     獲取最新的太空新聞頭條，並讓 AI 角色播報出來。
@@ -1098,7 +1098,7 @@ def speak_latest_space_news(limit: int = 3, intro_text: str = None) -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def generate_map_image(
     latitude: float,
     longitude: float,
@@ -1142,7 +1142,7 @@ def generate_map_image(
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def search_nasa_image(
     query: str,
     caption: str = None,
@@ -1182,7 +1182,7 @@ def search_nasa_image(
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def get_epic_image(
     date: str = None,
     caption: str = None,
@@ -1220,7 +1220,7 @@ def get_epic_image(
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def get_available_songs() -> str:
     """
     取得系統中所有可用的歌曲檔案
@@ -1243,7 +1243,7 @@ def get_available_songs() -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def get_available_bgm() -> str:
     """
     取得系統中所有可用的背景音樂檔案
@@ -1266,7 +1266,7 @@ def get_available_bgm() -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def get_available_effects() -> str:
     """
     取得系統中所有可用的音效檔案
@@ -1289,7 +1289,7 @@ def get_available_effects() -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def get_available_videos() -> str:
     """
     取得系統中所有可用的影片檔案
@@ -1312,7 +1312,7 @@ def get_available_videos() -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def get_available_dance_group_animations() -> str:
     """
     取得系統中所有可用的舞群動畫檔案
@@ -1341,7 +1341,7 @@ def get_available_dance_group_animations() -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def get_all_resources() -> str:
     """
     取得系統中所有類型的媒體資源總覽
@@ -1373,7 +1373,7 @@ def get_all_resources() -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def search_resources(query: str, resource_type: str = None, limit: int = 10) -> str:
     """
     搜索媒體資源
@@ -1413,7 +1413,7 @@ def search_resources(query: str, resource_type: str = None, limit: int = 10) -> 
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def get_available_main_character_animations() -> str:
     """
     取得主要 AI 角色可用的動畫清單
@@ -1452,7 +1452,7 @@ def get_available_main_character_animations() -> str:
 💡 提示: 這些是系統中實際可用的主角動畫，請使用 set_main_character_animation() 來播放
 ⚠️ 注意: 使用時請直接輸入動畫名稱，例如: "運動1", "漂浮", "舞步1" 等"""
 
-@mcp.tool
+@mcp.tool()
 def set_main_character_animation_mix(animations_config: str, blend_mode: str = "normal", transition_duration: float = 0.5) -> str:
     """
     控制主要 AI 角色的多重動畫混合，可以同時播放多個動畫並控制它們的權重
@@ -1535,7 +1535,7 @@ def set_main_character_animation_mix(animations_config: str, blend_mode: str = "
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def stop_main_character_animation_mix() -> str:
     """
     停止主要 AI 角色的動畫混合，回到單一動畫模式
@@ -1560,7 +1560,7 @@ def stop_main_character_animation_mix() -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def configure_obs_connection(host: str = "localhost", port: int = 4455, password: str = "", timeout: int = 10) -> str:
     """
     配置 OBS WebSocket 連接參數並重新連接
@@ -1612,7 +1612,7 @@ def configure_obs_connection(host: str = "localhost", port: int = 4455, password
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def start_obs_streaming() -> str:
     """
     開始 OBS 串流
@@ -1648,7 +1648,7 @@ def start_obs_streaming() -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def stop_obs_streaming() -> str:
     """
     停止 OBS 串流
@@ -1684,7 +1684,7 @@ def stop_obs_streaming() -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def connect_and_start_streaming(host: str = "localhost", port: int = 4455, password: str = "", timeout: int = 10) -> str:
     """
     連接 OBS 並立即開始串流
@@ -1752,7 +1752,7 @@ def connect_and_start_streaming(host: str = "localhost", port: int = 4455, passw
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool
+@mcp.tool()
 def get_browser_screenshot() -> str:
     """
     擷取 OBS 中瀏覽器來源的即時截圖，並下載到本地 screen_shots 資料夾
