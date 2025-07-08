@@ -1822,9 +1822,79 @@ def get_browser_screenshot() -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
+@mcp.tool()
+def get_field_video_screenshot() -> str:
+    """
+    擷取 OBS 中展場視訊來源的即時截圖，並下載到本地 screen_shots 資料夾
+    
+    Returns:
+        截圖結果描述和本地檔案路徑
+    """
+    import os
+    from pathlib import Path
+    
+    try:
+        # 建立本地 screen_shots 資料夾
+        local_screenshots_dir = Path("screen_shots")
+        local_screenshots_dir.mkdir(exist_ok=True)
+        
+        # 調用後端 OBS 截圖 API，指定來源為「展場視訊源」
+        payload = {
+            "source_name": "展場視訊源",
+            "width": 1280,
+            "height": 720,
+            "image_format": "png"
+        }
+        
+        screenshot_endpoint = f"{BASE_URL}/api/perception/obs/screenshot"
+        response = requests.post(screenshot_endpoint, json=payload, timeout=15)
+        
+        if response.status_code == 200:
+            result = response.json()
+            
+            if result.get("success", False):
+                filename = result.get("filename")
+                file_size = result.get("file_size", 0)
+                timestamp = result.get("timestamp")
+                
+                # 建構圖片下載 URL
+                image_url = f"{BASE_URL}/api/perception/obs/screenshot/{filename}"
+                
+                # 下載圖片到本地
+                download_response = requests.get(image_url, timeout=30)
+                
+                if download_response.status_code == 200:
+                    # 儲存到本地 screen_shots 資料夾
+                    local_file_path = local_screenshots_dir / filename
+                    
+                    with open(local_file_path, 'wb') as f:
+                        f.write(download_response.content)
+                    
+                    # 驗證檔案是否成功儲存
+                    if local_file_path.exists():
+                        local_file_size = local_file_path.stat().st_size
+                        
+                        return f"✅ 展場視訊源截圖成功並已下載到本地！\n📷 檔案: {filename}\n📊 大小: {file_size:,} bytes\n🕐 時間戳: {timestamp}\n📁 本地路徑: {local_file_path.absolute()}\n💾 本地檔案大小: {local_file_size:,} bytes"
+                    else:
+                        return f"❌ 截圖成功但本地儲存失敗"
+                else:
+                    return f"❌ 截圖成功但下載失敗 (HTTP {download_response.status_code})"
+            else:
+                error_msg = result.get("error", "未知錯誤")
+                return f"❌ 展場視訊源截圖失敗: {error_msg}"
+        else:
+            return f"❌ 截圖請求失敗 (HTTP {response.status_code}): {response.text}"
+            
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+    except requests.exceptions.Timeout:
+        return "❌ 截圖請求超時，OBS 或服務器可能忙碌中"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
 if __name__ == "__main__":
     print("🚀 太空直播系統 MCP 服務器啟動中...", file=sys.stderr)
-    print("📡 提供工具: send_message, set_emotion, emotion_transition, set_main_character_animation, set_main_character_animation_mix, stop_main_character_animation_mix, dance_group_animation, set_dance_group, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size, set_character_scale, set_character_position, set_character_rotation, reset_character_transform, set_character_morph, set_body_shape, set_monitor_content, generate_image_overlay, generate_background_image, take_selfie, show_existing_image, speak_latest_space_news, generate_map_image, search_nasa_image, get_epic_image, get_available_songs, get_available_bgm, get_available_effects, get_available_videos, get_available_main_character_animations, get_available_dance_group_animations, get_all_resources, search_resources, configure_obs_connection, start_obs_streaming, stop_obs_streaming, connect_and_start_streaming, get_browser_screenshot", file=sys.stderr)
+    print("📡 提供工具: send_message, set_emotion, emotion_transition, set_main_character_animation, set_main_character_animation_mix, stop_main_character_animation_mix, dance_group_animation, set_dance_group, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size, set_character_scale, set_character_position, set_character_rotation, reset_character_transform, set_character_morph, set_body_shape, set_monitor_content, generate_image_overlay, generate_background_image, take_selfie, show_existing_image, speak_latest_space_news, generate_map_image, search_nasa_image, get_epic_image, get_available_songs, get_available_bgm, get_available_effects, get_available_videos, get_available_main_character_animations, get_available_dance_group_animations, get_all_resources, search_resources, configure_obs_connection, start_obs_streaming, stop_obs_streaming, connect_and_start_streaming, get_browser_screenshot, get_field_video_screenshot", file=sys.stderr)
     print("🔗 連接後端: http://localhost:8000", file=sys.stderr)
     print("\n要在 Cursor 中使用，請在 settings.json 中添加此服務器配置", file=sys.stderr)
     
