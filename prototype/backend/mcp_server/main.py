@@ -1045,29 +1045,6 @@ def show_existing_image(
         return f"❌ 發生錯誤: {str(e)}"
 
 @mcp.tool()
-def speak_latest_space_news(limit: int = 3, intro_text: str = None) -> str:
-    """
-    獲取最新的太空新聞頭條，並讓 AI 角色播報出來。
-
-    Args:
-        limit: 要獲取的新聞數量。預設 3。
-        intro_text: (可選) 自訂的開場白。
-
-    Returns:
-        操作結果描述
-    """
-    try:
-        payload = {"limit": limit, "intro_text": intro_text}
-        payload = {k: v for k, v in payload.items() if v is not None}
-        response = requests.post(f"{BASE_URL}/api/news/speak-latest-news", json=payload, timeout=30)
-        if response.status_code == 200:
-            return f"✅ 新聞播報成功！內容: {response.json().get('news_content')}"
-        else:
-            return f"❌ 新聞播報失敗 (HTTP {response.status_code}): {response.text}"
-    except Exception as e:
-        return f"❌ 發生錯誤: {str(e)}"
-
-@mcp.tool()
 def generate_map_image(
     latitude: float,
     longitude: float,
@@ -1755,7 +1732,7 @@ def get_field_video_screenshot() -> str:
 
 if __name__ == "__main__":
     print("🚀 太空直播系統 MCP 服務器啟動中...", file=sys.stderr)
-    print("📡 提供工具: send_message, set_emotion, emotion_transition, set_main_character_animation, set_main_character_animation_mix, stop_main_character_animation_mix, dance_group_animation, set_dance_group, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size, set_character_scale, set_character_position, set_character_rotation, reset_character_transform, set_character_morph, set_body_shape, set_monitor_content, generate_image_overlay, generate_background_image, take_selfie, show_existing_image, speak_latest_space_news, generate_map_image, search_nasa_image, get_epic_image, get_available_songs, get_available_bgm, get_available_effects, get_available_videos, get_available_main_character_animations, get_available_dance_group_animations, get_all_resources, search_resources, configure_obs_connection, start_obs_streaming, stop_obs_streaming, connect_and_start_streaming, get_browser_screenshot, get_field_video_screenshot", file=sys.stderr)
+    print("📡 提供工具: send_message, set_emotion, emotion_transition, set_main_character_animation, set_main_character_animation_mix, stop_main_character_animation_mix, dance_group_animation, set_dance_group, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size, set_character_scale, set_character_position, set_character_rotation, reset_character_transform, set_character_morph, set_body_shape, set_monitor_content, generate_image_overlay, generate_background_image, take_selfie, show_existing_image, generate_map_image, search_nasa_image, get_epic_image, get_available_songs, get_available_bgm, get_available_effects, get_available_videos, get_available_main_character_animations, get_available_dance_group_animations, get_all_resources, search_resources, configure_obs_connection, start_obs_streaming, stop_obs_streaming, connect_and_start_streaming, get_browser_screenshot, get_field_video_screenshot", file=sys.stderr)
     print("🔗 連接後端: http://localhost:8000", file=sys.stderr)
     print("\n要在 Cursor 中使用，請在 settings.json 中添加此服務器配置", file=sys.stderr)
     
