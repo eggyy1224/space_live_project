@@ -8,7 +8,7 @@ import json
 import sys
 import requests
 from fastmcp import FastMCP
-from typing import List
+from typing import List, Dict, Any
 
 # 後端 API 設定
 BASE_URL = "http://localhost:8000"
@@ -172,14 +172,14 @@ def set_main_character_animation(animation: str, loop: bool = True, speed: float
         return f"❌ 發生錯誤: {str(e)}"
 
 @mcp.tool()
-def set_main_character_animation_mix(animations_config: str, blend_mode: str = "normal", transition_duration: float = 0.5) -> str:
+def set_main_character_animation_mix(animations: List[Dict[str, Any]], blend_mode: str = "normal", transition_duration: float = 0.5) -> str:
     """
     控制主要 AI 角色的多重動畫混合，可以同時播放多個動畫並控制它們的權重
     
     Args:
-        animations_config: 動畫配置的 JSON 字串，格式為:
-            [{"name": "動畫名稱", "weight": 權重值, "loop": 是否循環, "speed": 播放速度}, ...]
-            範例: '[{"name": "運動1", "weight": 0.7, "loop": true, "speed": 1.0}, {"name": "舞步1", "weight": 0.3, "loop": true, "speed": 1.2}]'
+        animations: 動畫配置的列表，格式為:
+            [{"name": "動畫名稱", "weight": 權重值, "loop": (可選)布林值, "speed": (可選)浮點數}, ...]
+            範例: [{"name": "運動1", "weight": 0.7, "loop": true, "speed": 1.0}, {"name": "舞步1", "weight": 0.3}]
             可用動畫: 運動1, 運動2, 飛1, 飛2, 漂浮, 漂浮2, 划手機, 臥躺, 不穩, Tpose, 舞步1, 舞步2, 舞步3
             權重範圍: 0.0-1.0，建議總權重保持在 1.0 左右
         blend_mode: 混合模式，可選項: "normal", "additive", "override"，預設為 "normal"
@@ -189,13 +189,6 @@ def set_main_character_animation_mix(animations_config: str, blend_mode: str = "
         操作結果描述
     """
     try:
-        # 解析動畫配置 JSON
-        import json
-        try:
-            animations = json.loads(animations_config)
-        except json.JSONDecodeError as e:
-            return f"❌ 動畫配置 JSON 格式錯誤: {str(e)}"
-        
         # 驗證動畫配置格式
         if not isinstance(animations, list) or len(animations) == 0:
             return "❌ 動畫配置必須是非空的陣列"
@@ -241,7 +234,6 @@ def set_main_character_animation_mix(animations_config: str, blend_mode: str = "
         
         if response.status_code == 200:
             result = response.json()
-            anim_names = [anim["name"] for anim in valid_animations]
             weights = [f"{anim['name']}({anim['weight']:.1f})" for anim in valid_animations]
             return f"✅ 角色動畫混合設置成功！AI 角色現在同時執行 {len(valid_animations)} 個動畫: {', '.join(weights)}，混合模式: {blend_mode}"
         else:
@@ -254,30 +246,7 @@ def set_main_character_animation_mix(animations_config: str, blend_mode: str = "
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool()
-def stop_main_character_animation_mix() -> str:
-    """
-    停止主要 AI 角色的動畫混合，回到單一動畫模式
-    
-    Returns:
-        操作結果描述
-    """
-    try:
-        animation_mix_endpoint = f"{BASE_URL}/api/control/character/animation-mix/stop"
-        response = requests.post(animation_mix_endpoint, timeout=10)
-        
-        if response.status_code == 200:
-            result = response.json()
-            return f"✅ 主角動畫混合已停止！AI 角色回到單一動畫模式"
-        else:
-            return f"❌ 停止主角動畫混合失敗 (HTTP {response.status_code}): {response.text}"
-            
-    except requests.exceptions.ConnectionError:
-        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
-    except requests.exceptions.Timeout:
-        return "❌ 請求超時，服務器可能忙碌中"
-    except Exception as e:
-        return f"❌ 發生錯誤: {str(e)}"
+
 
 @mcp.tool()
 def dance_group_animation(animation: str, speed: float = 1.0, loop: bool = True) -> str:
@@ -1451,114 +1420,6 @@ def get_available_main_character_animations() -> str:
 
 💡 提示: 這些是系統中實際可用的主角動畫，請使用 set_main_character_animation() 來播放
 ⚠️ 注意: 使用時請直接輸入動畫名稱，例如: "運動1", "漂浮", "舞步1" 等"""
-
-@mcp.tool()
-def set_main_character_animation_mix(animations_config: str, blend_mode: str = "normal", transition_duration: float = 0.5) -> str:
-    """
-    控制主要 AI 角色的多重動畫混合，可以同時播放多個動畫並控制它們的權重
-    
-    Args:
-        animations_config: 動畫配置的 JSON 字串，格式為:
-            [{"name": "動畫名稱", "weight": 權重值, "loop": 是否循環, "speed": 播放速度}, ...]
-            範例: '[{"name": "運動1", "weight": 0.7, "loop": true, "speed": 1.0}, {"name": "舞步1", "weight": 0.3, "loop": true, "speed": 1.2}]'
-            可用動畫: 運動1, 運動2, 飛1, 飛2, 漂浮, 漂浮2, 划手機, 臥躺, 不穩, Tpose, 舞步1, 舞步2, 舞步3
-            權重範圍: 0.0-1.0，建議總權重保持在 1.0 左右
-        blend_mode: 混合模式，可選項: "normal", "additive", "override"，預設為 "normal"
-        transition_duration: 切換到混合模式的過渡時間（秒），預設為 0.5
-    
-    Returns:
-        操作結果描述
-    """
-    try:
-        # 解析動畫配置 JSON
-        import json
-        try:
-            animations = json.loads(animations_config)
-        except json.JSONDecodeError as e:
-            return f"❌ 動畫配置 JSON 格式錯誤: {str(e)}"
-        
-        # 驗證動畫配置格式
-        if not isinstance(animations, list) or len(animations) == 0:
-            return "❌ 動畫配置必須是非空的陣列"
-        
-        # 驗證每個動畫配置
-        total_weight = 0
-        valid_animations = []
-        for anim in animations:
-            if not isinstance(anim, dict):
-                return "❌ 每個動畫配置必須是對象"
-            
-            if "name" not in anim or "weight" not in anim:
-                return "❌ 每個動畫配置必須包含 'name' 和 'weight' 欄位"
-            
-            weight = anim.get("weight", 1.0)
-            if not isinstance(weight, (int, float)) or weight < 0 or weight > 1:
-                return f"❌ 動畫 '{anim['name']}' 的權重必須在 0-1 之間"
-            
-            total_weight += weight
-            
-            # 設置預設值
-            valid_anim = {
-                "name": anim["name"],
-                "weight": weight,
-                "loop": anim.get("loop", True),
-                "speed": anim.get("speed", 1.0)
-            }
-            valid_animations.append(valid_anim)
-        
-        # 檢查權重總和
-        if total_weight > 1.1:
-            return f"❌ 動畫權重總和 {total_weight:.2f} 過大，建議保持在 1.0 左右"
-        
-        # 構建角色動畫混合 payload
-        payload = {
-            "animations": valid_animations,
-            "blendMode": blend_mode,
-            "transitionDuration": transition_duration
-        }
-        
-        animation_mix_endpoint = f"{BASE_URL}/api/control/character/animation-mix"
-        response = requests.post(animation_mix_endpoint, json=payload, timeout=10)
-        
-        if response.status_code == 200:
-            result = response.json()
-            anim_names = [anim["name"] for anim in valid_animations]
-            weights = [f"{anim['name']}({anim['weight']:.1f})" for anim in valid_animations]
-            return f"✅ 角色動畫混合設置成功！AI 角色現在同時執行 {len(valid_animations)} 個動畫: {', '.join(weights)}，混合模式: {blend_mode}"
-        else:
-            return f"❌ 角色動畫混合設置失敗 (HTTP {response.status_code}): {response.text}"
-            
-    except requests.exceptions.ConnectionError:
-        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
-    except requests.exceptions.Timeout:
-        return "❌ 請求超時，服務器可能忙碌中"
-    except Exception as e:
-        return f"❌ 發生錯誤: {str(e)}"
-
-@mcp.tool()
-def stop_main_character_animation_mix() -> str:
-    """
-    停止主要 AI 角色的動畫混合，回到單一動畫模式
-    
-    Returns:
-        操作結果描述
-    """
-    try:
-        animation_mix_endpoint = f"{BASE_URL}/api/control/character/animation-mix/stop"
-        response = requests.post(animation_mix_endpoint, timeout=10)
-        
-        if response.status_code == 200:
-            result = response.json()
-            return f"✅ 主角動畫混合已停止！AI 角色回到單一動畫模式"
-        else:
-            return f"❌ 停止主角動畫混合失敗 (HTTP {response.status_code}): {response.text}"
-            
-    except requests.exceptions.ConnectionError:
-        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
-    except requests.exceptions.Timeout:
-        return "❌ 請求超時，服務器可能忙碌中"
-    except Exception as e:
-        return f"❌ 發生錯誤: {str(e)}"
 
 @mcp.tool()
 def configure_obs_connection(host: str = "localhost", port: int = 4455, password: str = "", timeout: int = 10) -> str:
