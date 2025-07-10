@@ -30,64 +30,53 @@ export const BGM_FILES = [
 
 // 音效檔案清單
 export const EFFECT_FILES = [
-  // 環境音效
-  'winds_blowing.mp3',
-  'spaceship_ambience_01.mp3',
-  'spaceship_ambience_02.mp3',
-  'spaceship_ambience_03.mp3',
-  'spaceship_ambience_04.mp3',
-  
-  // 節奏音效
-  'Energetic_fast_pace.mp3',
   'Ambient_keyboard_cli_2.mp3',
-  
-  // 綜藝節目音效
-  'taiwan_variety_sfx_01.mp3',
-  'taiwan_variety_sfx_02.mp3',
-  'taiwan_variety_sfx_03.mp3',
-  'taiwan_variety_sfx_04.mp3',
-  
-  // 測試音效
-  '測試音效1.mp3',
-  '測試音效2.mp3',
-  '測試音效3.mp3',
-  '測試音效4.mp3',
-  '測試音效5.mp3',
-  
-  // 通訊音效
-  '通訊聲1.mp3',
-  '通訊聲2.mp3',
-  '通訊聲3.mp3',
-  '通訊聲4.mp3',
-  
-  // 警告音效
-  '警告音1.mp3',
-  '警告音2.mp3',
-  '警告音3.mp3',
-  
-  // 故障音效
-  '故障音1.mp3',
-  '故障音2.mp3',
-  '故障音3.mp3',
-  '故障音4.mp3',
-  
-  // 戰鬥音效
-  '電子砲1.mp3',
-  '電子砲2.mp3',
-  '電子砲3.mp3',
-  
-  // 特殊效果音效
-  '聖光音效1.mp3',
-  '聖光音效2.mp3',
-  '聖光音效3.mp3',
-  '物件漂浮音效1.mp3',
-  '物件漂浮音效2.mp3',
-  '物件漂浮音效3.mp3',
-  
-  // 文化音效
-  '媽祖遶境1.mp3',
-  '媽祖遶境2.mp3',
-  '媽祖遶境3.mp3',
+'Energetic_fast_pace.mp3',
+'short_mix_1.mp3',
+'short_mix_2.mp3',
+'short_mix_3.mp3',
+'short_mix_4.mp3',
+'short_mix_5.mp3',
+'short_mix_6.mp3',
+'short_mix_7.mp3',
+'short_mix_8.mp3',
+'spaceship_ambience_01.mp3',
+'spaceship_ambience_02.mp3',
+'spaceship_ambience_03.mp3',
+'spaceship_ambience_04.mp3',
+'taiwan_variety_sfx_01.mp3',
+'taiwan_variety_sfx_02.mp3',
+'taiwan_variety_sfx_03.mp3',
+'taiwan_variety_sfx_04.mp3',
+'winds_blowing.mp3',
+'媽祖遶境1.mp3',
+'媽祖遶境2.mp3',
+'媽祖遶境3.mp3',
+'測試音效1.mp3',
+'測試音效2.mp3',
+'測試音效3.mp3',
+'測試音效4.mp3',
+'測試音效5.mp3',
+'物件漂浮音效1.mp3',
+'物件漂浮音效2.mp3',
+'物件漂浮音效3.mp3',
+'故障音1.mp3',
+'故障音2.mp3',
+'故障音3.mp3',
+'故障音4.mp3',
+'聖光音效1.mp3',
+'聖光音效2.mp3',
+'聖光音效3.mp3',
+'通訊聲1.mp3',
+'通訊聲2.mp3',
+'通訊聲3.mp3',
+'通訊聲4.mp3',
+'電子砲1.mp3',
+'電子砲2.mp3',
+'電子砲3.mp3',
+'警告音1.mp3',
+'警告音2.mp3',
+'警告音3.mp3',
 ] as const;
 
 // 音效分類常數
