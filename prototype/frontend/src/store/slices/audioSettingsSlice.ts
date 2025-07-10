@@ -10,8 +10,8 @@ export interface AudioSettingsSlice {
 }
 
 export const createAudioSettingsSlice: StateCreator<AudioSettingsSlice> = (set) => ({
-  bgmVolume: 0.4,
-  effectVolume: 0.6,
+  bgmVolume: 0.7,
+  effectVolume: 0.4,
   ttsVolume: 1.0,
   setBgmVolume: (volume) => set({ bgmVolume: Math.max(0, Math.min(1, volume)) }),
   setEffectVolume: (volume) => set({ effectVolume: Math.max(0, Math.min(1, volume)) }),

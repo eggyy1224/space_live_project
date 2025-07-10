@@ -31,12 +31,15 @@ const DirectorMonitorHUD: React.FC = () => {
   const videoScreens = useStore((s) => s.videoScreens);
   const setVideoScreen = useStore((s) => s.setVideoScreen);
 
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const [selectedEffect, setSelectedEffect] = useState<string>(EFFECT_FILES[0]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'd') setExpanded((v) => !v);
+      if (e.ctrlKey && e.key === 'd') {
+        e.preventDefault();
+        setExpanded((v) => !v);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
