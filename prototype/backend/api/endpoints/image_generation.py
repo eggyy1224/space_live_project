@@ -468,7 +468,13 @@ async def take_selfie(request: SelfieRequest):
                     # 修正：直接讀取圖片數據，而不是使用 from_uri
                     with open(ref_image_path, "rb") as f:
                         image_data = f.read()
-                    img_part = genai.types.Part(inline_data={"mime_type": "image/png", "data": image_data})
+                    # 使用字典格式而不是 genai.types.Part
+                    img_part = {
+                        "inline_data": {
+                            "mime_type": "image/png", 
+                            "data": image_data
+                        }
+                    }
                     image_parts.append(img_part)
                 else:
                     print(f"  - 警告: 找不到參考圖片 '{filename}'")
@@ -478,8 +484,6 @@ async def take_selfie(request: SelfieRequest):
         if request.modification:
             final_prompt += f"\n修改指令: {request.modification}"
             
-        contents = image_parts + [final_prompt]
-
         # 構建長寬比資訊
         if request.aspect_ratio:
             aspect_map = {
@@ -491,14 +495,19 @@ async def take_selfie(request: SelfieRequest):
             if aspect_text:
                 final_prompt += f" {aspect_text}"
         
-        # 使用Gemini模型生成內容
-        response = genai.generate_content(
-            model="gemini-2.0-flash-preview-image-generation",
-            contents=contents,
-            config=genai.types.GenerateContentConfig(
-                response_modalities=["TEXT", "IMAGE"]
-            )
-        )
+        # 使用修正後的 Gemini API 呼叫方式
+        model = genai.GenerativeModel(model_name="gemini-2.0-flash-preview-image-generation")
+        generation_config = {
+            "response_modalities": ["TEXT", "IMAGE"]
+        }
+        
+        # 如果有參考圖片，將它們與提示詞組合
+        if image_parts:
+            contents = image_parts + [final_prompt]
+        else:
+            contents = final_prompt
+            
+        response = model.generate_content(contents, generation_config=generation_config)
         
         # 解析回應
         image_data = None
