@@ -158,14 +158,15 @@ async def generate_image(request: ImageGenerationRequest):
             if aspect_text:
                 prompt += f" {aspect_text}"
         
-        # 使用正確的Gemini圖像生成模型和配置
-        response = genai.generate_content(
-            model="gemini-2.0-flash-preview-image-generation",
-            contents=prompt,
-            config=genai.types.GenerateContentConfig(
-                response_modalities=["TEXT", "IMAGE"]
-            )
-        )
+        # 使用 genai.GenerativeModel 並指定 response_modalities
+        model = genai.GenerativeModel(model_name="gemini-2.0-flash-preview-image-generation")
+        
+        # 直接將包含 response_modalities 的字典傳遞給 generation_config
+        generation_config = {
+            "response_modalities": ["TEXT", "IMAGE"]
+        }
+        
+        response = model.generate_content(prompt, generation_config=generation_config)
         
         # 解析回應
         image_data = None
@@ -603,73 +604,31 @@ async def generate_background_image(request: BackgroundImageRequest):
     """
     try:
         prompt = f"Generate a background image of: {request.description}"
-        if request.modification:
-            prompt += f"\nModification instructions: {request.modification}"
+        if request.aspect_ratio:
+            prompt += f" with an aspect ratio of {request.aspect_ratio}"
 
-        aspect_map = {
-            "16:9": "in a widescreen 16:9 aspect ratio",
-            "9:16": "in a vertical 9:16 aspect ratio",
-            "square": "in a square 1:1 aspect ratio"
+        # 使用修正後的 Gemini API 呼叫方式
+        model = genai.GenerativeModel(model_name="gemini-2.0-flash-preview-image-generation")
+        generation_config = {
+            "response_modalities": ["TEXT", "IMAGE"]
         }
-        aspect_text = aspect_map.get(request.aspect_ratio, aspect_map["16:9"])
-        prompt += f" {aspect_text}"
-        
-        # 處理參考圖片
-        image_parts = []
-        if request.reference_images:
-            print(f"使用 {len(request.reference_images)} 張參考圖片生成背景: {', '.join(request.reference_images)}")
-            for filename in request.reference_images:
-                ref_image_path = None
-                possible_paths = [
-                    os.path.join(SELFIES_DIR, filename),
-                    os.path.join(GENERATED_DIR, filename)
-                ]
-                for path in possible_paths:
-                    if os.path.exists(path):
-                        ref_image_path = path
-                        break
-                
-                if ref_image_path:
-                    print(f"  - 載入: {ref_image_path}")
-                    # 修正：直接讀取圖片數據，而不是使用 from_uri
-                    with open(ref_image_path, "rb") as f:
-                        image_data = f.read()
-                    img_part = genai.types.Part(inline_data={"mime_type": "image/png", "data": image_data})
-                    image_parts.append(img_part)
-                else:
-                    print(f"  - 警告: 找不到參考圖片 '{filename}'")
-        
-        # 結合參考圖片和提示詞
-        contents = image_parts + [prompt]
+        response = model.generate_content(prompt, generation_config=generation_config)
 
-        # 使用Gemini模型生成內容
-        response = genai.generate_content(
-            model="gemini-2.0-flash-preview-image-generation",
-            contents=contents,
-            config=genai.types.GenerateContentConfig(
-                response_modalities=["TEXT", "IMAGE"]
-            )
-        )
-        
-        # 解析回應
         image_data = None
-        caption = ""
-        
         for part in response.candidates[0].content.parts:
-            if part.text:
-                caption = part.text.strip()
-            elif part.inline_data:
+            if part.inline_data:
                 image_data = part.inline_data.data
+                break
         
         if not image_data:
             raise HTTPException(status_code=500, detail="No background image generated")
 
-        # 生成檔名
+        # 儲存圖像檔案
         filename = f"background_{int(time.time()*1000)}.png"
-        
-        # 儲存到後端 generated_images 資料夾
-        backend_file_path = os.path.join(GENERATED_DIR, filename)
-        with open(backend_file_path, "wb") as f:
+        file_path = os.path.join(GENERATED_DIR, filename)
+
+        # 將圖像數據保存到檔案
+        with open(file_path, "wb") as f:
             f.write(image_data)
         
         # 同步到前端 background_pictures 資料夾
@@ -677,13 +636,13 @@ async def generate_background_image(request: BackgroundImageRequest):
         with open(frontend_file_path, "wb") as f:
             f.write(image_data)
         
-        logging.info(f"Background image saved to: {backend_file_path} and {frontend_file_path}")
+        logging.info(f"Background image saved to: {file_path} and {frontend_file_path}")
         
         # 透過 WebSocket 廣播背景圖片更新
         await manager.broadcast(json.dumps({
             "type": "background-image-generated",
             "filename": filename,
-            "caption": caption,
+            "caption": request.description,
             "aspect_ratio": request.aspect_ratio,
             "description": request.description,
             "timestamp": int(time.time()*1000)
@@ -692,7 +651,7 @@ async def generate_background_image(request: BackgroundImageRequest):
         return {
             "success": True,
             "filename": filename,
-            "caption": caption,
+            "caption": request.description,
             "aspect_ratio": request.aspect_ratio,
             "backend_path": f"/generated-images/{filename}",
             "frontend_path": f"/background_pictures/{filename}",
