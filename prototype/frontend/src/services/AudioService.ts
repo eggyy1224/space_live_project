@@ -339,6 +339,55 @@ class AudioService {
     });
   }
 
+  // 新增：專門用於播放音效的方法，不會觸發嘴型分析
+  public playSoundEffect(audioData: Blob | string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      logger.info('Playing sound effect (no lip sync analysis)', LogCategory.AUDIO);
+
+      let audioUrl: string;
+      if (audioData instanceof Blob) {
+        audioUrl = URL.createObjectURL(audioData);
+      } else {
+        audioUrl = audioData;
+      }
+
+      // 創建獨立的音頻元素用於音效播放
+      const effectAudio = new Audio();
+      effectAudio.crossOrigin = "anonymous";
+      effectAudio.src = audioUrl;
+      effectAudio.volume = useStore.getState().effectVolume || 0.5; // 使用音效音量設置
+
+      const onPlay = () => {
+        logger.info(`Sound effect playback started: ${audioUrl}`, LogCategory.AUDIO);
+        // 注意：音效播放不設置 setSpeaking(true)，不啟動分析
+      };
+
+      const onEnded = () => {
+        logger.info(`Sound effect playback finished: ${audioUrl}`, LogCategory.AUDIO);
+        // 清理 URL 對象
+        if (audioData instanceof Blob) {
+          URL.revokeObjectURL(audioUrl);
+        }
+        resolve();
+      };
+
+      const onError = (e: Event | string) => {
+        logger.error(`Error during sound effect playback: ${audioUrl}`, LogCategory.AUDIO, e);
+        // 清理 URL 對象
+        if (audioData instanceof Blob) {
+          URL.revokeObjectURL(audioUrl);
+        }
+        reject(new Error(`Sound effect playback failed: ${String(e)}`));
+      };
+
+      effectAudio.addEventListener('play', onPlay, { once: true });
+      effectAudio.addEventListener('ended', onEnded, { once: true });
+      effectAudio.addEventListener('error', onError, { once: true });
+
+      effectAudio.play().catch(onError);
+    });
+  }
+
   // 停止播放
   public stopPlayback(): void {
     if (this.playbackAudio) {
@@ -574,6 +623,10 @@ export function useAudioService() {
   const checkMicPermission = async () => {
     return await audioService.current.checkMicPermission();
   };
+
+  const playSoundEffect = async (audioData: Blob | string) => {
+    return await audioService.current.playSoundEffect(audioData);
+  };
   
   // 返回狀態和方法
   return {
@@ -584,7 +637,8 @@ export function useAudioService() {
     startRecording,
     stopRecording,
     playAudio,
-    checkMicPermission
+    checkMicPermission,
+    playSoundEffect
   };
 }
 

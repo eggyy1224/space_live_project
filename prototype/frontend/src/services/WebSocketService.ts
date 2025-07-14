@@ -262,7 +262,7 @@ class WebSocketService {
         
         // 新增：處理音效 (SFX) URL
         if (payload.sfxUrl) {
-          AudioService.getInstance().playAudio(payload.sfxUrl);
+          AudioService.getInstance().playSoundEffect(payload.sfxUrl);
         }
 
         // 處理播放/暫停控制
