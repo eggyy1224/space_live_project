@@ -8,7 +8,7 @@ import json
 import sys
 import requests
 from fastmcp import FastMCP
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 # 後端 API 設定
 BASE_URL = "http://localhost:8000"
@@ -457,58 +457,49 @@ def play_sound_effect(effect_name: str) -> str:
 def generate_sound_effect(
     prompt: str, 
     duration_seconds: float = 3.0, 
-    prompt_influence: float = 0.6,
-    filename: str = None,
+    filename: Optional[str] = None,
     play_immediately: bool = True
 ) -> str:
     """
-    使用 ElevenLabs API 即時生成客製化音效。
-
-    ⚠️  重要：prompt 必須使用精確的英文描述，中文會導致音效品質不佳！
-    
-    建議的英文 prompt 範例：
-    - "spaceship engine humming and vibrating steadily" (太空船引擎穩定嗡嗡聲)
-    - "electronic malfunction with sparks crackling and warning beeps" (電子故障配電火花和警報聲)
-    - "deep space ambient cosmic wind and distant rumbling" (深空環境宇宙風和遠方隆隆聲) 
-    - "metal blast door sliding open with heavy mechanical sound" (金屬防爆門滑開的重機械聲)
-    - "urgent warning alarm beeping rapidly with echo" (緊急警報快速嗶聲帶回音)
-    - "rocket engine ignition with powerful thrust roar" (火箭引擎點火強力推進咆哮)
-    - "atmospheric entry rumbling and plasma whistling" (大氣層進入隆隆聲和電漿嘯叫)
-    - "reactor core humming with electrical discharge" (反應爐核心嗡嗡聲配電流放電)
+    使用 Freesound API 即時搜尋並播放音效。
 
     Args:
-        prompt: 音效的英文描述文字，請使用專業的英文環境音效術語
-        duration_seconds: 音效長度（秒），範圍 0.5-22.0，預設 3.0 秒
-        prompt_influence: 對描述的遵循度，範圍 0.0-1.0，0.6 是平衡值
+        prompt: 要在 Freesound 上搜尋的音效描述文字
+        duration_seconds: 音效的最大長度（秒），範圍 0.5-22.0，預設 3.0 秒
         filename: 自訂檔名（不含副檔名），不設定則自動產生
-        play_immediately: 是否立即播放生成的音效，預設 True
+        play_immediately: 是否立即播放下載的音效，預設 True
 
     Returns:
         操作結果描述
     """
     try:
+        # 構建API請求數據
         payload = {
             "prompt": prompt,
             "duration_seconds": duration_seconds,
-            "prompt_influence": prompt_influence,
+            "filename": filename,
             "play_immediately": play_immediately
         }
         
-        if filename:
-            payload["filename"] = filename
-        
-        response = requests.post(f"{BASE_URL}/api/control/generate-sound-effect", json=payload, timeout=60)
+        # 調用後端音效生成API
+        response = requests.post(
+            f"{BASE_URL}/control/generate-sound-effect", 
+            json=payload, 
+            timeout=45  # 搜尋和下載可能需要更長的時間
+        )
         
         if response.status_code == 200:
             result = response.json()
-            message = f"✅ 音效生成成功！檔案: {result['filename']}"
-            if result.get('played_immediately'):
-                message += " 已立即播放"
-            return message
+            return f"✅ 音效操作成功: {result.get('message')}"
+        elif response.status_code == 404:
+            return f"🤔 在 Freesound 上找不到符合 '{prompt}' 的音效。"
         else:
             return f"❌ 音效生成失敗 (HTTP {response.status_code}): {response.text}"
+            
     except requests.exceptions.Timeout:
-        return "❌ 音效生成超時（這通常需要 10-30 秒），請稍後再試"
+        return "❌ 請求 Freesound 超時，請稍後再試"
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
@@ -832,11 +823,11 @@ async def set_body_shape(value: float):
 @mcp.tool()
 def set_monitor_content(
     monitor_id: str,
-    video_name: str = None,
-    volume: float = None,
-    visible: bool = None,
-    playing: bool = None,
-    playback_speed: float = None
+    video_name: Optional[str] = None,
+    volume: Optional[float] = None,
+    visible: Optional[bool] = None,
+    playing: Optional[bool] = None,
+    playback_speed: Optional[float] = None
 ) -> str:
     """
     控制螢幕顯示器的內容和播放狀態
@@ -897,7 +888,7 @@ def generate_image_overlay(
     size: str = 'large',
     duration: float = 10.0,
     aspect_ratio: str = 'square',
-    reference_images: List[str] = None
+    reference_images: Optional[List[str]] = None
 ) -> str:
     """
     根據文字描述生成一張圖片，並作為浮動圖層顯示在畫面上。
@@ -936,7 +927,7 @@ def generate_image_overlay(
         return f"❌ 發生錯誤: {str(e)}"
 
 @mcp.tool()
-def generate_background_image(prompt: str, aspect_ratio: str = 'landscape', reference_images: List[str] = None) -> str:
+def generate_background_image(prompt: str, aspect_ratio: str = 'landscape', reference_images: Optional[List[str]] = None) -> str:
     """
     根據文字描述生成一張背景圖片，並自動設為場景背景。
 
@@ -970,7 +961,7 @@ def generate_background_image(prompt: str, aspect_ratio: str = 'landscape', refe
 @mcp.tool()
 def take_selfie(
     prompt: str,
-    reference_images: List[str] = None,
+    reference_images: Optional[List[str]] = None,
     position: str = 'center',
     size: str = 'large',
     duration: float = 15.0
@@ -1010,7 +1001,7 @@ def take_selfie(
 @mcp.tool()
 def show_existing_image(
     filename: str,
-    caption: str = None,
+    caption: Optional[str] = None,
     position: str = 'center',
     size: str = 'large',
     duration: float = 15.0
@@ -1049,7 +1040,7 @@ def generate_map_image(
     latitude: float,
     longitude: float,
     zoom: int = 14,
-    caption: str = None,
+    caption: Optional[str] = None,
     position: str = 'center',
     size: str = 'large',
     duration: float = 25.0
@@ -1091,7 +1082,7 @@ def generate_map_image(
 @mcp.tool()
 def search_nasa_image(
     query: str,
-    caption: str = None,
+    caption: Optional[str] = None,
     position: str = 'center',
     size: str = 'large',
     duration: float = 25.0
@@ -1130,8 +1121,8 @@ def search_nasa_image(
 
 @mcp.tool()
 def get_epic_image(
-    date: str = None,
-    caption: str = None,
+    date: Optional[str] = None,
+    caption: Optional[str] = None,
     position: str = 'center',
     size: str = 'large',
     duration: float = 25.0
@@ -1320,7 +1311,7 @@ def get_all_resources() -> str:
         return f"❌ 發生錯誤: {str(e)}"
 
 @mcp.tool()
-def search_resources(query: str, resource_type: str = None, limit: int = 10) -> str:
+def search_resources(query: str, resource_type: Optional[str] = None, limit: int = 10) -> str:
     """
     搜索媒體資源
     
@@ -1642,7 +1633,7 @@ def get_browser_screenshot() -> str:
                     if local_file_path.exists():
                         local_file_size = local_file_path.stat().st_size
                         
-                        return f"✅ 瀏覽器截圖成功並已下載到本地！\n📷 檔案: {filename}\n📊 大小: {file_size:,} bytes\n🕐 時間戳: {timestamp}\n📁 本地路徑: {local_file_path.absolute()}\n💾 本地檔案大小: {local_file_size:,} bytes"
+                        return f"✅ 瀏覽器截圖成功並已下載到本地！\n📷 檔案: {filename}\n📊 大小: {file_size:,} bytes\n�� 時間戳: {timestamp}\n📁 本地路徑: {local_file_path.absolute()}\n💾 本地檔案大小: {local_file_size:,} bytes"
                     else:
                         return f"❌ 截圖成功但本地儲存失敗"
                 else:

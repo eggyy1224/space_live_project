@@ -26,9 +26,9 @@ router = APIRouter()
 # Service instance to manage camera presets
 camera_service = CameraControlService()
 
-# ElevenLabs API 配置
-ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
-ELEVENLABS_API_URL = "https://api.elevenlabs.io/v1/sound-generation"
+# Freesound API 配置
+FREESOUND_API_KEY = os.getenv("FREESOUND_API_KEY")
+FREESOUND_API_URL = "https://freesound.org/apiv2"
 
 # 生成音效的保存目錄
 GENERATED_SOUNDS_DIR = os.path.join(os.path.dirname(__file__), "../../../frontend/public/audio/generated_sounds")
@@ -112,12 +112,11 @@ class DanceGroupRequest(BaseModel):
 
 
 class GenerateSoundEffectRequest(BaseModel):
-    """Request model for generating sound effects using ElevenLabs."""
-    prompt: str = Field(..., description="Text description of the sound effect to generate")
-    duration_seconds: Optional[float] = Field(3.0, ge=0.5, le=22.0, description="Duration in seconds (0.5-22.0)")
-    prompt_influence: Optional[float] = Field(0.6, ge=0.0, le=1.0, description="How closely to follow the prompt (0.0-1.0)")
+    """Request model for generating sound effects using Freesound."""
+    prompt: str = Field(..., description="Text description of the sound effect to search for on Freesound")
+    duration_seconds: Optional[float] = Field(3.0, ge=0.5, le=22.0, description="Maximum duration in seconds (0.5-22.0)")
     filename: Optional[str] = Field(None, description="Custom filename (without extension)")
-    play_immediately: Optional[bool] = Field(True, description="Whether to play the generated sound immediately")
+    play_immediately: Optional[bool] = Field(True, description="Whether to play the sound immediately after download")
 
 
 @router.post("/control/send-message")
@@ -140,9 +139,10 @@ async def send_message_to_frontend(request: SendMessageRequest):
                 temp_message_obj_for_audio = {
                     "id": f"api-tts-{uuid.uuid4().hex[:8]}",
                 }
-                await save_websocket_audio(
-                    audio_base64, temp_message_obj_for_audio, is_murmur=False
-                )
+                if audio_base64:  # 確保 audio_base64 不是 None
+                    await save_websocket_audio(
+                        audio_base64, temp_message_obj_for_audio, is_murmur=False
+                    )
                 audio_url_for_message = temp_message_obj_for_audio.get("audioUrl")
                 if audio_url_for_message:
                     logger.info(
@@ -478,46 +478,37 @@ async def set_head_size(request: HeadSizeRequest):
 
 @router.post("/control/scene-display")
 async def control_scene_display(request: SceneDisplayRequest):
-    """Toggle, change, or transform the active 3D scene on the frontend."""
-    if not manager.active_connections:
-        raise HTTPException(status_code=503, detail="沒有活動的前端連接")
+    """
+    控制3D場景 (如太空艙) 的顯示與變換
+    """
+    try:
+        if not manager.active_connections:
+            raise HTTPException(status_code=503, detail="No active frontend connections")
 
-    if request.sceneName and request.sceneName not in VALID_SCENES:
-        raise HTTPException(status_code=404, detail="Scene not found")
-
-    # 驗證變換參數格式
-    if request.position is not None and len(request.position) != 3:
-        raise HTTPException(status_code=400, detail="Position must be [x, y, z]")
-    
-    if request.rotation is not None and len(request.rotation) != 3:
-        raise HTTPException(status_code=400, detail="Rotation must be [x, y, z] in degrees")
-    
-    if request.scale is not None:
-        if len(request.scale) == 1:
-            # 統一縮放：[uniform] -> [uniform, uniform, uniform]
-            request.scale = [request.scale[0]] * 3
-        elif len(request.scale) != 3:
-            raise HTTPException(status_code=400, detail="Scale must be [uniform] or [x, y, z]")
+        payload = {
+            "type": "control-scene",
+            "display": request.displayScene,
+            "sceneName": request.sceneName,
+            "transform": {}
+        }
         
-        # 驗證縮放值為正數
-        if any(s <= 0 for s in request.scale):
-            raise HTTPException(status_code=400, detail="Scale values must be positive")
+        # 確保 transform 字典存在
+        transform_payload = payload["transform"]
 
-    # 構建payload，只包含非None的值
-    payload = {"displayScene": request.displayScene}
-    if request.sceneName is not None:
-        payload["sceneName"] = request.sceneName
-    if request.position is not None:
-        payload["position"] = request.position
-    if request.rotation is not None:
-        payload["rotation"] = request.rotation
-    if request.scale is not None:
-        payload["scale"] = request.scale
+        if request.position is not None:
+            transform_payload["position"] = request.position
+        if request.rotation is not None:
+            transform_payload["rotation"] = request.rotation
+        if request.scale is not None:
+            transform_payload["scale"] = request.scale
 
-    message = {"type": "scene-display", "payload": payload}
-    await manager.broadcast(json.dumps(message))
-    logger.info(f"Scene display control: {payload}")
-    return {"success": True, "payload": payload}
+        await manager.broadcast(json.dumps(payload))
+
+        logger.info(f"Broadcasted scene control: display={request.displayScene}, scene={request.sceneName}")
+        return {"success": True, "message": "Scene control command sent"}
+    except Exception as e:
+        logger.error(f"Failed to control scene display: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # 在文件末尾新增角色控制相關的請求模型和端點
@@ -1182,98 +1173,80 @@ async def control_dance_group(request: DanceGroupRequest):
 @router.post("/control/generate-sound-effect")
 async def generate_sound_effect(request: GenerateSoundEffectRequest):
     """
-    使用 ElevenLabs API 生成音效並保存到 generated_sounds 目錄
+    從 Freesound 搜尋並下載音效。
     """
+    if not FREESOUND_API_KEY:
+        raise HTTPException(status_code=500, detail="Freesound API key is not configured.")
+
     try:
-        if not ELEVENLABS_API_KEY:
-            raise HTTPException(status_code=500, detail="ElevenLabs API key not configured")
-        
-        # 準備 API 請求
-        headers = {
-            "xi-api-key": ELEVENLABS_API_KEY,
-            "Content-Type": "application/json"
+        # 1. 搜尋音效
+        search_url = f"{FREESOUND_API_URL}/search/text/"
+        params = {
+            "query": request.prompt,
+            "filter": f"duration:[0.5 TO {request.duration_seconds}]",
+            "sort": "rating_desc",
+            "fields": "id,name,previews",
+            "token": FREESOUND_API_KEY
         }
         
-        payload = {
-            "text": request.prompt,
-            "duration_seconds": request.duration_seconds,
-            "prompt_influence": request.prompt_influence
-        }
+        logger.info(f"Searching Freesound for: '{request.prompt}'")
+        search_response = requests.get(search_url, params=params, timeout=15)
+        search_response.raise_for_status()
+        search_results = search_response.json()
+
+        if not search_results or not search_results.get("results"):
+            raise HTTPException(status_code=404, detail=f"No sounds found for prompt: '{request.prompt}'")
+
+        # 2. 選擇第一個音效並取得預覽 URL
+        best_result = search_results["results"][0]
+        sound_name = best_result.get("name")
+        preview_url = best_result.get("previews", {}).get("preview-hq-mp3")
+
+        if not preview_url:
+            raise HTTPException(status_code=404, detail=f"No high-quality MP3 preview found for sound: {sound_name}")
+
+        logger.info(f"Found sound: '{sound_name}'. Downloading from: {preview_url}")
         
-        logger.info(f"Generating sound effect: '{request.prompt}', duration: {request.duration_seconds}s")
-        
-        # 調用 ElevenLabs API
-        response = requests.post(
-            f"{ELEVENLABS_API_URL}?output_format=mp3_44100_128",
-            headers=headers,
-            json=payload,
-            timeout=30
-        )
-        
-        if response.status_code != 200:
-            logger.error(f"ElevenLabs API error: {response.status_code} - {response.text}")
-            raise HTTPException(
-                status_code=response.status_code, 
-                detail=f"ElevenLabs API error: {response.text}"
-            )
-        
-        # 生成文件名
+        # 3. 下載音效
+        download_response = requests.get(preview_url, timeout=20)
+        download_response.raise_for_status()
+        audio_data = download_response.content
+
+        # 4. 儲存並播放
         if request.filename:
             filename = f"{request.filename}.mp3"
         else:
-            # 使用時間戳和提示詞的簡化版本作為文件名
-            timestamp = int(datetime.now().timestamp())
-            safe_prompt = "".join(c for c in request.prompt[:20] if c.isalnum() or c in (' ', '-', '_')).rstrip()
-            safe_prompt = safe_prompt.replace(' ', '_')
-            filename = f"generated_{timestamp}_{safe_prompt}.mp3"
+            # 使用 sound name 和 id 創建一個較為乾淨的檔名
+            clean_name = "".join(e for e in sound_name if e.isalnum() or e in " _-").strip()
+            filename = f"freesound_{clean_name}_{best_result['id']}.mp3"
         
-        # 保存音效文件
         file_path = os.path.join(GENERATED_SOUNDS_DIR, filename)
-        with open(file_path, 'wb') as f:
-            f.write(response.content)
-            f.flush()  # 刷新緩衝區
-            os.fsync(f.fileno())  # 強制刷新到磁盤
+
+        with open(file_path, "wb") as f:
+            f.write(audio_data)
+
+        logger.info(f"Sound effect saved to: {file_path}")
         
-        logger.info(f"Sound effect saved: {filename}")
-        
-        # 如果需要立即播放
+        # 透過 WebSocket 廣播播放指令
         if request.play_immediately:
-            # 增加延遲時間並添加檔案完整性檢查
-            await asyncio.sleep(0.3)  # 300ms 延遲，對大文件更安全
+            audio_url = f"/audio/generated_sounds/{filename}"
+            # 修正：使用 'audio-control' 型別和 'sfxUrl' 欄位，以符合前端的音訊播放邏輯
+            await manager.broadcast(json.dumps({
+                "type": "audio-control",
+                "sfxUrl": audio_url
+            }))
+            logger.info(f"Broadcasted play command for SFX: {audio_url}")
             
-            # 驗證文件完整性
-            try:
-                file_size = os.path.getsize(file_path)
-                expected_size = len(response.content)
-                if file_size != expected_size:
-                    logger.warning(f"File size mismatch: expected {expected_size}, got {file_size}")
-                    await asyncio.sleep(0.2)  # 額外延遲
-            except Exception as e:
-                logger.warning(f"File integrity check failed: {e}")
-                await asyncio.sleep(0.2)  # 額外延遲
-            
-            # 使用 background-audio 端點播放音效
-            sfx_url = f"/audio/generated_sounds/{filename}"
-            play_request = BackgroundAudioRequest(sfxUrl=sfx_url)
-            await background_audio_control(play_request)
-            logger.info(f"Generated sound effect played: {sfx_url}")
-        
         return {
             "success": True,
-            "message": f"音效生成成功: {filename}",
+            "message": f"Successfully downloaded sound effect '{sound_name}'",
             "filename": filename,
-            "file_path": f"/audio/generated_sounds/{filename}",
-            "duration": request.duration_seconds,
-            "prompt": request.prompt,
-            "played_immediately": request.play_immediately
+            "path": f"/audio/generated_sounds/{filename}"
         }
-        
-    except requests.exceptions.Timeout:
-        logger.error("ElevenLabs API timeout")
-        raise HTTPException(status_code=504, detail="音效生成超時，請稍後再試")
+
     except requests.exceptions.RequestException as e:
-        logger.error(f"ElevenLabs API request failed: {e}")
-        raise HTTPException(status_code=500, detail=f"音效生成請求失敗: {str(e)}")
+        logger.error(f"Freesound API request failed: {e}")
+        raise HTTPException(status_code=502, detail=f"Failed to communicate with Freesound: {e}")
     except Exception as e:
         logger.error(f"Sound effect generation failed: {e}")
-        raise HTTPException(status_code=500, detail=f"音效生成失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")

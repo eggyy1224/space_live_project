@@ -3,6 +3,7 @@ import logger, { LogCategory } from "../utils/LogManager";
 import { useStore } from "../store";
 import { directorBus } from "../director/bus";
 import { DirectorStateMessage, DirectorState } from "../../../shared/director/types";
+import AudioService from './AudioService'; // 新增：引入 AudioService
 
 // WebSocket連接配置
 const WS_URL = `ws://${window.location.hostname}:8000/ws`;
@@ -259,6 +260,11 @@ class WebSocketService {
           }
         }
         
+        // 新增：處理音效 (SFX) URL
+        if (payload.sfxUrl) {
+          AudioService.getInstance().playAudio(payload.sfxUrl);
+        }
+
         // 處理播放/暫停控制
         if (payload.bgmPlaying !== undefined) {
           console.log('[WebSocket] Setting BGM playing state:', payload.bgmPlaying);
@@ -794,3 +800,4 @@ export function useWebSocket() {
 }
 
 export default WebSocketService;
+
