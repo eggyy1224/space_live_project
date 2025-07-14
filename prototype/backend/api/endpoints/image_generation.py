@@ -10,8 +10,8 @@ import io
 import glob
 import httpx
 
-from google import genai
-from google.genai.types import GenerateContentConfig, Content, Part
+import google.generativeai as genai
+# 移除 from google.generativeai.types import GenerateContentConfig, Content, Part
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -22,7 +22,7 @@ from .websocket import manager
 router = APIRouter()
 
 # 使用新的Google Gen AI SDK配置客戶端
-client = genai.Client(api_key=settings.GOOGLE_API_KEY)
+genai.configure(api_key=settings.GOOGLE_API_KEY)
 
 # 修正路徑：從 api/endpoints 向上三層到達 backend 目錄
 GENERATED_DIR = os.path.join(
@@ -159,10 +159,10 @@ async def generate_image(request: ImageGenerationRequest):
                 prompt += f" {aspect_text}"
         
         # 使用正確的Gemini圖像生成模型和配置
-        response = client.models.generate_content(
+        response = genai.generate_content(
             model="gemini-2.0-flash-preview-image-generation",
             contents=prompt,
-            config=GenerateContentConfig(
+            config=genai.types.GenerateContentConfig(
                 response_modalities=["TEXT", "IMAGE"]
             )
         )
@@ -467,7 +467,7 @@ async def take_selfie(request: SelfieRequest):
                     # 修正：直接讀取圖片數據，而不是使用 from_uri
                     with open(ref_image_path, "rb") as f:
                         image_data = f.read()
-                    img_part = Part(inline_data={"mime_type": "image/png", "data": image_data})
+                    img_part = genai.types.Part(inline_data={"mime_type": "image/png", "data": image_data})
                     image_parts.append(img_part)
                 else:
                     print(f"  - 警告: 找不到參考圖片 '{filename}'")
@@ -491,10 +491,10 @@ async def take_selfie(request: SelfieRequest):
                 final_prompt += f" {aspect_text}"
         
         # 使用Gemini模型生成內容
-        response = client.models.generate_content(
+        response = genai.generate_content(
             model="gemini-2.0-flash-preview-image-generation",
             contents=contents,
-            config=GenerateContentConfig(
+            config=genai.types.GenerateContentConfig(
                 response_modalities=["TEXT", "IMAGE"]
             )
         )
@@ -634,7 +634,7 @@ async def generate_background_image(request: BackgroundImageRequest):
                     # 修正：直接讀取圖片數據，而不是使用 from_uri
                     with open(ref_image_path, "rb") as f:
                         image_data = f.read()
-                    img_part = Part(inline_data={"mime_type": "image/png", "data": image_data})
+                    img_part = genai.types.Part(inline_data={"mime_type": "image/png", "data": image_data})
                     image_parts.append(img_part)
                 else:
                     print(f"  - 警告: 找不到參考圖片 '{filename}'")
@@ -643,10 +643,10 @@ async def generate_background_image(request: BackgroundImageRequest):
         contents = image_parts + [prompt]
 
         # 使用Gemini模型生成內容
-        response = client.models.generate_content(
+        response = genai.generate_content(
             model="gemini-2.0-flash-preview-image-generation",
             contents=contents,
-            config=GenerateContentConfig(
+            config=genai.types.GenerateContentConfig(
                 response_modalities=["TEXT", "IMAGE"]
             )
         )
