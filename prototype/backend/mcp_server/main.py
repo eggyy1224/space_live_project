@@ -1721,9 +1721,172 @@ def get_field_video_screenshot() -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
+@mcp.tool()
+def get_memory(memory_type: str, query: Optional[str] = None, limit: int = 10, include_metadata: bool = True) -> str:
+    """
+    從記憶系統獲取記憶資料
+    
+    Args:
+        memory_type: 記憶類型，可選值: 'conversation', 'persona', 'summary'
+        query: 搜尋查詢 (可選)，如果提供則進行語義搜尋
+        limit: 返回的記憶數量限制，預設 10
+        include_metadata: 是否包含元數據，預設 True
+    
+    Returns:
+        記憶資料的格式化字串
+    """
+    try:
+        payload = {
+            "memory_type": memory_type,
+            "limit": limit,
+            "include_metadata": include_metadata
+        }
+        
+        if query:
+            payload["query"] = query
+        
+        memory_endpoint = f"{BASE_URL}/api/memory/get"
+        response = requests.post(memory_endpoint, json=payload, timeout=30)
+        
+        if response.status_code == 200:
+            result = response.json()
+            
+            if result.get("success"):
+                data = result.get("data", {})
+                memories = data.get("memories", [])
+                count = data.get("total_count", 0)
+                
+                if count == 0:
+                    return f"📭 沒有找到 {memory_type} 類型的記憶"
+                
+                # 格式化輸出
+                output = f"🧠 找到 {count} 條 {memory_type} 記憶:\n\n"
+                
+                for i, memory in enumerate(memories, 1):
+                    output += f"【記憶 {i}】\n"
+                    output += f"內容: {memory.get('content', '')}\n"
+                    
+                    if include_metadata and memory.get('metadata'):
+                        metadata = memory['metadata']
+                        output += f"類型: {metadata.get('type', 'N/A')}\n"
+                        if 'timestamp' in metadata:
+                            import datetime
+                            timestamp = datetime.datetime.fromtimestamp(metadata['timestamp'])
+                            output += f"時間: {timestamp.strftime('%Y-%m-%d %H:%M:%S')}\n"
+                    
+                    output += "\n" + "-" * 50 + "\n\n"
+                
+                if query:
+                    output += f"🔍 搜尋關鍵字: {query}\n"
+                
+                return output
+            else:
+                return f"❌ 獲取記憶失敗: {result.get('message', '未知錯誤')}"
+        else:
+            return f"❌ 記憶獲取請求失敗 (HTTP {response.status_code}): {response.text}"
+            
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+    except requests.exceptions.Timeout:
+        return "❌ 記憶獲取請求超時，服務器可能忙碌中"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool()
+def save_memory(memory_type: str, content: str, metadata: Optional[Dict[str, Any]] = None) -> str:
+    """
+    儲存記憶到記憶系統
+    
+    Args:
+        memory_type: 記憶類型，可選值: 'conversation', 'persona', 'summary'
+        content: 要儲存的記憶內容
+        metadata: 記憶的元數據 (可選)
+    
+    Returns:
+        儲存結果描述
+    """
+    try:
+        payload = {
+            "memory_type": memory_type,
+            "content": content
+        }
+        
+        if metadata:
+            payload["metadata"] = metadata
+        
+        memory_endpoint = f"{BASE_URL}/api/memory/save"
+        response = requests.post(memory_endpoint, json=payload, timeout=30)
+        
+        if response.status_code == 200:
+            result = response.json()
+            
+            if result.get("success"):
+                content_preview = content[:50] + "..." if len(content) > 50 else content
+                return f"✅ 記憶儲存成功！\n📝 類型: {memory_type}\n💭 內容: {content_preview}\n📊 長度: {len(content)} 字元"
+            else:
+                return f"❌ 記憶儲存失敗: {result.get('message', '未知錯誤')}"
+        else:
+            return f"❌ 記憶儲存請求失敗 (HTTP {response.status_code}): {response.text}"
+            
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+    except requests.exceptions.Timeout:
+        return "❌ 記憶儲存請求超時，服務器可能忙碌中"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool()
+def get_memory_stats() -> str:
+    """
+    獲取記憶系統統計資訊
+    
+    Returns:
+        記憶系統統計資訊的格式化字串
+    """
+    try:
+        stats_endpoint = f"{BASE_URL}/api/memory/stats"
+        response = requests.get(stats_endpoint, timeout=30)
+        
+        if response.status_code == 200:
+            result = response.json()
+            
+            if result.get("success"):
+                stats = result.get("data", {})
+                
+                output = "🧠 記憶系統統計資訊:\n\n"
+                
+                # 直接處理統計資料
+                conversation_count = stats.get("conversation_count", 0)
+                persona_count = stats.get("persona_count", 0)
+                summary_count = stats.get("summary_count", 0)
+                short_term_count = stats.get("short_term_count", 0)
+                system_status = stats.get("system_status", "unknown")
+                
+                output += f"💬 對話記憶: {conversation_count} 條記憶\n"
+                output += f"👤 人格記憶: {persona_count} 條記憶\n"
+                output += f"📋 摘要記憶: {summary_count} 條記憶\n"
+                output += f"⚡ 短期記憶: {short_term_count} 條記憶\n"
+                output += f"🔧 系統狀態: {system_status}\n\n"
+                
+                total_count = conversation_count + persona_count + summary_count + short_term_count
+                output += f"📊 總計: {total_count} 條記憶"
+                
+                return output
+            else:
+                return f"❌ 獲取記憶統計失敗: {result.get('message', '未知錯誤')}"
+        else:
+            return f"❌ 記憶統計請求失敗 (HTTP {response.status_code}): {response.text}"
+            
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+    except requests.exceptions.Timeout:
+        return "❌ 記憶統計請求超時，服務器可能忙碌中"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
 if __name__ == "__main__":
     print("🚀 太空直播系統 MCP 服務器啟動中...", file=sys.stderr)
-    print("📡 提供工具: send_message, set_emotion, emotion_transition, set_main_character_animation, set_main_character_animation_mix, stop_main_character_animation_mix, dance_group_animation, set_dance_group, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size, set_character_scale, set_character_position, set_character_rotation, reset_character_transform, set_character_morph, set_body_shape, set_monitor_content, generate_image_overlay, generate_background_image, take_selfie, show_existing_image, generate_map_image, search_nasa_image, get_epic_image, get_available_songs, get_available_bgm, get_available_effects, get_available_videos, get_available_main_character_animations, get_available_dance_group_animations, get_all_resources, search_resources, configure_obs_connection, start_obs_streaming, stop_obs_streaming, connect_and_start_streaming, get_browser_screenshot, get_field_video_screenshot", file=sys.stderr)
+    print("📡 提供工具: send_message, set_emotion, emotion_transition, set_main_character_animation, set_main_character_animation_mix, stop_main_character_animation_mix, dance_group_animation, set_dance_group, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size, set_character_scale, set_character_position, set_character_rotation, reset_character_transform, set_character_morph, set_body_shape, set_monitor_content, generate_image_overlay, generate_background_image, take_selfie, show_existing_image, generate_map_image, search_nasa_image, get_epic_image, get_available_songs, get_available_bgm, get_available_effects, get_available_videos, get_available_main_character_animations, get_available_dance_group_animations, get_all_resources, search_resources, configure_obs_connection, start_obs_streaming, stop_obs_streaming, connect_and_start_streaming, get_browser_screenshot, get_field_video_screenshot, get_memory, save_memory, get_memory_stats", file=sys.stderr)
     print("🔗 連接後端: http://localhost:8000", file=sys.stderr)
     print("\n要在 Cursor 中使用，請在 settings.json 中添加此服務器配置", file=sys.stderr)
     
