@@ -36,7 +36,7 @@ const DirectorMonitorHUD: React.FC = () => {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key === 'd') {
+      if (e.key === 'd') {
         e.preventDefault();
         setExpanded((v) => !v);
       }
