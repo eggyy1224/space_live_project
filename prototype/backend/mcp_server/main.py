@@ -1722,6 +1722,118 @@ def get_field_video_screenshot() -> str:
         return f"❌ 發生錯誤: {str(e)}"
 
 @mcp.tool()
+def get_obs_screenshot(
+    source_name: Optional[str] = None,
+    scene_name: Optional[str] = None,
+    width: int = 1920,
+    height: int = 1080,
+    image_format: str = "png"
+) -> str:
+    """
+    擷取 OBS 截圖 - 通用版本，支援截取整個場景、特定來源或特定場景
+    
+    Args:
+        source_name: 來源名稱（可選）。如果指定，截取特定 OBS 來源
+        scene_name: 場景名稱（可選）。如果指定，截取特定 OBS 場景
+        width: 截圖寬度，預設 1920
+        height: 截圖高度，預設 1080
+        image_format: 圖片格式，支援 "png" 或 "jpg"，預設 "png"
+    
+    📖 使用說明：
+    - 不指定任何參數：截取整個 OBS 場景（完整畫面）
+    - 指定 source_name：截取特定來源（如「瀏覽器」、「展場視訊源」）
+    - 指定 scene_name：截取特定場景
+    - 可自訂解析度和圖片格式
+    
+    💡 常用範例：
+    - 整個場景：get_obs_screenshot()
+    - 瀏覽器來源：get_obs_screenshot(source_name="瀏覽器")
+    - 高解析度：get_obs_screenshot(width=2560, height=1440)
+    
+    Returns:
+        截圖結果描述和本地檔案路徑
+    """
+    import os
+    from pathlib import Path
+    
+    try:
+        # 建立本地 screen_shots 資料夾
+        local_screenshots_dir = Path("screen_shots")
+        local_screenshots_dir.mkdir(exist_ok=True)
+        
+        # 準備 API 請求參數
+        payload = {
+            "width": width,
+            "height": height,
+            "image_format": image_format
+        }
+        
+        # 添加可選參數
+        if source_name:
+            payload["source_name"] = source_name
+        if scene_name:
+            payload["scene_name"] = scene_name
+        
+        # 調用後端 OBS 截圖 API
+        screenshot_endpoint = f"{BASE_URL}/api/perception/obs/screenshot"
+        response = requests.post(screenshot_endpoint, json=payload, timeout=15)
+        
+        if response.status_code == 200:
+            result = response.json()
+            
+            if result.get("success", False):
+                filename = result.get("filename")
+                file_size = result.get("file_size", 0)
+                timestamp = result.get("timestamp")
+                source_type = result.get("source_type", "unknown")
+                actual_source = result.get("source_name", "unknown")
+                
+                # 建構圖片下載 URL
+                image_url = f"{BASE_URL}/api/perception/obs/screenshot/{filename}"
+                
+                # 下載圖片到本地
+                download_response = requests.get(image_url, timeout=30)
+                
+                if download_response.status_code == 200:
+                    # 儲存到本地 screen_shots 資料夾
+                    local_file_path = local_screenshots_dir / filename
+                    
+                    with open(local_file_path, 'wb') as f:
+                        f.write(download_response.content)
+                    
+                    # 驗證檔案是否成功儲存
+                    if local_file_path.exists():
+                        local_file_size = local_file_path.stat().st_size
+                        
+                        # 根據截圖類型產生描述
+                        if source_type == "program_output":
+                            type_desc = "整個 OBS 場景"
+                        elif source_type == "source":
+                            type_desc = f"來源「{actual_source}」"
+                        elif source_type == "scene":
+                            type_desc = f"場景「{actual_source}」"
+                        else:
+                            type_desc = f"{source_type}「{actual_source}」"
+                        
+                        return f"✅ {type_desc} 截圖成功並已下載到本地！\n📷 檔案: {filename}\n📊 大小: {file_size:,} bytes\n🕐 時間戳: {timestamp}\n📐 解析度: {width}x{height}\n🎨 格式: {image_format}\n📁 本地路徑: {local_file_path.absolute()}\n💾 本地檔案大小: {local_file_size:,} bytes"
+                    else:
+                        return f"❌ 截圖成功但本地儲存失敗"
+                else:
+                    return f"❌ 截圖成功但下載失敗 (HTTP {download_response.status_code})"
+            else:
+                error_msg = result.get("error", "未知錯誤")
+                return f"❌ OBS 截圖失敗: {error_msg}"
+        else:
+            return f"❌ 截圖請求失敗 (HTTP {response.status_code}): {response.text}"
+            
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+    except requests.exceptions.Timeout:
+        return "❌ 截圖請求超時，OBS 或服務器可能忙碌中"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool()
 def get_memory(memory_type: str, query: Optional[str] = None, limit: int = 10, include_metadata: bool = True) -> str:
     """
     從記憶系統獲取記憶資料
