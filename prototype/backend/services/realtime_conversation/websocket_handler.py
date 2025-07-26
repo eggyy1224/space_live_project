@@ -60,6 +60,7 @@ class WebSocketHandler:
                 
                 # 等待會話配置確認
                 await asyncio.sleep(0.5)
+                await self._set_initial_camera()
                 
                 # 創建音頻接收隊列
                 audio_queue = asyncio.Queue(maxsize=50)  # 限制隊列大小避免記憶體過度使用
@@ -407,6 +408,22 @@ class WebSocketHandler:
                 logger.warning("No active WebSocket connection to send message")
         except Exception as e:
             logger.error(f"Failed to send WebSocket message: {e}")
+    
+    async def _set_initial_camera(self):
+        import aiohttp
+        try:
+            async with aiohttp.ClientSession() as session:
+                preset_data = {"name": "frontal_dynamic_low", "duration": 2.0}
+                async with session.post(
+                    "http://localhost:8000/api/control/camera/set-frontend-preset",
+                    json=preset_data
+                ) as response:
+                    if response.status == 200:
+                        logger.info("初始相機預設設置為 frontal_dynamic_low")
+                    else:
+                        logger.warning(f"設置初始相機預設失敗: {await response.text()}")
+        except Exception as e:
+            logger.error(f"設置初始相機預設異常: {e}")
     
     def set_tool_executor(self, executor):
         """設定工具執行器"""
