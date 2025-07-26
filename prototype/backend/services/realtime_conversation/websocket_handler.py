@@ -65,6 +65,9 @@ class WebSocketHandler:
                 # 設定初始動畫，避免T-pose
                 await self._set_initial_animation()
                 
+                # 設定舞群初始動畫
+                await self._set_initial_dance_group_animation()
+                
                 # 創建音頻接收隊列
                 audio_queue = asyncio.Queue(maxsize=50)  # 限制隊列大小避免記憶體過度使用
                 # 創建中斷訊號隊列
@@ -459,6 +462,40 @@ class WebSocketHandler:
                         logger.warning(f"設置初始動畫失敗: {await response.text()}")
         except Exception as e:
             logger.error(f"設置初始動畫異常: {e}")
+    
+    async def _set_initial_dance_group_animation(self):
+        """設定舞群初始動畫，讓背景舞群一開始就跳舞"""
+        import aiohttp
+        import random
+        try:
+            # 可用的舞群動畫清單（選擇適合的舞蹈動畫）
+            dance_group_animations = [
+                "DancingTwerk", "SalsaDancing", "JazzDancing", "HipHopDancin", 
+                "breaking", "hiphopdance", "twistdance", "CanCan", 
+                "ButterflyTwirl", "Breakdance1990", "BreakdanceFootwork2"
+            ]
+            
+            # 隨機選擇一個舞群動畫
+            selected_dance = random.choice(dance_group_animations)
+            
+            async with aiohttp.ClientSession() as session:
+                # 使用body-animation API控制舞群
+                dance_data = {
+                    "state": "play",
+                    "animation": selected_dance,
+                    "loop": True,
+                    "speed": 1.0
+                }
+                async with session.post(
+                    "http://localhost:8000/api/control/body-animation",
+                    json=dance_data
+                ) as response:
+                    if response.status == 200:
+                        logger.info(f"舞群初始動畫隨機設置為: {selected_dance}，開始熱場跳舞！")
+                    else:
+                        logger.warning(f"設置舞群初始動畫失敗: {await response.text()}")
+        except Exception as e:
+            logger.error(f"設置舞群初始動畫異常: {e}")
     
     def set_tool_executor(self, executor):
         """設定工具執行器"""
