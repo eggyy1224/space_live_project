@@ -62,6 +62,9 @@ class WebSocketHandler:
                 await asyncio.sleep(0.5)
                 await self._set_initial_camera()
                 
+                # 設定初始動畫，避免T-pose
+                await self._set_initial_animation()
+                
                 # 創建音頻接收隊列
                 audio_queue = asyncio.Queue(maxsize=50)  # 限制隊列大小避免記憶體過度使用
                 # 創建中斷訊號隊列
@@ -424,6 +427,38 @@ class WebSocketHandler:
                         logger.warning(f"設置初始相機預設失敗: {await response.text()}")
         except Exception as e:
             logger.error(f"設置初始相機預設異常: {e}")
+    
+    async def _set_initial_animation(self):
+        """設定初始動畫，避免T-pose"""
+        import aiohttp
+        import random
+        try:
+            # 可用的初始動畫清單（排除Tpose）
+            available_animations = [
+                "運動2", "漂浮", "運動1", "不穩", "划手機", 
+                "漂浮2", "臥躺", "舞步1", "舞步2", "舞步3", 
+                "飛1", "飛2"
+            ]
+            
+            # 隨機選擇一個動畫
+            selected_animation = random.choice(available_animations)
+            
+            async with aiohttp.ClientSession() as session:
+                animation_data = {
+                    "animation": selected_animation, 
+                    "loop": True, 
+                    "speed": 1.0
+                }
+                async with session.post(
+                    "http://localhost:8000/api/control/character/animation",
+                    json=animation_data
+                ) as response:
+                    if response.status == 200:
+                        logger.info(f"初始動畫隨機設置為: {selected_animation}，避免T-pose")
+                    else:
+                        logger.warning(f"設置初始動畫失敗: {await response.text()}")
+        except Exception as e:
+            logger.error(f"設置初始動畫異常: {e}")
     
     def set_tool_executor(self, executor):
         """設定工具執行器"""
