@@ -45,6 +45,16 @@ class APIIntegrations:
                 result = await self._try_supervisor_fallback(function_name, arguments)
                 logger.info(f"🎭 character_control 處理結果: {result}")
                 return result
+            elif function_name == "get_memory":
+                logger.info("🧠 調用 get_memory 處理器")
+                result = await self._handle_get_memory(arguments)
+                logger.info(f"🧠 get_memory 處理結果: {result}")
+                return result
+            elif function_name == "save_memory":
+                logger.info("💾 調用 save_memory 處理器")
+                result = await self._handle_save_memory(arguments)
+                logger.info(f"💾 save_memory 處理結果: {result}")
+                return result
             else:
                 logger.warning(f"❓ 未知工具函數: {function_name}")
                 return {
@@ -261,4 +271,194 @@ class APIIntegrations:
             return {
                 "success": False,
                 "error": f"Failed to play audio: {str(e)}"
+            }
+    
+    async def _handle_get_memory(self, arguments: dict) -> dict:
+        """處理get_memory工具調用"""
+        try:
+            # 驗證必要參數
+            memory_type = arguments.get("memory_type")
+            query = arguments.get("query")
+            limit = arguments.get("limit", 10)
+            include_metadata = arguments.get("include_metadata", True)
+            
+            if memory_type is None:
+                return {
+                    "success": False,
+                    "error": "Missing required parameter: memory_type"
+                }
+            
+            # 驗證記憶類型
+            valid_types = ['conversation', 'persona', 'summary']
+            if memory_type not in valid_types:
+                return {
+                    "success": False,
+                    "error": f"Invalid memory_type: {memory_type}. Valid types: {valid_types}"
+                }
+            
+            # 準備請求數據
+            request_data = {
+                "memory_type": memory_type,
+                "limit": limit,
+                "include_metadata": include_metadata
+            }
+            
+            # 如果有查詢條件，加入查詢
+            if query:
+                request_data["query"] = query
+            
+            logger.info(f"🧠 準備獲取記憶: type={memory_type}, query={query}, limit={limit}")
+            
+            # 調用記憶API
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        f"{self.base_url}/api/memory/get",
+                        json=request_data,
+                        headers={"Content-Type": "application/json"},
+                        timeout=aiohttp.ClientTimeout(total=10)
+                    ) as response:
+                        response_text = await response.text()
+                        
+                        logger.info(f"🔄 記憶API回應狀態: {response.status}")
+                        
+                        if response.status == 200:
+                            try:
+                                result = json.loads(response_text)
+                                memories_data = result.get("data", {})
+                                memories = memories_data.get("memories", [])
+                                
+                                logger.info(f"✅ 成功獲取 {len(memories)} 條 {memory_type} 記憶")
+                                return {
+                                    "success": True,
+                                    "message": f"Retrieved {len(memories)} {memory_type} memories",
+                                    "memory_type": memory_type,
+                                    "memories": memories,
+                                    "total_count": len(memories)
+                                }
+                            except json.JSONDecodeError as e:
+                                logger.error(f"❌ 解析記憶API回應失敗: {e}")
+                                return {
+                                    "success": False,
+                                    "error": f"Failed to parse memory response: {str(e)}"
+                                }
+                        else:
+                            logger.error(f"❌ 獲取記憶失敗: HTTP {response.status} - {response_text}")
+                            return {
+                                "success": False,
+                                "error": f"Memory API error: HTTP {response.status}"
+                            }
+            except aiohttp.ClientTimeout:
+                logger.error(f"⏰ 記憶API請求超時")
+                return {
+                    "success": False,
+                    "error": "Memory request timeout"
+                }
+            except Exception as http_error:
+                logger.error(f"🚨 記憶API請求異常: {http_error}")
+                return {
+                    "success": False,
+                    "error": f"Memory request failed: {str(http_error)}"
+                }
+            
+        except Exception as e:
+            logger.error(f"❌ get_memory 處理錯誤: {e}")
+            return {
+                "success": False,
+                "error": f"Failed to get memory: {str(e)}"
+            }
+    
+    async def _handle_save_memory(self, arguments: dict) -> dict:
+        """處理save_memory工具調用"""
+        try:
+            # 驗證必要參數
+            memory_type = arguments.get("memory_type")
+            content = arguments.get("content")
+            metadata = arguments.get("metadata")
+            
+            if memory_type is None:
+                return {
+                    "success": False,
+                    "error": "Missing required parameter: memory_type"
+                }
+            
+            if content is None:
+                return {
+                    "success": False,
+                    "error": "Missing required parameter: content"
+                }
+            
+            # 驗證記憶類型
+            valid_types = ['conversation', 'persona', 'summary']
+            if memory_type not in valid_types:
+                return {
+                    "success": False,
+                    "error": f"Invalid memory_type: {memory_type}. Valid types: {valid_types}"
+                }
+            
+            # 準備請求數據
+            request_data = {
+                "memory_type": memory_type,
+                "content": content
+            }
+            
+            # 如果有元數據，加入
+            if metadata:
+                request_data["metadata"] = metadata
+            
+            logger.info(f"💾 準備儲存記憶: type={memory_type}, content_length={len(content)}")
+            
+            # 調用記憶API
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        f"{self.base_url}/api/memory/save",
+                        json=request_data,
+                        headers={"Content-Type": "application/json"},
+                        timeout=aiohttp.ClientTimeout(total=10)
+                    ) as response:
+                        response_text = await response.text()
+                        
+                        logger.info(f"🔄 記憶儲存API回應狀態: {response.status}")
+                        
+                        if response.status == 200:
+                            try:
+                                result = json.loads(response_text)
+                                logger.info(f"✅ 成功儲存 {memory_type} 記憶")
+                                return {
+                                    "success": True,
+                                    "message": f"Successfully saved {memory_type} memory",
+                                    "memory_type": memory_type,
+                                    "content_length": len(content)
+                                }
+                            except json.JSONDecodeError as e:
+                                logger.error(f"❌ 解析記憶儲存回應失敗: {e}")
+                                return {
+                                    "success": False,
+                                    "error": f"Failed to parse save response: {str(e)}"
+                                }
+                        else:
+                            logger.error(f"❌ 儲存記憶失敗: HTTP {response.status} - {response_text}")
+                            return {
+                                "success": False,
+                                "error": f"Memory save error: HTTP {response.status}"
+                            }
+            except aiohttp.ClientTimeout:
+                logger.error(f"⏰ 記憶儲存API請求超時")
+                return {
+                    "success": False,
+                    "error": "Memory save timeout"
+                }
+            except Exception as http_error:
+                logger.error(f"🚨 記憶儲存API請求異常: {http_error}")
+                return {
+                    "success": False,
+                    "error": f"Memory save request failed: {str(http_error)}"
+                }
+            
+        except Exception as e:
+            logger.error(f"❌ save_memory 處理錯誤: {e}")
+            return {
+                "success": False,
+                "error": f"Failed to save memory: {str(e)}"
             } 

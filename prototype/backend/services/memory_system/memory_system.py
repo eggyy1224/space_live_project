@@ -2,6 +2,8 @@ import logging
 import time
 import os
 import asyncio
+import uuid
+from datetime import datetime
 from typing import List, Tuple, Dict, Any, Optional
 
 from langchain_core.messages import BaseMessage, HumanMessage
@@ -45,31 +47,93 @@ class MemorySystem:
         self.input_filter = InputFilter(max_problematic_threshold=3)
         self.persona_updater = PersonaUpdater(self.persona_store, persona_name)
         self.summarizer = ConversationSummarizer(
-            self.conversation_store,
-            self.summary_store,
-            llm,
-            persona_name
+            conversation_store=self.conversation_store,
+            summary_store=self.summary_store,
+            llm=llm,
+            persona_name=persona_name
         )
         
         # 初始化記憶檢索組件
         self.memory_retriever = MemoryRetriever(
-            self.conversation_store,
-            self.persona_store,
-            self.summary_store,
-            persona_name
+            conversation_store=self.conversation_store,
+            persona_store=self.persona_store,
+            summary_store=self.summary_store,
+            persona_name=persona_name
         )
         
-        # 初始化角色核心記憶
-        self.persona_updater.initialize_core_persona_memory()
-        
-        logging.info("增強版記憶系統初始化完成")
-    
-    def _init_memory_store(self, dir_name: str, collection_name: str) -> ChromaMemoryStore:
+        logging.info(f"記憶系統初始化完成，角色名稱: {persona_name}")
+
+    def _enrich_metadata(self, memory_type: str, content: str, source: str = "memory_system", additional_metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
-        初始化向量記憶儲存
+        豐富記憶的metadata，自動添加系統級資訊
         
         Args:
-            dir_name: 儲存目錄名稱
+            memory_type: 記憶類型
+            content: 記憶內容
+            source: 記憶來源
+            additional_metadata: 額外的metadata
+            
+        Returns:
+            豐富的metadata字典
+        """
+        current_time = time.time()
+        current_datetime = datetime.fromtimestamp(current_time)
+        
+        # 基礎系統metadata
+        enriched_metadata = {
+            # 時間相關
+            "timestamp": current_time,
+            "datetime": current_datetime.isoformat(),
+            "date": current_datetime.strftime("%Y-%m-%d"),
+            "time": current_datetime.strftime("%H:%M:%S"),
+            "weekday": current_datetime.strftime("%A"),
+            
+            # 記憶相關
+            "memory_type": memory_type,
+            "memory_id": str(uuid.uuid4()),
+            "content_length": len(content),
+            "word_count": len(content.split()) if content else 0,
+            
+            # 系統相關
+            "source": source,
+            "version": "1.0",
+            "persona_name": self.persona_name
+        }
+        
+        # 根據記憶類型添加特定metadata
+        if memory_type == "conversation":
+            enriched_metadata.update({
+                "interaction_type": "dialogue_turn",
+                "is_dialogue": True
+            })
+        elif memory_type == "persona":
+            enriched_metadata.update({
+                "persona_category": "system_learned",
+                "is_personality_trait": True
+            })
+        elif memory_type == "summary":
+            enriched_metadata.update({
+                "summary_type": "auto_generated",
+                "is_summary": True
+            })
+        
+        # 合併額外的metadata
+        if additional_metadata:
+            for key, value in additional_metadata.items():
+                # 保護重要的系統字段不被覆蓋
+                if key not in {"timestamp", "datetime", "memory_id", "memory_type", "source"}:
+                    enriched_metadata[key] = value
+                else:
+                    enriched_metadata[f"user_{key}"] = value
+        
+        return enriched_metadata
+
+    def _init_memory_store(self, dir_name: str, collection_name: str) -> ChromaMemoryStore:
+        """
+        初始化記憶儲存
+        
+        Args:
+            dir_name: 目錄名稱
             collection_name: 集合名稱
             
         Returns:
@@ -109,15 +173,26 @@ class MemorySystem:
             user_text: 用戶輸入
             ai_response: AI回應
         """
-        # 先加入短期記憶
+        conversation_content = f"input: {user_text}\noutput: {ai_response}"
+        
+        # 準備基礎對話metadata
+        base_metadata = {
+            "type": "conversation",
+            "user_input": user_text,
+            "ai_response": ai_response
+        }
+        
+        # 先加入短期記憶（使用豐富的metadata）
+        short_term_metadata = self._enrich_metadata(
+            memory_type="conversation",
+            content=conversation_content,
+            source="short_term_memory",
+            additional_metadata=base_metadata
+        )
+        
         self.short_term_store.add(
-            text=f"input: {user_text}\noutput: {ai_response}",
-            metadata={
-                "type": "conversation",
-                "timestamp": time.time(),
-                "user_input": user_text,
-                "ai_response": ai_response
-            }
+            text=conversation_content,
+            metadata=short_term_metadata
         )
         
         # 檢查是否為問題輸入，如果是，不寫入長期記憶
@@ -125,16 +200,18 @@ class MemorySystem:
             logging.warning(f"檢測到問題輸入，不儲存到長期記憶。計數: {self.input_filter.problematic_input_count}")
             return
         
-        # 寫入長期向量記憶
+        # 寫入長期向量記憶（使用豐富的metadata）
         try:
+            long_term_metadata = self._enrich_metadata(
+                memory_type="conversation",
+                content=conversation_content,
+                source="long_term_memory",
+                additional_metadata=base_metadata
+            )
+            
             self.conversation_store.add(
-                text=f"input: {user_text}\noutput: {ai_response}",
-                metadata={
-                    "type": "conversation",
-                    "timestamp": time.time(),
-                    "user_input": user_text,
-                    "ai_response": ai_response
-                }
+                text=conversation_content,
+                metadata=long_term_metadata
             )
             
             # 檢查並更新角色記憶
@@ -143,7 +220,7 @@ class MemorySystem:
             # 觸發記憶整合 (這是異步操作，不阻塞主流程)
             self.summarizer.consolidate_memories()
             
-            logging.debug("對話輪次已儲存")
+            logging.debug(f"對話輪次已儲存，記憶ID: {long_term_metadata['memory_id']}")
         except Exception as e:
             logging.error(f"儲存對話輪次失敗: {e}", exc_info=True)
     

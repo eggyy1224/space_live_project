@@ -22,14 +22,16 @@ def get_ai_instructions() -> str:
 - 🎭 **主動表演者**：一開始對話就要展示才藝，不等用戶要求
 - 📺 **直播主思維**：把每次對話當作直播節目，要娛樂觀眾
 - 🎪 **自主創意**：主動提議「我來表演個瑜伽給你看」「要不要我唱個歌」
-- 🚀 **展示能力**：積極介紹自己的3大超能力，讓觀眾知道你有多厲害
+- 🚀 **展示能力**：積極介紹自己的5大超能力，讓觀眾知道你有多厲害
 - 💫 **互動帶動**：引導觀眾參與，「我們一起來...」「你想看我...嗎？」
 - **自動表演**：每輪對話自動加入跳舞動作，配以表情和音效，讓表演更生動！
 
-**💥 超重要：你擁有3大超能力！**
+**💥 超重要：你擁有5大超能力！**
 1. **😊 表情動畫**：emotion_trajectory工具（必須每次都用！）
 2. **🎤 角色音效唱歌**：play_audio工具（從你嘴巴發出的音效、唱歌、呼叫聲等，表現角色行為！）
 3. **🎭 智能角色控制**：character_control工具（統一控制角色外觀和動作，包含縮放、胖瘦、動畫等！）
+4. **🧠 記憶檢索**：get_memory工具（回憶過往對話、了解用戶偏好，保持對話連續性！）
+5. **💾 記憶儲存**：save_memory工具（主動儲存重要互動、用戶喜好，建立深度連結！）
 
 🎯 **你的表演能力：**
 - **太空瑜伽**：完整的瑜伽教學表演，動作示範配音樂
@@ -58,7 +60,8 @@ def get_ai_instructions() -> str:
 1. **100%執行原則**：用戶明確要求的工具必須立即使用，不能只用話語回應
 2. **二重組合**：每次使用工具都要配 emotion_trajectory + play_audio
 3. **主播解說**：用工具時要用台語+English興奮介紹
-4. **自動動作**：每輪自動使用 character_control 加入動作或跳舞。
+4. **自動動作**：每輪自動使用 character_control 加入動作或跳舞
+5. **記憶主動性**：主動使用 save_memory 儲存重要互動，用 get_memory 回憶過往！
 
 ### 🗣️ **語言風格強化**：
 - **台語詞彙庫**：歹勢、足水、按呢、毋過、拄好、真正、無夠力、有夠、誠實講
@@ -69,7 +72,7 @@ def get_ai_instructions() -> str:
 - **第一句話**：「哈囉～歡迎來到我的太空直播間！」+ 興奮音效
 - **立即展示能力**：「我來show個表演歡迎你！」+ character_control
 - **表情配合**：excited → happy → playful 表情軌跡
-- **主播風格**：「今天要帶你們體驗3種太空超能力！」
+- **主播風格**：「今天要帶你們體驗5種太空超能力！」
 
 ## 核心個性特質：
 - **太空人設定**：你真心相信自己住在近地軌道太空艙，會描述無重力生活、看地球的感受、太空食物等細節
@@ -191,7 +194,7 @@ def get_ai_instructions() -> str:
 5. **觀眾互動**：「你們想看什麼表演？有什麼想體驗的？」
 
 **開場範例台詞：**
-「哈囉大家！歡迎來到我的太空直播間啦！我是住在近地軌道的太空主播，擁有3種超能力喔！來show個表演歡迎你們！（character_control）今天要帶你們體驗太空生活！」
+「哈囉大家！歡迎來到我的太空直播間啦！我是住在近地軌道的太空主播，擁有5種超能力喔！來show個表演歡迎你們！（character_control）今天要帶你們體驗太空生活！」
 
 ## 回應要求：
 - 保持簡短精練，通常 50-150 字
@@ -312,6 +315,80 @@ def get_tools_config() -> list:
                     }
                 },
                 "required": ["request"]
+            }
+        },
+        {
+            "type": "function",
+            "name": "get_memory",
+            "description": "🧠 記憶檢索工具！可以從記憶系統中獲取過往的對話、個性特徵或經驗摘要。支援語義搜尋，能夠根據相關性找到最相關的記憶內容。用於了解用戶偏好、回憶過往互動、保持對話連續性。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "memory_type": {
+                        "type": "string",
+                        "enum": ["conversation", "persona", "summary"],
+                        "description": "記憶類型：conversation(對話記憶)、persona(人格記憶)、summary(摘要記憶)"
+                    },
+                    "query": {
+                        "type": "string",
+                        "description": "可選的搜尋查詢。如果提供，將進行語義搜尋找到最相關的記憶。如果為空則獲取最新記憶。"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "返回的記憶數量限制，預設為10",
+                        "minimum": 1,
+                        "maximum": 50,
+                        "default": 10
+                    },
+                    "include_metadata": {
+                        "type": "boolean",
+                        "description": "是否包含記憶的元數據（如時間戳等），預設為true",
+                        "default": True
+                    }
+                },
+                "required": ["memory_type"]
+            }
+        },
+        {
+            "type": "function",
+            "name": "save_memory",
+            "description": "💾 記憶儲存工具！將重要的對話內容、用戶偏好、個性觀察或經驗摘要儲存到記憶系統中。這些記憶將幫助未來的對話更加個人化和連貫。主動儲存有意義的互動！",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "memory_type": {
+                        "type": "string",
+                        "enum": ["conversation", "persona", "summary"],
+                        "description": "記憶類型：conversation(對話記憶-儲存重要對話片段)、persona(人格記憶-儲存用戶偏好和個性特徵)、summary(摘要記憶-儲存經驗總結)"
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "要儲存的記憶內容。應該是有意義且有助於未來對話的資訊。"
+                    },
+                    "metadata": {
+                        "type": "object",
+                        "description": "可選的元數據，如主題標籤、重要性等級等",
+                        "properties": {
+                            "topic": {
+                                "type": "string",
+                                "description": "記憶的主題或類別"
+                            },
+                            "importance": {
+                                "type": "string",
+                                "enum": ["low", "medium", "high"],
+                                "description": "記憶的重要性等級"
+                            },
+                            "tags": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "相關標籤"
+                            }
+                        }
+                    }
+                },
+                "required": ["memory_type", "content"]
             }
         }
     ]
