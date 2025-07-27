@@ -68,6 +68,9 @@ class WebSocketHandler:
                 # 設定舞群初始動畫
                 await self._set_initial_dance_group_animation()
                 
+                # 自動發送歡迎訊息
+                await self._send_welcome_message()
+                
                 # 創建音頻接收隊列
                 audio_queue = asyncio.Queue(maxsize=50)  # 限制隊列大小避免記憶體過度使用
                 # 創建中斷訊號隊列
@@ -496,6 +499,27 @@ class WebSocketHandler:
                         logger.warning(f"設置舞群初始動畫失敗: {await response.text()}")
         except Exception as e:
             logger.error(f"設置舞群初始動畫異常: {e}")
+    
+    async def _send_welcome_message(self):
+        """自動發送歡迎訊息"""
+        import aiohttp
+        try:
+            async with aiohttp.ClientSession() as session:
+                # 使用正確的 send_message 端點格式
+                message_data = {
+                    "content": "哈摟我是你最辣的太空主播，今天好嗎",
+                    "message_type": "chat-message"
+                }
+                async with session.post(
+                    "http://localhost:8000/api/control/send-message",
+                    json=message_data
+                ) as response:
+                    if response.status == 200:
+                        logger.info("自動發送歡迎訊息成功: 哈摟我是你最辣的太空主播，今天好嗎")
+                    else:
+                        logger.warning(f"發送歡迎訊息失敗: {await response.text()}")
+        except Exception as e:
+            logger.error(f"發送歡迎訊息失敗: {e}")
     
     def set_tool_executor(self, executor):
         """設定工具執行器"""
