@@ -16,20 +16,65 @@ export interface SceneConfig {
 
 export const AVAILABLE_SCENES: SceneConfig[] = [
   {
-    id: 'room-a',
-    name: '6面房間A',
-    url: '/scenes/6面房間A.glb',
-    description: '原始6面房間場景',
-    defaultScale: [2, 2, 2],
+    id: 'cyber-capsule',
+    name: '賽博太空艙',
+    url: '/scenes/賽博太空艙.glb',
+    description: '未來感賽博太空艙',
+    defaultScale: [200, 200, 200],
     defaultPosition: [0, 0, 0],
     defaultRotation: [0, 0, 0]
   },
   {
-    id: 'room-b',
-    name: '6面房間',
-    url: '/scenes/6面房間.glb',
-    description: '新版6面房間場景',
-    defaultScale: [2, 2, 2],
+    id: 'spaceship-control',
+    name: '飛船控制間',
+    url: '/scenes/飛船控制間.glb',
+    description: '飛船駕駛艙場景',
+    defaultScale: [200, 200, 200],
+    defaultPosition: [0, 0, 0],
+    defaultRotation: [0, 0, 0]
+  },
+  {
+    id: 'star-ruins',
+    name: '星際廢墟',
+    url: '/scenes/星際廢墟.glb',
+    description: '星際廢墟場景',
+    defaultScale: [200, 200, 200],
+    defaultPosition: [0, 0, 0],
+    defaultRotation: [0, 0, 0]
+  },
+  {
+    id: 'star-bedroom',
+    name: '星際臥室',
+    url: '/scenes/星際臥室.glb',
+    description: '星際臥室場景',
+    defaultScale: [200, 200, 200],
+    defaultPosition: [0, 0, 0],
+    defaultRotation: [0, 0, 0]
+  },
+  {
+    id: 'space-capsule-2',
+    name: '太空艙2',
+    url: '/scenes/太空艙2.glb',
+    description: '第二版太空艙',
+    defaultScale: [200, 200, 200],
+    defaultPosition: [0, 0, 0],
+    defaultRotation: [0, 0, 0]
+  },
+  {
+    id: 'space-capsule',
+    name: '太空艙',
+    url: '/scenes/太空艙.glb',
+    description: '經典太空艙',
+    defaultScale: [200, 200, 200],
+    defaultPosition: [0, 0, 0],
+    defaultRotation: [0, 0, 0]
+  },
+  {
+    id: 'space-dancefloor',
+    name: '太空舞池',
+    url: '/scenes/太空舞池.glb',
+    description: '太空舞池場景',
+    defaultScale: [200, 200, 200],
     defaultPosition: [0, 0, 0],
     defaultRotation: [0, 0, 0]
   }
