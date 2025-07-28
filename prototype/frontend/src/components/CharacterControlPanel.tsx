@@ -27,6 +27,7 @@ export const CharacterControlPanel: React.FC<CharacterControlPanelProps> = ({
     updateCharacterMorphTarget,
     resetCharacterMorphTargets,
     resetCharacterTransform,
+    availableCharacterAnimations,
   } = useCharacterService();
 
   // 直接從 store 獲取其他需要的方法
@@ -48,7 +49,7 @@ export const CharacterControlPanel: React.FC<CharacterControlPanelProps> = ({
   };
 
   const selectCharacterAnimation = (animationName: string) => {
-    if (CHARACTER_ANIMATIONS.includes(animationName)) {
+    if (availableCharacterAnimations.includes(animationName)) {
       setCurrentCharacterAnimation(animationName);
     }
   };
@@ -261,7 +262,7 @@ export const CharacterControlPanel: React.FC<CharacterControlPanelProps> = ({
           <div className="text-sm text-gray-300">當前: {currentCharacterAnimation || '無'}</div>
         </div>
         <div className="grid grid-cols-2 gap-1 max-h-32 overflow-y-auto">
-          {CHARACTER_ANIMATIONS.map((animation) => (
+          {availableCharacterAnimations.map((animation) => (
             <button
               key={animation}
               onClick={() => selectCharacterAnimation(animation)}

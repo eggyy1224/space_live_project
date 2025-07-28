@@ -72,8 +72,8 @@ export const createCharacterSlice: StateCreator<CharacterSlice> = (set, get) => 
   characterModelLoaded: false,
   characterVisible: true,
   characterPosition: [0, 0, 0], // 主要角色移動到原點位置
-  characterScale: 15,
-  characterRotation: [0, 0, 0],
+  characterScale: 0.5,
+  characterRotation: [0, Math.PI, 0],
   
   // 動畫狀態
   availableCharacterAnimations: CHARACTER_ANIMATIONS,
@@ -96,7 +96,7 @@ export const createCharacterSlice: StateCreator<CharacterSlice> = (set, get) => 
   
   setCharacterPosition: (position: [number, number, number]) => set({ characterPosition: position }),
   
-  setCharacterScale: (scale: number) => set({ characterScale: scale }),
+  setCharacterScale: (scale: number) => set({ characterScale: Math.max(0, Math.min(1, scale)) }),
   
   setCharacterRotation: (rotation: [number, number, number]) => set({ characterRotation: rotation }),
   

@@ -1,0 +1,751 @@
+=== 分析 character0728.glb ===
+檔案大小: 30.06 MB
+建立時間: 2025/7/28 下午5:27:50
+修改時間: 2025/7/28 下午5:27:50
+GLB 版本: 2
+場景數量: 1
+節點數量: 50
+網格數量: 8
+材質數量: 13
+貼圖數量: 18
+動畫數量: 34
+皮膚數量: 1
+
+=== 網格詳細分析 ===
+
+網格 0: AvatarEyelashes.006
+  基元 0:
+    屬性: POSITION, NORMAL, TEXCOORD_0, JOINTS_0, WEIGHTS_0
+
+網格 1: AvatarHead.007
+  基元 0:
+    屬性: POSITION, NORMAL, TEXCOORD_0, JOINTS_0, WEIGHTS_0
+    Morph Targets: 66 個
+    Target 名稱: browDownLeft, browDownRight, browInnerUp, browOuterUpLeft, browOuterUpRight, cheekPuff, cheekSquintLeft, cheekSquintRight, eyeBlinkLeft, eyeBlinkRight, eyeLookDownLeft, eyeLookDownRight, eyeLookInLeft, eyeLookInRight, eyeLookOutLeft, eyeLookOutRight, eyeLookUpLeft, eyeLookUpRight, eyeSquintLeft, eyeSquintRight, eyeWideLeft, eyeWideRight, jawForward, jawLeft, jawOpen, jawRight, mouthClose, mouthDimpleLeft, mouthDimpleRight, mouthFrownLeft, mouthFrownRight, mouthFunnel, mouthLeft, mouthLowerDownLeft, mouthLowerDownRight, mouthPressLeft, mouthPressRight, mouthPucker, mouthRight, mouthRollLower, mouthRollUpper, mouthShrugLower, mouthShrugUpper, mouthSmileLeft, mouthSmileRight, mouthStretchLeft, mouthStretchRight, mouthUpperUpLeft, mouthUpperUpRight, noseSneerLeft, noseSneerRight, CH, DD, E, FF, PP, RR, SS, TH, aa, ih, kk, nn, oh, ou, sil
+
+網格 2: AvatarLeftEyeball.006
+  基元 0:
+    屬性: POSITION, NORMAL, TEXCOORD_0, TEXCOORD_1, JOINTS_0, WEIGHTS_0
+
+網格 3: AvatarLeftEyeball.008
+  基元 0:
+    屬性: POSITION, NORMAL, TEXCOORD_0, TEXCOORD_1, JOINTS_0, WEIGHTS_0
+
+網格 4: AvatarTeethLower.006
+  基元 0:
+    屬性: POSITION, NORMAL, TEXCOORD_0, JOINTS_0, WEIGHTS_0
+
+網格 5: AvatarTeethUpper.006
+  基元 0:
+    屬性: POSITION, NORMAL, TEXCOORD_0, JOINTS_0, WEIGHTS_0
+
+網格 6: Mesh_9570.rip_mesh0000.007
+  基元 0:
+    屬性: POSITION, NORMAL, TEXCOORD_0, JOINTS_0, WEIGHTS_0
+    Morph Targets: 1 個
+    Target 名稱: hair01
+  基元 1:
+    屬性: POSITION, NORMAL, TEXCOORD_0, JOINTS_0, WEIGHTS_0
+    Morph Targets: 1 個
+    Target 名稱: hair01
+
+網格 7: outfit_shoes.030
+  基元 0:
+    屬性: POSITION, NORMAL, TEXCOORD_0, TEXCOORD_1, TEXCOORD_2, TEXCOORD_3, TEXCOORD_4, JOINTS_0, WEIGHTS_0
+    Morph Targets: 3 個
+    Target 名稱: 鍵 1, 錯置, 錯置.001
+  基元 1:
+    屬性: POSITION, NORMAL, TEXCOORD_0, TEXCOORD_1, TEXCOORD_2, TEXCOORD_3, TEXCOORD_4, JOINTS_0, WEIGHTS_0
+    Morph Targets: 3 個
+    Target 名稱: 鍵 1, 錯置, 錯置.001
+  基元 2:
+    屬性: POSITION, NORMAL, TEXCOORD_0, TEXCOORD_1, TEXCOORD_2, TEXCOORD_3, TEXCOORD_4, JOINTS_0, WEIGHTS_0
+    Morph Targets: 3 個
+    Target 名稱: 鍵 1, 錯置, 錯置.001
+  基元 3:
+    屬性: POSITION, NORMAL, TEXCOORD_0, TEXCOORD_1, TEXCOORD_2, TEXCOORD_3, TEXCOORD_4, JOINTS_0, WEIGHTS_0
+    Morph Targets: 3 個
+    Target 名稱: 鍵 1, 錯置, 錯置.001
+  基元 4:
+    屬性: POSITION, NORMAL, TEXCOORD_0, TEXCOORD_1, TEXCOORD_2, TEXCOORD_3, TEXCOORD_4, JOINTS_0, WEIGHTS_0
+    Morph Targets: 3 個
+    Target 名稱: 鍵 1, 錯置, 錯置.001
+  基元 5:
+    屬性: POSITION, NORMAL, TEXCOORD_0, TEXCOORD_1, TEXCOORD_2, TEXCOORD_3, TEXCOORD_4, JOINTS_0, WEIGHTS_0
+    Morph Targets: 3 個
+    Target 名稱: 鍵 1, 錯置, 錯置.001
+
+=== 動畫資訊 ===
+動畫 1: 運動2
+  通道數: 123
+  採樣器數: 246
+動畫 2: 漂浮
+  通道數: 124
+  採樣器數: 124
+動畫 3: 運動1
+  通道數: 123
+  採樣器數: 246
+動畫 4: Tpose
+  通道數: 123
+  採樣器數: 123
+動畫 5: 不穩
+  通道數: 123
+  採樣器數: 123
+動畫 6: 划手機
+  通道數: 123
+  採樣器數: 123
+動畫 7: 漂浮2
+  通道數: 123
+  採樣器數: 123
+動畫 8: 臥躺
+  通道數: 123
+  採樣器數: 123
+動畫 9: 舞步1
+  通道數: 123
+  採樣器數: 123
+動畫 10: 舞步2
+  通道數: 123
+  採樣器數: 123
+動畫 11: 舞步3
+  通道數: 123
+  採樣器數: 123
+動畫 12: 飛1
+  通道數: 123
+  採樣器數: 123
+動畫 13: 飛2
+  通道數: 123
+  採樣器數: 123
+動畫 14: 瑜珈動作1
+  通道數: 123
+  採樣器數: 123
+動畫 15: 瑜珈動作2
+  通道數: 123
+  採樣器數: 123
+動畫 16: 瑜珈動作3
+  通道數: 123
+  採樣器數: 123
+動畫 17: 瑜珈動作4
+  通道數: 123
+  採樣器數: 123
+動畫 18: 漂浮.001
+  通道數: 123
+  採樣器數: 123
+動畫 19: 瑜珈動作5
+  通道數: 123
+  採樣器數: 123
+動畫 20: 瑜珈動作6
+  通道數: 123
+  採樣器數: 123
+動畫 21: 瑜珈動作7
+  通道數: 123
+  採樣器數: 123
+動畫 22: 瑜珈動作8
+  通道數: 123
+  採樣器數: 123
+動畫 23: 瑜珈動作9
+  通道數: 123
+  採樣器數: 123
+動畫 24: 瑜珈動作10
+  通道數: 123
+  採樣器數: 123
+動畫 25: 瑜珈動作11
+  通道數: 123
+  採樣器數: 123
+動畫 26: 瑜珈動作12
+  通道數: 123
+  採樣器數: 123
+動畫 27: 瑜珈動作13
+  通道數: 123
+  採樣器數: 123
+動畫 28: 瑜珈動作14
+  通道數: 123
+  採樣器數: 123
+動畫 29: 瑜珈動作15
+  通道數: 123
+  採樣器數: 123
+動畫 30: 瑜珈動作16
+  通道數: 123
+  採樣器數: 123
+動畫 31: 瑜珈動作17
+  通道數: 123
+  採樣器數: 123
+動畫 32: 瑜珈動作18
+  通道數: 123
+  採樣器數: 123
+動畫 33: 瑜珈動作19
+  通道數: 123
+  採樣器數: 123
+動畫 34: 瑜珈動作20
+  通道數: 123
+  採樣器數: 123
+
+=== 最終統計 ===
+總網格數: 8
+蒙皮網格數: 8
+骨骼數: 41
+變形目標總數: 86
+動畫數: 34
+
+=== 按網格分組的 Morph Targets ===
+AvatarHead.007: 66 個
+  名稱: browDownLeft, browDownRight, browInnerUp, browOuterUpLeft, browOuterUpRight, cheekPuff, cheekSquintLeft, cheekSquintRight, eyeBlinkLeft, eyeBlinkRight, eyeLookDownLeft, eyeLookDownRight, eyeLookInLeft, eyeLookInRight, eyeLookOutLeft, eyeLookOutRight, eyeLookUpLeft, eyeLookUpRight, eyeSquintLeft, eyeSquintRight, eyeWideLeft, eyeWideRight, jawForward, jawLeft, jawOpen, jawRight, mouthClose, mouthDimpleLeft, mouthDimpleRight, mouthFrownLeft, mouthFrownRight, mouthFunnel, mouthLeft, mouthLowerDownLeft, mouthLowerDownRight, mouthPressLeft, mouthPressRight, mouthPucker, mouthRight, mouthRollLower, mouthRollUpper, mouthShrugLower, mouthShrugUpper, mouthSmileLeft, mouthSmileRight, mouthStretchLeft, mouthStretchRight, mouthUpperUpLeft, mouthUpperUpRight, noseSneerLeft, noseSneerRight, CH, DD, E, FF, PP, RR, SS, TH, aa, ih, kk, nn, oh, ou, sil
+Mesh_9570.rip_mesh0000.007: 2 個
+  名稱: hair01
+outfit_shoes.030: 18 個
+  名稱: 鍵 1, 錯置, 錯置.001
+
+=== JSON 結果 ===
+{
+  "fileName": "character0728.glb",
+  "totalMeshes": 8,
+  "totalSkinnedMeshes": 8,
+  "totalBones": 41,
+  "totalAnimations": 34,
+  "animationNames": [
+    "運動2",
+    "漂浮",
+    "運動1",
+    "Tpose",
+    "不穩",
+    "划手機",
+    "漂浮2",
+    "臥躺",
+    "舞步1",
+    "舞步2",
+    "舞步3",
+    "飛1",
+    "飛2",
+    "瑜珈動作1",
+    "瑜珈動作2",
+    "瑜珈動作3",
+    "瑜珈動作4",
+    "漂浮.001",
+    "瑜珈動作5",
+    "瑜珈動作6",
+    "瑜珈動作7",
+    "瑜珈動作8",
+    "瑜珈動作9",
+    "瑜珈動作10",
+    "瑜珈動作11",
+    "瑜珈動作12",
+    "瑜珈動作13",
+    "瑜珈動作14",
+    "瑜珈動作15",
+    "瑜珈動作16",
+    "瑜珈動作17",
+    "瑜珈動作18",
+    "瑜珈動作19",
+    "瑜珈動作20"
+  ],
+  "hasMorphTargets": true,
+  "morphTargetCount": 86,
+  "morphTargetNames": [
+    "CH",
+    "DD",
+    "E",
+    "FF",
+    "PP",
+    "RR",
+    "SS",
+    "TH",
+    "aa",
+    "browDownLeft",
+    "browDownRight",
+    "browInnerUp",
+    "browOuterUpLeft",
+    "browOuterUpRight",
+    "cheekPuff",
+    "cheekSquintLeft",
+    "cheekSquintRight",
+    "eyeBlinkLeft",
+    "eyeBlinkRight",
+    "eyeLookDownLeft",
+    "eyeLookDownRight",
+    "eyeLookInLeft",
+    "eyeLookInRight",
+    "eyeLookOutLeft",
+    "eyeLookOutRight",
+    "eyeLookUpLeft",
+    "eyeLookUpRight",
+    "eyeSquintLeft",
+    "eyeSquintRight",
+    "eyeWideLeft",
+    "eyeWideRight",
+    "hair01",
+    "ih",
+    "jawForward",
+    "jawLeft",
+    "jawOpen",
+    "jawRight",
+    "kk",
+    "mouthClose",
+    "mouthDimpleLeft",
+    "mouthDimpleRight",
+    "mouthFrownLeft",
+    "mouthFrownRight",
+    "mouthFunnel",
+    "mouthLeft",
+    "mouthLowerDownLeft",
+    "mouthLowerDownRight",
+    "mouthPressLeft",
+    "mouthPressRight",
+    "mouthPucker",
+    "mouthRight",
+    "mouthRollLower",
+    "mouthRollUpper",
+    "mouthShrugLower",
+    "mouthShrugUpper",
+    "mouthSmileLeft",
+    "mouthSmileRight",
+    "mouthStretchLeft",
+    "mouthStretchRight",
+    "mouthUpperUpLeft",
+    "mouthUpperUpRight",
+    "nn",
+    "noseSneerLeft",
+    "noseSneerRight",
+    "oh",
+    "ou",
+    "sil",
+    "錯置",
+    "錯置.001",
+    "鍵 1"
+  ],
+  "meshDetails": [
+    {
+      "index": 0,
+      "name": "AvatarEyelashes.006",
+      "primitiveCount": 1,
+      "totalMorphTargets": 0,
+      "morphTargetsByPrimitive": [
+        {
+          "index": 0,
+          "attributes": [
+            "POSITION",
+            "NORMAL",
+            "TEXCOORD_0",
+            "JOINTS_0",
+            "WEIGHTS_0"
+          ],
+          "morphTargetCount": 0,
+          "morphTargetNames": []
+        }
+      ],
+      "morphTargetNames": []
+    },
+    {
+      "index": 1,
+      "name": "AvatarHead.007",
+      "primitiveCount": 1,
+      "totalMorphTargets": 66,
+      "morphTargetsByPrimitive": [
+        {
+          "index": 0,
+          "attributes": [
+            "POSITION",
+            "NORMAL",
+            "TEXCOORD_0",
+            "JOINTS_0",
+            "WEIGHTS_0"
+          ],
+          "morphTargetCount": 66,
+          "morphTargetNames": [
+            "browDownLeft",
+            "browDownRight",
+            "browInnerUp",
+            "browOuterUpLeft",
+            "browOuterUpRight",
+            "cheekPuff",
+            "cheekSquintLeft",
+            "cheekSquintRight",
+            "eyeBlinkLeft",
+            "eyeBlinkRight",
+            "eyeLookDownLeft",
+            "eyeLookDownRight",
+            "eyeLookInLeft",
+            "eyeLookInRight",
+            "eyeLookOutLeft",
+            "eyeLookOutRight",
+            "eyeLookUpLeft",
+            "eyeLookUpRight",
+            "eyeSquintLeft",
+            "eyeSquintRight",
+            "eyeWideLeft",
+            "eyeWideRight",
+            "jawForward",
+            "jawLeft",
+            "jawOpen",
+            "jawRight",
+            "mouthClose",
+            "mouthDimpleLeft",
+            "mouthDimpleRight",
+            "mouthFrownLeft",
+            "mouthFrownRight",
+            "mouthFunnel",
+            "mouthLeft",
+            "mouthLowerDownLeft",
+            "mouthLowerDownRight",
+            "mouthPressLeft",
+            "mouthPressRight",
+            "mouthPucker",
+            "mouthRight",
+            "mouthRollLower",
+            "mouthRollUpper",
+            "mouthShrugLower",
+            "mouthShrugUpper",
+            "mouthSmileLeft",
+            "mouthSmileRight",
+            "mouthStretchLeft",
+            "mouthStretchRight",
+            "mouthUpperUpLeft",
+            "mouthUpperUpRight",
+            "noseSneerLeft",
+            "noseSneerRight",
+            "CH",
+            "DD",
+            "E",
+            "FF",
+            "PP",
+            "RR",
+            "SS",
+            "TH",
+            "aa",
+            "ih",
+            "kk",
+            "nn",
+            "oh",
+            "ou",
+            "sil"
+          ]
+        }
+      ],
+      "morphTargetNames": [
+        "browDownLeft",
+        "browDownRight",
+        "browInnerUp",
+        "browOuterUpLeft",
+        "browOuterUpRight",
+        "cheekPuff",
+        "cheekSquintLeft",
+        "cheekSquintRight",
+        "eyeBlinkLeft",
+        "eyeBlinkRight",
+        "eyeLookDownLeft",
+        "eyeLookDownRight",
+        "eyeLookInLeft",
+        "eyeLookInRight",
+        "eyeLookOutLeft",
+        "eyeLookOutRight",
+        "eyeLookUpLeft",
+        "eyeLookUpRight",
+        "eyeSquintLeft",
+        "eyeSquintRight",
+        "eyeWideLeft",
+        "eyeWideRight",
+        "jawForward",
+        "jawLeft",
+        "jawOpen",
+        "jawRight",
+        "mouthClose",
+        "mouthDimpleLeft",
+        "mouthDimpleRight",
+        "mouthFrownLeft",
+        "mouthFrownRight",
+        "mouthFunnel",
+        "mouthLeft",
+        "mouthLowerDownLeft",
+        "mouthLowerDownRight",
+        "mouthPressLeft",
+        "mouthPressRight",
+        "mouthPucker",
+        "mouthRight",
+        "mouthRollLower",
+        "mouthRollUpper",
+        "mouthShrugLower",
+        "mouthShrugUpper",
+        "mouthSmileLeft",
+        "mouthSmileRight",
+        "mouthStretchLeft",
+        "mouthStretchRight",
+        "mouthUpperUpLeft",
+        "mouthUpperUpRight",
+        "noseSneerLeft",
+        "noseSneerRight",
+        "CH",
+        "DD",
+        "E",
+        "FF",
+        "PP",
+        "RR",
+        "SS",
+        "TH",
+        "aa",
+        "ih",
+        "kk",
+        "nn",
+        "oh",
+        "ou",
+        "sil"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "AvatarLeftEyeball.006",
+      "primitiveCount": 1,
+      "totalMorphTargets": 0,
+      "morphTargetsByPrimitive": [
+        {
+          "index": 0,
+          "attributes": [
+            "POSITION",
+            "NORMAL",
+            "TEXCOORD_0",
+            "TEXCOORD_1",
+            "JOINTS_0",
+            "WEIGHTS_0"
+          ],
+          "morphTargetCount": 0,
+          "morphTargetNames": []
+        }
+      ],
+      "morphTargetNames": []
+    },
+    {
+      "index": 3,
+      "name": "AvatarLeftEyeball.008",
+      "primitiveCount": 1,
+      "totalMorphTargets": 0,
+      "morphTargetsByPrimitive": [
+        {
+          "index": 0,
+          "attributes": [
+            "POSITION",
+            "NORMAL",
+            "TEXCOORD_0",
+            "TEXCOORD_1",
+            "JOINTS_0",
+            "WEIGHTS_0"
+          ],
+          "morphTargetCount": 0,
+          "morphTargetNames": []
+        }
+      ],
+      "morphTargetNames": []
+    },
+    {
+      "index": 4,
+      "name": "AvatarTeethLower.006",
+      "primitiveCount": 1,
+      "totalMorphTargets": 0,
+      "morphTargetsByPrimitive": [
+        {
+          "index": 0,
+          "attributes": [
+            "POSITION",
+            "NORMAL",
+            "TEXCOORD_0",
+            "JOINTS_0",
+            "WEIGHTS_0"
+          ],
+          "morphTargetCount": 0,
+          "morphTargetNames": []
+        }
+      ],
+      "morphTargetNames": []
+    },
+    {
+      "index": 5,
+      "name": "AvatarTeethUpper.006",
+      "primitiveCount": 1,
+      "totalMorphTargets": 0,
+      "morphTargetsByPrimitive": [
+        {
+          "index": 0,
+          "attributes": [
+            "POSITION",
+            "NORMAL",
+            "TEXCOORD_0",
+            "JOINTS_0",
+            "WEIGHTS_0"
+          ],
+          "morphTargetCount": 0,
+          "morphTargetNames": []
+        }
+      ],
+      "morphTargetNames": []
+    },
+    {
+      "index": 6,
+      "name": "Mesh_9570.rip_mesh0000.007",
+      "primitiveCount": 2,
+      "totalMorphTargets": 2,
+      "morphTargetsByPrimitive": [
+        {
+          "index": 0,
+          "attributes": [
+            "POSITION",
+            "NORMAL",
+            "TEXCOORD_0",
+            "JOINTS_0",
+            "WEIGHTS_0"
+          ],
+          "morphTargetCount": 1,
+          "morphTargetNames": [
+            "hair01"
+          ]
+        },
+        {
+          "index": 1,
+          "attributes": [
+            "POSITION",
+            "NORMAL",
+            "TEXCOORD_0",
+            "JOINTS_0",
+            "WEIGHTS_0"
+          ],
+          "morphTargetCount": 1,
+          "morphTargetNames": [
+            "hair01"
+          ]
+        }
+      ],
+      "morphTargetNames": [
+        "hair01"
+      ]
+    },
+    {
+      "index": 7,
+      "name": "outfit_shoes.030",
+      "primitiveCount": 6,
+      "totalMorphTargets": 18,
+      "morphTargetsByPrimitive": [
+        {
+          "index": 0,
+          "attributes": [
+            "POSITION",
+            "NORMAL",
+            "TEXCOORD_0",
+            "TEXCOORD_1",
+            "TEXCOORD_2",
+            "TEXCOORD_3",
+            "TEXCOORD_4",
+            "JOINTS_0",
+            "WEIGHTS_0"
+          ],
+          "morphTargetCount": 3,
+          "morphTargetNames": [
+            "鍵 1",
+            "錯置",
+            "錯置.001"
+          ]
+        },
+        {
+          "index": 1,
+          "attributes": [
+            "POSITION",
+            "NORMAL",
+            "TEXCOORD_0",
+            "TEXCOORD_1",
+            "TEXCOORD_2",
+            "TEXCOORD_3",
+            "TEXCOORD_4",
+            "JOINTS_0",
+            "WEIGHTS_0"
+          ],
+          "morphTargetCount": 3,
+          "morphTargetNames": [
+            "鍵 1",
+            "錯置",
+            "錯置.001"
+          ]
+        },
+        {
+          "index": 2,
+          "attributes": [
+            "POSITION",
+            "NORMAL",
+            "TEXCOORD_0",
+            "TEXCOORD_1",
+            "TEXCOORD_2",
+            "TEXCOORD_3",
+            "TEXCOORD_4",
+            "JOINTS_0",
+            "WEIGHTS_0"
+          ],
+          "morphTargetCount": 3,
+          "morphTargetNames": [
+            "鍵 1",
+            "錯置",
+            "錯置.001"
+          ]
+        },
+        {
+          "index": 3,
+          "attributes": [
+            "POSITION",
+            "NORMAL",
+            "TEXCOORD_0",
+            "TEXCOORD_1",
+            "TEXCOORD_2",
+            "TEXCOORD_3",
+            "TEXCOORD_4",
+            "JOINTS_0",
+            "WEIGHTS_0"
+          ],
+          "morphTargetCount": 3,
+          "morphTargetNames": [
+            "鍵 1",
+            "錯置",
+            "錯置.001"
+          ]
+        },
+        {
+          "index": 4,
+          "attributes": [
+            "POSITION",
+            "NORMAL",
+            "TEXCOORD_0",
+            "TEXCOORD_1",
+            "TEXCOORD_2",
+            "TEXCOORD_3",
+            "TEXCOORD_4",
+            "JOINTS_0",
+            "WEIGHTS_0"
+          ],
+          "morphTargetCount": 3,
+          "morphTargetNames": [
+            "鍵 1",
+            "錯置",
+            "錯置.001"
+          ]
+        },
+        {
+          "index": 5,
+          "attributes": [
+            "POSITION",
+            "NORMAL",
+            "TEXCOORD_0",
+            "TEXCOORD_1",
+            "TEXCOORD_2",
+            "TEXCOORD_3",
+            "TEXCOORD_4",
+            "JOINTS_0",
+            "WEIGHTS_0"
+          ],
+          "morphTargetCount": 3,
+          "morphTargetNames": [
+            "鍵 1",
+            "錯置",
+            "錯置.001"
+          ]
+        }
+      ],
+      "morphTargetNames": [
+        "鍵 1",
+        "錯置",
+        "錯置.001"
+      ]
+    }
+  ],
+  "hierarchy": "- Scene (Group)\\n  - Armature.004 (Object3D)\\n    - AvatarEyelashes.006 (SkinnedMesh)\\n    - AvatarHead.007 (SkinnedMesh)\\n      Morph targets: 66 個 (browDownLeft, browDownRight, browInnerUp, browOuterUpLeft, browOuterUpRight, cheekPuff, cheekSquintLeft, cheekSquintRight, eyeBlinkLeft, eyeBlinkRight...)\\n    - AvatarLeftEyeball.006 (SkinnedMesh)\\n    - AvatarLeftEyeball.008 (SkinnedMesh)\\n    - AvatarTeethLower.006 (SkinnedMesh)\\n    - AvatarTeethUpper.006 (SkinnedMesh)\\n    - Mesh_9570.rip.007 (SkinnedMesh)\\n      Morph targets: 2 個 (hair01)\\n    - outfit_shoes.029 (SkinnedMesh)\\n      Morph targets: 18 個 (鍵 1, 錯置, 錯置.001)\\n    - mixamorig:Hips (Bone)\\n      - mixamorig:Spine (Bone)\\n        - mixamorig:Spine1 (Bone)\\n          - mixamorig:Spine2 (Bone)\\n            - mixamorig:Neck (Bone)\\n              - mixamorig:Head (Bone)\\n                - mixamorig:HeadTop_End (Bone)\\n            - mixamorig:LeftShoulder (Bone)\\n              - mixamorig:LeftArm (Bone)\\n                - mixamorig:LeftForeArm (Bone)\\n                  - mixamorig:LeftHand (Bone)\\n                    - mixamorig:LeftHandThumb1 (Bone)\\n                      - mixamorig:LeftHandThumb2 (Bone)\\n                        - mixamorig:LeftHandThumb3 (Bone)\\n                          - mixamorig:LeftHandThumb4 (Bone)\\n                    - mixamorig:LeftHandIndex1 (Bone)\\n                      - mixamorig:LeftHandIndex2 (Bone)\\n                        - mixamorig:LeftHandIndex3 (Bone)\\n                          - mixamorig:LeftHandIndex4 (Bone)\\n            - mixamorig:RightShoulder (Bone)\\n              - mixamorig:RightArm (Bone)\\n                - mixamorig:RightForeArm (Bone)\\n                  - mixamorig:RightHand (Bone)\\n                    - mixamorig:RightHandThumb1 (Bone)\\n                      - mixamorig:RightHandThumb2 (Bone)\\n                        - mixamorig:RightHandThumb3 (Bone)\\n                          - mixamorig:RightHandThumb4 (Bone)\\n                    - mixamorig:RightHandIndex1 (Bone)\\n                      - mixamorig:RightHandIndex2 (Bone)\\n                        - mixamorig:RightHandIndex3 (Bone)\\n                          - mixamorig:RightHandIndex4 (Bone)\\n      - mixamorig:LeftUpLeg (Bone)\\n        - mixamorig:LeftLeg (Bone)\\n          - mixamorig:LeftFoot (Bone)\\n            - mixamorig:LeftToeBase (Bone)\\n              - mixamorig:LeftToe_End (Bone)\\n      - mixamorig:RightUpLeg (Bone)\\n        - mixamorig:RightLeg (Bone)\\n          - mixamorig:RightFoot (Bone)\\n            - mixamorig:RightToeBase (Bone)\\n              - mixamorig:RightToe_End (Bone)\\n"
+}

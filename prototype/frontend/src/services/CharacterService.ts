@@ -159,10 +159,19 @@ export const useCharacterService = () => {
     logger.info('[CharacterService] Initializing character service with complete synchronization', LogCategory.GENERAL);
   }, []);
 
+  // 直接複製分析 json 的 animationNames 陣列
+  const CHARACTER0728_ANIMATIONS = [
+    "運動2", "漂浮", "運動1", "Tpose", "不穩", "划手機", "漂浮2", "臥躺", "舞步1", "舞步2", "舞步3", "飛1", "飛2",
+    "瑜珈動作1", "瑜珈動作2", "瑜珈動作3", "瑜珈動作4", "漂浮.001",
+    "瑜珈動作5", "瑜珈動作6", "瑜珈動作7", "瑜珈動作8", "瑜珈動作9", "瑜珈動作10",
+    "瑜珈動作11", "瑜珈動作12", "瑜珈動作13", "瑜珈動作14", "瑜珈動作15", "瑜珈動作16",
+    "瑜珈動作17", "瑜珈動作18", "瑜珈動作19", "瑜珈動作20"
+  ];
+
   // 返回值 - 提供兩套狀態以支持完全同步
   return {
     // 基本模型狀態
-    characterModelUrl: '/models/character0611.glb',
+    characterModelUrl: '/models/character0728.glb',
     characterModelLoaded,
     characterVisible,
     characterPosition,
@@ -170,7 +179,7 @@ export const useCharacterService = () => {
     characterRotation,
     
     // 動畫狀態
-    availableCharacterAnimations,
+    availableCharacterAnimations: CHARACTER0728_ANIMATIONS,
     currentCharacterAnimation,
     
     // 動畫混合相關狀態 (新增)
