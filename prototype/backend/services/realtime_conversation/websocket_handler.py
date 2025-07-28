@@ -27,6 +27,26 @@ class WebSocketHandler:
         self._current_ws = None
         self._session_logger = None
     
+    async def _set_initial_room_scene(self):
+        """設定初始房間場景為賽博太空艙"""
+        import aiohttp
+        try:
+            async with aiohttp.ClientSession() as session:
+                scene_data = {
+                    "displayScene": True,
+                    "sceneName": "賽博太空艙"
+                }
+                async with session.post(
+                    "http://localhost:8000/api/control/scene-display",
+                    json=scene_data
+                ) as response:
+                    if response.status == 200:
+                        logger.info("初始房間場景設置為：賽博太空艙")
+                    else:
+                        logger.warning(f"設置初始房間場景失敗: {await response.text()}")
+        except Exception as e:
+            logger.error(f"設置初始房間場景異常: {e}")
+
     async def stream_conversation(
         self, audio_chunks: AsyncIterator[bytes]
     ) -> AsyncGenerator[bytes, None]:
@@ -60,6 +80,7 @@ class WebSocketHandler:
                 
                 # 等待會話配置確認
                 await asyncio.sleep(0.5)
+                await self._set_initial_room_scene()  # 新增：切換到賽博太空艙
                 await self._set_initial_camera()
                 
                 # 設定初始動畫，避免T-pose
@@ -501,13 +522,26 @@ class WebSocketHandler:
             logger.error(f"設置舞群初始動畫異常: {e}")
     
     async def _send_welcome_message(self):
-        """自動發送歡迎訊息"""
+        """自動發送隨機歡迎訊息"""
         import aiohttp
+        import random
         try:
+            welcome_messages = [
+                "哈摟我是你最辣的太空主播，今天好嗎",
+                "歡迎來到太空艙直播間，今天想看什麼表演？",
+                "Yo～這裡是賽博太空艙，準備好一起high了嗎？",
+                "哈囉！我是來自近地軌道的太空主播，今天要帶你體驗宇宙級的互動！",
+                "太空連線成功！主播在這裡等你很久囉！",
+                "地球的朋友午安，這裡是最潮的太空直播間！",
+                "準備好進入無重力的歡樂時光了嗎？",
+                "哈囉哈囉～主播已經在太空艙stand by囉！",
+                "今天要不要來點太空瑜伽還是跳個舞？",
+                "歡迎光臨！這裡是最有梗的太空直播主，陪你high翻宇宙！"
+            ]
+            message = random.choice(welcome_messages)
             async with aiohttp.ClientSession() as session:
-                # 使用正確的 send_message 端點格式
                 message_data = {
-                    "content": "哈摟我是你最辣的太空主播，今天好嗎",
+                    "content": message,
                     "message_type": "chat-message"
                 }
                 async with session.post(
@@ -515,7 +549,7 @@ class WebSocketHandler:
                     json=message_data
                 ) as response:
                     if response.status == 200:
-                        logger.info("自動發送歡迎訊息成功: 哈摟我是你最辣的太空主播，今天好嗎")
+                        logger.info(f"自動發送歡迎訊息成功: {message}")
                     else:
                         logger.warning(f"發送歡迎訊息失敗: {await response.text()}")
         except Exception as e:
