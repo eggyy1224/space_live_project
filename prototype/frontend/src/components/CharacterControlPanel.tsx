@@ -121,9 +121,9 @@ export const CharacterControlPanel: React.FC<CharacterControlPanelProps> = ({
         <div className="mb-2">
           <input
             type="range"
-            min="0.1"
-            max="15"
-            step="0.1"
+            min="0"
+            max="1"
+            step="0.01"
             value={characterScale}
             onChange={(e) => setCharacterScale(parseFloat(e.target.value))}
             className="w-full"

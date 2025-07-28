@@ -72,7 +72,7 @@ export const createCharacterSlice: StateCreator<CharacterSlice> = (set, get) => 
   characterModelLoaded: false,
   characterVisible: true,
   characterPosition: [0, 0, 0], // 主要角色移動到原點位置
-  characterScale: 0.5,
+  characterScale: 0.1,
   characterRotation: [0, Math.PI, 0],
   
   // 動畫狀態
