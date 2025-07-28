@@ -22,7 +22,7 @@ export const AVAILABLE_SCENES: SceneConfig[] = [
     description: '未來感賽博太空艙',
     defaultScale: [200, 200, 200],
     defaultPosition: [0, 0, 0],
-    defaultRotation: [0, 0, 0]
+    defaultRotation: [0, 185, 0] // Y 軸 180 度
   },
   {
     id: 'spaceship-control',
