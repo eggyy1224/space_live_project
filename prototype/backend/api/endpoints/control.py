@@ -486,21 +486,15 @@ async def control_scene_display(request: SceneDisplayRequest):
             raise HTTPException(status_code=503, detail="No active frontend connections")
 
         payload = {
-            "type": "control-scene",
-            "display": request.displayScene,
-            "sceneName": request.sceneName,
-            "transform": {}
+            "type": "scene-display",  # 統一為 scene-display
+            "payload": {
+                "displayScene": request.displayScene,
+                "sceneName": request.sceneName,
+                "position": request.position,
+                "rotation": request.rotation,
+                "scale": request.scale,
+            }
         }
-        
-        # 確保 transform 字典存在
-        transform_payload = payload["transform"]
-
-        if request.position is not None:
-            transform_payload["position"] = request.position
-        if request.rotation is not None:
-            transform_payload["rotation"] = request.rotation
-        if request.scale is not None:
-            transform_payload["scale"] = request.scale
 
         await manager.broadcast(json.dumps(payload))
 

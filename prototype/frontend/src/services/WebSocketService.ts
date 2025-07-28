@@ -4,6 +4,7 @@ import { useStore } from "../store";
 import { directorBus } from "../director/bus";
 import { DirectorStateMessage, DirectorState } from "../../../shared/director/types";
 import AudioService from './AudioService'; // 新增：引入 AudioService
+import { AVAILABLE_SCENES } from '../config/sceneConfig';
 
 // WebSocket連接配置
 const WS_URL = `ws://${window.location.hostname}:8000/ws`;
@@ -336,48 +337,37 @@ class WebSocketService {
           useStore.getState().setUniformScale(scaleFactor);
           logger.info(`頭部縮放設置為: ${scaleFactor}`, LogCategory.WEBSOCKET);
         }
-      } else if (data.type === "scene-display") {
+      } else if (data.type === "scene-display" || data.type === "control-scene") {
         const payload = (data as any).payload;
         if (payload) {
           const currentState = useStore.getState();
-          
           // 處理場景顯示/隱藏 - 直接設置具體狀態
           if (typeof payload.displayScene === "boolean") {
             useStore.getState().setShowRoomScene(payload.displayScene);
             logger.info(`場景顯示狀態設置為: ${payload.displayScene}`, LogCategory.WEBSOCKET);
           }
-          
           // 處理場景切換
           if (payload.sceneName && typeof payload.sceneName === "string") {
-            // 需要將場景名稱映射到場景ID
-            let sceneId: string | null = null;
-            if (payload.sceneName === "6面房間") {
-              sceneId = "room-b";
-            } else if (payload.sceneName === "6面房間A") {
-              sceneId = "room-a";
-            }
-            
-            if (sceneId) {
-              useStore.getState().switchScene(sceneId);
-              logger.info(`場景切換到: ${payload.sceneName} (ID: ${sceneId})`, LogCategory.WEBSOCKET);
+            // 自動根據 name 找 id
+            const scene = AVAILABLE_SCENES.find(s => s.name === payload.sceneName);
+            if (scene) {
+              useStore.getState().switchScene(scene.id);
+              logger.info(`場景切換到: ${payload.sceneName} (ID: ${scene.id})`, LogCategory.WEBSOCKET);
             } else {
               logger.warn(`未知的場景名稱: ${payload.sceneName}`, LogCategory.WEBSOCKET);
             }
           }
-          
           // 處理房間變換參數
           if (payload.position && Array.isArray(payload.position) && payload.position.length === 3) {
             useStore.getState().setRoomPosition(payload.position as [number, number, number]);
             logger.info(`房間位置設置為: [${payload.position.join(', ')}]`, LogCategory.WEBSOCKET);
           }
-          
           if (payload.rotation && Array.isArray(payload.rotation) && payload.rotation.length === 3) {
             // 將度數轉換為弧度 (如果前端需要弧度)
             const rotationRadians = payload.rotation.map((deg: number) => (deg * Math.PI) / 180) as [number, number, number];
             useStore.getState().setRoomRotation(rotationRadians);
             logger.info(`房間旋轉設置為: [${payload.rotation.join(', ')}] 度`, LogCategory.WEBSOCKET);
           }
-          
           if (payload.scale && Array.isArray(payload.scale) && payload.scale.length === 3) {
             useStore.getState().setRoomScale(payload.scale as [number, number, number]);
             logger.info(`房間縮放設置為: [${payload.scale.join(', ')}]`, LogCategory.WEBSOCKET);
