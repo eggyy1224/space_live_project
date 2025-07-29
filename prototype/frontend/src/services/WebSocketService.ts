@@ -260,6 +260,11 @@ class WebSocketService {
             useStore.getState().setRuntime({ bgm: payload.bgmUrl, bgmPlaying: true }, { silent: true });
           }
         }
+        // 新增：處理 BGM 音量（讓後端 volume 參數能同步到前端）
+        if (payload.volume !== undefined) {
+          console.log('[WebSocket] Setting BGM volume from backend:', payload.volume);
+          useStore.getState().setBgmVolume(payload.volume);
+        }
         
         // 新增：處理音效 (SFX) URL
         if (payload.sfxUrl) {
