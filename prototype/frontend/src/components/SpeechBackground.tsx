@@ -255,7 +255,7 @@ const SpeechBackground: React.FC = () => {
   // 打字機效果：根據語音持續時間或固定速度生成字符
   useEffect(() => {
     if (isTyping && currentText && speechDuration !== null) {
-      let intervalId: NodeJS.Timeout;
+      let intervalId: ReturnType<typeof setInterval>;
       
       // 獲取音頻播放狀態
       const audioStartTime = useStore.getState().audioStartTime;
