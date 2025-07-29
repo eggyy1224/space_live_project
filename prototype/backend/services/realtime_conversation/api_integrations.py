@@ -373,9 +373,25 @@ class APIIntegrations:
                 "error": f"Failed to get memory: {str(e)}"
             }
     
-    async def _handle_save_memory(self, arguments: dict) -> dict:
-        """處理save_memory工具調用"""
+    def _sanitize_metadata(self, metadata):
+        if not isinstance(metadata, dict):
+            return metadata
+        sanitized = {}
+        for k, v in metadata.items():
+            if isinstance(v, (str, int, float, bool)):
+                sanitized[k] = v
+            elif isinstance(v, list):
+                sanitized[k] = ",".join(map(str, v))
+            else:
+                sanitized[k] = str(v)
+        return sanitized
+
+    async def _handle_save_memory(self, arguments: Dict[str, Any]) -> dict:
+        """處理 save_memory 工具，將重要資訊儲存到記憶系統"""
         try:
+            # 自動處理 metadata 型別
+            if "metadata" in arguments:
+                arguments["metadata"] = self._sanitize_metadata(arguments["metadata"])
             # 驗證必要參數
             memory_type = arguments.get("memory_type")
             content = arguments.get("content")
