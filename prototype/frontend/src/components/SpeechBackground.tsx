@@ -8,7 +8,7 @@ import logger, { LogCategory } from '../utils/LogManager';
 // 可調整的參數配置
 const CONFIG = {
   // 生成位置
-  SPAWN_POSITION: new THREE.Vector3(0, 0, 0),
+  SPAWN_POSITION: new THREE.Vector3(0, 0, -25), // 往 Z 軸後方移動，避免擋住角色
   
   // 打字機效果參數
   TYPING_SPEED: 0.08, // 每個字符出現的間隔時間（秒）
