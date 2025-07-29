@@ -51,7 +51,7 @@ class WebSocketHandler:
         self, audio_chunks: AsyncIterator[bytes]
     ) -> AsyncGenerator[bytes, None]:
         """Stream audio chunks to OpenAI and yield TTS audio bytes."""
-        url = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview"
+        url = "wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview"
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "OpenAI-Beta": "realtime=v1"
@@ -88,7 +88,8 @@ class WebSocketHandler:
                 
                 # 設定舞群初始動畫
                 await self._set_initial_dance_group_animation()
-                
+                # 新增：初始化時隨機播放一首 BGM
+                await self._play_initial_bgm()
                 # 自動發送歡迎訊息
                 await self._send_welcome_message()
                 
@@ -148,6 +149,10 @@ class WebSocketHandler:
                     # 取消所有任務
                     receive_task.cancel()
                     send_task.cancel()
+                    # 自動關閉背景音樂
+                    await self._stop_bgm()
+                    # 自動關閉場景顯示
+                    await self._hide_scene()
                     # 清理WebSocket引用
                     self._current_ws = None
                     # 關閉日誌記錄器
@@ -521,6 +526,41 @@ class WebSocketHandler:
         except Exception as e:
             logger.error(f"設置舞群初始動畫異常: {e}")
     
+    async def _play_initial_bgm(self):
+        """隨機選擇一首 BGM 並播放（初始化用）"""
+        import aiohttp
+        import random
+        try:
+            bgm_files = [
+                "spacelive_theme.mp3",
+                "spacelive_theme2.mp3",
+                "space_live_country_theme1.mp3",
+                "space_live_country_theme2.mp3",
+                "heavy_metal_bgm_01.mp3",
+                "heavy_metal_bgm_02.mp3",
+                "heavy_metal_bgm_03.mp3",
+                "星際狂舞.mp3",
+                "太空媽祖.mp3",
+                "hihi.mp3",
+                "hihi (1).mp3",
+                "hihi (2).mp3",
+                "hihi (3).mp3"
+            ]
+            selected_bgm = random.choice(bgm_files)
+            bgm_url = f"/audio/BGM/{selected_bgm}"
+            async with aiohttp.ClientSession() as session:
+                bgm_data = {"bgmUrl": bgm_url, "volume": 0.3}
+                async with session.post(
+                    "http://localhost:8000/api/control/background-audio",
+                    json=bgm_data
+                ) as response:
+                    if response.status == 200:
+                        logger.info(f"初始隨機 BGM 播放成功: {selected_bgm}")
+                    else:
+                        logger.warning(f"初始 BGM 播放失敗: {await response.text()}")
+        except Exception as e:
+            logger.error(f"初始 BGM 播放異常: {e}")
+    
     async def _send_welcome_message(self):
         """自動發送隨機歡迎訊息"""
         import aiohttp
@@ -554,6 +594,40 @@ class WebSocketHandler:
                         logger.warning(f"發送歡迎訊息失敗: {await response.text()}")
         except Exception as e:
             logger.error(f"發送歡迎訊息失敗: {e}")
+    
+    async def _stop_bgm(self):
+        """關閉背景音樂"""
+        import aiohttp
+        try:
+            async with aiohttp.ClientSession() as session:
+                bgm_data = {"bgmUrl": "", "volume": 0}
+                async with session.post(
+                    "http://localhost:8000/api/control/background-audio",
+                    json=bgm_data
+                ) as response:
+                    if response.status == 200:
+                        logger.info("已自動關閉背景音樂（session 結束）")
+                    else:
+                        logger.warning(f"自動關閉 BGM 失敗: {await response.text()}")
+        except Exception as e:
+            logger.error(f"自動關閉 BGM 發生異常: {e}")
+    
+    async def _hide_scene(self):
+        """關閉場景顯示（隱藏背景）"""
+        import aiohttp
+        try:
+            async with aiohttp.ClientSession() as session:
+                scene_data = {"displayScene": False}
+                async with session.post(
+                    "http://localhost:8000/api/control/scene-display",
+                    json=scene_data
+                ) as response:
+                    if response.status == 200:
+                        logger.info("已自動關閉場景顯示（session 結束）")
+                    else:
+                        logger.warning(f"自動關閉場景失敗: {await response.text()}")
+        except Exception as e:
+            logger.error(f"自動關閉場景發生異常: {e}")
     
     def set_tool_executor(self, executor):
         """設定工具執行器"""

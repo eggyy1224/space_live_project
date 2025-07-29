@@ -56,6 +56,7 @@ class BackgroundAudioRequest(BaseModel):
     bgmUrl: Optional[str] = None
     sfxUrl: Optional[str] = None
     bgmPlaying: Optional[bool] = None  # 新增：控制BGM播放/暫停
+    volume: Optional[float] = None     # 新增：BGM 音量控制
 
 
 class MurmurModeRequest(BaseModel):
@@ -282,6 +283,10 @@ async def background_audio_control(request: BackgroundAudioRequest):
         # 處理音效 URL
         if request.sfxUrl is not None:
             audio_data["sfxUrl"] = request.sfxUrl
+
+        # 新增：處理音量
+        if request.volume is not None:
+            audio_data["volume"] = request.volume
 
         await manager.broadcast(json.dumps(audio_data))
 
