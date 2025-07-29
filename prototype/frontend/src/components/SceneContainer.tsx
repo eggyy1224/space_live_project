@@ -105,7 +105,7 @@ const SceneContent: React.FC<SceneContainerProps> = ({
     CAMERA_PRESETS,
     "overview",
   );
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<number | null>(null);
   const randomMode = useStore((s) => s.randomMode); // 新增：監聽隨機模式狀態
   const cameraPreset = useStore((s) => s.cameraPreset); // 新增：監聽手動相機預設變化
   const cameraAngles = useStore((s) => s.cameraAngles);
@@ -117,6 +117,7 @@ const SceneContent: React.FC<SceneContainerProps> = ({
   const roomSceneUrl = useStore((s) => s.roomSceneUrl);
   const roomPosition = useStore((s) => s.roomPosition);
   const roomRotation = useStore((s) => s.roomRotation);
+  const setRoomRotation = useStore((s) => s.setRoomRotation);
   const roomScale = useStore((s) => s.roomScale);
   
   // 環境光照狀態
@@ -157,6 +158,28 @@ const SceneContent: React.FC<SceneContainerProps> = ({
     return generatePositions(dancerCount, formationType, options);
 
   }, [currentFormation, dancerCount]);
+
+  // === 自動漂浮旋轉功能 ===
+  // 之後可改成 UI 控制，這裡先寫死 always on
+  const floatingEnabled = useRef(true);
+  useFrame(({ clock }) => {
+    if (floatingEnabled.current) {
+      const t = clock.getElapsedTime();
+      // 這裡可調整旋轉速度/幅度
+      const x = Math.sin(t * 0.15) * 0.25; // 約 14 度
+      const yCenter = 3.22886; // 185度 (radian)
+      const y = yCenter + 0.35 * Math.cos(t * 0.11); // 以185度為中心擺動
+      const z = Math.sin(t * 0.09) * 0.18; // 約 10 度
+      // 只在值有明顯變化時才 set，避免多餘 re-render
+      if (
+        Math.abs(roomRotation[0] - x) > 0.001 ||
+        Math.abs(roomRotation[1] - y) > 0.001 ||
+        Math.abs(roomRotation[2] - z) > 0.001
+      ) {
+        setRoomRotation([x, y, z]);
+      }
+    }
+  });
 
   // 監聽手動相機預設變化
   useEffect(() => {

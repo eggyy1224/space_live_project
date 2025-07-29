@@ -20,63 +20,63 @@ export const AVAILABLE_SCENES: SceneConfig[] = [
     name: '賽博太空艙',
     url: '/scenes/賽博太空艙.glb',
     description: '未來感賽博太空艙',
-    defaultScale: [200, 200, 200],
+    defaultScale: [500, 500, 500],
     defaultPosition: [0, 0, 0],
-    defaultRotation: [0, 185, 0] // Y 軸 180 度
+    defaultRotation: [0, 185, 0] // Y 軸 185 度
   },
   {
     id: 'spaceship-control',
     name: '飛船控制間',
     url: '/scenes/飛船控制間.glb',
     description: '飛船駕駛艙場景',
-    defaultScale: [200, 200, 200],
+    defaultScale: [500, 500, 500],
     defaultPosition: [0, 0, 0],
-    defaultRotation: [0, 0, 0]
+    defaultRotation: [0, 185, 0]
   },
   {
     id: 'star-ruins',
     name: '星際廢墟',
     url: '/scenes/星際廢墟.glb',
     description: '星際廢墟場景',
-    defaultScale: [200, 200, 200],
+    defaultScale: [500, 500, 500],
     defaultPosition: [0, 0, 0],
-    defaultRotation: [0, 0, 0]
+    defaultRotation: [0, 185, 0]
   },
   {
     id: 'star-bedroom',
     name: '星際臥室',
     url: '/scenes/星際臥室.glb',
     description: '星際臥室場景',
-    defaultScale: [200, 200, 200],
+    defaultScale: [500, 500, 500],
     defaultPosition: [0, 0, 0],
-    defaultRotation: [0, 0, 0]
+    defaultRotation: [0, 185, 0]
   },
   {
     id: 'space-capsule-2',
     name: '太空艙2',
     url: '/scenes/太空艙2.glb',
     description: '第二版太空艙',
-    defaultScale: [200, 200, 200],
+    defaultScale: [500, 500, 500],
     defaultPosition: [0, 0, 0],
-    defaultRotation: [0, 0, 0]
+    defaultRotation: [0, 185, 0]
   },
   {
     id: 'space-capsule',
     name: '太空艙',
     url: '/scenes/太空艙.glb',
     description: '經典太空艙',
-    defaultScale: [200, 200, 200],
+    defaultScale: [500, 500, 500],
     defaultPosition: [0, 0, 0],
-    defaultRotation: [0, 0, 0]
+    defaultRotation: [0, 185, 0]
   },
   {
     id: 'space-dancefloor',
     name: '太空舞池',
     url: '/scenes/太空舞池.glb',
     description: '太空舞池場景',
-    defaultScale: [200, 200, 200],
+    defaultScale: [500, 500, 500],
     defaultPosition: [0, 0, 0],
-    defaultRotation: [0, 0, 0]
+    defaultRotation: [0, 185, 0]
   }
 ];
 
