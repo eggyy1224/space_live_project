@@ -71,12 +71,15 @@ const SceneContainer: React.FC<SceneContainerProps> = React.memo(({
           target-position={[0, -10, 0]}
           color="#fffefc"
         />
-        <HeadModel
-          headModelUrl={headModelUrl}
-          scale={modelScale}
-          rotation={modelRotation}
-          position={modelPosition}
-        />
+        {/* HeadModel 暫時隱藏 */}
+        {false && (
+          <HeadModel
+            headModelUrl={headModelUrl}
+            scale={modelScale}
+            rotation={modelRotation}
+            position={modelPosition}
+          />
+        )}
         <OrbitControls
           makeDefault
           mouseButtons={{

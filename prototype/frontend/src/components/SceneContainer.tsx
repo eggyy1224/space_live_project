@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Stars, Environment, PresentationControls } from "@react-three/drei";
 import { HeadModel } from "./HeadModel";
 import CharacterModel from "./CharacterModel";
-import DanceGroup, { generatePositions, FormationType } from "./DanceGroup";
+import { generatePositions, FormationType } from "./DanceGroup";
 import DynamicAudioBackgrounds from "./DynamicAudioBackgrounds";
 import RoomScene from "./RoomScene";
 import BackgroundPicture from "./BackgroundPicture";
@@ -287,7 +287,8 @@ const SceneContent: React.FC<SceneContainerProps> = ({
           const baseScale = 10;
           const basePosition: [number, number, number] = [0, -5, 0]; // 中央位置
 
-          return (
+          /* HeadModel 暫時隱藏 */
+          return false && (
             <group position={basePosition} scale={baseScale}>
               <HeadModel 
                 headModelUrl={headModelUrl} 
@@ -301,14 +302,15 @@ const SceneContent: React.FC<SceneContainerProps> = ({
         
         {/* 角色模型 - 放在頭部旁邊 */}
         <CharacterModel />
-        {(() => {
+        {/* 舞群暫時隱藏，以改善效能與維護性 */}
+        {false && (() => {
           // 圓形軍隊陣列：100個人圍成圓圈
           return (
             <group position={danceGroupPosition}>
-              <DanceGroup
+              {/* <DanceGroup
                 scale={danceGroupScale}
                 positions={calculatedDanceGroupPositions}
-              />
+              /> */}
             </group>
           );
         })()}
