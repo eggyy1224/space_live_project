@@ -87,7 +87,6 @@ class WebSocketHandler:
                 await self._set_initial_animation()
                 
                 # 設定舞群初始動畫
-                await self._set_initial_dance_group_animation()
                 # 新增：初始化時隨機播放一首 BGM
                 await self._play_initial_bgm()
                 # 自動發送歡迎訊息
@@ -492,40 +491,6 @@ class WebSocketHandler:
         except Exception as e:
             logger.error(f"設置初始動畫異常: {e}")
     
-    async def _set_initial_dance_group_animation(self):
-        """設定舞群初始動畫，讓背景舞群一開始就跳舞"""
-        import aiohttp
-        import random
-        try:
-            # 可用的舞群動畫清單（選擇適合的舞蹈動畫）
-            dance_group_animations = [
-                "DancingTwerk", "SalsaDancing", "JazzDancing", "HipHopDancin", 
-                "breaking", "hiphopdance", "twistdance", "CanCan", 
-                "ButterflyTwirl", "Breakdance1990", "BreakdanceFootwork2"
-            ]
-            
-            # 隨機選擇一個舞群動畫
-            selected_dance = random.choice(dance_group_animations)
-            
-            async with aiohttp.ClientSession() as session:
-                # 使用body-animation API控制舞群
-                dance_data = {
-                    "state": "play",
-                    "animation": selected_dance,
-                    "loop": True,
-                    "speed": 1.0
-                }
-                async with session.post(
-                    "http://localhost:8000/api/control/body-animation",
-                    json=dance_data
-                ) as response:
-                    if response.status == 200:
-                        logger.info(f"舞群初始動畫隨機設置為: {selected_dance}，開始熱場跳舞！")
-                    else:
-                        logger.warning(f"設置舞群初始動畫失敗: {await response.text()}")
-        except Exception as e:
-            logger.error(f"設置舞群初始動畫異常: {e}")
-    
     async def _play_initial_bgm(self):
         """隨機選擇一首 BGM 並播放（初始化用）"""
         import aiohttp
@@ -549,7 +514,7 @@ class WebSocketHandler:
             selected_bgm = random.choice(bgm_files)
             bgm_url = f"/audio/BGM/{selected_bgm}"
             async with aiohttp.ClientSession() as session:
-                bgm_data = {"bgmUrl": bgm_url, "volume": 0.3}
+                bgm_data = {"bgmUrl": bgm_url, "volume": 0.2}
                 async with session.post(
                     "http://localhost:8000/api/control/background-audio",
                     json=bgm_data
@@ -567,16 +532,26 @@ class WebSocketHandler:
         import random
         try:
             welcome_messages = [
-                "哈摟我是你最辣的太空主播，今天好嗎",
-                "歡迎來到太空艙直播間，今天想看什麼表演？",
-                "Yo～這裡是賽博太空艙，準備好一起high了嗎？",
-                "哈囉！我是來自近地軌道的太空主播，今天要帶你體驗宇宙級的互動！",
-                "太空連線成功！主播在這裡等你很久囉！",
-                "地球的朋友午安，這裡是最潮的太空直播間！",
-                "準備好進入無重力的歡樂時光了嗎？",
-                "哈囉哈囉～主播已經在太空艙stand by囉！",
-                "今天要不要來點太空瑜伽還是跳個舞？",
-                "歡迎光臨！這裡是最有梗的太空直播主，陪你high翻宇宙！"
+                "哈摟我是你最辣的太空主播，今天好嗎？這裡是屬於你的宇宙舞台，直接對我說話就可以囉～有什麼想聊的、想看的都可以直接說出來！",
+                "歡迎來到太空艙直播間，這裡有最炫的星際表演和最潮的互動體驗！你現在可以直接和我對話，快來聊聊宇宙的祕密吧！",
+                "Yo～這裡是賽博太空艙，準備好一起high了嗎？直接對我說話就能啟動零重力派對模式，讓我們用聲音連結彼此的星球！",
+                "哈囉！我是來自近地軌道的太空主播，今天要帶你體驗宇宙級的互動！現在你可以直接和我對話，這裡就是你的專屬星球！",
+                "太空連線成功！主播在這裡等你很久囉！只要直接說話，我就能聽見你，準備好一起探索星際、發現新奇的宇宙故事了嗎？",
+                "地球的朋友午安，這裡是最潮的太空直播間！直接和主播對話，今天一起嗨翻銀河系吧！",
+                "準備好進入無重力的歡樂時光了嗎？在這裡你可以直接開口說話，還有機會看到主播的太空舞步喔！",
+                "哈囉哈囉～主播已經在太空艙stand by囉！隨時等你直接和我互動，讓我們一起開啟宇宙冒險！",
+                "今天要不要來點太空瑜伽還是跳個舞？只要你直接說出來，主播都能陪你一起動起來，讓我們一起在星空下律動！",
+                "歡迎光臨！這裡是最有梗的太空直播主，陪你high翻宇宙！直接對我說話，讓我們一起創造屬於你的星際回憶！",
+                "星際連線已啟動，主播已經準備好和你一起探索宇宙的奧秘，想問什麼、想玩什麼直接說出來吧！",
+                "銀河系的朋友們集合啦！這裡是你的太空夥伴主播，現在可以直接和我對話，讓我們一起開啟星際冒險！",
+                "宇宙信號穩定連線中，想聽故事還是想點歌？直接對我說話，我都能陪你一起玩！",
+                "歡迎進入零重力聊天室，這裡沒有距離，只有即時互動！有什麼想法直接說給主播聽吧！",
+                "太空艙門已經打開，主播在這裡等你一起high翻宇宙，直接對我說話就能開始互動囉！",
+                "地球呼叫太空艙，收到請回應！你現在可以直接和主播對話，讓我們一起創造星際回憶！",
+                "星際派對正式啟動，想玩什麼、想聊什麼直接說出來，主播都能陪你一起嗨！",
+                "宇宙廣播開啟，這裡是你的太空主播，現在可以直接對我說話，讓我們一起探索無限可能！",
+                "歡迎來到星際互動空間，這裡每一句話都能即時傳到主播耳朵裡，快來和我聊聊你的宇宙夢想！",
+                "太空信號滿格，主播隨時待命！有任何想法、願望、問題都可以直接說出來，讓我們一起玩出新宇宙！"
             ]
             message = random.choice(welcome_messages)
             async with aiohttp.ClientSession() as session:
