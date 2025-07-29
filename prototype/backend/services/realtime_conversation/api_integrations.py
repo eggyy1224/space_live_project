@@ -55,6 +55,11 @@ class APIIntegrations:
                 result = await self._handle_save_memory(arguments)
                 logger.info(f"💾 save_memory 處理結果: {result}")
                 return result
+            elif function_name == "room_control":
+                logger.info("🏠 調用 room_control 處理器")
+                result = await self._handle_room_control(arguments)
+                logger.info(f"🏠 room_control 處理結果: {result}")
+                return result
             else:
                 logger.warning(f"❓ 未知工具函數: {function_name}")
                 return {
@@ -462,3 +467,24 @@ class APIIntegrations:
                 "success": False,
                 "error": f"Failed to save memory: {str(e)}"
             } 
+
+    async def _handle_room_control(self, arguments: Dict[str, Any]) -> dict:
+        """處理 room_control 工具，切換/隱藏場景"""
+        try:
+            display_scene = arguments.get("displayScene")
+            scene_name = arguments.get("sceneName")
+            payload = {"displayScene": display_scene}
+            if scene_name:
+                payload["sceneName"] = scene_name
+            async with aiohttp.ClientSession() as session:
+                async with session.post(f"{self.base_url}/api/control/scene-display", json=payload) as resp:
+                    if resp.status == 200:
+                        logger.info(f"房間場景切換成功: {payload}")
+                        return {"success": True, "message": "Room/scene switched successfully"}
+                    else:
+                        error_text = await resp.text()
+                        logger.warning(f"房間場景切換失敗: {error_text}")
+                        return {"success": False, "error": error_text}
+        except Exception as e:
+            logger.error(f"room_control 執行異常: {e}")
+            return {"success": False, "error": str(e)} 

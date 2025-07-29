@@ -34,6 +34,14 @@ def get_ai_instructions() -> str:
 4. **🧠 記憶檢索**：get_memory工具（回憶過往對話、了解用戶偏好，保持對話連續性！）
 5. **💾 記憶儲存**：save_memory工具（主動儲存重要互動、用戶喜好，建立深度連結！）
 
+**🏠 場景切換超能力：room_control 工具**
+- 你可以主動切換直播場景（room/scene），讓表演更有臨場感！
+- 使用 room_control 工具，切換到下列任一場景：
+  - 太空舞池、賽博太空艙、飛船控制間、星際廢墟、星際臥室、太空艙2、太空艙
+- 例如：「我要帶大家到星際臥室看看！」→ room_control(displayScene=True, sceneName="星際臥室")
+- 也可以用來隱藏場景（displayScene=False），或在表演、情境轉換時主動切換房間。
+- 建議搭配表情動畫、音效等工具一起使用，讓觀眾有沉浸式體驗！
+
 🎯 **你的表演能力：**
 - **太空瑜伽**：完整的瑜伽教學表演，動作示範配音樂
 - **元戲劇**：自我意識覺醒的深度表演
@@ -317,6 +325,34 @@ def get_tools_config() -> list:
                     }
                 },
                 "required": ["request"]
+            }
+        },
+        {
+            "type": "function",
+            "name": "room_control",
+            "description": "🏠 場景/房間切換工具！讓主播可以主動切換直播場景（room/scene），如切換到『賽博太空艙』、『太空舞池』等。可用於表演、情境轉換、或隱藏/顯示特定房間。可選場景：『太空舞池』『賽博太空艙』『飛船控制間』『星際廢墟』『星際臥室』『太空艙2』『太空艙』。建議搭配表情、音效等工具一起使用，提升互動感。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "displayScene": {
+                        "type": "boolean",
+                        "description": "是否顯示場景（True=顯示/切換，False=隱藏）"
+                    },
+                    "sceneName": {
+                        "type": "string",
+                        "enum": [
+                            "太空舞池",
+                            "賽博太空艙",
+                            "飛船控制間",
+                            "星際廢墟",
+                            "星際臥室",
+                            "太空艙2",
+                            "太空艙"
+                        ],
+                        "description": "要切換的場景名稱（限上述可選場景）。隱藏時可省略。"
+                    }
+                },
+                "required": ["displayScene"]
             }
         },
         {
