@@ -105,21 +105,21 @@ async def get_videos() -> Dict[str, Any]:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"無法讀取影片目錄: {str(e)}")
 
-@router.get("/animations", summary="取得所有動畫檔案")
-async def get_animations() -> Dict[str, Any]:
-    """
-    取得前端動畫目錄中的所有動畫檔案
-    """
-    try:
-        animations_dir = FRONTEND_PUBLIC_DIR / "animations"
-        animation_files = scan_directory(animations_dir, ANIMATION_EXTENSIONS)
-        return {
-            "count": len(animation_files),
-            "directory": str(animations_dir),
-            "files": animation_files
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"無法讀取動畫目錄: {str(e)}")
+# @router.get("/animations", summary="取得所有動畫檔案")
+# async def get_animations() -> Dict[str, Any]:
+#     """
+#     取得前端動畫目錄中的所有動畫檔案
+#     """
+#     try:
+#         animations_dir = FRONTEND_PUBLIC_DIR / "animations"
+#         animation_files = scan_directory(animations_dir, ANIMATION_EXTENSIONS)
+#         return {
+#             "count": len(animation_files),
+#             "directory": str(animations_dir),
+#             "files": animation_files
+#         }
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"無法讀取動畫目錄: {str(e)}")
 
 @router.get("/all", summary="取得所有媒體資源")
 async def get_all_resources() -> Dict[str, Any]:
@@ -132,11 +132,12 @@ async def get_all_resources() -> Dict[str, Any]:
         bgm = scan_directory(FRONTEND_PUBLIC_DIR / "audio" / "BGM", AUDIO_EXTENSIONS)
         effects = scan_directory(FRONTEND_PUBLIC_DIR / "audio" / "effects", AUDIO_EXTENSIONS)
         videos = scan_directory(FRONTEND_PUBLIC_DIR / "videos", VIDEO_EXTENSIONS)
-        animations = scan_directory(FRONTEND_PUBLIC_DIR / "animations", ANIMATION_EXTENSIONS)
+        # animations 掃描暫時停用，保留空列表避免 NameError
+        animations: List[Dict[str, Any]] = []
         
         return {
             "summary": {
-                "total_files": len(songs) + len(bgm) + len(effects) + len(videos) + len(animations),
+                "total_files": len(songs) + len(bgm) + len(effects) + len(videos),
                 "songs_count": len(songs),
                 "bgm_count": len(bgm),
                 "effects_count": len(effects),

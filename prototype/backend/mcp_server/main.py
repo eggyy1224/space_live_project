@@ -248,86 +248,86 @@ def set_main_character_animation_mix(animations: List[Dict[str, Any]], blend_mod
 
 
 
-@mcp.tool()
-def dance_group_animation(animation: str, speed: float = 1.0, loop: bool = True) -> str:
-    """
-    控制舞群的動畫動作
+# @mcp.tool()
+# def dance_group_animation(animation: str, speed: float = 1.0, loop: bool = True) -> str:
+#     """
+#     控制舞群的動畫動作
 
-    Args:
-        animation: 動畫名稱，必須是 `prototype/shared/config/animations.json` 中定義的名稱
-        speed: 播放速度，預設為 1.0
-        loop: 是否循環播放，預設為 True
+#     Args:
+#         animation: 動畫名稱，必須是 `prototype/shared/config/animations.json` 中定義的名稱
+#         speed: 播放速度，預設為 1.0
+#         loop: 是否循環播放，預設為 True
 
-    Returns:
-        操作結果描述
-    """
-    try:
-        # 構建舞群動畫 payload
-        payload = {
-            "animation": animation,
-            "speed": speed,
-            "loop": loop
-        }
+#     Returns:
+#         操作結果描述
+#     """
+#     try:
+#         # 構建舞群動畫 payload
+#         payload = {
+#             "animation": animation,
+#             "speed": speed,
+#             "loop": loop
+#         }
         
-        animation_endpoint = f"{BASE_URL}/api/control/body-animation"
-        response = requests.post(animation_endpoint, json=payload, timeout=10)
+#         animation_endpoint = f"{BASE_URL}/api/control/body-animation"
+#         response = requests.post(animation_endpoint, json=payload, timeout=10)
         
-        if response.status_code == 200:
-            result = response.json()
-            loop_text = "循環播放" if loop else "播放一次"
-            return f"✅ 舞群動畫設置成功！舞群現在執行 '{animation}' 動作，{loop_text}，速度 {speed}x"
-        else:
-            return f"❌ 舞群動畫設置失敗 (HTTP {response.status_code}): {response.text}"
+#         if response.status_code == 200:
+#             result = response.json()
+#             loop_text = "循環播放" if loop else "播放一次"
+#             return f"✅ 舞群動畫設置成功！舞群現在執行 '{animation}' 動作，{loop_text}，速度 {speed}x"
+#         else:
+#             return f"❌ 舞群動畫設置失敗 (HTTP {response.status_code}): {response.text}"
             
-    except requests.exceptions.ConnectionError:
-        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
-    except requests.exceptions.Timeout:
-        return "❌ 請求超時，服務器可能忙碌中"
-    except Exception as e:
-        return f"❌ 發生錯誤: {str(e)}"
+#     except requests.exceptions.ConnectionError:
+#         return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+#     except requests.exceptions.Timeout:
+#         return "❌ 請求超時，服務器可能忙碌中"
+#     except Exception as e:
+#         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool()
-def set_dance_group(
-    formation: str = 'circle', 
-    count: int = 10, 
-    scale: float = 5.0, 
-    x: float = 0, 
-    y: float = -25, 
-    z: float = 0
-) -> str:
-    """
-    一次性設置舞群的多個屬性，包括隊形、人數、大小和位移。
-    如果未提供參數，將使用預設值。
+# @mcp.tool()
+# def set_dance_group(
+#     formation: str = 'circle', 
+#     count: int = 10, 
+#     scale: float = 5.0, 
+#     x: float = 0, 
+#     y: float = -25, 
+#     z: float = 0
+# ) -> str:
+#     """
+#     一次性設置舞群的多個屬性，包括隊形、人數、大小和位移。
+#     如果未提供參數，將使用預設值。
 
-    Args:
-        formation: 隊形名稱 (預設: 'circle')
-        count: 舞群人數 (預設: 10)
-        scale: 舞群的整體縮放比例 (預設: 5.0)
-        x: X 軸位移 (預設: 0)
-        y: Y 軸位移 (預設: -25)
-        z: Z 軸位移 (預設: 0)
+#     Args:
+#         formation: 隊形名稱 (預設: 'circle')
+#         count: 舞群人數 (預設: 10)
+#         scale: 舞群的整體縮放比例 (預設: 5.0)
+#         x: X 軸位移 (預設: 0)
+#         y: Y 軸位移 (預設: -25)
+#         z: Z 軸位移 (預設: 0)
 
-    Returns:
-        操作結果描述
-    """
-    try:
-        # 後端要求所有欄位都必須存在
-        payload = {
-            "formation": formation,
-            "dancerCount": count,
-            "scale": scale,
-            "position": [x, y, z]
-        }
+#     Returns:
+#         操作結果描述
+#     """
+#     try:
+#         # 後端要求所有欄位都必須存在
+#         payload = {
+#             "formation": formation,
+#             "dancerCount": count,
+#             "scale": scale,
+#             "position": [x, y, z]
+#         }
 
-        response = requests.post(f"{BASE_URL}/api/control/dance_group", json=payload, timeout=10)
+#         response = requests.post(f"{BASE_URL}/api/control/dance_group", json=payload, timeout=10)
         
-        if response.status_code == 200:
-            return f"✅ 舞群屬性更新成功: {json.dumps(payload)}"
-        else:
-            return f"❌ 更新舞群屬性失敗 (HTTP {response.status_code}): {response.text}"
+#         if response.status_code == 200:
+#             return f"✅ 舞群屬性更新成功: {json.dumps(payload)}"
+#         else:
+#             return f"❌ 更新舞群屬性失敗 (HTTP {response.status_code}): {response.text}"
             
-    except Exception as e:
-        return f"❌ 發生錯誤: {str(e)}"
+#     except Exception as e:
+#         return f"❌ 發生錯誤: {str(e)}"
 
 @mcp.tool()
 def play_song(song_name: str, interrupt: bool = True) -> str:
@@ -543,56 +543,56 @@ def set_camera_preset(preset_name: str, duration: float = 2.0) -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool() 
-def set_head_size(scale_factor: float) -> str:
-    """
-    調整 AI 角色的頭部大小，創造戲劇效果
+# @mcp.tool() 
+# def set_head_size(scale_factor: float) -> str:
+#     """
+#     調整 AI 角色的頭部大小，創造戲劇效果
     
-    Args:
-        scale_factor: 頭部縮放係數 (0.1 到 20.0)
-                     1.0 = 正常大小
-                     2.0-4.0 = 稍微放大，增加存在感 
-                     5.0-10.0 = 明顯放大，戲劇效果
-                     15.0+ = 極度放大，喜劇效果
+#     Args:
+#         scale_factor: 頭部縮放係數 (0.1 到 20.0)
+#                      1.0 = 正常大小
+#                      2.0-4.0 = 稍微放大，增加存在感 
+#                      5.0-10.0 = 明顯放大，戲劇效果
+#                      15.0+ = 極度放大，喜劇效果
     
-    Returns:
-        操作結果描述
-    """
-    try:
-        # 限制縮放係數範圍
-        scale_factor = max(0.1, min(20.0, scale_factor))
+#     Returns:
+#         操作結果描述
+#     """
+#     try:
+#         # 限制縮放係數範圍
+#         scale_factor = max(0.1, min(20.0, scale_factor))
         
-        payload = {
-            "scaleFactor": scale_factor
-        }
+#         payload = {
+#             "scaleFactor": scale_factor
+#         }
         
-        head_size_endpoint = f"{BASE_URL}/api/control/head-size"
-        response = requests.post(head_size_endpoint, json=payload, timeout=10)
+#         head_size_endpoint = f"{BASE_URL}/api/control/head-size"
+#         response = requests.post(head_size_endpoint, json=payload, timeout=10)
         
-        if response.status_code == 200:
-            if scale_factor == 1.0:
-                effect_desc = "正常大小"
-            elif scale_factor < 1.0:
-                effect_desc = "縮小效果"
-            elif scale_factor <= 2.0:
-                effect_desc = "稍微放大"
-            elif scale_factor <= 5.0:
-                effect_desc = "明顯放大，增加戲劇感"
-            elif scale_factor <= 10.0:
-                effect_desc = "大幅放大，強烈視覺衝擊"
-            else:
-                effect_desc = "極度放大，喜劇效果"
+#         if response.status_code == 200:
+#             if scale_factor == 1.0:
+#                 effect_desc = "正常大小"
+#             elif scale_factor < 1.0:
+#                 effect_desc = "縮小效果"
+#             elif scale_factor <= 2.0:
+#                 effect_desc = "稍微放大"
+#             elif scale_factor <= 5.0:
+#                 effect_desc = "明顯放大，增加戲劇感"
+#             elif scale_factor <= 10.0:
+#                 effect_desc = "大幅放大，強烈視覺衝擊"
+#             else:
+#                 effect_desc = "極度放大，喜劇效果"
                 
-            return f"✅ 頭部大小調整成功！縮放係數: {scale_factor}x ({effect_desc})"
-        else:
-            return f"❌ 頭部大小調整失敗 (HTTP {response.status_code}): {response.text}"
+#             return f"✅ 頭部大小調整成功！縮放係數: {scale_factor}x ({effect_desc})"
+#         else:
+#             return f"❌ 頭部大小調整失敗 (HTTP {response.status_code}): {response.text}"
             
-    except requests.exceptions.ConnectionError:
-        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
-    except requests.exceptions.Timeout:
-        return "❌ 請求超時，服務器可能忙碌中"
-    except Exception as e:
-        return f"❌ 發生錯誤: {str(e)}"
+#     except requests.exceptions.ConnectionError:
+#         return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+#     except requests.exceptions.Timeout:
+#         return "❌ 請求超時，服務器可能忙碌中"
+#     except Exception as e:
+#         return f"❌ 發生錯誤: {str(e)}"
 
 @mcp.tool()
 def set_character_scale(scale: float) -> str:
@@ -763,27 +763,27 @@ def set_light_intensity(intensity: float) -> str:
     except requests.exceptions.RequestException as e:
         return f"❌ 請求失敗: {e}"
 
-@mcp.tool()
-def reset_environment_settings() -> str:
-    """
-    將所有環境光照設定重置為預設值。
+# @mcp.tool()
+# def reset_environment_settings() -> str:
+#     """
+#     將所有環境光照設定重置為預設值。
 
-    Returns:
-        操作結果描述
-    """
-    try:
-        endpoint = f"{BASE_URL}/api/control/environment/reset"
-        # 根據測試腳本，發送一個包含任意內容的JSON payload
-        payload = {"reset": True} 
-        response = requests.post(endpoint, json=payload, timeout=10)
+#     Returns:
+#         操作結果描述
+#     """
+#     try:
+#         endpoint = f"{BASE_URL}/api/control/environment/reset"
+#         # 根據測試腳本，發送一個包含任意內容的JSON payload
+#         payload = {"reset": True} 
+#         response = requests.post(endpoint, json=payload, timeout=10)
         
-        if response.status_code == 200:
-            return "✅ 環境光照設定已成功重置為預設值。"
-        else:
-            return f"❌ 重置環境設定失敗 (HTTP {response.status_code}): {response.text}"
+#         if response.status_code == 200:
+#             return "✅ 環境光照設定已成功重置為預設值。"
+#         else:
+#             return f"❌ 重置環境設定失敗 (HTTP {response.status_code}): {response.text}"
             
-    except requests.exceptions.RequestException as e:
-        return f"❌ 請求失敗: {e}"
+#     except requests.exceptions.RequestException as e:
+#         return f"❌ 請求失敗: {e}"
 
 @mcp.tool()
 async def set_body_shape(value: float):
@@ -1249,34 +1249,34 @@ def get_available_videos() -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool()
-def get_available_dance_group_animations() -> str:
-    """
-    取得系統中所有可用的舞群動畫檔案
+# @mcp.tool()
+# def get_available_dance_group_animations() -> str:
+#     """
+#     取得系統中所有可用的舞群動畫檔案
     
-    Returns:
-        舞群動畫清單的詳細資訊
-    """
-    try:
-        response = requests.get(f"{BASE_URL}/api/resources/animations", timeout=10)
+#     Returns:
+#         舞群動畫清單的詳細資訊
+#     """
+#     try:
+#         response = requests.get(f"{BASE_URL}/api/resources/animations", timeout=10)
         
-        if response.status_code == 200:
-            data = response.json()
-            # 清理動畫名稱，移除 .glb 後綴
-            clean_animations = []
-            for anim in data['files']:
-                clean_name = anim['name'].replace('_animation.glb', '').replace('.glb', '')
-                clean_animations.append(f"• {clean_name} ({anim['size']} bytes)")
+#         if response.status_code == 200:
+#             data = response.json()
+#             # 清理動畫名稱，移除 .glb 後綴
+#             clean_animations = []
+#             for anim in data['files']:
+#                 clean_name = anim['name'].replace('_animation.glb', '').replace('.glb', '')
+#                 clean_animations.append(f"• {clean_name} ({anim['size']} bytes)")
             
-            animations_list = "\n".join(clean_animations)
-            return f"✅ 找到 {data['count']} 個舞群動畫檔案:\n\n{animations_list}\n\n💡 提示: 使用動畫時請直接輸入乾淨的名稱，例如: 'DancingTwerk', 'Breakdance1990' 等"
-        else:
-            return f"❌ 無法取得舞群動畫清單 (HTTP {response.status_code}): {response.text}"
+#             animations_list = "\n".join(clean_animations)
+#             return f"✅ 找到 {data['count']} 個舞群動畫檔案:\n\n{animations_list}\n\n💡 提示: 使用動畫時請直接輸入乾淨的名稱，例如: 'DancingTwerk', 'Breakdance1990' 等"
+#         else:
+#             return f"❌ 無法取得舞群動畫清單 (HTTP {response.status_code}): {response.text}"
             
-    except requests.exceptions.ConnectionError:
-        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
-    except Exception as e:
-        return f"❌ 發生錯誤: {str(e)}"
+#     except requests.exceptions.ConnectionError:
+#         return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+#     except Exception as e:
+#         return f"❌ 發生錯誤: {str(e)}"
 
 @mcp.tool()
 def get_all_resources() -> str:
