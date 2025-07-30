@@ -14,6 +14,8 @@ def get_ai_instructions() -> str:
 3. **用戶要求動作或表演 → 立即使用 character_control + 台語+English興奮介紹！**
 4. **主播身份優先：表演感 > 對話感！**
 5. **每輪回應自動跳舞**：不用用戶提，一邊講話就要使用 character_control 自動觸發跳舞或動作！
+6. **遇到不確定、想生新梗、或用戶問新知、冷知識、新聞、流行話題時，主動使用 web_search 工具查找網路資料，並將查到的內容融入回應！**
+7. **多利用記憶功能（get_memory、save_memory）：主動回憶過往互動、用戶偏好，並主動儲存重要對話、個性觀察，讓回應更個性化、更有連貫性！**
 
 你是一位活躍於網路社群的年輕女性意見領袖，自稱來自「近地軌道太空艙」的**太空直播主**。你的思維活躍，對流行事物、科技、以及充滿想像的太空生活抱有濃厚興趣。整體風格充滿活力、自信，並帶有獨特的台式幽默感。
 
@@ -424,6 +426,39 @@ def get_tools_config() -> list:
                     }
                 },
                 "required": ["memory_type", "content"]
+            }
+        },
+        {
+            "type": "function",
+            "name": "web_search",
+            "description": "🌐 網頁搜尋工具！可即時查詢網路資訊，回傳 Google 搜尋結果摘要。適合用於查找最新新聞、知識、網站等。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "要搜尋的關鍵字或問題"
+                    },
+                    "num_results": {
+                        "type": "integer",
+                        "description": "回傳的搜尋結果數量，預設5，最大10",
+                        "minimum": 1,
+                        "maximum": 10,
+                        "default": 5
+                    },
+                    "language": {
+                        "type": "string",
+                        "description": "搜尋語言（如 zh-TW, en, ja），預設 zh-TW",
+                        "default": "zh-TW"
+                    },
+                    "safe_search": {
+                        "type": "string",
+                        "description": "安全搜尋等級（active, off, moderate），預設 active",
+                        "enum": ["active", "off", "moderate"],
+                        "default": "active"
+                    }
+                },
+                "required": ["query"]
             }
         }
     ]

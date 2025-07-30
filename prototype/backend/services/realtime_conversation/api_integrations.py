@@ -60,6 +60,11 @@ class APIIntegrations:
                 result = await self._handle_room_control(arguments)
                 logger.info(f"🏠 room_control 處理結果: {result}")
                 return result
+            elif function_name == "web_search":
+                logger.info("🌐 調用 web_search 處理器")
+                result = await self._handle_web_search(arguments)
+                logger.info(f"🌐 web_search 處理結果: {result}")
+                return result
             else:
                 logger.warning(f"❓ 未知工具函數: {function_name}")
                 return {
@@ -503,4 +508,32 @@ class APIIntegrations:
                         return {"success": False, "error": error_text}
         except Exception as e:
             logger.error(f"room_control 執行異常: {e}")
+            return {"success": False, "error": str(e)} 
+
+    async def _handle_web_search(self, arguments: dict) -> dict:
+        """呼叫本地 /api/web-search 進行網頁搜尋"""
+        try:
+            url = f"{self.base_url}/api/web-search"
+            payload = {
+                "query": arguments.get("query"),
+                "num_results": arguments.get("num_results", 5),
+                "language": arguments.get("language", "zh-TW"),
+                "safe_search": arguments.get("safe_search", "active")
+            }
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json=payload, timeout=10) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        return {
+                            "success": True,
+                            "results": data.get("results", []),
+                            "total_results": data.get("total_results"),
+                            "search_time": data.get("search_time"),
+                            "query": data.get("query")
+                        }
+                    else:
+                        err = await resp.text()
+                        return {"success": False, "error": f"Web search API error: {err}"}
+        except Exception as e:
+            logger.error(f"web_search 執行失敗: {e}")
             return {"success": False, "error": str(e)} 
