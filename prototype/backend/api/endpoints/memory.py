@@ -215,8 +215,8 @@ async def get_memory(request: GetMemoryRequest) -> MemoryResponse:
             # 進行語義搜尋
             results = await store.aretrieve(request.query, request.limit)
         else:
-            # 獲取所有記憶
-            all_data = store.get_all(limit=request.limit * 3)  # 獲取更多記憶用於排序
+            # 取得所有記憶（limit 設為較大值，確保能排序出最新的）
+            all_data = store.get_all(limit=1000)  # 原本是 request.limit * 3
             results = []
             if all_data and "documents" in all_data:
                 documents = all_data.get("documents", [])
