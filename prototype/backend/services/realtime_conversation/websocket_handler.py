@@ -521,6 +521,7 @@ class WebSocketHandler:
                 ) as response:
                     if response.status == 200:
                         logger.info(f"初始隨機 BGM 播放成功: {selected_bgm}")
+                        self._current_bgm_url = bgm_url # 儲存 BGM URL
                     else:
                         logger.warning(f"初始 BGM 播放失敗: {await response.text()}")
         except Exception as e:
@@ -571,21 +572,26 @@ class WebSocketHandler:
             logger.error(f"發送歡迎訊息失敗: {e}")
     
     async def _stop_bgm(self):
-        """關閉背景音樂"""
+        """將背景音樂音量調整回 0.7（不直接關閉 BGM）"""
         import aiohttp
         try:
+            # 取得目前 BGM URL（假設前端會維持原 bgmUrl，不清空）
+            # 若有全域變數或屬性可取得目前 bgmUrl，請取用，否則只設 volume
+            bgm_url = getattr(self, "_current_bgm_url", None)
+            bgm_data = {"volume": 0.7}
+            if bgm_url:
+                bgm_data["bgmUrl"] = bgm_url
             async with aiohttp.ClientSession() as session:
-                bgm_data = {"bgmUrl": "", "volume": 0}
                 async with session.post(
                     "http://localhost:8000/api/control/background-audio",
                     json=bgm_data
                 ) as response:
                     if response.status == 200:
-                        logger.info("已自動關閉背景音樂（session 結束）")
+                        logger.info("已將背景音樂音量調整回 0.7（session 結束）")
                     else:
-                        logger.warning(f"自動關閉 BGM 失敗: {await response.text()}")
+                        logger.warning(f"調整 BGM 音量失敗: {await response.text()}")
         except Exception as e:
-            logger.error(f"自動關閉 BGM 發生異常: {e}")
+            logger.error(f"調整 BGM 音量發生異常: {e}")
     
     async def _hide_scene(self):
         """關閉場景顯示（隱藏背景）"""
