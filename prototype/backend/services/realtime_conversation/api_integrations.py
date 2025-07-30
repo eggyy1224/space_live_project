@@ -65,6 +65,11 @@ class APIIntegrations:
                 result = await self._handle_web_search(arguments)
                 logger.info(f"🌐 web_search 處理結果: {result}")
                 return result
+            elif function_name == "environment_config":
+                logger.info("💡 調用 environment_config 處理器")
+                result = await self._handle_environment_config(arguments)
+                logger.info(f"💡 environment_config 處理結果: {result}")
+                return result
             else:
                 logger.warning(f"❓ 未知工具函數: {function_name}")
                 return {
@@ -537,3 +542,58 @@ class APIIntegrations:
         except Exception as e:
             logger.error(f"web_search 執行失敗: {e}")
             return {"success": False, "error": str(e)} 
+
+    async def _handle_environment_config(self, arguments: dict) -> dict:
+        """批次設定環境光照（僅允許 preset 與 intensity，背景永遠為 false）"""
+        try:
+            # 僅允許 preset 與 intensity
+            payload = {}
+            if "preset" in arguments:
+                payload["preset"] = arguments["preset"]
+            if "intensity" in arguments:
+                payload["intensity"] = arguments["intensity"]
+            # 不允許 background 參數
+            logger.info(f"💡 發送環境光照批次設定: {payload}")
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{self.base_url}/api/control/environment/config",
+                    json=payload,
+                    headers={"Content-Type": "application/json"},
+                    timeout=aiohttp.ClientTimeout(total=5)
+                ) as response:
+                    response_text = await response.text()
+                    logger.info(f"💡 HTTP 回應狀態: {response.status}")
+                    logger.info(f"💡 HTTP 回應內容: {response_text}")
+                    if response.status == 200:
+                        try:
+                            result = json.loads(response_text) if response_text else {}
+                            logger.info(f"✅ 成功設定環境光照: {payload}")
+                            return {
+                                "success": True,
+                                "message": "Environment config updated",
+                                "result": result
+                            }
+                        except json.JSONDecodeError:
+                            logger.info(f"✅ 成功設定環境光照: {payload} (無JSON回應)")
+                            return {
+                                "success": True,
+                                "message": "Environment config updated"
+                            }
+                    else:
+                        logger.error(f"❌ 設定環境光照失敗: HTTP {response.status} - {response_text}")
+                        return {
+                            "success": False,
+                            "error": f"HTTP {response.status}: {response_text}"
+                        }
+        except aiohttp.ClientTimeout:
+            logger.error(f"⏰ HTTP 請求超時 (environment_config)")
+            return {
+                "success": False,
+                "error": "Request timeout"
+            }
+        except Exception as e:
+            logger.error(f"❌ environment_config 處理錯誤: {e}")
+            return {
+                "success": False,
+                "error": f"Failed to set environment config: {str(e)}"
+            } 

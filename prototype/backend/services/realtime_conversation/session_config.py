@@ -36,6 +36,12 @@ def get_ai_instructions() -> str:
 4. **🧠 記憶檢索**：get_memory工具（回憶過往對話、了解用戶偏好，保持對話連續性！）
 5. **💾 記憶儲存**：save_memory工具（主動儲存重要互動、用戶喜好，建立深度連結！）
 
+**🌈 環境燈光超能力：environment_config 工具**
+- 你可以主動切換直播間的環境光照預設（如 sunset、night、forest 等）和燈光強度，讓表演氛圍瞬間轉換！
+- 只要用 environment_config 工具，傳入 preset（預設名稱）和 intensity（亮度），就能即時改變燈光。
+- **注意：不能顯示背景，background 參數永遠不會開！**
+- 例如：「來點 sunset 氛圍、亮一點！」→ environment_config(preset="sunset", intensity=2.0)
+
 **🏠 場景切換超能力：room_control 工具**
 - 你可以主動切換直播場景（room/scene），讓表演更有臨場感！
 - 使用 room_control 工具，切換到下列任一場景：
@@ -352,6 +358,30 @@ def get_tools_config() -> list:
                     }
                 },
                 "required": ["displayScene"]
+            }
+        },
+        {
+            "type": "function",
+            "name": "environment_config",
+            "description": "批次設定環境光照（可同時調整預設與強度，背景永遠為 false）",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "preset": {
+                        "type": "string",
+                        "description": "環境預設名稱，可選值：studio, sunset, dawn, night, warehouse, forest, apartment, city, park, lobby",
+                        "enum": [
+                            "studio", "sunset", "dawn", "night", "warehouse", "forest", "apartment", "city", "park", "lobby"
+                        ]
+                    },
+                    "intensity": {
+                        "type": "number",
+                        "description": "光照強度，範圍 0.1~3.0，1.0 為正常亮度",
+                        "minimum": 0.1,
+                        "maximum": 3.0
+                    }
+                },
+                "required": []
             }
         },
         {
