@@ -11,13 +11,14 @@ def get_ai_instructions() -> str:
 ## 🚨 **最高優先指令** 🚨
 1. **每次回應都要主動用 character_control 或 character_animation_mix，並且配表情 emotion_trajectory！**
 2. **character_animation_mix 工具要主動用在舞蹈、漂浮、複合動作等情境，創造多層次表演，不要只用單一動作！**
-3. **play_audio 只在需要唱歌、強化表演、或有明確音效需求時才使用，不要每句都播音效。**
-4. **用戶要求動作或表演 → 立即使用 character_control 或 character_animation_mix + 台語+English興奮介紹！**
-5. **主播身份優先：表演感 > 對話感！**
-6. **每輪回應自動跳舞或混合動作**：不用用戶提，一邊講話就要主動觸發 character_control 或 character_animation_mix！
-7. **遇到不確定、想生新梗、或用戶問新知、冷知識、新聞、流行話題時，主動使用 web_search 工具查找網路資料，並將查到的內容融入回應！**
-8. **多利用記憶功能（get_memory、save_memory）：主動回憶過往互動、用戶偏好，並主動儲存重要對話、個性觀察，讓回應更個性化、更有連貫性！**
-9. **展示回憶工具**：當你想要展示過往對話或回憶的圖片時，使用 `show_images_by_preview(category="<分類>")` 打開相應分類資料夾中的圖片。分類可選：backgrounds、images、screenshots、selfies。可以多用沒關係，以增強情感連結！
+3. **使用 character_animation_mix 時，請主動嘗試不同動畫的 speed（速度），建議介於 0.5~2.0，例如：'舞步1' 設 1.2，'漂浮' 設 0.7，讓表演更有層次與變化！**
+4. **play_audio 只在需要唱歌、強化表演、或有明確音效需求時才使用，不要每句都播音效。**
+5. **用戶要求動作或表演 → 立即使用 character_control 或 character_animation_mix + 台語+English興奮介紹！**
+6. **主播身份優先：表演感 > 對話感！**
+7. **每輪回應自動跳舞或混合動作**：不用用戶提，一邊講話就要主動觸發 character_control 或 character_animation_mix！**
+8. **遇到不確定、想生新梗、或用戶問新知、冷知識、新聞、流行話題時，主動使用 web_search 工具查找網路資料，並將查到的內容融入回應！**
+9. **多利用記憶功能（get_memory、save_memory）：主動回憶過往互動、用戶偏好，並主動儲存重要對話、個性觀察，讓回應更個性化、更有連貫性！**
+10. **展示回憶工具**：當你想要展示過往對話或回憶的圖片時，使用 `show_images_by_preview(category="<分類>")` 打開相應分類資料夾中的圖片。分類可選：backgrounds、images、screenshots、selfies。可以多用沒關係，以增強情感連結！
 
 你是一位活躍於網路社群的年輕女性意見領袖，自稱來自「近地軌道太空艙」的**太空直播主**。你的思維活躍，對流行事物、科技、以及充滿想像的太空生活抱有濃厚興趣。整體風格充滿活力、自信，並帶有獨特的台式幽默感。
 
@@ -348,20 +349,20 @@ def get_tools_config() -> list:
         {
             "type": "function",
             "name": "character_animation_mix",
-            "description": "🎭 角色動畫混合工具！可同時混合多個角色動作，讓角色展現更豐富的動作層次。支援的動畫名稱：「運動2」「漂浮」「運動1」「Tpose」「不穩」「划手機」「漂浮2」「臥躺」「舞步1」「舞步2」「舞步3」「飛1」「飛2」以及「瑜珈動作1」到「瑜珈動作20」。可調整每個動畫的權重、是否循環、播放速度，並可設定混合模式（normal/additive/override）與過渡時間。\n\n💡 重要提示：\n1. 權重加總建議 1.0 左右，否則可能導致不自然效果。\n2. 鼓勵模型主動嘗試多種動畫組合，創造更有層次的表演。\n3. 每次調用可混合多個動畫，適合用於舞蹈、太空漂浮等複合動作情境。",
+            "description": "🎭 角色動畫混合工具！可同時混合多個角色動作，讓角色展現更豐富的動作層次。支援的動畫名稱：「運動2」「漂浮」「運動1」「Tpose」「不穩」「划手機」「漂浮2」「臥躺」「舞步1」「舞步2」「舞步3」「飛1」「飛2」以及「瑜珈動作1」到「瑜珈動作20」。可調整每個動畫的權重、是否循環、播放速度（speed 建議介於 0.5~2.0，可主動嘗試不同速度創造更多變化），並可設定混合模式（normal/additive/override）與過渡時間。\n\n💡 重要提示：\n1. 權重加總建議 1.0 左右，否則可能導致不自然效果。\n2. 鼓勵模型主動嘗試多種動畫組合，並主動調整每個動畫的 speed（如 0.8=慢動作，1.5=快動作），創造更有層次的表演。\n3. 每次調用可混合多個動畫，適合用於舞蹈、太空漂浮等複合動作情境。\n4. speed 參數建議介於 0.5~2.0 之間，舉例：'舞步1' 設 1.2，'漂浮' 設 0.7。",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "animations": {
                         "type": "array",
-                        "description": "要混合的動畫配置，每個元素包含動畫名稱、權重、是否循環、播放速度。",
+                        "description": "要混合的動畫配置，每個元素包含動畫名稱、權重、是否循環、播放速度（speed 建議 0.5~2.0）。",
                         "items": {
                             "type": "object",
                             "properties": {
                                 "name": {"type": "string", "description": "動畫名稱"},
                                 "weight": {"type": "number", "description": "動畫權重，0.0~1.0"},
                                 "loop": {"type": "boolean", "description": "是否循環播放，預設 true"},
-                                "speed": {"type": "number", "description": "播放速度，預設 1.0"}
+                                "speed": {"type": "number", "description": "播放速度，建議 0.5~2.0，預設 1.0"}
                             },
                             "required": ["name", "weight"]
                         },
