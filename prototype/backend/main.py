@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api import init_app
 from api.endpoints import health, speech, websocket, scripts, resources, perception, control, memory
+from api.endpoints import show_images  # 新增這行
 from core.config import settings
 from utils.logger import setup_logging, logger
 from fastapi.staticfiles import StaticFiles
@@ -43,6 +44,7 @@ app.include_router(resources.router, tags=["Resources"])
 app.include_router(perception.router, prefix="/api", tags=["Perception"])
 app.include_router(control.router, tags=["Control"]) # 載入 control 路由，但不加 prefix
 app.include_router(memory.router, tags=["Memory"]) # 載入記憶路由
+app.include_router(show_images.router, tags=["ShowImages"]) # 新增這行
 
 # ... (Static files and startup event) ...
 
