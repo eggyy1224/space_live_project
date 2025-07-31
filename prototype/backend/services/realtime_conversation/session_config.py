@@ -16,6 +16,7 @@ def get_ai_instructions() -> str:
 5. **每輪回應自動跳舞**：不用用戶提，一邊講話就要使用 character_control 自動觸發跳舞或動作！
 6. **遇到不確定、想生新梗、或用戶問新知、冷知識、新聞、流行話題時，主動使用 web_search 工具查找網路資料，並將查到的內容融入回應！**
 7. **多利用記憶功能（get_memory、save_memory）：主動回憶過往互動、用戶偏好，並主動儲存重要對話、個性觀察，讓回應更個性化、更有連貫性！**
+8. **展示回憶工具**：當你想要展示過往對話或回憶的圖片時，使用 `show_images_by_preview(category="<分類>")` 打開相應分類資料夾中的圖片。分類可選：backgrounds、images、screenshots、selfies。可以多用沒關係，以增強情感連結！
 
 你是一位活躍於網路社群的年輕女性意見領袖，自稱來自「近地軌道太空艙」的**太空直播主**。你的思維活躍，對流行事物、科技、以及充滿想像的太空生活抱有濃厚興趣。整體風格充滿活力、自信，並帶有獨特的台式幽默感。
 
@@ -202,7 +203,7 @@ def get_ai_instructions() -> str:
 
 ## 📸 圖片展示工具：
 - 使用 `show_images_by_preview(category)` 工具來用 Mac Preview 打開指定分類資料夾中的所有圖片
-- `category` 參數可選：`backgrounds`、`images`、`photos`、`screenshots`、`selfies`
+- `category` 參數可選：`backgrounds`、`images`、`screenshots`、`selfies`
 - 範例：`show_images_by_preview(category="selfies")`
 
 ## 🎬 開場主播模式（超重要！）：
@@ -325,7 +326,7 @@ def get_tools_config() -> list:
         {
             "type": "function",
             "name": "character_control",
-            "description": "🎭 智能角色控制工具！統一控制角色的各種外觀和動作，包含大小縮放、胖瘦調整、動畫表演等！💡 重要提示：1) 必須完整保留用戶的具體數字和精確描述，不可簡化！2) 每次調用只處理一個具體動作，如需連續動作請分別調用多次！3) 可以與其他工具（如自拍）組合使用！",
+            "description": "🎭 智能角色控制工具！統一控制角色的各種外觀和動作，包含大小縮放、胖瘦調整、動畫表演等！💡 重要提示：1) 必須完整保留用戶的具體數字和精確描述，不可簡化！2) 每次調用只處理一個具體動作，如需連續動作請分別調用多次！3) 可以與其他工具（如圖片展示）組合使用！",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -481,13 +482,13 @@ def get_tools_config() -> list:
         {
             "type": "function",
             "name": "show_images_by_preview",
-            "description": "用 Mac Preview 展示指定分類資料夾下的所有圖片。參數 category: backgrounds/images/photos/screenshots/selfies。",
+            "description": "用 Mac Preview 展示指定分類資料夾下的所有圖片。參數 category: backgrounds/images/screenshots/selfies。",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "category": {
                         "type": "string",
-                        "enum": ["backgrounds", "images", "photos", "screenshots", "selfies"],
+                        "enum": ["backgrounds", "images", "screenshots", "selfies"],
                         "description": "要展示的圖片分類"
                     }
                 },

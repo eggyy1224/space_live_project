@@ -11,7 +11,7 @@ from pathlib import Path
 router = APIRouter(prefix="/api", tags=["ShowImages"])
 
 # 支援的分類白名單
-ALLOWED_CATEGORIES = {"backgrounds", "images", "photos", "screenshots", "selfies"}
+ALLOWED_CATEGORIES = {"backgrounds", "images", "screenshots", "selfies"}
 # 圖片副檔名
 IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".heic")
 # 圖片根目錄
@@ -98,7 +98,7 @@ def show_images_by_preview(image_dir: Path, max_images=50, display_time=8):
 @router.post("/show_images_by_preview")
 async def show_images_by_preview_api(
     background_tasks: BackgroundTasks,
-    category: Literal["backgrounds", "images", "photos", "screenshots", "selfies"] = Query(..., description="圖片分類")
+    category: Literal["backgrounds", "images", "screenshots", "selfies"] = Query(..., description="圖片分類")
 ):
     """
     用 Mac Preview 展示指定分類資料夾下的所有圖片
