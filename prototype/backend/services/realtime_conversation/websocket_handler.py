@@ -47,6 +47,23 @@ class WebSocketHandler:
         except Exception as e:
             logger.error(f"設置初始房間場景異常: {e}")
 
+    async def _set_initial_environment_light(self):
+        """設定初始環境光強度為 1.0"""
+        import aiohttp
+        try:
+            async with aiohttp.ClientSession() as session:
+                payload = {"intensity": 1.0}
+                async with session.post(
+                    "http://localhost:8000/api/control/environment/config",
+                    json=payload
+                ) as response:
+                    if response.status == 200:
+                        logger.info("初始環境光強度設置為 1.0")
+                    else:
+                        logger.warning(f"設置初始環境光強度失敗: {await response.text()}")
+        except Exception as e:
+            logger.error(f"設置初始環境光強度異常: {e}")
+
     async def stream_conversation(
         self, audio_chunks: AsyncIterator[bytes]
     ) -> AsyncGenerator[bytes, None]:
@@ -77,6 +94,8 @@ class WebSocketHandler:
                 
                 # 發送初始會話配置
                 await self._send_session_update(ws)
+                # 新增：設定初始環境光強度
+                await self._set_initial_environment_light()
                 
                 # 等待會話配置確認
                 await asyncio.sleep(0.5)
@@ -651,6 +670,25 @@ class WebSocketHandler:
                         logger.warning(f"自動關閉場景失敗: {await response.text()}")
         except Exception as e:
             logger.error(f"自動關閉場景發生異常: {e}")
+        # 新增：會話結束後重置環境光強度
+        await self._reset_environment_light()
+
+    async def _reset_environment_light(self):
+        """重置環境光強度為 0.1"""
+        import aiohttp
+        try:
+            async with aiohttp.ClientSession() as session:
+                payload = {"intensity": 0.1}
+                async with session.post(
+                    "http://localhost:8000/api/control/environment/config",
+                    json=payload
+                ) as response:
+                    if response.status == 200:
+                        logger.info("環境光強度重置為 0.1")
+                    else:
+                        logger.warning(f"重置環境光強度失敗: {await response.text()}")
+        except Exception as e:
+            logger.error(f"重置環境光強度異常: {e}")
     
     def set_tool_executor(self, executor):
         """設定工具執行器"""
