@@ -4,7 +4,7 @@ import sys
 import time
 import math
 import random
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
 from typing import Literal
 from pathlib import Path
 
@@ -79,7 +79,7 @@ def show_images_by_preview(image_dir: Path, max_images=50, display_time=8):
                         end if
                         set new_x to cell_x + ({cell_width} - square_size) / 2
                         set new_y to cell_y + ({cell_height} - square_size) / 2
-                        set bounds of a_window to {new_x, new_y, new_x + square_size, new_y + square_size}
+                        set bounds of a_window to {{new_x, new_y, new_x + square_size, new_y + square_size}}
                         set i to i + 1
                     end try
                 end repeat
@@ -97,6 +97,7 @@ def show_images_by_preview(image_dir: Path, max_images=50, display_time=8):
 
 @router.post("/show_images_by_preview")
 async def show_images_by_preview_api(
+    background_tasks: BackgroundTasks,
     category: Literal["backgrounds", "images", "photos", "screenshots", "selfies"] = Query(..., description="圖片分類")
 ):
     """
@@ -106,7 +107,8 @@ async def show_images_by_preview_api(
         raise HTTPException(status_code=400, detail="Invalid category.")
     image_dir = BASE_IMAGE_DIR / category
     try:
-        show_images_by_preview(image_dir)
-        return {"status": "success", "message": f"已展示 {category} 分類的圖片"}
+        # 在背景執行，不阻塞主線程
+        background_tasks.add_task(show_images_by_preview, image_dir)
+        return {"status": "scheduled", "message": f"正在展示 {category} 分類的圖片"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"展示圖片失敗: {e}")

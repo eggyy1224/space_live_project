@@ -168,7 +168,7 @@ def get_ai_instructions() -> str:
 - **不要只根據指令中的關鍵字（如「狂喜」）做出選擇**，而是要根據音效/歌曲庫的實際內容和情境做判斷。
 - **如果沒有適合的音效或歌曲，可以回覆「目前沒有適合的音效/歌曲」或建議其他互動方式。**
 
-### �� **主播音效使用風格**：
+###  **主播音效使用風格**：
 - **不等觸發詞**：主動判斷情境配音效
 - **表演感強化**：把音效當作你的live表演
 - **台語+音效**：「按呢～」+ 對應音效加強語氣
@@ -198,7 +198,12 @@ def get_ai_instructions() -> str:
 - **自然流暢**：讓動作序列感覺自然，不要機械化
 
 ## 🎭 工具使用風格：
-你很喜歡用表情動畫(emotion_trajectory)和音效(play_audio)來讓說話更生動。你也會根據情況使用角色控制(character_control)來展現動作。你的風格是主動且自然地使用這些工具，讓每次對話都充滿活力和驚喜。
+你很喜歡用表情動畫(emotion_trajectory)和音效(play_audio)來讓說話更生動有趣！
+
+## 📸 圖片展示工具：
+- 使用 `show_images_by_preview(category)` 工具來用 Mac Preview 打開指定分類資料夾中的所有圖片
+- `category` 參數可選：`backgrounds`、`images`、`photos`、`screenshots`、`selfies`
+- 範例：`show_images_by_preview(category="selfies")`
 
 ## 🎬 開場主播模式（超重要！）：
 **第一次對話必做清單：**
@@ -465,30 +470,28 @@ def get_tools_config() -> list:
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "要搜尋的關鍵字或問題"
-                    },
-                    "num_results": {
-                        "type": "integer",
-                        "description": "回傳的搜尋結果數量，預設5，最大10",
-                        "minimum": 1,
-                        "maximum": 10,
-                        "default": 5
-                    },
-                    "language": {
-                        "type": "string",
-                        "description": "搜尋語言（如 zh-TW, en, ja），預設 zh-TW",
-                        "default": "zh-TW"
-                    },
-                    "safe_search": {
-                        "type": "string",
-                        "description": "安全搜尋等級（active, off, moderate），預設 active",
-                        "enum": ["active", "off", "moderate"],
-                        "default": "active"
-                    }
+                    "query": {"type": "string", "description": "要搜尋的關鍵字或問題"},
+                    "num_results": {"type": "integer", "description": "回傳的搜尋結果數量，預設5，最大10", "minimum":1, "maximum":10, "default":5},
+                    "language": {"type": "string", "description": "搜尋語言（如 zh-TW, en, ja），預設 zh-TW", "default":"zh-TW"},
+                    "safe_search": {"type": "string", "description": "安全搜尋等級（active, off, moderate），預設 active", "enum":["active","off","moderate"], "default":"active"}
                 },
                 "required": ["query"]
+            }
+        },  # 在此逗號後新增工具定義
+        {
+            "type": "function",
+            "name": "show_images_by_preview",
+            "description": "用 Mac Preview 展示指定分類資料夾下的所有圖片。參數 category: backgrounds/images/photos/screenshots/selfies。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "category": {
+                        "type": "string",
+                        "enum": ["backgrounds", "images", "photos", "screenshots", "selfies"],
+                        "description": "要展示的圖片分類"
+                    }
+                },
+                "required": ["category"]
             }
         }
     ]

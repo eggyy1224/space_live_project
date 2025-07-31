@@ -70,6 +70,11 @@ class APIIntegrations:
                 result = await self._handle_environment_config(arguments)
                 logger.info(f"💡 environment_config 處理結果: {result}")
                 return result
+            elif function_name == "show_images_by_preview":
+                logger.info("🖼️ 調用 show_images_by_preview 處理器")
+                result = await self._handle_show_images_by_preview(arguments)
+                logger.info(f"🖼️ show_images_by_preview 處理結果: {result}")
+                return result
             else:
                 logger.warning(f"❓ 未知工具函數: {function_name}")
                 return {
@@ -597,3 +602,28 @@ class APIIntegrations:
                 "success": False,
                 "error": f"Failed to set environment config: {str(e)}"
             } 
+
+    async def _handle_show_images_by_preview(self, arguments: Dict[str, Any]) -> dict:
+        """處理 show_images_by_preview 工具，呼叫本地 API 端點展示圖片"""
+        try:
+            category = arguments.get("category")
+            if not category:
+                return {"success": False, "error": "Missing required parameter: category"}
+            url = f"{self.base_url}/api/show_images_by_preview"
+            params = {"category": category}
+            logger.info(f"🔄 發送請求到: {url} 參數: {params}")
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, params=params, timeout=aiohttp.ClientTimeout(total=5)) as resp:
+                    text = await resp.text()
+                    logger.info(f"🔄 show_images_by_preview HTTP 狀態: {resp.status}")
+                    if resp.status == 200:
+                        try:
+                            data = json.loads(text) if text else {}
+                            return {"success": True, "result": data}
+                        except json.JSONDecodeError:
+                            return {"success": True, "message": text}
+                    else:
+                        return {"success": False, "error": f"HTTP {resp.status}: {text}"}
+        except Exception as e:
+            logger.error(f"show_images_by_preview 處理錯誤: {e}")
+            return {"success": False, "error": str(e)} 
