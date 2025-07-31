@@ -75,6 +75,11 @@ class APIIntegrations:
                 result = await self._handle_show_images_by_preview(arguments)
                 logger.info(f"🖼️ show_images_by_preview 處理結果: {result}")
                 return result
+            elif function_name == "character_animation_mix":
+                logger.info("🎭 調用 character_animation_mix 處理器")
+                result = await self._handle_character_animation_mix(arguments)
+                logger.info(f"🎭 character_animation_mix 處理結果: {result}")
+                return result
             else:
                 logger.warning(f"❓ 未知工具函數: {function_name}")
                 return {
@@ -627,3 +632,31 @@ class APIIntegrations:
         except Exception as e:
             logger.error(f"show_images_by_preview 處理錯誤: {e}")
             return {"success": False, "error": str(e)} 
+
+    async def _handle_character_animation_mix(self, arguments: dict) -> dict:
+        """處理角色動畫混合工具，轉發到 animation-mix 端點"""
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{self.base_url}/api/control/character/animation-mix",
+                    json=arguments,
+                    timeout=aiohttp.ClientTimeout(total=8)
+                ) as response:
+                    response_text = await response.text()
+                    if response.status == 200:
+                        return {
+                            "success": True,
+                            "message": "角色動畫混合已設置",
+                            "result": json.loads(response_text) if response_text else {},
+                        }
+                    else:
+                        return {
+                            "success": False,
+                            "error": f"HTTP {response.status}: {response_text}"
+                        }
+        except Exception as e:
+            logger.error(f"❌ character_animation_mix 處理錯誤: {e}")
+            return {
+                "success": False,
+                "error": f"character_animation_mix failed: {str(e)}"
+            } 
