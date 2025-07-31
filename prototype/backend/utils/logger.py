@@ -51,6 +51,11 @@ def setup_logging(log_level=logging.DEBUG, log_to_console=True, log_to_file=True
     # 設置特定庫的日誌級別
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
+    # 防止第三方網路庫洩漏敏感資訊
+    logging.getLogger("http.client").setLevel(logging.WARNING)
+    logging.getLogger("websockets").setLevel(logging.INFO)
+    logging.getLogger("websockets.client").setLevel(logging.INFO)
+    logging.getLogger("websockets.protocol").setLevel(logging.INFO)
     
     # 返回根記錄器
     return root_logger
