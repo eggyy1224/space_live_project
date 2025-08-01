@@ -47,8 +47,31 @@ class WebSocketHandler:
         except Exception as e:
             logger.error(f"設置初始房間場景異常: {e}")
 
+    async def _breathing_light_effect(self, brighten=True, steps=14, delay=0.08):
+        """
+        呼吸燈效果：
+        brighten=True 時，從暗到亮；False 時，從亮到暗。
+        steps: 亮度分段數
+        delay: 每步延遲秒數
+        """
+        import aiohttp
+        import math
+        base_url = "http://localhost:8000/api/physical-light/set-brightness"
+        # 用正弦波分布產生平滑亮度
+        for i in range(steps + 1):
+            t = i / steps
+            if brighten:
+                brightness = int((math.sin(t * math.pi / 2))**2 * 65535)
+            else:
+                brightness = int((math.cos(t * math.pi / 2))**2 * 65535)
+            async with aiohttp.ClientSession() as session:
+                await session.post(base_url, json={"brightness": brightness})
+            await asyncio.sleep(delay)
+
     async def _set_initial_environment_light(self):
-        """設定初始環境光強度為 1.0"""
+        """
+        設定初始環境光強度為 1.0，並執行燈光漸亮呼吸效果
+        """
         import aiohttp
         try:
             async with aiohttp.ClientSession() as session:
@@ -61,6 +84,8 @@ class WebSocketHandler:
                         logger.info("初始環境光強度設置為 1.0")
                     else:
                         logger.warning(f"設置初始環境光強度失敗: {await response.text()}")
+            # 新增：燈光漸亮呼吸效果（背景執行）
+            asyncio.create_task(self._breathing_light_effect(brighten=True))
         except Exception as e:
             logger.error(f"設置初始環境光強度異常: {e}")
 
@@ -219,6 +244,9 @@ class WebSocketHandler:
                     if self._session_logger:
                         self._session_logger.log_connection_closed("Normal closure")
                         self._session_logger = None
+                    # 新增：燈光直接關閉（設為 0）
+                    import aiohttp
+                    asyncio.create_task(self._set_light_off())
                     
         except ConnectionClosed:
             logger.error("WebSocket connection to OpenAI was closed")
@@ -693,3 +721,10 @@ class WebSocketHandler:
     def set_tool_executor(self, executor):
         """設定工具執行器"""
         self.tool_executor = executor 
+
+    async def _set_light_off(self):
+        """直接將燈光設為 0（全暗）"""
+        import aiohttp
+        base_url = "http://localhost:8000/api/physical-light/set-brightness"
+        async with aiohttp.ClientSession() as session:
+            await session.post(base_url, json={"brightness": 0}) 
