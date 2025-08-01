@@ -85,7 +85,7 @@ export const emotionBaseWeights: Record<string, Record<string, number>> = {
     eyeWideRight: 1.8,
     browOuterUpLeft: 1.0,
     browOuterUpRight: 1.0,
-    jawOpen: 1.5,
+    jawOpen: 1.0, // 原1.5，調整到1.0
     // Original: mouthSmileLeft: 3.0, mouthSmileRight: 3.0, cheekSquintLeft: 1.3, cheekSquintRight: 1.3, eyeSquintLeft: 0.8, eyeSquintRight: 0.8, mouthDimpleLeft: 1.1, mouthDimpleRight: 1.1, browInnerUp: 0.3, browOuterUpLeft: 0.2, browOuterUpRight: 0.2, eyeWideLeft: 0.5, eyeWideRight: 0.5, jawOpen: 0.8
   },
   content: { // Calm happiness, satisfaction - Fun version
@@ -116,7 +116,7 @@ export const emotionBaseWeights: Record<string, Record<string, number>> = {
     mouthSmileRight: 2.0,
     browOuterUpLeft: 2.0,
     browOuterUpRight: 2.0,
-    jawOpen: 2.0,
+    jawOpen: 1.2, // 原2.0，調整到1.2
     // Original: eyeWideLeft: 2.0, eyeWideRight: 2.0, mouthSmileLeft: 2.0, mouthSmileRight: 2.0, browOuterUpLeft: 2.0, browOuterUpRight: 2.0, jawOpen: 1.2
   },
   interested: { // Fun version - Curious
@@ -288,14 +288,14 @@ export const emotionBaseWeights: Record<string, Record<string, number>> = {
     eyeSquintRight: 0.9,
   },
   fearful: { // Standard strong fear - Exaggerated terror fun version
-    eyeWideLeft: 3.8, // 彩蛋，保留誇張
-    eyeWideRight: 3.8, // 彩蛋，保留誇張
+    eyeWideLeft: 3.8, // 原彩蛋
+    eyeWideRight: 3.8, // 原彩蛋
     browInnerUp: 2.0,
     browOuterUpLeft: 2.0,
     browOuterUpRight: 2.0,
     mouthStretchLeft: 1.8,
     mouthStretchRight: 1.8,
-    jawOpen: 2.0,
+    jawOpen: 1.2, // 原2.0，調整到1.2
     cheekSquintLeft: 1.2, // Eyes so wide cheeks bunch up
     cheekSquintRight: 1.2,
     // Original: eyeWideLeft: 2.5, eyeWideRight: 2.5, browInnerUp: 2.0, browOuterUpLeft: 0.85, browOuterUpRight: 0.85, mouthStretchLeft: 0.7, mouthStretchRight: 0.7, jawOpen: 1.0
@@ -418,11 +418,11 @@ export const emotionBaseWeights: Record<string, Record<string, number>> = {
 
   // --- Ambiguous / Cognitive / Other States (Expanded) ---
   surprised: { // Standard strong surprise - Cartoonish pop-eyes fun version
-    eyeWideLeft: 3.5, // 彩蛋，保留誇張
-    eyeWideRight: 3.5, // 彩蛋，保留誇張
-    browOuterUpLeft: 3.2, // 彩蛋，保留誇張
-    browOuterUpRight: 3.2, // 彩蛋，保留誇張
-    jawOpen: 3.0, // 彩蛋，保留誇張
+    eyeWideLeft: 3.5, // 原彩蛋
+    eyeWideRight: 3.5, // 原彩蛋
+    browOuterUpLeft: 3.2, // 原彩蛋
+    browOuterUpRight: 3.2, // 原彩蛋
+    jawOpen: 1.2, // 原3.0，調整到1.2
     mouthPucker: 0.8,
   },
   confused: { // Fun version - More exaggerated asymmetry
@@ -449,7 +449,7 @@ export const emotionBaseWeights: Record<string, Record<string, number>> = {
     mouthFrownRight: 1.8,
     eyeBlinkLeft: 0.9, // Almost closed
     eyeBlinkRight: 0.9,
-    jawOpen: 1.2, // Slack jaw
+    jawOpen: 1.0, // 原1.2，調整到1.0
     browDownLeft: 0.5, // Droopy eyebrows
     browDownRight: 0.5,
     // Original: mouthFrownLeft: 1.0, mouthFrownRight: 1.0, eyeBlinkLeft: 1.5, eyeBlinkRight: 1.5, jawOpen: 0.6, eyeLookUpLeft: 0.6, eyeLookUpRight: 0.6
@@ -519,9 +519,9 @@ export const emotionBaseWeights: Record<string, Record<string, number>> = {
     eyeSquintRight: 0.3,
   },
   awe: {
-    eyeWideLeft: 3.0, // 彩蛋，保留誇張
-    eyeWideRight: 3.0, // 彩蛋，保留誇張
-    jawOpen: 2.8, // 彩蛋，保留誇張
+    eyeWideLeft: 3.0, // 原彩蛋
+    eyeWideRight: 3.0, // 原彩蛋
+    jawOpen: 1.2, // 原2.8，調整到1.2
     mouthPucker: 1.0,
     browInnerUp: 1.8,
     browOuterUpLeft: 1.8,
