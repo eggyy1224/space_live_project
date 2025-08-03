@@ -6,7 +6,9 @@ const WS_URL = `ws://${window.location.hostname}:8000/api/real-time/ws`;
 
 // 專門用於實時音頻播放的類
 class RealtimeAudioPlayer {
-  private audioContext: AudioContext | null = null;
+  private audioContext: AudioContext | null = null
+  // === 新增：物理燈光 WebSocket 連線 ===
+  private lightWs: WebSocket | null = null;
   private analyser: AnalyserNode | null = null;
   private gainNode: GainNode | null = null;
   private analysisFrameId: number | null = null;
@@ -104,6 +106,22 @@ class RealtimeAudioPlayer {
     console.log(`[RealtimeAudioPlayer] Playing audio chunk: ${audioBuffer.duration.toFixed(3)}s`);
   }
 
+  // === 新增：確保燈光 WebSocket 連線 ===
+  private ensureLightWs(): void {
+    if (!this.lightWs || this.lightWs.readyState === 3) { // 只在沒有連線或已關閉時重新連線
+      try {
+        console.log('[RealtimeAudioPlayer] Creating new light WebSocket connection...');
+        this.lightWs = new window.WebSocket('ws://localhost:8000/api/physical-light/ws/brightness');
+        this.lightWs.onopen = () => console.log('[RealtimeAudioPlayer] Light WebSocket connected');
+        this.lightWs.onerror = (error) => console.error('[RealtimeAudioPlayer] Light WebSocket error:', error);
+        this.lightWs.onclose = () => console.log('[RealtimeAudioPlayer] Light WebSocket closed');
+      } catch (error) {
+        console.warn('[RealtimeAudioPlayer] Failed to connect to light WebSocket:', error);
+      }
+    }
+  }
+  // === 新增結束 ===
+
   private startAudioAnalysis() {
     if (!this.analyser) return;
     
@@ -134,6 +152,15 @@ class RealtimeAudioPlayer {
       // 更新嘴型
       useStore.getState().setAudioLipsyncTarget('jawOpen', jawOpenValue);
       useStore.getState().setAudioAverageVolume(rms);
+      
+      // === 新增：同步燈光控制 ===
+      this.ensureLightWs();
+      if (this.lightWs && this.lightWs.readyState === 1) {
+        // rms 0~1 映射到 0~65535，增加靈敏度
+        const brightness = Math.round(Math.max(0, Math.min(1, rms * 10)) * 65535);
+        this.lightWs.send(JSON.stringify({ brightness }));
+      }
+      // === 新增結束 ===
       
       this.analysisFrameId = requestAnimationFrame(analyze);
     };
