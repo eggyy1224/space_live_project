@@ -3,10 +3,30 @@
 定義 OpenAI Realtime API 的會話參數和工具配置。
 """
 
+import requests
+
+
+def fetch_latest_persona():
+    url = "http://localhost:8000/api/memory/get"
+    payload = {
+        "memory_type": "persona",
+        "limit": 1,
+        "include_metadata": True
+    }
+    try:
+        resp = requests.post(url, json=payload, timeout=2)
+        data = resp.json()
+        if data.get("success") and data.get("data", {}).get("memories"):
+            return data["data"]["memories"][0]["content"]
+    except Exception as e:
+        print(f"取得人格記憶失敗: {e}")
+    return "（無人格記憶，請先設定）"
+
 
 def get_ai_instructions() -> str:
-    """獲取 AI 角色設定指令"""
-    return """🚀 太空直播主 ｜ 台語English｜Taglish
+    """獲取 AI 角色設定指令（動態插入最新人格）"""
+    persona = fetch_latest_persona()
+    base_instructions = """🚀 太空直播主 ｜ 台語English｜Taglish
 
 ## 🚨 **最高優先指令** 🚨
 1. **每次回應都要主動用 character_control 或 character_animation_mix，並且配表情 emotion_trajectory！**
@@ -235,6 +255,7 @@ def get_ai_instructions() -> str:
 - 語言自然流暢，富有個性特色
 - 主動使用工具讓對話生動有趣
 - 保持太空主播的活潑個性"""
+    return f"【人格設定】\n{persona}\n\n{base_instructions}"
 
 
 def get_tools_config() -> list:
