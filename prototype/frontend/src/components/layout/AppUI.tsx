@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 // import ChatInterface from '../ChatInterface'; // <-- Remove import
 // import ControlPanel from '../ControlPanel'; // <-- Remove import
 // import AudioControls from '../AudioControls'; // <-- Remove import
@@ -65,6 +65,45 @@ interface AppUIProps {
   realtimeError: string | null;
 }
 
+// === 新增：物理燈條亮度控制 bar 組件 ===
+function PhysicalLightBarPanel({ visible, onClose }: { visible: boolean, onClose: () => void }) {
+  const [value, setValue] = useState(32767);
+  const wsRef = useRef<WebSocket | null>(null);
+
+  useEffect(() => {
+    if (!visible) return;
+    const ws = new window.WebSocket('ws://localhost:8000/api/physical-light/ws/brightness');
+    wsRef.current = ws;
+    return () => ws.close();
+  }, [visible]);
+
+  useEffect(() => {
+    if (wsRef.current && wsRef.current.readyState === 1) {
+      wsRef.current.send(JSON.stringify({ brightness: value }));
+    }
+  }, [value]);
+
+  if (!visible) return null;
+  return (
+    <div className="bg-gray-900 text-white p-4 rounded-lg shadow-lg mb-2 flex flex-col items-center" style={{ minWidth: 260 }}>
+      <div className="flex w-full items-center mb-2">
+        <span className="mr-2">亮度</span>
+        <input
+          type="range"
+          min={0}
+          max={65535}
+          value={value}
+          onChange={e => setValue(Number(e.target.value))}
+          className="flex-1 mx-2"
+        />
+        <span className="ml-2 text-xs">{value}</span>
+      </div>
+      <button onClick={onClose} className="mt-2 px-3 py-1 bg-gray-700 rounded hover:bg-gray-600 text-xs">關閉</button>
+    </div>
+  );
+}
+// === 新增結束 ===
+
 const AppUI: React.FC<AppUIProps> = ({
   // // Tab 狀態與切換 (REMOVED)
   // activeTab,
@@ -87,6 +126,9 @@ const AppUI: React.FC<AppUIProps> = ({
 }) => {
   // // REMOVED micPermission logic
   // const micPermissionBool: boolean | null = ...
+  // === 新增：物理燈條 bar toggle 狀態 ===
+  const [showLightBar, setShowLightBar] = useState(false);
+  // === 新增結束 ===
 
   return (
     <>
@@ -201,6 +243,17 @@ const AppUI: React.FC<AppUIProps> = ({
         >
           ✨
         </button>
+        {/* === 新增：物理燈條控制 toggle 按鈕 === */}
+        <button
+          onClick={() => setShowLightBar((v) => !v)}
+          className="w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-2xl shadow-md flex items-center justify-center cursor-pointer transition-colors duration-200"
+          title="開啟/關閉物理燈條控制"
+          aria-label="開啟/關閉物理燈條控制"
+        >
+          💡
+        </button>
+        <PhysicalLightBarPanel visible={showLightBar} onClose={() => setShowLightBar(false)} />
+        {/* === 新增結束 === */}
       </div>
     </>
   );

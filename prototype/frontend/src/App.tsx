@@ -73,6 +73,9 @@ interface BackendMessage {
   // ... other potential top-level fields from different message types
 }
 
+// === 移除 LightBarControl 組件 ===
+// === 新增結束 ===
+
 function App() {
   // === 添加 useWebSocket 調用 ===
   useWebSocket(); // 調用 hook 以建立 WebSocket 連接
@@ -528,6 +531,9 @@ function App() {
           showSpaceBackground={showSpaceBackground}
           modelScale={modelScale}
         />
+        {/* === 刪除：燈光亮度控制 bar === */}
+        {/* <LightBarControl /> */}
+        {/* === 刪除結束 === */}
         
         {/* 調試面板 (保持在 App 層) */}
         {debugMode && <ModelDebugger url={headModelUrl} />}
