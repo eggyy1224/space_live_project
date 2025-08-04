@@ -261,7 +261,7 @@ class WebSocketHandler:
 
     async def _send_session_update(self, ws):
         """發送會話配置到 OpenAI"""
-        session_event = create_session_config()
+        session_event = await create_session_config()
         await ws.send(json.dumps(session_event))
         logger.info("Sent session configuration with tools to OpenAI")
         
