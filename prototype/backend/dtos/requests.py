@@ -26,4 +26,22 @@ class OBSConnectionRequest(BaseModel):
     host: str = "localhost"
     port: int = 4455
     password: str = ""
-    timeout: int = 10 
+    timeout: int = 10
+
+class YouTubeChatStartRequest(BaseModel):
+    """YouTube 聊天室監控開始請求模型"""
+    video_url_or_id: str
+
+class YouTubeChatChannelRequest(BaseModel):
+    """YouTube 聊天室頻道監控請求模型"""
+    channel_id: str
+
+class YouTubeChatSearchRequest(BaseModel):
+    """YouTube 聊天室訊息搜尋請求模型"""
+    keyword: str
+    limit: int = 50
+
+class YouTubeChatUserRequest(BaseModel):
+    """YouTube 聊天室特定使用者訊息請求模型"""
+    username: str
+    limit: int = 20 

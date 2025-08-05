@@ -4,10 +4,12 @@ Perception 模組
 用於偵測和感知現在即時的狀況，包括：
 - OBS 畫面截圖
 - 視覺圖片分析
+- YouTube 聊天室即時監控
 - 其他感知功能
 """
 
 from .obs_screenshot import OBSScreenshotService
 from .vision_analysis import VisionAnalysisService
+from .youtube_chat_monitor import YouTubeChatMonitorService
 
-__all__ = ["OBSScreenshotService", "VisionAnalysisService"] 
+__all__ = ["OBSScreenshotService", "VisionAnalysisService", "YouTubeChatMonitorService"] 

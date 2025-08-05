@@ -12,14 +12,24 @@ from fastapi.responses import FileResponse
 from pathlib import Path
 from typing import Optional
 
-from dtos.requests import OBSScreenshotRequest, OBSConnectionRequest
+from dtos.requests import (
+    OBSScreenshotRequest, 
+    OBSConnectionRequest,
+    YouTubeChatStartRequest,
+    YouTubeChatChannelRequest,
+    YouTubeChatSearchRequest,
+    YouTubeChatUserRequest
+)
 from dtos.responses import (
     OBSScreenshotResponse,
     OBSStatusResponse,
     OBSSourcesResponse,
-    OBSScenesResponse
+    OBSScenesResponse,
+    YouTubeChatStatusResponse,
+    YouTubeChatOperationResponse,
+    YouTubeChatMessagesResponse
 )
-from services.perception import OBSScreenshotService, VisionAnalysisService
+from services.perception import OBSScreenshotService, VisionAnalysisService, YouTubeChatMonitorService
 from utils.logger import logger
 import httpx
 import json
@@ -29,6 +39,7 @@ router = APIRouter()
 # 建立服務實例
 obs_service = OBSScreenshotService()
 vision_service = VisionAnalysisService()
+youtube_chat_service = YouTubeChatMonitorService()
 
 
 @router.get("/perception/obs/status", response_model=OBSStatusResponse)
@@ -512,4 +523,235 @@ async def capture_and_analyze_field():
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"截圖分析流程失敗: {str(e)}"
+        )
+
+
+# ========== YouTube 聊天室監控相關端點 ==========
+
+@router.post("/perception/youtube-chat/start", response_model=YouTubeChatOperationResponse)
+async def start_youtube_chat_monitoring(request: YouTubeChatStartRequest):
+    """
+    開始監控 YouTube 直播聊天室
+    
+    Args:
+        request: 包含 video_url_or_id 的請求
+        
+    Returns:
+        YouTubeChatOperationResponse: 操作結果
+    """
+    try:
+        logger.info(f"開始監控 YouTube 聊天室: {request.video_url_or_id}")
+        result = youtube_chat_service.start_monitoring(request.video_url_or_id)
+        
+        return YouTubeChatOperationResponse(
+            success=result["success"],
+            message=result.get("message", ""),
+            monitoring=result.get("monitoring", False),
+            video_id=result.get("video_id"),
+            error=result.get("error")
+        )
+        
+    except Exception as e:
+        logger.error(f"開始監控 YouTube 聊天室時發生錯誤: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"開始監控失敗: {str(e)}"
+        )
+
+
+@router.post("/perception/youtube-chat/start-by-channel", response_model=YouTubeChatOperationResponse)
+async def start_youtube_chat_monitoring_by_channel(request: YouTubeChatChannelRequest):
+    """
+    使用頻道 ID 開始監控 YouTube 直播聊天室（自動獲取當前直播）
+    
+    Args:
+        request: 包含 channel_id 的請求
+        
+    Returns:
+        YouTubeChatOperationResponse: 操作結果
+    """
+    try:
+        logger.info(f"使用頻道 ID 開始監控 YouTube 聊天室: {request.channel_id}")
+        result = youtube_chat_service.start_monitoring_by_channel(request.channel_id)
+        
+        return YouTubeChatOperationResponse(
+            success=result["success"],
+            message=result.get("message", ""),
+            monitoring=result.get("monitoring", False),
+            video_id=result.get("video_id"),
+            error=result.get("error")
+        )
+        
+    except Exception as e:
+        logger.error(f"使用頻道 ID 開始監控時發生錯誤: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"開始監控失敗: {str(e)}"
+        )
+
+
+@router.post("/perception/youtube-chat/stop", response_model=YouTubeChatOperationResponse)
+async def stop_youtube_chat_monitoring():
+    """
+    停止監控 YouTube 直播聊天室
+    
+    Returns:
+        YouTubeChatOperationResponse: 操作結果
+    """
+    try:
+        logger.info("停止監控 YouTube 聊天室")
+        result = youtube_chat_service.stop_monitoring()
+        
+        return YouTubeChatOperationResponse(
+            success=result["success"],
+            message=result.get("message", ""),
+            monitoring=result.get("monitoring", False),
+            error=result.get("error")
+        )
+        
+    except Exception as e:
+        logger.error(f"停止監控 YouTube 聊天室時發生錯誤: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"停止監控失敗: {str(e)}"
+        )
+
+
+@router.get("/perception/youtube-chat/status", response_model=YouTubeChatStatusResponse)
+async def get_youtube_chat_status():
+    """
+    取得 YouTube 聊天室監控狀態
+    
+    Returns:
+        YouTubeChatStatusResponse: 監控狀態資訊
+    """
+    try:
+        logger.info("查詢 YouTube 聊天室監控狀態")
+        status_data = youtube_chat_service.get_monitoring_status()
+        
+        return YouTubeChatStatusResponse(
+            monitoring=status_data["monitoring"],
+            video_id=status_data.get("video_id"),
+            message_count=status_data.get("message_count", 0),
+            chat_alive=status_data.get("chat_alive", False)
+        )
+        
+    except Exception as e:
+        logger.error(f"查詢 YouTube 聊天室狀態時發生錯誤: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"查詢狀態失敗: {str(e)}"
+        )
+
+
+@router.get("/perception/youtube-chat/messages", response_model=YouTubeChatMessagesResponse)
+async def get_recent_youtube_chat_messages(limit: int = 20):
+    """
+    取得最近的 YouTube 聊天室訊息
+    
+    Args:
+        limit: 限制返回的訊息數量，預設 20
+        
+    Returns:
+        YouTubeChatMessagesResponse: 訊息列表
+    """
+    try:
+        logger.info(f"取得最近的 {limit} 條 YouTube 聊天訊息")
+        messages = youtube_chat_service.get_recent_messages(limit)
+        
+        return YouTubeChatMessagesResponse(
+            success=True,
+            messages=messages,
+            count=len(messages)
+        )
+        
+    except Exception as e:
+        logger.error(f"取得 YouTube 聊天訊息時發生錯誤: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"取得訊息失敗: {str(e)}"
+        )
+
+
+@router.post("/perception/youtube-chat/search", response_model=YouTubeChatMessagesResponse)
+async def search_youtube_chat_messages(request: YouTubeChatSearchRequest):
+    """
+    搜尋包含特定關鍵字的 YouTube 聊天室訊息
+    
+    Args:
+        request: 包含 keyword 和 limit 的搜尋請求
+        
+    Returns:
+        YouTubeChatMessagesResponse: 匹配的訊息列表
+    """
+    try:
+        logger.info(f"搜尋 YouTube 聊天訊息，關鍵字: {request.keyword}")
+        messages = youtube_chat_service.search_messages(request.keyword, request.limit)
+        
+        return YouTubeChatMessagesResponse(
+            success=True,
+            messages=messages,
+            count=len(messages)
+        )
+        
+    except Exception as e:
+        logger.error(f"搜尋 YouTube 聊天訊息時發生錯誤: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"搜尋訊息失敗: {str(e)}"
+        )
+
+
+@router.post("/perception/youtube-chat/user-messages", response_model=YouTubeChatMessagesResponse)
+async def get_user_youtube_chat_messages(request: YouTubeChatUserRequest):
+    """
+    取得特定使用者的 YouTube 聊天室訊息
+    
+    Args:
+        request: 包含 username 和 limit 的請求
+        
+    Returns:
+        YouTubeChatMessagesResponse: 該使用者的訊息列表
+    """
+    try:
+        logger.info(f"取得使用者 {request.username} 的 YouTube 聊天訊息")
+        messages = youtube_chat_service.get_user_messages(request.username, request.limit)
+        
+        return YouTubeChatMessagesResponse(
+            success=True,
+            messages=messages,
+            count=len(messages)
+        )
+        
+    except Exception as e:
+        logger.error(f"取得使用者聊天訊息時發生錯誤: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"取得使用者訊息失敗: {str(e)}"
+        )
+
+
+@router.delete("/perception/youtube-chat/clear", response_model=YouTubeChatOperationResponse)
+async def clear_youtube_chat_buffer():
+    """
+    清空 YouTube 聊天室訊息緩衝區
+    
+    Returns:
+        YouTubeChatOperationResponse: 清空操作結果
+    """
+    try:
+        logger.info("清空 YouTube 聊天室訊息緩衝區")
+        result = youtube_chat_service.clear_message_buffer()
+        
+        return YouTubeChatOperationResponse(
+            success=result["success"],
+            message=result["message"],
+            monitoring=youtube_chat_service.is_monitoring
+        )
+        
+    except Exception as e:
+        logger.error(f"清空訊息緩衝區時發生錯誤: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"清空緩衝區失敗: {str(e)}"
         ) 

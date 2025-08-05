@@ -55,4 +55,44 @@ class OBSScenesResponse(BaseModel):
     success: bool
     current_scene: Optional[str] = None
     scenes: Optional[List[Dict[str, Any]]] = None
+    error: Optional[str] = None
+
+class YouTubeChatMessageResponse(BaseModel):
+    """YouTube 聊天室訊息回應模型"""
+    id: str
+    author: str
+    message: str
+    timestamp: str
+    datetime: str
+    elapsed_time: Optional[str] = None
+    amount_value: Optional[float] = None
+    amount_string: Optional[str] = None
+    currency: Optional[str] = None
+    message_type: str = "textMessage"
+    author_channel_id: Optional[str] = None
+    is_verified: bool = False
+    is_owner: bool = False
+    is_sponsor: bool = False
+    is_moderator: bool = False
+
+class YouTubeChatStatusResponse(BaseModel):
+    """YouTube 聊天室監控狀態回應模型"""
+    monitoring: bool
+    video_id: Optional[str] = None
+    message_count: int = 0
+    chat_alive: bool = False
+
+class YouTubeChatOperationResponse(BaseModel):
+    """YouTube 聊天室操作回應模型"""
+    success: bool
+    message: str
+    monitoring: bool
+    video_id: Optional[str] = None
+    error: Optional[str] = None
+
+class YouTubeChatMessagesResponse(BaseModel):
+    """YouTube 聊天室訊息列表回應模型"""
+    success: bool
+    messages: List[YouTubeChatMessageResponse]
+    count: int
     error: Optional[str] = None 
