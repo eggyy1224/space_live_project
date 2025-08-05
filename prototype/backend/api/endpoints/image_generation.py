@@ -255,12 +255,17 @@ def _get_display_config(request: ImageGenerationRequest) -> dict:
 async def show_existing_image(request: ShowExistingImageRequest):
     """顯示已存在的圖片"""
     try:
-        # 檢查圖片文件是否存在
+        # 先找 generated-images
         file_path = os.path.join(GENERATED_DIR, request.filename)
-        if not os.path.exists(file_path):
-            raise HTTPException(status_code=404, detail=f"Image file not found: {request.filename}")
-        
         url = f"/generated-images/{request.filename}"
+        if not os.path.exists(file_path):
+            # 再找 screenshots
+            BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            screenshots_dir = os.path.join(BACKEND_DIR, "screenshots")
+            file_path = os.path.join(screenshots_dir, request.filename)
+            if not os.path.exists(file_path):
+                raise HTTPException(status_code=404, detail=f"Image file not found: {request.filename}")
+            url = f"/screenshots/{request.filename}"
         
         # 使用相同的顯示配置邏輯
         display_config = _get_display_config_for_existing(request)

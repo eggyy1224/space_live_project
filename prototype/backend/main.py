@@ -48,6 +48,10 @@ app.include_router(memory.router, tags=["Memory"]) # 載入記憶路由
 app.include_router(show_images.router, tags=["ShowImages"]) # 新增這行
 app.include_router(physical_light_control.router, prefix="/api", tags=["PhysicalLightControl"]) # 註冊 physical_light_control router
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SCREENSHOTS_DIR = os.path.join(BASE_DIR, "screenshots")
+app.mount("/screenshots", StaticFiles(directory=SCREENSHOTS_DIR), name="screenshots")
+
 # ... (Static files and startup event) ...
 
 if __name__ == "__main__":
