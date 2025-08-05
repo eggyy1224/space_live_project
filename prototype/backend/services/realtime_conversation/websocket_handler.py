@@ -15,6 +15,7 @@ from pathlib import Path
 from .utils import pcm_to_wav
 from .session_config import create_session_config
 from .logging import WebSocketLogger
+from services.perception import YouTubeChatMonitorService
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,10 @@ class WebSocketHandler:
         self.api_key = api_key
         self._current_ws = None
         self._session_logger = None
+        # 新增：YouTube 聊天室監控服務
+        self._youtube_chat_service = YouTubeChatMonitorService()
+        # 太空人頻道 ID（可以設定為環境變數）
+        self._channel_id = "UCV60MYR7dQJM8TqY5eXb7YA"
     
     async def _set_initial_room_scene(self):
         """設定初始房間場景為賽博太空艙"""
@@ -121,6 +126,8 @@ class WebSocketHandler:
                 await self._send_session_update(ws)
                 # 新增：設定初始環境光強度
                 await self._set_initial_environment_light()
+                # 新增：開始 YouTube 聊天室監控
+                await self._start_youtube_chat_monitoring()
                 
                 # 等待會話配置確認
                 await asyncio.sleep(0.5)
@@ -238,6 +245,8 @@ class WebSocketHandler:
                     await self._stop_bgm()
                     # 自動關閉場景顯示
                     await self._hide_scene()
+                    # 新增：停止 YouTube 聊天室監控
+                    await self._stop_youtube_chat_monitoring()
                     # 清理WebSocket引用
                     self._current_ws = None
                     # 關閉日誌記錄器
@@ -727,4 +736,29 @@ class WebSocketHandler:
         import aiohttp
         base_url = "http://localhost:8000/api/physical-light/set-brightness"
         async with aiohttp.ClientSession() as session:
-            await session.post(base_url, json={"brightness": 0}) 
+            await session.post(base_url, json={"brightness": 0})
+    
+    async def _start_youtube_chat_monitoring(self):
+        """開始 YouTube 聊天室監控"""
+        try:
+            logger.info(f"即時對話會話開始，啟動 YouTube 聊天室監控：{self._channel_id}")
+            # 使用頻道 ID 開始監控（自動獲取當前直播）
+            result = self._youtube_chat_service.start_monitoring_by_channel(self._channel_id)
+            if result["success"]:
+                logger.info(f"YouTube 聊天室監控啟動成功，video_id: {result.get('video_id')}")
+            else:
+                logger.warning(f"YouTube 聊天室監控啟動失敗: {result.get('error')}")
+        except Exception as e:
+            logger.error(f"啟動 YouTube 聊天室監控時發生錯誤: {e}")
+    
+    async def _stop_youtube_chat_monitoring(self):
+        """停止 YouTube 聊天室監控"""
+        try:
+            logger.info("即時對話會話結束，停止 YouTube 聊天室監控")
+            result = self._youtube_chat_service.stop_monitoring()
+            if result["success"]:
+                logger.info("YouTube 聊天室監控已停止")
+            else:
+                logger.warning(f"停止 YouTube 聊天室監控失敗: {result.get('error')}")
+        except Exception as e:
+            logger.error(f"停止 YouTube 聊天室監控時發生錯誤: {e}") 

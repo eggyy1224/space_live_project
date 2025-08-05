@@ -37,16 +37,29 @@ class ChatMessage:
 
 
 class YouTubeChatMonitorService:
-    """YouTube 聊天室監控服務"""
+    """YouTube 聊天室監控服務 (單例模式)"""
+    
+    _instance = None
+    _lock = threading.Lock()
+    
+    def __new__(cls):
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super(YouTubeChatMonitorService, cls).__new__(cls)
+        return cls._instance
     
     def __init__(self):
-        self.chat_instance = None
-        self.is_monitoring = False
-        self.monitoring_thread = None
-        self.message_buffer: List[ChatMessage] = []
-        self.max_buffer_size = 100
-        self.current_video_id = None
-        self._stop_event = threading.Event()
+        # 只在第一次初始化時設置屬性
+        if not hasattr(self, '_initialized'):
+            self.chat_instance = None
+            self.is_monitoring = False
+            self.monitoring_thread = None
+            self.message_buffer: List[ChatMessage] = []
+            self.max_buffer_size = 100
+            self.current_video_id = None
+            self._stop_event = threading.Event()
+            self._initialized = True
         
     def extract_video_id(self, url: str) -> Optional[str]:
         """從 YouTube URL 中提取 video_id"""

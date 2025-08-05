@@ -11,6 +11,7 @@ from typing import Dict, Any
 
 from .utils import get_random_selfie_reference, get_selfies_directory
 from ..agent_supervisor import SupervisorManager
+from services.perception import YouTubeChatMonitorService
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,8 @@ class APIIntegrations:
         self.selfies_dir = get_selfies_directory()
         # 初始化 Supervisor Manager
         self.supervisor = SupervisorManager()
+        # 初始化 YouTube 聊天室監控服務
+        self.youtube_chat_service = YouTubeChatMonitorService()
     
     async def execute_tool_function(self, function_name: str, arguments_json: str) -> dict:
         """執行工具函數並返回結果"""
@@ -84,6 +87,11 @@ class APIIntegrations:
                 logger.info("🔍 調用 analyze_exhibition_field 處理器")
                 result = await self.analyze_exhibition_field(arguments.get("analysis_focus", "exhibition"))
                 logger.info(f"🔍 analyze_exhibition_field 處理結果: {result}")
+                return result
+            elif function_name == "get_youtube_chat_messages":
+                logger.info("💬 調用 get_youtube_chat_messages 處理器")
+                result = await self._handle_get_youtube_chat_messages(arguments)
+                logger.info(f"💬 get_youtube_chat_messages 處理結果: {result}")
                 return result
             else:
                 logger.warning(f"❓ 未知工具函數: {function_name}")
@@ -720,4 +728,127 @@ class APIIntegrations:
             return {
                 "success": False,
                 "error": f"展場分析失敗: {str(e)}"
+            }
+    
+    async def _handle_get_youtube_chat_messages(self, arguments: Dict[str, Any]) -> dict:
+        """處理 YouTube 聊天室訊息獲取請求"""
+        try:
+            action = arguments.get("action", "recent")
+            limit = arguments.get("limit", 10)
+            
+            logger.info(f"💬 處理 YouTube 聊天室訊息請求: action={action}, limit={limit}")
+            
+            # 檢查監控狀態
+            status = self.youtube_chat_service.get_monitoring_status()
+            if not status["monitoring"]:
+                return {
+                    "success": False,
+                    "error": "YouTube 聊天室監控未啟動，請先開始直播對話會話",
+                    "message_count": 0,
+                    "messages": []
+                }
+            
+            if action == "recent":
+                # 獲取最新訊息
+                messages = self.youtube_chat_service.get_recent_messages(limit)
+                
+                if not messages:
+                    return {
+                        "success": True,
+                        "message": "目前沒有新的聊天訊息",
+                        "message_count": 0,
+                        "messages": [],
+                        "monitoring_status": status
+                    }
+                
+                # 格式化訊息用於 AI 理解
+                formatted_messages = []
+                for msg in messages:
+                    formatted_msg = f"[{msg['datetime']}] {msg['author']}: {msg['message']}"
+                    if msg['is_owner']:
+                        formatted_msg += " (頻道擁有者)"
+                    elif msg['is_sponsor']:
+                        formatted_msg += " (贊助者)"
+                    elif msg['is_moderator']:
+                        formatted_msg += " (管理員)"
+                    formatted_messages.append(formatted_msg)
+                
+                return {
+                    "success": True,
+                    "message": f"成功獲取 {len(messages)} 條最新聊天訊息",
+                    "message_count": len(messages),
+                    "messages": messages,
+                    "formatted_messages": formatted_messages,
+                    "monitoring_status": status
+                }
+                
+            elif action == "search":
+                # 搜尋特定關鍵字
+                keyword = arguments.get("keyword")
+                if not keyword:
+                    return {
+                        "success": False,
+                        "error": "搜尋模式需要提供 keyword 參數"
+                    }
+                
+                messages = self.youtube_chat_service.search_messages(keyword, limit)
+                
+                if not messages:
+                    return {
+                        "success": True,
+                        "message": f"沒有找到包含 '{keyword}' 的聊天訊息",
+                        "message_count": 0,
+                        "messages": [],
+                        "keyword": keyword
+                    }
+                
+                return {
+                    "success": True,
+                    "message": f"找到 {len(messages)} 條包含 '{keyword}' 的訊息",
+                    "message_count": len(messages),
+                    "messages": messages,
+                    "keyword": keyword,
+                    "monitoring_status": status
+                }
+                
+            elif action == "user_messages":
+                # 獲取特定使用者的訊息
+                username = arguments.get("username")
+                if not username:
+                    return {
+                        "success": False,
+                        "error": "使用者模式需要提供 username 參數"
+                    }
+                
+                messages = self.youtube_chat_service.get_user_messages(username, limit)
+                
+                if not messages:
+                    return {
+                        "success": True,
+                        "message": f"沒有找到使用者 '{username}' 的聊天訊息",
+                        "message_count": 0,
+                        "messages": [],
+                        "username": username
+                    }
+                
+                return {
+                    "success": True,
+                    "message": f"找到 {len(messages)} 條來自 '{username}' 的訊息",
+                    "message_count": len(messages),
+                    "messages": messages,
+                    "username": username,
+                    "monitoring_status": status
+                }
+            
+            else:
+                return {
+                    "success": False,
+                    "error": f"不支援的查詢類型: {action}"
+                }
+                
+        except Exception as e:
+            logger.error(f"❌ YouTube 聊天室訊息處理錯誤: {e}")
+            return {
+                "success": False,
+                "error": f"獲取 YouTube 聊天室訊息失敗: {str(e)}"
             } 

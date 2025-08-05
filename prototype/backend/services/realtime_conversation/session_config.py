@@ -589,6 +589,38 @@ def get_tools_config() -> list:
                 },
                 "required": []
             }
+        },
+        {
+            "type": "function",
+            "name": "get_youtube_chat_messages",
+            "description": "💬 YouTube 聊天室訊息獲取工具！讀取直播聊天室中觀眾的即時留言和互動。可以了解觀眾在說什麼、他們的反應和問題，讓你能即時回應觀眾！支援獲取最新訊息、搜尋特定關鍵字、查看特定使用者的留言。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["recent", "search", "user_messages"],
+                        "description": "查詢類型：recent(獲取最新訊息)、search(搜尋關鍵字)、user_messages(特定使用者訊息)",
+                        "default": "recent"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "返回的訊息數量限制，建議5-20條",
+                        "minimum": 1,
+                        "maximum": 50,
+                        "default": 10
+                    },
+                    "keyword": {
+                        "type": "string",
+                        "description": "搜尋關鍵字（當action為search時使用）"
+                    },
+                    "username": {
+                        "type": "string",
+                        "description": "使用者名稱（當action為user_messages時使用）"
+                    }
+                },
+                "required": ["action"]
+            }
         }
     ]
 
