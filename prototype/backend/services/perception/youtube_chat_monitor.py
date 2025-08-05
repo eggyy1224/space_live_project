@@ -292,8 +292,10 @@ class YouTubeChatMonitorService:
             self.message_buffer.pop(0)
     
     def get_recent_messages(self, limit: int = 20) -> List[Dict[str, Any]]:
-        """取得最近的聊天訊息"""
+        """取得最近的聊天訊息（從最新到最舊的順序）"""
+        # 取得最後的 N 條訊息，然後反轉順序（最新的在前面）
         recent_messages = self.message_buffer[-limit:] if limit > 0 else self.message_buffer
+        recent_messages = list(reversed(recent_messages))  # 反轉順序，最新的在前
         return [asdict(msg) for msg in recent_messages]
     
     def get_monitoring_status(self) -> Dict[str, Any]:
