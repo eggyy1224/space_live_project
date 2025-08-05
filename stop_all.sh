@@ -29,20 +29,13 @@ else
     echo "未找到 OBS 應用程式或關閉失敗。"
 fi
 
-# 關閉 Chrome 中網址包含 5173 的分頁
-echo "正在關閉 Chrome 中網址包含 5173 的分頁..."
-osascript -e '
-tell application "Google Chrome"
-    if it is running then
-        repeat with w in windows
-            repeat with t in tabs of w
-                if URL of t contains "5173" then
-                    close t
-                end if
-            end repeat
-        end repeat
-    end if
-end tell'
+# 關閉 Google Chrome
+echo "正在關閉 Google Chrome..."
+killall "Google Chrome"
+
 
 echo ""
-echo "所有相關程序已嘗試關閉。" 
+echo "所有相關程序已嘗試關閉。"
+
+echo "關閉所有 Terminal 視窗..."
+osascript -e 'tell application "Terminal" to quit' 

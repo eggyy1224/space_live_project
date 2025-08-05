@@ -2,6 +2,10 @@
 
 echo "啟動所有服務..."
 
+# 新增：自動開啟 YouTube 直播後台
+echo "正在開啟 YouTube 直播後台..."
+chrome-cli open https://studio.youtube.com/channel/UC/livestreaming
+
 # 步驟 1: 啟動 OBS 應用程式
 echo "正在開啟 OBS..."
 open -a OBS
@@ -74,4 +78,8 @@ end tell'
 
 echo ""
 echo "啟動腳本執行完畢。"
-echo "已自動開啟 Chrome、導航到 http://localhost:5173/ 並使用 JavaScript 點擊頁面" 
+echo "已自動開啟 Chrome、導航到 http://localhost:5173/ 並使用 JavaScript 點擊頁面"
+
+echo "切換 Chrome 視窗為全螢幕..."
+osascript -e 'tell application "Google Chrome" to activate' \
+          -e 'tell application "System Events" to keystroke "f" using {control down, command down}' 
