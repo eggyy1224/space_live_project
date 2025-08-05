@@ -80,6 +80,11 @@ class APIIntegrations:
                 result = await self._handle_character_animation_mix(arguments)
                 logger.info(f"🎭 character_animation_mix 處理結果: {result}")
                 return result
+            elif function_name == "analyze_exhibition_field":
+                logger.info("🔍 調用 analyze_exhibition_field 處理器")
+                result = await self.analyze_exhibition_field(arguments.get("analysis_focus", "exhibition"))
+                logger.info(f"🔍 analyze_exhibition_field 處理結果: {result}")
+                return result
             else:
                 logger.warning(f"❓ 未知工具函數: {function_name}")
                 return {
@@ -659,4 +664,60 @@ class APIIntegrations:
             return {
                 "success": False,
                 "error": f"character_animation_mix failed: {str(e)}"
+            }
+
+    async def analyze_exhibition_field(self, analysis_focus: str = "exhibition") -> dict:
+        """
+        展場視覺分析工具
+        截圖展場視訊源並進行智能分析，了解展場即時狀況
+        
+        Args:
+            analysis_focus: 分析重點類型
+            
+        Returns:
+            dict: 包含截圖和分析結果
+        """
+        try:
+            logger.info(f"🔍 開始展場視覺分析 (focus: {analysis_focus})")
+            
+            # 呼叫後端的整合 API
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    "http://localhost:8000/api/perception/capture-and-analyze",
+                    timeout=aiohttp.ClientTimeout(total=30)  # 增加超時時間，因為包含圖片分析
+                ) as response:
+                    response_text = await response.text()
+                    logger.info(f"展場分析 API 回應狀態: {response.status}")
+                    
+                    if response.status == 200:
+                        result_data = json.loads(response_text)
+                        
+                        # 提取關鍵資訊
+                        screenshot_info = result_data.get("screenshot", {})
+                        analysis_info = result_data.get("analysis", {})
+                        
+                        logger.info(f"✅ 展場分析完成: {screenshot_info.get('filename', 'unknown')}")
+                        
+                        return {
+                            "success": True,
+                            "screenshot_filename": screenshot_info.get("filename"),
+                            "analysis_description": analysis_info.get("description", "分析失敗"),
+                            "timestamp": screenshot_info.get("timestamp"),
+                            "display_status": result_data.get("display_status"),
+                            "full_result": result_data
+                        }
+                    else:
+                        error_msg = f"展場分析 API 錯誤: HTTP {response.status}"
+                        logger.error(error_msg)
+                        return {
+                            "success": False,
+                            "error": error_msg,
+                            "response": response_text
+                        }
+                        
+        except Exception as e:
+            logger.error(f"❌ analyze_exhibition_field 處理錯誤: {e}")
+            return {
+                "success": False,
+                "error": f"展場分析失敗: {str(e)}"
             } 

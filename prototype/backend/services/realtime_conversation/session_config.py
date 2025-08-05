@@ -572,6 +572,23 @@ def get_tools_config() -> list:
                 },
                 "required": ["category"]
             }
+        },
+        {
+            "type": "function",
+            "name": "analyze_exhibition_field",
+            "description": "🔍 展場視覺分析工具！截圖展場視訊源並進行智能分析，了解展場即時狀況。會自動截圖、顯示到前端左側、並分析展場內容（展品、觀眾、環境、設備、活動熱度等）。讓你能即時掌握展場動態！",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "analysis_focus": {
+                        "type": "string",
+                        "enum": ["general", "detailed", "exhibition"],
+                        "description": "分析重點：general(一般描述)、detailed(詳細分析)、exhibition(展覽專業分析)，預設為exhibition",
+                        "default": "exhibition"
+                    }
+                },
+                "required": []
+            }
         }
     ]
 
