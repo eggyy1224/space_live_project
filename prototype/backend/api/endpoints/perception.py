@@ -19,13 +19,16 @@ from dtos.responses import (
     OBSSourcesResponse,
     OBSScenesResponse
 )
-from services.perception import OBSScreenshotService
+from services.perception import OBSScreenshotService, VisionAnalysisService
 from utils.logger import logger
+import httpx
+import json
 
 router = APIRouter()
 
-# 建立 OBS 截圖服務實例
+# 建立服務實例
 obs_service = OBSScreenshotService()
+vision_service = VisionAnalysisService()
 
 
 @router.get("/perception/obs/status", response_model=OBSStatusResponse)
@@ -402,4 +405,111 @@ async def stop_obs_recording():
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"停止錄影失敗: {str(e)}"
+        )
+
+
+@router.post("/perception/capture-and-analyze")
+async def capture_and_analyze_field():
+    """
+    整合端點：截圖展場視訊源 -> 顯示圖片 -> 分析圖片內容
+    
+    執行流程：
+    1. 使用 OBS 截圖 API 擷取「展場視訊源」
+    2. 透過 show_existing_image 顯示截圖到前端
+    3. 使用視覺分析服務分析圖片內容
+    4. 回傳分析結果
+    
+    Returns:
+        dict: 包含截圖資訊和分析結果
+    """
+    try:
+        logger.info("開始執行展場視訊源截圖分析流程...")
+        
+        # 步驟 1: OBS 截圖
+        logger.info("步驟 1: 截圖展場視訊源...")
+        screenshot_result = obs_service.take_screenshot(
+            source_name="展場視訊源",
+            scene_name="場景 2",  # 根據之前的測試，使用場景 2
+            width=1920,
+            height=1080,
+            image_format="png"
+        )
+        
+        if not screenshot_result.get("success", False):
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"OBS 截圖失敗: {screenshot_result.get('error', '未知錯誤')}"
+            )
+        
+        filename = screenshot_result["filename"]
+        file_path = screenshot_result["file_path"]
+        
+        logger.info(f"截圖成功: {filename}")
+        
+        # 步驟 2: 顯示圖片到前端
+        logger.info("步驟 2: 顯示截圖到前端...")
+        async with httpx.AsyncClient() as client:
+            show_image_payload = {
+                "filename": filename,
+                "caption": "展場視訊源即時截圖",
+                "position": "center-left",
+                "size": "large",
+                "duration": 20.0
+            }
+            
+            show_response = await client.post(
+                "http://localhost:8000/api/show-existing-image",
+                json=show_image_payload,
+                timeout=10.0
+            )
+            
+            if show_response.status_code != 200:
+                logger.warning(f"顯示圖片失敗: {show_response.status_code}")
+            else:
+                logger.info("圖片已顯示到前端")
+        
+        # 步驟 3: 分析圖片內容
+        logger.info("步驟 3: 分析圖片內容...")
+        
+        # 確保使用完整的檔案路徑
+        import os
+        if not os.path.isabs(file_path):
+            # 如果是相對路徑，組合成絕對路徑
+            BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            full_image_path = os.path.join(BACKEND_DIR, file_path)
+        else:
+            full_image_path = file_path
+        
+        analysis_result = await vision_service.analyze_image(
+            image_path=full_image_path,
+            analysis_type="exhibition"
+        )
+        
+        # 整合回傳結果
+        result = {
+            "success": True,
+            "screenshot": {
+                "filename": filename,
+                "file_path": file_path,
+                "file_size": screenshot_result.get("file_size"),
+                "timestamp": screenshot_result.get("timestamp"),
+                "width": screenshot_result.get("width"),
+                "height": screenshot_result.get("height"),
+                "format": screenshot_result.get("format"),
+                "source_name": screenshot_result.get("source_name")
+            },
+            "analysis": analysis_result,
+            "display_status": "圖片已顯示到前端" if show_response.status_code == 200 else "圖片顯示失敗"
+        }
+        
+        logger.info("展場視訊源截圖分析流程完成")
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"展場視訊源截圖分析流程失敗: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"截圖分析流程失敗: {str(e)}"
         ) 
