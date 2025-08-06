@@ -20,22 +20,25 @@ else
     echo "未找到前端開發伺服器程序或終止失敗。"
 fi
 
+# 關閉 OBS 前先停止 OBS 串流
+echo "正在停止 OBS 串流..."
+curl -X POST http://localhost:8000/api/perception/obs/stream/stop
+sleep 1
+
 # 關閉 OBS
 echo "正在關閉 OBS 應用程式..."
-killall OBS
+osascript -e 'tell application "OBS" to quit'
+sleep 3
+killall OBS 2>/dev/null
 if [ $? -eq 0 ]; then
     echo "OBS 已成功關閉。"
 else
     echo "未找到 OBS 應用程式或關閉失敗。"
 fi
 
-# 關閉 Google Chrome
+# 直接關閉整個 Google Chrome
 echo "正在關閉 Google Chrome..."
 killall "Google Chrome"
 
-
 echo ""
-echo "所有相關程序已嘗試關閉。"
-
-echo "關閉所有 Terminal 視窗..."
-osascript -e 'tell application "Terminal" to quit' 
+echo "所有相關程序已嘗試關閉。" 

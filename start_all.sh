@@ -1,10 +1,23 @@
 #!/bin/bash
 
+echo "先關閉所有相關服務..."
+/Users/spacelive/Desktop/space_live/space_live_project/stop_all.sh
+sleep 2
+
 echo "啟動所有服務..."
 
-# 新增：自動開啟 YouTube 直播後台
+# 確保 Google Chrome 已開啟
+echo "正在開啟 Google Chrome..."
+open -a "Google Chrome"
+sleep 5
+
+# 自動開啟 YouTube 直播後台（用 osascript 方式）
 echo "正在開啟 YouTube 直播後台..."
-chrome-cli open https://studio.youtube.com/channel/UC/livestreaming
+osascript -e '
+tell application "Google Chrome"
+    activate
+    open location "https://studio.youtube.com/channel/UC/livestreaming"
+end tell'
 
 # 步驟 1: 啟動 OBS 應用程式
 echo "正在開啟 OBS..."
@@ -15,14 +28,14 @@ sleep 5 # 等待 OBS 啟動
 echo "正在啟動後端..."
 osascript -e 'tell app "Terminal"
     activate
-    do script "cd '"$(pwd)"'/prototype/backend && ./run.sh"
+    do script "cd /Users/spacelive/Desktop/space_live/space_live_project/prototype/backend && ./run.sh"
 end tell'
 
 # 步驟 3: 在新的 Terminal 標籤頁中啟動前端
 echo "正在啟動前端..."
 osascript -e 'tell app "Terminal"
     activate
-    do script "cd '"$(pwd)"'/prototype/frontend && npm run dev"
+    do script "cd /Users/spacelive/Desktop/space_live/space_live_project/prototype/frontend && npm run dev"
 end tell'
 
 echo "等待後端服務啟動..."
