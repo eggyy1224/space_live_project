@@ -6,12 +6,13 @@ API 整合模組
 import json
 import logging
 import random
+import asyncio
 import aiohttp
 from typing import Dict, Any
 
 from .utils import get_random_selfie_reference, get_selfies_directory
 from ..agent_supervisor import SupervisorManager
-from services.perception import YouTubeChatMonitorService
+from services.perception import YouTubeChatMonitorService, VisionAnalysisService
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,8 @@ class APIIntegrations:
         self.supervisor = SupervisorManager()
         # 初始化 YouTube 聊天室監控服務
         self.youtube_chat_service = YouTubeChatMonitorService()
+        # 初始化視覺分析服務
+        self.vision_service = VisionAnalysisService()
     
     async def execute_tool_function(self, function_name: str, arguments_json: str) -> dict:
         """執行工具函數並返回結果"""
@@ -87,6 +90,11 @@ class APIIntegrations:
                 logger.info("🔍 調用 analyze_exhibition_field 處理器")
                 result = await self.analyze_exhibition_field(arguments.get("analysis_focus", "exhibition"))
                 logger.info(f"🔍 analyze_exhibition_field 處理結果: {result}")
+                return result
+            elif function_name == "analyze_obs_scene":
+                logger.info("📺 調用 analyze_obs_scene 處理器")
+                result = await self.analyze_obs_scene(arguments)
+                logger.info(f"📺 analyze_obs_scene 處理結果: {result}")
                 return result
             elif function_name == "get_youtube_chat_messages":
                 logger.info("💬 調用 get_youtube_chat_messages 處理器")
@@ -729,6 +737,304 @@ class APIIntegrations:
                 "success": False,
                 "error": f"展場分析失敗: {str(e)}"
             }
+    
+    async def analyze_obs_scene(self, arguments: Dict[str, Any]) -> dict:
+        """
+        OBS 場景智能分析工具
+        可以截圖任意 OBS 來源並進行智能分析，支援多來源對比分析
+        
+        Args:
+            arguments: 包含分析參數的字典
+                - source_name: OBS 來源名稱（如「主螢幕」、「瀏覽器」等）
+                - analysis_focus: 分析重點
+                - compare_sources: 是否進行多來源對比分析
+                
+        Returns:
+            dict: 包含截圖和分析結果
+        """
+        try:
+            source_name = arguments.get("source_name", "主螢幕")
+            analysis_focus = arguments.get("analysis_focus", "general")
+            compare_sources = arguments.get("compare_sources", False)
+            
+            logger.info(f"📺 開始 OBS 場景分析 (來源: {source_name}, focus: {analysis_focus})")
+            
+            if compare_sources:
+                # 多來源對比分析
+                return await self._perform_multi_source_analysis(source_name, analysis_focus)
+            else:
+                # 單一來源分析
+                return await self._perform_single_source_analysis(source_name, analysis_focus)
+                
+        except Exception as e:
+            logger.error(f"❌ analyze_obs_scene 處理錯誤: {e}")
+            return {
+                "success": False,
+                "error": f"OBS 場景分析失敗: {str(e)}"
+            }
+    
+    async def _perform_single_source_analysis(self, source_name: str, analysis_focus: str) -> dict:
+        """執行單一 OBS 來源分析"""
+        try:
+            # 呼叫 OBS 截圖 API
+            async with aiohttp.ClientSession() as session:
+                screenshot_payload = {
+                    "source_name": source_name,
+                    "width": 1280,
+                    "height": 720,
+                    "image_format": "png"
+                }
+                
+                # 先截圖
+                async with session.post(
+                    "http://localhost:8000/api/perception/obs/screenshot",
+                    json=screenshot_payload,
+                    timeout=aiohttp.ClientTimeout(total=15)
+                ) as response:
+                    if response.status != 200:
+                        error_text = await response.text()
+                        logger.error(f"OBS 截圖失敗: {response.status} - {error_text}")
+                        return {
+                            "success": False,
+                            "error": f"截圖失敗: HTTP {response.status}"
+                        }
+                    
+                    screenshot_result = await response.json()
+                    screenshot_path = screenshot_result.get("file_path")
+                    
+                    if not screenshot_path:
+                        return {
+                            "success": False,
+                            "error": "截圖成功但無法獲得檔案路徑"
+                        }
+                
+                # 進行 AI 視覺分析
+                analysis_type = self._get_analysis_type_for_source(source_name)
+                analysis_result = await self.vision_service.analyze_image(
+                    image_path=screenshot_path,
+                    analysis_type=analysis_type
+                )
+                
+                if analysis_result.get("success", False):
+                    logger.info(f"✅ {source_name} 分析完成")
+                    
+                    # 顯示截圖到前端
+                    display_status = await self._display_screenshot_to_frontend(
+                        screenshot_result.get("filename"),
+                        source_name,
+                        analysis_focus
+                    )
+                    
+                    return {
+                        "success": True,
+                        "source_name": source_name,
+                        "screenshot_path": screenshot_path,
+                        "analysis_description": analysis_result.get("description", "分析失敗"),
+                        "analysis_type": analysis_type,
+                        "timestamp": screenshot_result.get("timestamp"),
+                        "display_status": display_status,
+                        "full_analysis": analysis_result
+                    }
+                else:
+                    logger.error(f"AI 分析失敗: {analysis_result.get('error', '未知錯誤')}")
+                    return {
+                        "success": False,
+                        "error": f"AI 分析失敗: {analysis_result.get('error', '未知錯誤')}",
+                        "screenshot_path": screenshot_path  # 至少還有截圖
+                    }
+                        
+        except Exception as e:
+            logger.error(f"❌ 單一來源分析錯誤: {e}")
+            return {
+                "success": False,
+                "error": f"分析過程發生錯誤: {str(e)}"
+            }
+    
+    async def _perform_multi_source_analysis(self, primary_source: str, analysis_focus: str) -> dict:
+        """執行多來源對比分析"""
+        try:
+            # 定義要對比的來源組合
+            sources_to_compare = [primary_source]
+            
+            # 根據主要來源決定對比來源
+            if primary_source == "主螢幕":
+                sources_to_compare.append("展場視訊源")
+            elif primary_source == "展場視訊源":
+                sources_to_compare.append("主螢幕")
+            else:
+                # 其他來源與主螢幕對比
+                sources_to_compare.append("主螢幕")
+            
+            logger.info(f"🔄 開始多來源對比分析: {sources_to_compare}")
+            
+            # 並行截圖和分析所有來源
+            analysis_tasks = []
+            for source in sources_to_compare:
+                task = self._perform_single_source_analysis(source, analysis_focus)
+                analysis_tasks.append(task)
+            
+            # 等待所有分析完成
+            results = await asyncio.gather(*analysis_tasks, return_exceptions=True)
+            
+            # 整理結果
+            successful_results = []
+            errors = []
+            
+            for i, result in enumerate(results):
+                if isinstance(result, Exception):
+                    errors.append(f"{sources_to_compare[i]}: {str(result)}")
+                elif result.get("success", False):
+                    successful_results.append(result)
+                else:
+                    errors.append(f"{sources_to_compare[i]}: {result.get('error', '未知錯誤')}")
+            
+            if not successful_results:
+                return {
+                    "success": False,
+                    "error": "所有來源分析都失敗了",
+                    "errors": errors
+                }
+            
+            # 生成對比分析報告
+            comparison_report = self._generate_comparison_report(successful_results)
+            
+            # 顯示所有截圖到前端（如果有display_status說明已經顯示過了）
+            display_statuses = []
+            for result in successful_results:
+                if "display_status" not in result:
+                    # 如果還沒顯示，現在顯示
+                    filename = result.get("screenshot_path", "").split("/")[-1] if result.get("screenshot_path") else None
+                    if filename:
+                        display_status = await self._display_screenshot_to_frontend(
+                            filename,
+                            result.get("source_name", ""),
+                            analysis_focus
+                        )
+                        display_statuses.append(f"{result.get('source_name')}: {display_status}")
+                else:
+                    display_statuses.append(f"{result.get('source_name')}: {result['display_status']}")
+            
+            return {
+                "success": True,
+                "analysis_type": "multi_source_comparison",
+                "primary_source": primary_source,
+                "sources_analyzed": [r["source_name"] for r in successful_results],
+                "individual_results": successful_results,
+                "comparison_report": comparison_report,
+                "display_statuses": display_statuses,
+                "errors": errors if errors else None
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ 多來源分析錯誤: {e}")
+            return {
+                "success": False,
+                "error": f"多來源分析失敗: {str(e)}"
+            }
+    
+    def _get_analysis_type_for_source(self, source_name: str) -> str:
+        """根據來源名稱決定分析類型"""
+        source_analysis_map = {
+            "主螢幕": "screen_output",
+            "展場視訊源": "exhibition_field", 
+            "瀏覽器": "web_content",
+            "攝像頭": "camera_feed",
+            "桌面": "desktop_capture"
+        }
+        return source_analysis_map.get(source_name, "general")
+    
+    def _generate_comparison_report(self, results: list) -> str:
+        """生成多來源對比分析報告"""
+        if len(results) < 2:
+            return "無法進行對比分析，需要至少兩個成功的來源分析結果。"
+        
+        report_parts = []
+        report_parts.append("🔍 **多來源對比分析報告**")
+        report_parts.append("")
+        
+        # 列出各來源的分析摘要
+        for result in results:
+            source_name = result.get("source_name", "未知來源")
+            analysis = result.get("analysis_description", "無分析結果")
+            report_parts.append(f"**{source_name}**: {analysis[:200]}...")
+            report_parts.append("")
+        
+        # 生成對比總結
+        report_parts.append("🔄 **對比觀察**:")
+        report_parts.append("- 可以根據不同來源的內容差異，了解展場內外的互動狀況")
+        report_parts.append("- 主螢幕反映對外播出內容，展場視訊源反映現場實況")
+        report_parts.append("- 建議結合兩個視角進行更全面的情況判斷")
+        
+        return "\n".join(report_parts)
+    
+    async def _display_screenshot_to_frontend(self, filename: str, source_name: str, analysis_focus: str) -> str:
+        """顯示截圖到前端"""
+        try:
+            # 根據來源類型決定顯示配置
+            caption = self._get_display_caption(source_name, analysis_focus)
+            position = self._get_display_position(source_name)
+            
+            show_image_payload = {
+                "filename": filename,
+                "caption": caption,
+                "position": position,
+                "size": "large",
+                "duration": 25.0
+            }
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    "http://localhost:8000/api/show-existing-image",
+                    json=show_image_payload,
+                    timeout=aiohttp.ClientTimeout(total=10)
+                ) as response:
+                    if response.status == 200:
+                        logger.info(f"✅ {source_name} 截圖已顯示到前端")
+                        return f"✅ {source_name} 截圖已顯示到前端"
+                    else:
+                        error_text = await response.text()
+                        logger.warning(f"❌ 顯示截圖失敗: {response.status} - {error_text}")
+                        return f"❌ 顯示截圖失敗: HTTP {response.status}"
+                        
+        except Exception as e:
+            logger.error(f"❌ 顯示截圖到前端失敗: {e}")
+            return f"❌ 顯示截圖失敗: {str(e)}"
+    
+    def _get_display_caption(self, source_name: str, analysis_focus: str) -> str:
+        """根據來源和分析重點生成顯示標題"""
+        caption_map = {
+            "主螢幕": "🖥️ OBS 主螢幕輸出截圖",
+            "展場視訊源": "🎪 展場視訊源即時截圖", 
+            "瀏覽器": "🌐 瀏覽器畫面截圖",
+            "攝像頭": "📹 攝像頭畫面截圖",
+            "桌面": "💻 桌面畫面截圖"
+        }
+        
+        base_caption = caption_map.get(source_name, f"📺 {source_name} 截圖")
+        
+        focus_suffix = {
+            "technical": " - 技術狀況檢查",
+            "streaming": " - 直播效果分析", 
+            "audience": " - 觀眾互動分析",
+            "content": " - 內容品質檢查",
+            "detailed": " - 詳細分析"
+        }
+        
+        if analysis_focus in focus_suffix:
+            base_caption += focus_suffix[analysis_focus]
+            
+        return base_caption
+    
+    def _get_display_position(self, source_name: str) -> str:
+        """根據來源類型決定顯示位置"""
+        position_map = {
+            "主螢幕": "center-right",  # 主螢幕顯示在右側
+            "展場視訊源": "center-left",  # 展場保持在左側（與現有一致）
+            "瀏覽器": "top-center",
+            "攝像頭": "bottom-left",
+            "桌面": "bottom-right"
+        }
+        return position_map.get(source_name, "center")
     
     async def _handle_get_youtube_chat_messages(self, arguments: Dict[str, Any]) -> dict:
         """處理 YouTube 聊天室訊息獲取請求"""

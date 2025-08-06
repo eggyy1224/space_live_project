@@ -130,6 +130,36 @@ async def get_ai_instructions() -> str:
 
 ---
 
+## 📺 **視覺分析工具 - 全新功能！** 📺
+你現在擁有兩套強大的視覺分析工具！
+
+### 🔍 **展場視覺分析** (analyze_exhibition_field)：
+- **專門分析展場現場狀況**：觀眾人數、互動熱度、展品狀況
+- **自動截取展場視訊源**：直接看到現場實況
+- **智能分析內容**：人流、設備狀態、展覽效果等
+
+### 📺 **OBS 場景分析** (analyze_obs_scene) - 全新工具！：
+- **可分析任意 OBS 來源**：主螢幕、瀏覽器、攝像頭等
+- **主螢幕分析特別重要**：看到對外播出的實際內容
+- **多來源對比功能**：同時分析多個來源，比較差異
+- **智能內容識別**：根據來源類型調整分析重點
+
+### 🎯 **使用時機與策略**：
+1. **想了解現場狀況**：用 analyze_exhibition_field 看展場
+2. **想了解播出效果**：用 analyze_obs_scene 看主螢幕
+3. **想比較內外差異**：使用 compare_sources=true 進行對比分析
+4. **技術問題排查**：分析不同來源找出問題所在
+5. **觀眾視角檢查**：看主螢幕了解觀眾看到什麼
+
+### 💡 **多來源對比的威力**：
+- **主螢幕 vs 展場視訊源**：對比播出內容與現場實況
+- **發現盲點**：可能現場很熱鬧但播出效果不佳，或相反
+- **動態調整**：根據對比結果即時調整表演或技術設定
+
+**主動使用這些工具！** 它們讓你真正"看見"現況，而不是盲目互動！
+
+---
+
 ## 🌐 **基礎設定**
 - 你是一個來自「近地軌道太空艙」的虛擬角色
 - 具備多語言能力與文化沾染表達
@@ -589,6 +619,34 @@ def get_tools_config() -> list:
                         "enum": ["general", "detailed", "exhibition"],
                         "description": "分析重點：general(一般描述)、detailed(詳細分析)、exhibition(展覽專業分析)，預設為exhibition",
                         "default": "exhibition"
+                    }
+                },
+                "required": []
+            }
+        },
+        {
+            "type": "function",
+            "name": "analyze_obs_scene",
+            "description": "📺 OBS 場景智能分析工具！可以截圖並分析任意 OBS 來源（主螢幕、瀏覽器、展場視訊源等），支援單一來源分析或多來源對比分析。能智能理解不同來源的內容差異，幫助你全面了解直播狀況！",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "source_name": {
+                        "type": "string",
+                        "enum": ["主螢幕", "展場視訊源", "瀏覽器", "攝像頭", "桌面"],
+                        "description": "要分析的 OBS 來源名稱，預設為「主螢幕」",
+                        "default": "主螢幕"
+                    },
+                    "analysis_focus": {
+                        "type": "string",
+                        "enum": ["general", "detailed", "technical", "audience", "content", "streaming"],
+                        "description": "分析重點：general(一般描述)、detailed(詳細分析)、technical(技術狀況)、audience(觀眾互動)、content(內容品質)、streaming(直播效果)，預設為general",
+                        "default": "general"
+                    },
+                    "compare_sources": {
+                        "type": "boolean",
+                        "description": "是否進行多來源對比分析，比較不同 OBS 來源的差異，預設為false",
+                        "default": False
                     }
                 },
                 "required": []
