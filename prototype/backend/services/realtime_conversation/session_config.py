@@ -7,13 +7,14 @@ import requests
 import logging
 import aiohttp
 import asyncio
+import random
 
 
 async def fetch_latest_persona():
     url = "http://localhost:8000/api/memory/get"
     payload = {
         "memory_type": "persona",
-        "limit": 1,
+        "limit": 5,  # 改為取前五筆
         "include_metadata": True
     }
     try:
@@ -21,9 +22,12 @@ async def fetch_latest_persona():
             async with session.post(url, json=payload, timeout=aiohttp.ClientTimeout(total=5)) as resp:
                 data = await resp.json()
                 if data.get("success") and data.get("data", {}).get("memories"):
-                    persona = data["data"]["memories"][0]["content"]
-                    logging.info(f"[Persona Injection] 注入人格記憶：{persona}")
-                    return persona
+                    memories = data["data"]["memories"]
+                    if memories:
+                        # 從前五筆中隨機選一個
+                        selected_persona = random.choice(memories)["content"]
+                        logging.info(f"[Persona Injection] 從 {len(memories)} 筆人格記憶中隨機選取：{selected_persona}")
+                        return selected_persona
     except Exception as e:
         logging.error(f"[Persona Injection] 取得人格記憶失敗: {e}")
     return "（無人格記憶，請先設定）"
