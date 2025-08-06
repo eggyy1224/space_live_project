@@ -41,6 +41,7 @@ class MemorySystem:
         self.conversation_store = self._init_memory_store("conversation_memory", "conversations")
         self.persona_store = self._init_memory_store("persona_memory", "persona_info")
         self.summary_store = self._init_memory_store("summary_memory", "conversation_summaries")
+        self.chat_memory_store = self._init_memory_store("chat_memory", "youtube_chat_messages")
         self.short_term_store = ShortTermMemoryStore(max_size=20)
         
         # 初始化記憶處理組件
@@ -115,6 +116,12 @@ class MemorySystem:
             enriched_metadata.update({
                 "summary_type": "auto_generated",
                 "is_summary": True
+            })
+        elif memory_type == "chat_message":
+            enriched_metadata.update({
+                "interaction_type": "youtube_chat",
+                "is_audience_message": True,
+                "platform": "youtube"
             })
         
         # 合併額外的metadata
@@ -311,6 +318,138 @@ class MemorySystem:
         觸發異步記憶整合 - 為了保持向後兼容而保留的方法
         """
         await self.summarizer.async_consolidate_memories()
+    
+    def store_chat_message(self, message_data: dict):
+        """
+        儲存 YouTube 聊天室留言到記憶庫
+        
+        Args:
+            message_data: 聊天室留言資料，包含 author, message, timestamp 等
+        """
+        try:
+            author = message_data.get("author", "觀眾")
+            message_text = message_data.get("message", "")
+            timestamp = message_data.get("timestamp", "")
+            datetime_str = message_data.get("datetime", "")
+            
+            # 過濾掉空訊息或太短的訊息
+            if not message_text.strip() or len(message_text.strip()) < 2:
+                logging.debug(f"聊天室留言太短，跳過儲存: '{message_text}'")
+                return
+            
+            # 構造留言內容
+            chat_content = f"[YouTube 觀眾 {author}]: {message_text}"
+            
+            # 準備聊天室留言的基礎metadata
+            base_metadata = {
+                "type": "chat_message",
+                "author": author,
+                "message": message_text,
+                "original_timestamp": timestamp,
+                "chat_datetime": datetime_str,
+                "message_type": message_data.get("message_type", "textMessage"),
+                "is_verified": message_data.get("is_verified", False),
+                "is_owner": message_data.get("is_owner", False),
+                "is_sponsor": message_data.get("is_sponsor", False),
+                "is_moderator": message_data.get("is_moderator", False),
+                "author_channel_id": message_data.get("author_channel_id", ""),
+                "platform": "youtube",
+                "chat_source": "live_stream"
+            }
+            
+            # 豐富化metadata
+            enriched_metadata = self._enrich_metadata(
+                memory_type="chat_message",
+                content=chat_content,
+                source="youtube_chat_monitor",
+                additional_metadata=base_metadata
+            )
+            
+            # 儲存到聊天室記憶存儲
+            self.chat_memory_store.add(
+                text=chat_content,
+                metadata=enriched_metadata
+            )
+            
+            logging.info(f"成功儲存聊天室留言到記憶庫: {author} - {message_text[:50]}...")
+            
+        except Exception as e:
+            logging.error(f"儲存聊天室留言失敗: {e}", exc_info=True)
+    
+    def retrieve_chat_memories(self, query: str, k: int = 5, author_filter: str = None) -> List[Dict[str, Any]]:
+        """
+        檢索聊天室留言記憶
+        
+        Args:
+            query: 搜尋查詢
+            k: 檢索數量
+            author_filter: 可選的作者過濾器
+            
+        Returns:
+            檢索到的聊天室留言記憶列表
+        """
+        try:
+            results = self.chat_memory_store.retrieve(query=query, k=k)
+            
+            # 如果有作者過濾器，進一步過濾結果
+            if author_filter:
+                filtered_results = []
+                for result in results:
+                    metadata = result.get("metadata", {})
+                    if metadata.get("author", "").lower() == author_filter.lower():
+                        filtered_results.append(result)
+                results = filtered_results
+            
+            return results
+            
+        except Exception as e:
+            logging.error(f"檢索聊天室留言記憶失敗: {e}", exc_info=True)
+            return []
+    
+    def get_recent_chat_messages(self, limit: int = 20, author_filter: str = None) -> List[Dict[str, Any]]:
+        """
+        獲取最近的聊天室留言
+        
+        Args:
+            limit: 限制數量
+            author_filter: 可選的作者過濾器
+            
+        Returns:
+            最近的聊天室留言列表
+        """
+        try:
+            # 使用 where 條件過濾聊天室留言
+            where_conditions = {"memory_type": "chat_message"}
+            if author_filter:
+                where_conditions["author"] = author_filter
+            
+            results = self.chat_memory_store.get_all(limit=limit, where=where_conditions)
+            
+            if results and "metadatas" in results:
+                # 按時間戳排序，最新的在前
+                chat_messages = []
+                contents = results.get("documents", [])
+                metadatas = results.get("metadatas", [])
+                
+                for content, metadata in zip(contents, metadatas):
+                    chat_messages.append({
+                        "page_content": content,
+                        "metadata": metadata
+                    })
+                
+                # 按時間戳排序
+                chat_messages.sort(
+                    key=lambda x: x["metadata"].get("timestamp", 0), 
+                    reverse=True
+                )
+                
+                return chat_messages[:limit]
+            
+            return []
+            
+        except Exception as e:
+            logging.error(f"獲取最近聊天室留言失敗: {e}", exc_info=True)
+            return []
     
     def clean_up_old_memories(self, days: int = 30):
         """

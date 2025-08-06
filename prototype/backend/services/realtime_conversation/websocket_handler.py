@@ -16,6 +16,9 @@ from .utils import pcm_to_wav
 from .session_config import create_session_config
 from .logging import WebSocketLogger
 from services.perception import YouTubeChatMonitorService
+from services.memory_system import MemorySystem
+from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
+from core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +37,8 @@ class WebSocketHandler:
         # YouTube 聊天監控任務
         self._youtube_monitor_task = None
         self._last_processed_message_count = 0
+        # 記憶系統（懶加載）
+        self._memory_system = None
     
     async def _set_initial_room_scene(self):
         """設定初始房間場景為賽博太空艙"""
@@ -96,6 +101,38 @@ class WebSocketHandler:
             asyncio.create_task(self._breathing_light_effect(brighten=True))
         except Exception as e:
             logger.error(f"設置初始環境光強度異常: {e}")
+
+    def _get_memory_system(self) -> MemorySystem:
+        """獲取記憶系統實例（懶加載）"""
+        if self._memory_system is None:
+            try:
+                # 初始化嵌入模型
+                embeddings = GoogleGenerativeAIEmbeddings(
+                    model="models/embedding-001",
+                    google_api_key=settings.GOOGLE_API_KEY
+                )
+                
+                # 初始化LLM
+                llm = ChatGoogleGenerativeAI(
+                    model="gemini-pro",
+                    google_api_key=settings.GOOGLE_API_KEY,
+                    temperature=0.7
+                )
+                
+                # 創建記憶系統
+                self._memory_system = MemorySystem(
+                    embeddings=embeddings,
+                    persona_name="太空直播AI",
+                    llm=llm
+                )
+                
+                logger.info("📝 WebSocket 處理器中的記憶系統初始化成功")
+            except Exception as e:
+                logger.error(f"❌ 記憶系統初始化失敗: {e}")
+                # 返回 None 而不是拋出異常，避免影響主要功能
+                return None
+        
+        return self._memory_system
 
     async def stream_conversation(
         self, audio_chunks: AsyncIterator[bytes]
@@ -912,6 +949,18 @@ class WebSocketHandler:
             # 發送到 OpenAI
             await self._current_ws.send(json.dumps(conversation_item))
             logger.info(f"✅ [DEBUG] 已發送 YouTube 留言到 OpenAI: {author} - {message_text}")
+            
+            # 存儲到記憶系統
+            try:
+                memory_system = self._get_memory_system()
+                if memory_system:
+                    memory_system.store_chat_message(message_data)
+                    logger.info(f"💾 [DEBUG] 已將 YouTube 留言存儲到記憶系統: {author} - {message_text[:30]}...")
+                else:
+                    logger.warning("⚠️ [DEBUG] 記憶系統不可用，跳過留言存儲")
+            except Exception as memory_error:
+                logger.error(f"❌ [DEBUG] 存儲留言到記憶系統失敗: {memory_error}")
+                # 不影響主要流程，繼續執行
             
             # 記錄到會話日誌
             if self._session_logger:

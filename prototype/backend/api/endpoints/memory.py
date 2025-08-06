@@ -23,12 +23,12 @@ router = APIRouter(prefix="/api/memory", tags=["memory"])
 
 # 請求和回應模型
 class SaveMemoryRequest(BaseModel):
-    memory_type: str  # 'conversation', 'persona', 'summary'
+    memory_type: str  # 'conversation', 'persona', 'summary', 'chat_message'
     content: str
     metadata: Optional[Dict[str, Any]] = None
 
 class GetMemoryRequest(BaseModel):
-    memory_type: str  # 'conversation', 'persona', 'summary'
+    memory_type: str  # 'conversation', 'persona', 'summary', 'chat_message'
     query: Optional[str] = None  # 如果提供，進行語義搜尋
     limit: int = 10
     include_metadata: bool = True
@@ -146,7 +146,7 @@ async def save_memory(request: SaveMemoryRequest) -> MemoryResponse:
         memory_system = get_memory_system()
         
         # 驗證記憶類型
-        valid_types = ['conversation', 'persona', 'summary']
+        valid_types = ['conversation', 'persona', 'summary', 'chat_message']
         if request.memory_type not in valid_types:
             raise HTTPException(
                 status_code=400,
@@ -167,6 +167,8 @@ async def save_memory(request: SaveMemoryRequest) -> MemoryResponse:
             store = memory_system.persona_store
         elif request.memory_type == 'summary':
             store = memory_system.summary_store
+        elif request.memory_type == 'chat_message':
+            store = memory_system.chat_memory_store
         
         # 儲存記憶（使用豐富的metadata）
         store.add(request.content, enriched_metadata)
@@ -195,7 +197,7 @@ async def get_memory(request: GetMemoryRequest) -> MemoryResponse:
         memory_system = get_memory_system()
         
         # 驗證記憶類型
-        valid_types = ['conversation', 'persona', 'summary']
+        valid_types = ['conversation', 'persona', 'summary', 'chat_message']
         if request.memory_type not in valid_types:
             raise HTTPException(
                 status_code=400,
@@ -209,6 +211,8 @@ async def get_memory(request: GetMemoryRequest) -> MemoryResponse:
             store = memory_system.persona_store
         elif request.memory_type == 'summary':
             store = memory_system.summary_store
+        elif request.memory_type == 'chat_message':
+            store = memory_system.chat_memory_store
         
         # 獲取記憶
         if request.query:
