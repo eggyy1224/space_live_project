@@ -32,6 +32,45 @@ async def websocket_brightness(websocket: WebSocket):
             if isinstance(brightness, int) and 0 <= brightness <= 65535:
                 service.set_brightness(brightness)
     except WebSocketDisconnect:
-        print("[WS] physical-light 斷線")
+        print("[WS] physical-light 斷線，清理資源...")
+        # 主動釋放 serial port 資源
+        service._close_serial_connection()
     except Exception as e:
         print(f"[WS] physical-light 控制錯誤: {e}")
+        # 發生例外時也要釋放資源
+        service._close_serial_connection()
+    finally:
+        # 確保無論如何都會釋放資源
+        print("[WS] physical-light WebSocket 結束，釋放所有資源")
+        service._close_serial_connection()
+
+@router.post("/reset-connection")
+def reset_serial_connection():
+    """手動重置 serial port 連線，用於恢復被鎖死的連線"""
+    try:
+        success = service.force_reset_connection()
+        if success:
+            return {"success": True, "message": "Serial port 連線已重置"}
+        else:
+            raise HTTPException(status_code=500, detail="重置連線失敗")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"重置連線時發生錯誤: {e}")
+
+@router.get("/connection-status")
+def get_connection_status():
+    """檢查當前 serial port 連線狀態"""
+    try:
+        is_connected = (service._serial_instance is not None and 
+                       service._serial_instance.is_open)
+        return {
+            "connected": is_connected,
+            "port": service._serial_port if is_connected else None,
+            "baudrate": service._baudrate
+        }
+    except Exception as e:
+        return {
+            "connected": False,
+            "error": str(e),
+            "port": None,
+            "baudrate": service._baudrate
+        }
