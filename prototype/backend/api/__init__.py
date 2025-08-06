@@ -14,6 +14,7 @@ from .endpoints import (
     health,
     image_generation,
     monitors,
+    perception,
     realtime_conversation,
     speech,
     websocket,
@@ -50,6 +51,7 @@ def init_app() -> FastAPI:
     app.include_router(health.router, prefix="/api", tags=["system"])
     app.include_router(control.router, prefix="/api", tags=["control"])
     app.include_router(monitors.router, prefix="/api", tags=["monitor"])
+    app.include_router(perception.router, prefix="/api", tags=["perception"])
     app.include_router(image_generation.router, prefix="/api", tags=["image"])
     app.include_router(realtime_conversation.router, prefix="/api", tags=["realtime"])
     app.include_router(news.router, prefix="/api/news", tags=["news"])

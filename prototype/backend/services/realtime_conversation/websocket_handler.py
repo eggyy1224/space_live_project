@@ -31,6 +31,9 @@ class WebSocketHandler:
         self._youtube_chat_service = YouTubeChatMonitorService()
         # 太空人頻道 ID（可以設定為環境變數）
         self._channel_id = "UCV60MYR7dQJM8TqY5eXb7YA"
+        # YouTube 聊天監控任務
+        self._youtube_monitor_task = None
+        self._last_processed_message_count = 0
     
     async def _set_initial_room_scene(self):
         """設定初始房間場景為賽博太空艙"""
@@ -127,7 +130,12 @@ class WebSocketHandler:
                 # 新增：設定初始環境光強度
                 await self._set_initial_environment_light()
                 # 新增：開始 YouTube 聊天室監控
+                logger.info("🎬 [DEBUG] 準備啟動 YouTube 聊天室監控...")
                 await self._start_youtube_chat_monitoring()
+                # 新增：啟動 YouTube 聊天留言監控任務
+                logger.info("🔄 [DEBUG] 創建 YouTube 聊天留言監控任務...")
+                self._youtube_monitor_task = asyncio.create_task(self._monitor_youtube_chat_messages())
+                logger.info(f"✅ [DEBUG] YouTube 監控任務已創建: {self._youtube_monitor_task}")
                 
                 # 等待會話配置確認
                 await asyncio.sleep(0.5)
@@ -247,6 +255,10 @@ class WebSocketHandler:
                     await self._hide_scene()
                     # 新增：停止 YouTube 聊天室監控
                     await self._stop_youtube_chat_monitoring()
+                    # 停止 YouTube 聊天監控任務
+                    if self._youtube_monitor_task:
+                        self._youtube_monitor_task.cancel()
+                        self._youtube_monitor_task = None
                     # 清理WebSocket引用
                     self._current_ws = None
                     # 關閉日誌記錄器
@@ -612,7 +624,7 @@ class WebSocketHandler:
             selected_bgm = random.choice(bgm_files)
             bgm_url = f"/audio/BGM/{selected_bgm}"
             async with aiohttp.ClientSession() as session:
-                bgm_data = {"bgmUrl": bgm_url, "volume": 0.2}
+                bgm_data = {"bgmUrl": bgm_url, "volume": 0.1}
                 async with session.post(
                     "http://localhost:8000/api/control/background-audio",
                     json=bgm_data
@@ -676,7 +688,7 @@ class WebSocketHandler:
             # 取得目前 BGM URL（假設前端會維持原 bgmUrl，不清空）
             # 若有全域變數或屬性可取得目前 bgmUrl，請取用，否則只設 volume
             bgm_url = getattr(self, "_current_bgm_url", None)
-            bgm_data = {"volume": 0.7}
+            bgm_data = {"volume": 0.5}
             if bgm_url:
                 bgm_data["bgmUrl"] = bgm_url
             async with aiohttp.ClientSession() as session:
@@ -685,7 +697,7 @@ class WebSocketHandler:
                     json=bgm_data
                 ) as response:
                     if response.status == 200:
-                        logger.info("已將背景音樂音量調整回 0.7（session 結束）")
+                        logger.info("已將背景音樂音量調整回 0.5（session 結束）")
                     else:
                         logger.warning(f"調整 BGM 音量失敗: {await response.text()}")
         except Exception as e:
@@ -741,15 +753,43 @@ class WebSocketHandler:
     async def _start_youtube_chat_monitoring(self):
         """開始 YouTube 聊天室監控"""
         try:
-            logger.info(f"即時對話會話開始，啟動 YouTube 聊天室監控：{self._channel_id}")
+            logger.info(f"🚀 [DEBUG] 即時對話會話開始，啟動 YouTube 聊天室監控：{self._channel_id}")
+            
+            # 檢查服務狀態
+            logger.debug(f"🔍 [DEBUG] YouTube 服務狀態檢查: service={self._youtube_chat_service}, is_monitoring={self._youtube_chat_service.is_monitoring}")
+            
             # 使用頻道 ID 開始監控（自動獲取當前直播）
             result = self._youtube_chat_service.start_monitoring_by_channel(self._channel_id)
+            logger.debug(f"📊 [DEBUG] 監控啟動結果: {result}")
+            
             if result["success"]:
-                logger.info(f"YouTube 聊天室監控啟動成功，video_id: {result.get('video_id')}")
+                video_id = result.get('video_id')
+                logger.info(f"✅ [DEBUG] YouTube 聊天室監控啟動成功！video_id: {video_id}")
+                
+                # 立即檢查一次狀態
+                status = self._youtube_chat_service.get_monitoring_status()
+                logger.debug(f"📈 [DEBUG] 監控狀態確認: {status}")
+                
+                # 取得初始留言計數
+                initial_messages = self._youtube_chat_service.get_recent_messages(limit=10)
+                self._last_processed_message_count = len(initial_messages)
+                logger.info(f"📝 [DEBUG] 初始留言計數設為: {self._last_processed_message_count}")
+                
+                if initial_messages:
+                    preview = [f"{msg.get('author', '?')}:{msg.get('message', '?')[:15]}..." for msg in initial_messages[:3]]
+                    logger.debug(f"📋 [DEBUG] 初始留言預覽: {preview}")
+                else:
+                    logger.debug("📭 [DEBUG] 目前沒有歷史留言")
+                    
             else:
-                logger.warning(f"YouTube 聊天室監控啟動失敗: {result.get('error')}")
+                error_msg = result.get('error', '未知錯誤')
+                logger.warning(f"❌ [DEBUG] YouTube 聊天室監控啟動失敗: {error_msg}")
+                logger.debug(f"🔍 [DEBUG] 失敗詳情: {result}")
+                
         except Exception as e:
-            logger.error(f"啟動 YouTube 聊天室監控時發生錯誤: {e}")
+            logger.error(f"💥 [DEBUG] 啟動 YouTube 聊天室監控時發生錯誤: {e}")
+            import traceback
+            logger.error(f"🔍 [DEBUG] 啟動錯誤詳情: {traceback.format_exc()}")
     
     async def _stop_youtube_chat_monitoring(self):
         """停止 YouTube 聊天室監控"""
@@ -761,4 +801,136 @@ class WebSocketHandler:
             else:
                 logger.warning(f"停止 YouTube 聊天室監控失敗: {result.get('error')}")
         except Exception as e:
-            logger.error(f"停止 YouTube 聊天室監控時發生錯誤: {e}") 
+            logger.error(f"停止 YouTube 聊天室監控時發生錯誤: {e}")
+    
+    async def _monitor_youtube_chat_messages(self):
+        """監控 YouTube 聊天留言並即時注入到 OpenAI Realtime WebSocket"""
+        logger.info("🎯 [DEBUG] 開始監控 YouTube 聊天留言，準備即時注入到對話中")
+        
+        iteration_count = 0
+        while self._current_ws and self._current_ws.state != websockets.protocol.State.CLOSED:
+            try:
+                iteration_count += 1
+                logger.debug(f"🔄 [DEBUG] YouTube 監控迭代 #{iteration_count}")
+                
+                # 檢查 WebSocket 狀態
+                logger.debug(f"📡 [DEBUG] WebSocket 狀態: current_ws={self._current_ws is not None}, state={self._current_ws.state if self._current_ws else 'N/A'}")
+                
+                # 檢查是否有新的聊天留言
+                if not self._youtube_chat_service.is_monitoring:
+                    logger.debug(f"⏸️ [DEBUG] YouTube 聊天室監控未啟動，is_monitoring={self._youtube_chat_service.is_monitoring}")
+                    await asyncio.sleep(2)
+                    continue
+                
+                logger.debug(f"✅ [DEBUG] YouTube 聊天室監控中，is_monitoring={self._youtube_chat_service.is_monitoring}")
+                
+                # 取得最近的聊天留言
+                recent_messages = self._youtube_chat_service.get_recent_messages(limit=10)
+                current_message_count = len(recent_messages)
+                
+                logger.debug(f"📊 [DEBUG] 訊息統計: current_count={current_message_count}, last_processed={self._last_processed_message_count}")
+                
+                # 如果有留言，顯示最新幾條的預覽
+                if recent_messages:
+                    preview = [f"{msg.get('author', '?')}:{msg.get('message', '?')[:20]}..." for msg in recent_messages[:3]]
+                    logger.debug(f"📝 [DEBUG] 最新留言預覽: {preview}")
+                else:
+                    logger.debug("📭 [DEBUG] 目前沒有任何留言")
+                
+                # 如果有新留言
+                if current_message_count > self._last_processed_message_count:
+                    # 計算新留言的數量
+                    new_message_count = current_message_count - self._last_processed_message_count
+                    # 取得新留言（最新的幾條）
+                    new_messages = recent_messages[:new_message_count]
+                    
+                    logger.info(f"🆕 [DEBUG] 發現 {new_message_count} 條新留言！準備注入到 OpenAI")
+                    
+                    for i, message in enumerate(reversed(new_messages)):  # 反轉以按時間順序處理
+                        logger.debug(f"💬 [DEBUG] 處理新留言 {i+1}/{new_message_count}: {message.get('author', '?')} - {message.get('message', '?')}")
+                        await self._inject_youtube_message_to_openai(message)
+                    
+                    self._last_processed_message_count = current_message_count
+                    logger.info(f"✅ [DEBUG] 已處理完 {new_message_count} 條新留言，更新計數器到 {current_message_count}")
+                else:
+                    logger.debug(f"😴 [DEBUG] 沒有新留言 (current={current_message_count}, last={self._last_processed_message_count})")
+                
+                # 每 1.5 秒檢查一次
+                logger.debug("⏰ [DEBUG] 等待 1.5 秒後進行下次檢查...")
+                await asyncio.sleep(1.5)
+                
+            except asyncio.CancelledError:
+                logger.info("🛑 [DEBUG] YouTube 聊天留言監控任務被取消")
+                break
+            except Exception as e:
+                logger.error(f"❌ [DEBUG] 監控 YouTube 聊天留言時發生錯誤: {e}")
+                import traceback
+                logger.error(f"🔍 [DEBUG] 錯誤詳情: {traceback.format_exc()}")
+                await asyncio.sleep(3)  # 發生錯誤時稍微等久一點
+    
+    async def _inject_youtube_message_to_openai(self, message_data: dict):
+        """將 YouTube 聊天留言注入到 OpenAI Realtime WebSocket"""
+        try:
+            logger.debug(f"🚀 [DEBUG] 開始注入 YouTube 留言: {message_data}")
+            
+            if not self._current_ws or self._current_ws.state == websockets.protocol.State.CLOSED:
+                logger.warning(f"❌ [DEBUG] WebSocket 不可用，無法注入留言: current_ws={self._current_ws is not None}, state={self._current_ws.state if self._current_ws else 'N/A'}")
+                return
+            
+            author = message_data.get("author", "觀眾")
+            message_text = message_data.get("message", "")
+            
+            logger.debug(f"👤 [DEBUG] 留言詳情: author='{author}', message='{message_text}', length={len(message_text.strip()) if message_text else 0}")
+            
+            # 過濾掉空訊息或純表情符號
+            if not message_text.strip() or len(message_text.strip()) < 2:
+                logger.debug(f"🚫 [DEBUG] 留言被過濾（太短或空白）: '{message_text}'")
+                return
+            
+            # 構造用戶訊息格式，加上來源標識
+            formatted_message = f"[YouTube 觀眾 {author}]: {message_text}"
+            
+            logger.info(f"💬 [DEBUG] 準備注入格式化留言到 OpenAI: {formatted_message}")
+            
+            # 創建 conversation.item.create 事件
+            conversation_item = {
+                "type": "conversation.item.create",
+                "item": {
+                    "type": "message",
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "text": formatted_message
+                        }
+                    ]
+                }
+            }
+            
+            logger.debug(f"📤 [DEBUG] 準備發送 conversation.item.create 事件: {json.dumps(conversation_item, ensure_ascii=False)}")
+            
+            # 發送到 OpenAI
+            await self._current_ws.send(json.dumps(conversation_item))
+            logger.info(f"✅ [DEBUG] 已發送 YouTube 留言到 OpenAI: {author} - {message_text}")
+            
+            # 記錄到會話日誌
+            if self._session_logger:
+                self._session_logger.log_event_sent("conversation.item.create", conversation_item)
+                logger.debug(f"📝 [DEBUG] 已記錄到會話日誌")
+            
+            # 等待一小段時間確保訊息被處理
+            await asyncio.sleep(0.1)
+            
+            # 觸發 AI 回應
+            response_create = {
+                "type": "response.create"
+            }
+            
+            logger.debug(f"🎯 [DEBUG] 準備發送 response.create 觸發 AI 回應: {json.dumps(response_create)}")
+            await self._current_ws.send(json.dumps(response_create))
+            logger.info("🚀 [DEBUG] 已觸發 AI 回應 YouTube 聊天留言")
+            
+        except Exception as e:
+            logger.error(f"❌ [DEBUG] 注入 YouTube 聊天留言時發生錯誤: {e}")
+            import traceback
+            logger.error(f"🔍 [DEBUG] 注入錯誤詳情: {traceback.format_exc()}") 

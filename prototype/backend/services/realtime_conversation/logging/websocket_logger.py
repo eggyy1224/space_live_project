@@ -113,6 +113,36 @@ class WebSocketLogger:
             "timestamp": datetime.now().isoformat()
         })
     
+    def log_event_sent(self, event_type: str, event_data: Dict[str, Any]):
+        """記錄發送到 OpenAI 的事件"""
+        if not self._is_active:
+            return
+        
+        # 根據事件類型記錄不同詳細程度的資訊
+        if event_type == "conversation.item.create":
+            # YouTube 留言注入事件
+            item = event_data.get("item", {})
+            log_data = {
+                "item_type": item.get("type"),
+                "role": item.get("role"),
+                "content_preview": str(item.get("content", [{}])[0].get("text", ""))[:100],  # 前100字符預覽
+                "timestamp": datetime.now().isoformat()
+            }
+        elif event_type == "response.create":
+            # AI 回應觸發事件
+            log_data = {
+                "trigger_type": "manual",
+                "timestamp": datetime.now().isoformat()
+            }
+        else:
+            # 其他事件的通用記錄
+            log_data = {
+                "event_summary": self._summarize_event(event_data),
+                "timestamp": datetime.now().isoformat()
+            }
+        
+        self._write_log("EVENT", f"SENT_{event_type.upper()}", log_data)
+    
     def log_event_received(self, event_type: str, event_data: Dict[str, Any]):
         """記錄接收到的 OpenAI 事件"""
         if not self._is_active:
