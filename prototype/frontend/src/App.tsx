@@ -119,6 +119,11 @@ function App() {
   const isRealtimeSchedulePanelVisible = useStore((state) => state.isRealtimeSchedulePanelVisible);
   const toggleRealtimeSchedulePanel = useStore((state) => state.toggleRealtimeSchedulePanel);
   // <--- 結束 --->
+
+  // <--- 從 Zustand Store 獲取右側按鈕顯示狀態和操作 --->
+  const isSideButtonsVisible = useStore((state) => state.isSideButtonsVisible);
+  const toggleSideButtons = useStore((state) => state.toggleSideButtons);
+  // <--- 結束 --->
   
   // 使用音頻服務
   const { 
@@ -200,9 +205,19 @@ function App() {
 
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
-      if (e.code === 'Space' && !e.repeat && target.tagName !== 'INPUT' && !target.isContentEditable) {
+      
+      // 避免在輸入框中觸發快捷鍵
+      if (target.tagName === 'INPUT' || target.isContentEditable) {
+        return;
+      }
+      
+      if (e.code === 'Space' && !e.repeat) {
         e.preventDefault();
         toggleRealtime();
+      } else if (e.code === 'KeyC' && !e.repeat) {
+        e.preventDefault();
+        console.log('[App] C key pressed - toggling side buttons');
+        toggleSideButtons();
       }
     };
     window.addEventListener('keydown', onKey);
@@ -211,7 +226,7 @@ function App() {
       window.removeEventListener('manualRealtimeControl', manualControlHandler);
       window.removeEventListener('keydown', onKey);
     };
-  }, [toggleRealtime]);
+  }, [toggleRealtime, toggleSideButtons]);
   
   // --- 使用頭部服務 (替換 useModelService) ---
   const {
@@ -698,6 +713,8 @@ function App() {
           toggleRealtime={toggleRealtime}
           realtimeStreaming={realtimeStreaming}
           realtimeError={realtimeError}
+          isSideButtonsVisible={isSideButtonsVisible}
+          toggleSideButtons={toggleSideButtons}
         />
 
         <ToastContainer />

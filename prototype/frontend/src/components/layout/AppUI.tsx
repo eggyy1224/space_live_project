@@ -65,6 +65,8 @@ interface AppUIProps {
   toggleRealtime: () => void;
   realtimeStreaming: boolean;
   realtimeError: string | null;
+  isSideButtonsVisible: boolean;
+  toggleSideButtons: () => void;
 }
 
 // === 新增：物理燈條亮度控制 bar 組件 ===
@@ -127,6 +129,8 @@ const AppUI: React.FC<AppUIProps> = ({
   toggleRealtime,
   realtimeStreaming,
   realtimeError,
+  isSideButtonsVisible,
+  toggleSideButtons,
 }) => {
   // // REMOVED micPermission logic
   // const micPermissionBool: boolean | null = ...
@@ -158,10 +162,11 @@ const AppUI: React.FC<AppUIProps> = ({
       */}
 
       {/* Keep Debug Buttons and Trigger Buttons */}
-      <div 
-        // Container for bottom-right buttons (Use Tailwind)
-        className="fixed bottom-5 right-5 z-[1000] flex flex-col items-end space-y-2"
-      >
+      {isSideButtonsVisible && (
+        <div 
+          // Container for bottom-right buttons (Use Tailwind)
+          className="fixed bottom-5 right-5 z-[1000] flex flex-col items-end space-y-2"
+        >
         {/* Trigger Floating Chat Window Button */}
         <button
           onClick={toggleChatWindow}
@@ -268,7 +273,8 @@ const AppUI: React.FC<AppUIProps> = ({
         </button>
         <PhysicalLightBarPanel visible={showLightBar} onClose={() => setShowLightBar(false)} />
         {/* === 新增結束 === */}
-      </div>
+        </div>
+      )}
     </>
   );
 };

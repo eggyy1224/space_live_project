@@ -19,6 +19,7 @@ export interface AppSlice {
   isCharacterControlPanelVisible: boolean;
   isEnvironmentControlPanelVisible: boolean;
   isRealtimeSchedulePanelVisible: boolean;
+  isSideButtonsVisible: boolean; // 控制右側按鈕的顯示/隱藏
   isLoading: boolean;
   errorMessage: string | null;
   currentAction: string | null;
@@ -41,6 +42,7 @@ export interface AppSlice {
   toggleCharacterControlPanel: () => void;
   toggleEnvironmentControlPanel: () => void;
   toggleRealtimeSchedulePanel: () => void;
+  toggleSideButtons: () => void; // 切換右側按鈕顯示狀態
   setLoading: (loading: boolean) => void;
   setError: (message: string | null) => void;
   setCurrentAction: (action: string | null) => void;
@@ -65,6 +67,7 @@ export const createAppSlice: StateCreator<AppSlice> = (set) => ({
   isCharacterControlPanelVisible: false,
   isEnvironmentControlPanelVisible: false,
   isRealtimeSchedulePanelVisible: false,
+  isSideButtonsVisible: true, // 預設顯示右側按鈕
   isLoading: false,
   errorMessage: null,
   currentAction: null,
@@ -102,6 +105,8 @@ export const createAppSlice: StateCreator<AppSlice> = (set) => ({
   toggleEnvironmentControlPanel: () => set((state) => ({ isEnvironmentControlPanelVisible: !state.isEnvironmentControlPanelVisible })),
   
   toggleRealtimeSchedulePanel: () => set((state) => ({ isRealtimeSchedulePanelVisible: !state.isRealtimeSchedulePanelVisible })),
+  
+  toggleSideButtons: () => set((state) => ({ isSideButtonsVisible: !state.isSideButtonsVisible })),
   
   setLoading: (loading) => set({ isLoading: loading }),
   
