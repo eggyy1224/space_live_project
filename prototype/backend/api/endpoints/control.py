@@ -448,6 +448,35 @@ async def control_body_animation(command: BodyAnimationCommand):
     return {"success": True}
 
 
+# ----------------- Realtime Voice Control -----------------
+
+class RealtimeVoiceControlRequest(BaseModel):
+    """Request model for controlling realtime voice mode on the frontend."""
+    action: str  # 'start' or 'stop'
+
+@router.post("/control/realtime-voice")
+async def control_realtime_voice(request: RealtimeVoiceControlRequest):
+    """Broadcast start/stop command for realtime voice mode to frontend."""
+    try:
+        if not manager.active_connections:
+            raise HTTPException(status_code=503, detail="沒有活動的前端連接")
+        if request.action not in {"start", "stop"}:
+            raise HTTPException(status_code=400, detail="action 必須是 'start' 或 'stop'")
+
+        message = {
+            "type": "realtime-voice-control",
+            "action": request.action,
+            "source": "api"
+        }
+        await manager.broadcast(json.dumps(message))
+        logger.info(f"Broadcasted realtime voice control: {request.action}")
+        return {"success": True, "action": request.action, "connections": len(manager.active_connections)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Realtime voice control failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Realtime voice control failed: {str(e)}")
+
 # --- 新增：頭部大小與場景顯示控制 ---
 
 

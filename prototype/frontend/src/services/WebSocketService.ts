@@ -238,6 +238,14 @@ class WebSocketService {
   private handleMessage(event: MessageEvent): void {
     try {
       const data = JSON.parse(event.data) as WebSocketMessage;
+      // --- Realtime voice control ---
+      if (data.type === "realtime-voice-control") {
+        const action = (data as any).action;
+        if (action === "start" || action === "stop") {
+          window.dispatchEvent(new CustomEvent("realtimeVoiceControl", { detail: action }));
+        }
+        return; // 已處理完畢
+      }
       if (data.type === "director-state") {
         const payload = (data as DirectorStateMessage).payload;
         directorBus.emit("stateUpdate", payload);

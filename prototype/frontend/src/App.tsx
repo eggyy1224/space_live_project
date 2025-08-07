@@ -139,6 +139,17 @@ function App() {
   }, [realtimeStreaming, startRealtime, stopRealtime]);
 
   useEffect(() => {
+    // 監聽來自後端的實時語音控制事件
+    const realtimeVoiceHandler = (e: Event) => {
+      const action = (e as CustomEvent<string>).detail;
+      if (action === 'start') {
+        startRealtime();
+      } else if (action === 'stop') {
+        stopRealtime();
+      }
+    };
+    window.addEventListener('realtimeVoiceControl', realtimeVoiceHandler);
+
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       if (e.code === 'Space' && !e.repeat && target.tagName !== 'INPUT' && !target.isContentEditable) {
@@ -147,7 +158,10 @@ function App() {
       }
     };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('realtimeVoiceControl', realtimeVoiceHandler);
+      window.removeEventListener('keydown', onKey);
+    };
   }, [toggleRealtime]);
   
   // --- 使用頭部服務 (替換 useModelService) ---

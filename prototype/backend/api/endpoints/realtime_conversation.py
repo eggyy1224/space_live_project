@@ -2,11 +2,14 @@ import json
 import logging
 from typing import AsyncIterator
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
 
 from services.realtime_conversation import RealtimeConversationService
 
 router = APIRouter()
+
+# Global flag for realtime conversation availability
+realtime_enabled: bool = True
 logger = logging.getLogger(__name__)
 
 
@@ -28,6 +31,11 @@ async def _iter_chunks(websocket: WebSocket) -> AsyncIterator[bytes]:
 async def websocket_endpoint(websocket: WebSocket) -> None:
     try:
         logger.info("New real-time WebSocket connection attempt")
+        # Check if realtime conversation is enabled
+        if not realtime_enabled:
+            logger.warning("Realtime conversation is currently disabled - rejecting connection")
+            await websocket.close(code=1000)
+            return
         await websocket.accept()
         logger.info("Real-time WebSocket connection accepted")
         
@@ -65,3 +73,29 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 await websocket.close()
         except Exception:
             pass
+
+
+# ----------------- Realtime Conversation Control Endpoints -----------------
+
+@router.post("/real-time/enable")
+async def enable_realtime_conversation():
+    """啟用實時對話功能 (允許 WebSocket 連線)"""
+    global realtime_enabled
+    realtime_enabled = True
+    logger.info("Realtime conversation enabled via API")
+    return {"success": True, "enabled": True}
+
+
+@router.post("/real-time/disable")
+async def disable_realtime_conversation():
+    """停用實時對話功能 (拒絕新的 WebSocket 連線)"""
+    global realtime_enabled
+    realtime_enabled = False
+    logger.info("Realtime conversation disabled via API")
+    return {"success": True, "enabled": False}
+
+
+@router.get("/real-time/status")
+async def realtime_conversation_status():
+    """查詢實時對話功能狀態"""
+    return {"enabled": realtime_enabled}
