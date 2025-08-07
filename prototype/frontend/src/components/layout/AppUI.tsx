@@ -60,6 +60,8 @@ interface AppUIProps {
   toggleCharacterControlPanel: () => void;
   // 環境光照控制面板控制
   toggleEnvironmentControlPanel: () => void;
+  // 排程控制面板控制
+  toggleRealtimeSchedulePanel: () => void;
   toggleRealtime: () => void;
   realtimeStreaming: boolean;
   realtimeError: string | null;
@@ -120,6 +122,8 @@ const AppUI: React.FC<AppUIProps> = ({
   toggleCharacterControlPanel,
   // 環境光照控制面板控制
   toggleEnvironmentControlPanel,
+  // 排程控制面板控制
+  toggleRealtimeSchedulePanel,
   toggleRealtime,
   realtimeStreaming,
   realtimeError,
@@ -242,6 +246,16 @@ const AppUI: React.FC<AppUIProps> = ({
           aria-label="開啟/關閉環境光照控制"
         >
           ✨
+        </button>
+
+        {/* Trigger Realtime Schedule Panel Button */}
+        <button
+          onClick={toggleRealtimeSchedulePanel}
+          className="w-12 h-12 rounded-full bg-purple-600 hover:bg-purple-700 text-white text-2xl shadow-md flex items-center justify-center cursor-pointer transition-colors duration-200"
+          title="開啟/關閉即時對話排程控制"
+          aria-label="開啟/關閉即時對話排程控制"
+        >
+          ⏰
         </button>
         {/* === 新增：物理燈條控制 toggle 按鈕 === */}
         <button

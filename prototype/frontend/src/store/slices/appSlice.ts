@@ -18,6 +18,7 @@ export interface AppSlice {
   isSettingsPanelVisible: boolean;
   isCharacterControlPanelVisible: boolean;
   isEnvironmentControlPanelVisible: boolean;
+  isRealtimeSchedulePanelVisible: boolean;
   isLoading: boolean;
   errorMessage: string | null;
   currentAction: string | null;
@@ -39,6 +40,7 @@ export interface AppSlice {
   toggleSettingsPanel: () => void;
   toggleCharacterControlPanel: () => void;
   toggleEnvironmentControlPanel: () => void;
+  toggleRealtimeSchedulePanel: () => void;
   setLoading: (loading: boolean) => void;
   setError: (message: string | null) => void;
   setCurrentAction: (action: string | null) => void;
@@ -62,6 +64,7 @@ export const createAppSlice: StateCreator<AppSlice> = (set) => ({
   isSettingsPanelVisible: false,
   isCharacterControlPanelVisible: false,
   isEnvironmentControlPanelVisible: false,
+  isRealtimeSchedulePanelVisible: false,
   isLoading: false,
   errorMessage: null,
   currentAction: null,
@@ -97,6 +100,8 @@ export const createAppSlice: StateCreator<AppSlice> = (set) => ({
   toggleCharacterControlPanel: () => set((state) => ({ isCharacterControlPanelVisible: !state.isCharacterControlPanelVisible })),
   
   toggleEnvironmentControlPanel: () => set((state) => ({ isEnvironmentControlPanelVisible: !state.isEnvironmentControlPanelVisible })),
+  
+  toggleRealtimeSchedulePanel: () => set((state) => ({ isRealtimeSchedulePanelVisible: !state.isRealtimeSchedulePanelVisible })),
   
   setLoading: (loading) => set({ isLoading: loading }),
   

@@ -16,7 +16,10 @@ import DirectorMonitorHUD from './components/DirectorMonitorHUD'
 import RoomControlPanel from './components/RoomControlPanel'
 import { CharacterControlPanel } from './components/CharacterControlPanel'
 import EnvironmentControlPanel from './components/EnvironmentControlPanel'
+import { RealtimeSchedulePanel } from './components/RealtimeSchedulePanel'
+import { RealtimeStatusIndicator, RealtimeStatusBadge } from './components/RealtimeStatusIndicator'
 import { usePerformanceMetrics } from './hooks/usePerformanceMetrics'
+import { useRealtimeScheduler } from './hooks/useRealtimeScheduler'
 
 // 引入服務
 import { 
@@ -112,6 +115,11 @@ function App() {
   const toggleEnvironmentControlPanel = useStore((state) => state.toggleEnvironmentControlPanel);
   // <--- 結束 --->
   
+  // <--- 從 Zustand Store 獲取排程控制面板狀態和操作 --->
+  const isRealtimeSchedulePanelVisible = useStore((state) => state.isRealtimeSchedulePanelVisible);
+  const toggleRealtimeSchedulePanel = useStore((state) => state.toggleRealtimeSchedulePanel);
+  // <--- 結束 --->
+  
   // 使用音頻服務
   const { 
     isRecording, 
@@ -130,11 +138,31 @@ function App() {
     error: realtimeError,
   } = useRealtimeVoice();
 
+  // 使用排程器 (全域唯一)
+  const realtimeScheduler = useRealtimeScheduler();
+
+  // 監聽 realtimeStreaming 狀態變化，同步到排程系統
+  useEffect(() => {
+    const currentScheduleState = useStore.getState().realtimeCurrentlyActive;
+    if (currentScheduleState !== realtimeStreaming) {
+      console.log(`[App] Syncing schedule state: ${currentScheduleState} -> ${realtimeStreaming}`);
+      useStore.getState().setRealtimeActive(realtimeStreaming);
+    }
+  }, [realtimeStreaming]);
+
   const toggleRealtime = useCallback(() => {
     if (realtimeStreaming) {
       stopRealtime();
+      // 同步更新排程系統狀態
+      useStore.getState().setRealtimeActive(false);
+      // 啟用手動模式，暫停自動排程
+      useStore.getState().enableManualMode();
     } else {
       startRealtime();
+      // 同步更新排程系統狀態
+      useStore.getState().setRealtimeActive(true);
+      // 啟用手動模式，暫停自動排程
+      useStore.getState().enableManualMode();
     }
   }, [realtimeStreaming, startRealtime, stopRealtime]);
 
@@ -142,10 +170,15 @@ function App() {
     // 監聽來自後端的實時語音控制事件
     const realtimeVoiceHandler = (e: Event) => {
       const action = (e as CustomEvent<string>).detail;
+      console.log(`[App] Received realtime voice control: ${action}`);
       if (action === 'start') {
         startRealtime();
+        // 同步更新排程系統狀態
+        useStore.getState().setRealtimeActive(true);
       } else if (action === 'stop') {
         stopRealtime();
+        // 同步更新排程系統狀態
+        useStore.getState().setRealtimeActive(false);
       }
     };
     window.addEventListener('realtimeVoiceControl', realtimeVoiceHandler);
@@ -622,6 +655,21 @@ function App() {
           onClose={toggleEnvironmentControlPanel}
         />
         
+        {/* 即時對話排程控制面板 - 移到左下角 */}
+        <div className="fixed bottom-4 left-4 z-50 w-80">
+          <RealtimeSchedulePanel 
+            isVisible={isRealtimeSchedulePanelVisible}
+            onClose={toggleRealtimeSchedulePanel}
+          />
+        </div>
+        
+        {/* 即時對話狀態指示器 - 移到右下角，只在排程啟用且面板未開啟時顯示 */}
+        {useStore(state => state.scheduleEnabled) && !isRealtimeSchedulePanelVisible && (
+          <div className="fixed bottom-4 right-4 z-50">
+            <RealtimeStatusIndicator />
+          </div>
+        )}
+        
         {/* 渲染 AppUI (只傳遞必要 props) */}
         <AppUI
           wsConnected={wsConnected}
@@ -630,6 +678,7 @@ function App() {
           toggleRoomControlPanel={useStore((state) => state.toggleRoomControlPanel)}
           toggleCharacterControlPanel={toggleCharacterControlPanel}
           toggleEnvironmentControlPanel={toggleEnvironmentControlPanel}
+          toggleRealtimeSchedulePanel={toggleRealtimeSchedulePanel}
           toggleRealtime={toggleRealtime}
           realtimeStreaming={realtimeStreaming}
           realtimeError={realtimeError}
