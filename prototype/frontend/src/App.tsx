@@ -146,6 +146,46 @@ function App() {
   // 使用排程器 (全域唯一)
   const realtimeScheduler = useRealtimeScheduler();
 
+  // === 自動初始化 Happy Path ===
+  useEffect(() => {
+    // 檢查是否應該啟用自動初始化（通過 URL 參數或簡化條件）
+    const urlParams = new URLSearchParams(window.location.search);
+    const autoStart = urlParams.get('autostart') === 'true' || 
+                      window.location.hostname !== 'localhost'; // 非本地環境下預設啟用
+    
+    if (!autoStart) {
+      console.log('[App] Auto-start disabled, skipping happy path initialization');
+      return;
+    }
+
+    // 頁面載入後 3 秒自動啟用排程模式並隱藏按鈕
+    const initTimer = setTimeout(() => {
+      console.log('[App] Auto-initializing happy path...');
+      
+      // 1. 啟用排程模式
+      useStore.getState().setScheduleEnabled(true);
+      console.log('[App] ✅ Schedule enabled');
+      
+      // 2. 隱藏右側按鈕（只有在顯示時才隱藏）
+      if (useStore.getState().isSideButtonsVisible) {
+        useStore.getState().toggleSideButtons();
+        console.log('[App] ✅ Side buttons hidden');
+      }
+      
+      // 3. 確保不是手動模式
+      if (useStore.getState().isManualMode) {
+        useStore.getState().disableManualMode();
+        console.log('[App] ✅ Manual mode disabled');
+      }
+      
+      // 全螢幕模式由 AppleScript 腳本處理
+      
+      console.log('[App] 🚀 Happy path initialized - Schedule running with hidden UI');
+    }, 3000); // 3秒後執行
+
+    return () => clearTimeout(initTimer);
+  }, []); // 只在組件掛載時執行一次
+
   // 監聽 realtimeStreaming 狀態變化，同步到排程系統（避免循環更新）
   useEffect(() => {
     console.log(`[App] RealtimeStreaming changed to: ${realtimeStreaming}`);
