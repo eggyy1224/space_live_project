@@ -1,110 +1,112 @@
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { useStore } from '../store';
 
 /**
- * 即時對話狀態指示器
- * 在主界面顯示當前狀態和倒數時間
+ * 終端機風格的即時對話狀態指示器
+ * 顯示在左上角，排程面板收起來時顯示
  */
 export function RealtimeStatusIndicator() {
+  // 不需要在這裡調用 useRealtimeScheduler，App.tsx 中已經調用了
+
   const realtimeCurrentlyActive = useStore(state => state.realtimeCurrentlyActive);
   const scheduleEnabled = useStore(state => state.scheduleEnabled);
   const currentCountdown = useStore(state => state.currentCountdown);
   const nextAction = useStore(state => state.nextAction);
   const isManualMode = useStore(state => state.isManualMode);
 
-  // 格式化時間顯示
-  const formatTime = (seconds: number): string => {
+  // 格式化時間顯示 (MM:SS) - 使用 useCallback 優化
+  const formatTime = useCallback((seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
+    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+  }, []);
 
-  // 獲取狀態描述
-  const getStatusText = () => {
+  // 使用 useMemo 優化，避免每次渲染都重新計算
+  const terminal = useMemo(() => {
+    const isOnline = realtimeCurrentlyActive;
+    const timeLeft = formatTime(currentCountdown);
+    
     if (isManualMode) {
-      return realtimeCurrentlyActive ? '手動模式 - 進行中' : '手動模式 - 已關閉';
+      return {
+        status: isOnline ? 'ONLINE' : 'OFFLINE',
+        message: isOnline ? 'MANUAL MODE ACTIVE' : 'MANUAL MODE INACTIVE',
+        color: isOnline ? 'text-yellow-400' : 'text-yellow-600',
+        bgColor: 'bg-gray-900',
+        borderColor: 'border-yellow-500',
+        time: '--:--'
+      };
     }
-    
-    if (!scheduleEnabled) {
-      return realtimeCurrentlyActive ? '排程已停用 - 進行中' : '排程已停用 - 已關閉';
-    }
-    
-    if (realtimeCurrentlyActive) {
-      return `進行中 - ${formatTime(currentCountdown)}後關閉`;
-    } else {
-      return `已關閉 - ${formatTime(currentCountdown)}後開啟`;
-    }
-  };
 
-  // 獲取指示器顏色
-  const getIndicatorColor = () => {
-    if (isManualMode) {
-      return realtimeCurrentlyActive ? 'bg-yellow-500' : 'bg-yellow-600';
-    }
-    
     if (!scheduleEnabled) {
-      return 'bg-gray-500';
+      return {
+        status: 'DISABLED',
+        message: 'SCHEDULE INACTIVE',
+        color: 'text-gray-400',
+        bgColor: 'bg-gray-900',
+        borderColor: 'border-gray-500',
+        time: '--:--'
+      };
     }
-    
-    return realtimeCurrentlyActive ? 'bg-green-500' : 'bg-red-500';
-  };
 
-  // 獲取背景顏色
-  const getBackgroundColor = () => {
-    if (isManualMode) {
-      return 'bg-yellow-50 border-yellow-200';
-    }
-    
-    if (!scheduleEnabled) {
-      return 'bg-gray-50 border-gray-200';
-    }
-    
-    return realtimeCurrentlyActive 
-      ? 'bg-green-50 border-green-200' 
-      : 'bg-red-50 border-red-200';
-  };
-
-  // 獲取文字顏色
-  const getTextColor = () => {
-    if (isManualMode) {
-      return 'text-yellow-800';
-    }
-    
-    if (!scheduleEnabled) {
-      return 'text-gray-800';
-    }
-    
-    return realtimeCurrentlyActive ? 'text-green-800' : 'text-red-800';
-  };
+    return {
+      status: isOnline ? 'ONLINE' : 'OFFLINE',
+      message: isOnline ? `SHUTDOWN IN ${timeLeft}` : `STARTUP IN ${timeLeft}`,
+      color: isOnline ? 'text-green-400' : 'text-red-400',
+      bgColor: 'bg-gray-900',
+      borderColor: isOnline ? 'border-green-500' : 'border-red-500',
+      time: timeLeft
+    };
+  }, [realtimeCurrentlyActive, currentCountdown, isManualMode, scheduleEnabled]);
+  const isOnline = realtimeCurrentlyActive;
 
   return (
-    <div className={`inline-flex items-center px-4 py-2 rounded-lg border ${getBackgroundColor()}`}>
-      {/* 狀態指示燈 */}
-      <div className="flex items-center space-x-2">
-        <div className={`w-3 h-3 rounded-full ${getIndicatorColor()}`}></div>
-        <span className={`font-medium ${getTextColor()}`}>即時對話</span>
+    <div className={`font-mono text-sm select-none ${terminal.bgColor} ${terminal.borderColor} border-2 rounded-md shadow-lg backdrop-blur-sm bg-opacity-95 min-w-[280px]`}>
+      {/* Terminal Header */}
+      <div className="px-3 py-1 border-b border-gray-700 flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <div className="flex space-x-1">
+            <div className="w-3 h-3 rounded-full bg-red-500"></div>
+            <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+          </div>
+          <span className="text-gray-400 text-xs">realtime-status</span>
+        </div>
+        <span className="text-gray-500 text-xs">●</span>
       </div>
-      
-      {/* 分隔線 */}
-      <div className="mx-3 h-4 w-px bg-gray-300"></div>
-      
-      {/* 狀態文字 */}
-      <span className={`text-sm ${getTextColor()}`}>
-        {getStatusText()}
-      </span>
-      
-      {/* 排程狀態標籤 */}
-      {isManualMode && (
-        <span className="ml-2 px-2 py-1 text-xs font-medium bg-yellow-200 text-yellow-800 rounded">
-          手動
-        </span>
-      )}
-      
-      {!scheduleEnabled && !isManualMode && (
-        <span className="ml-2 px-2 py-1 text-xs font-medium bg-gray-200 text-gray-800 rounded">
-          停用
-        </span>
-      )}
+
+      {/* Terminal Content */}
+      <div className="px-3 py-2 space-y-1">
+        {/* Status Line */}
+        <div className="flex items-center space-x-2">
+          <span className="text-gray-500">$</span>
+          <span className="text-gray-300">status</span>
+          <span className={`font-bold ${terminal.color}`}>
+            {terminal.status}
+          </span>
+          {(isOnline || (!isManualMode && scheduleEnabled)) && (
+            <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-400' : 'bg-red-400'} animate-pulse`}></div>
+          )}
+        </div>
+
+        {/* Timer Line */}
+        {!isManualMode && scheduleEnabled && (
+          <div className="flex items-center space-x-2">
+            <span className="text-gray-500">$</span>
+            <span className="text-gray-300">timer</span>
+            <span className={`font-bold tabular-nums ${terminal.color}`}>
+              {terminal.time}
+            </span>
+          </div>
+        )}
+
+        {/* Message Line */}
+        <div className="flex items-center space-x-2">
+          <span className="text-gray-500">&gt;</span>
+          <span className={`text-xs ${terminal.color}`}>
+            {terminal.message}
+          </span>
+        </div>
+      </div>
     </div>
   );
 }

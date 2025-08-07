@@ -141,47 +141,62 @@ function App() {
   // 使用排程器 (全域唯一)
   const realtimeScheduler = useRealtimeScheduler();
 
-  // 監聽 realtimeStreaming 狀態變化，同步到排程系統
+  // 監聽 realtimeStreaming 狀態變化，同步到排程系統（避免循環更新）
   useEffect(() => {
+    console.log(`[App] RealtimeStreaming changed to: ${realtimeStreaming}`);
     const currentScheduleState = useStore.getState().realtimeCurrentlyActive;
+    
+    // 只有在狀態真的不同時才更新，避免循環
     if (currentScheduleState !== realtimeStreaming) {
-      console.log(`[App] Syncing schedule state: ${currentScheduleState} -> ${realtimeStreaming}`);
+      console.log(`[App] Syncing schedule state from ${currentScheduleState} to ${realtimeStreaming}`);
       useStore.getState().setRealtimeActive(realtimeStreaming);
     }
   }, [realtimeStreaming]);
 
   const toggleRealtime = useCallback(() => {
+    console.log(`[App] Manual toggle realtime, current streaming: ${realtimeStreaming}`);
+    // 啟用手動模式，暫停自動排程
+    useStore.getState().enableManualMode();
+    
     if (realtimeStreaming) {
       stopRealtime();
-      // 同步更新排程系統狀態
-      useStore.getState().setRealtimeActive(false);
-      // 啟用手動模式，暫停自動排程
-      useStore.getState().enableManualMode();
     } else {
       startRealtime();
-      // 同步更新排程系統狀態
-      useStore.getState().setRealtimeActive(true);
-      // 啟用手動模式，暫停自動排程
-      useStore.getState().enableManualMode();
     }
+    // 狀態會透過 useEffect 自動同步，不需要手動設定
   }, [realtimeStreaming, startRealtime, stopRealtime]);
 
   useEffect(() => {
-    // 監聽來自後端的實時語音控制事件
+    // 監聽來自後端的實時語音控制事件（自動排程）
     const realtimeVoiceHandler = (e: Event) => {
       const action = (e as CustomEvent<string>).detail;
       console.log(`[App] Received realtime voice control: ${action}`);
-      if (action === 'start') {
-        startRealtime();
-        // 同步更新排程系統狀態
-        useStore.getState().setRealtimeActive(true);
-      } else if (action === 'stop') {
-        stopRealtime();
-        // 同步更新排程系統狀態
-        useStore.getState().setRealtimeActive(false);
+      
+      // 只有在非手動模式時才處理自動排程的消息
+      const isManualMode = useStore.getState().isManualMode;
+      if (!isManualMode) {
+        if (action === 'start') {
+          startRealtime();
+        } else if (action === 'stop') {
+          stopRealtime();
+        }
       }
     };
+
+    // 監聽手動控制事件
+    const manualControlHandler = (e: Event) => {
+      const { action, source } = (e as CustomEvent<{action: string, source: string}>).detail;
+      console.log(`[App] Received manual realtime control: ${action} from ${source}`);
+      
+      if (action === 'start') {
+        startRealtime();
+      } else if (action === 'stop') {
+        stopRealtime();
+      }
+    };
+
     window.addEventListener('realtimeVoiceControl', realtimeVoiceHandler);
+    window.addEventListener('manualRealtimeControl', manualControlHandler);
 
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -193,6 +208,7 @@ function App() {
     window.addEventListener('keydown', onKey);
     return () => {
       window.removeEventListener('realtimeVoiceControl', realtimeVoiceHandler);
+      window.removeEventListener('manualRealtimeControl', manualControlHandler);
       window.removeEventListener('keydown', onKey);
     };
   }, [toggleRealtime]);
@@ -665,7 +681,7 @@ function App() {
         
         {/* 即時對話狀態指示器 - 移到右下角，只在排程啟用且面板未開啟時顯示 */}
         {useStore(state => state.scheduleEnabled) && !isRealtimeSchedulePanelVisible && (
-          <div className="fixed bottom-4 right-4 z-50">
+          <div className="fixed top-4 left-4 z-50">
             <RealtimeStatusIndicator />
           </div>
         )}

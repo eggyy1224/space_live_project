@@ -31,14 +31,25 @@ export function RealtimeSchedulePanel({ isVisible, onClose }: RealtimeSchedulePa
   
   // 手動控制方法 - 直接調用 API 而不是透過 hook
   const manualStart = async () => {
+    console.log('[RealtimeSchedulePanel] Manual start clicked');
+    // 啟用手動模式
+    enableManualMode();
+    
     try {
       const response = await fetch('/api/control/realtime-voice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'start' }),
       });
-      if (response.ok) {
-        useStore.getState().setRealtimeActive(true);
+      
+      const result = await response.json();
+      console.log('[RealtimeSchedulePanel] Manual start API response:', result);
+      
+      if (result.success) {
+        // API 成功，手動觸發前端開始
+        window.dispatchEvent(new CustomEvent('manualRealtimeControl', { 
+          detail: { action: 'start', source: 'manual' } 
+        }));
       }
     } catch (error) {
       console.error('Manual start failed:', error);
@@ -46,14 +57,25 @@ export function RealtimeSchedulePanel({ isVisible, onClose }: RealtimeSchedulePa
   };
 
   const manualStop = async () => {
+    console.log('[RealtimeSchedulePanel] Manual stop clicked');
+    // 啟用手動模式
+    enableManualMode();
+    
     try {
       const response = await fetch('/api/control/realtime-voice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'stop' }),
       });
-      if (response.ok) {
-        useStore.getState().setRealtimeActive(false);
+      
+      const result = await response.json();
+      console.log('[RealtimeSchedulePanel] Manual stop API response:', result);
+      
+      if (result.success) {
+        // API 成功，手動觸發前端停止
+        window.dispatchEvent(new CustomEvent('manualRealtimeControl', { 
+          detail: { action: 'stop', source: 'manual' } 
+        }));
       }
     } catch (error) {
       console.error('Manual stop failed:', error);
@@ -69,13 +91,33 @@ export function RealtimeSchedulePanel({ isVisible, onClose }: RealtimeSchedulePa
 
   // 處理持續時間變更
   const handleOnlineDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value) || 0;
-    setOnlineDuration(Math.max(10, Math.min(3600, value))); // 限制在 10秒 到 1小時
+    const inputValue = e.target.value;
+    
+    // 允許空值和正在輸入的狀態
+    if (inputValue === '') {
+      return; // 不更新，保持當前值
+    }
+    
+    const numValue = parseInt(inputValue);
+    if (!isNaN(numValue)) {
+      const clampedValue = Math.max(10, Math.min(3600, numValue)); // 限制在 10秒 到 1小時
+      setOnlineDuration(clampedValue);
+    }
   };
 
   const handleOfflineDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value) || 0;
-    setOfflineDuration(Math.max(10, Math.min(3600, value))); // 限制在 10秒 到 1小時
+    const inputValue = e.target.value;
+    
+    // 允許空值和正在輸入的狀態
+    if (inputValue === '') {
+      return; // 不更新，保持當前值
+    }
+    
+    const numValue = parseInt(inputValue);
+    if (!isNaN(numValue)) {
+      const clampedValue = Math.max(10, Math.min(3600, numValue)); // 限制在 10秒 到 1小時
+      setOfflineDuration(clampedValue);
+    }
   };
 
   return (
@@ -154,9 +196,12 @@ export function RealtimeSchedulePanel({ isVisible, onClose }: RealtimeSchedulePa
               type="number"
               min="10"
               max="3600"
+              step="1"
               value={onlineDurationSeconds}
               onChange={handleOnlineDurationChange}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onFocus={(e) => e.target.select()} // 選取全部文字方便輸入
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="10-3600"
             />
             <span className="text-xs text-gray-500 mt-1 block">
               ({formatTime(onlineDurationSeconds)})
@@ -169,9 +214,12 @@ export function RealtimeSchedulePanel({ isVisible, onClose }: RealtimeSchedulePa
               type="number"
               min="10"
               max="3600"
+              step="1"
               value={offlineDurationSeconds}
               onChange={handleOfflineDurationChange}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onFocus={(e) => e.target.select()} // 選取全部文字方便輸入
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="10-3600"
             />
             <span className="text-xs text-gray-500 mt-1 block">
               ({formatTime(offlineDurationSeconds)})
