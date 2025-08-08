@@ -648,6 +648,7 @@ function App() {
           isHeadModelLoaded={headModelLoaded}
           showSpaceBackground={showSpaceBackground}
           modelScale={modelScale}
+          headOnly={new URLSearchParams(window.location.search).has('headonly')}
         />
         {/* === 刪除：燈光亮度控制 bar === */}
         {/* <LightBarControl /> */}

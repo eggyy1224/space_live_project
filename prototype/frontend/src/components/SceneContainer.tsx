@@ -18,6 +18,7 @@ interface SceneContainerProps {
   isHeadModelLoaded: boolean;
   showSpaceBackground: boolean;
   modelScale: [number, number, number];
+  headOnly?: boolean;
 }
 
 // 新增全局燈光組件，使其隨著音樂變化
@@ -67,6 +68,7 @@ const SceneContainer: React.FC<SceneContainerProps> = ({
   isHeadModelLoaded,
   showSpaceBackground,
   modelScale,
+  headOnly,
 }) => {
   // console.log('[SceneContainer] Rendering...');
   return (
@@ -86,6 +88,7 @@ const SceneContainer: React.FC<SceneContainerProps> = ({
         isHeadModelLoaded={isHeadModelLoaded}
         showSpaceBackground={showSpaceBackground}
         modelScale={modelScale}
+        headOnly={headOnly}
       />
     </Canvas>
   );
@@ -97,6 +100,7 @@ const SceneContent: React.FC<SceneContainerProps> = ({
   isHeadModelLoaded,
   showSpaceBackground,
   modelScale,
+  headOnly,
 }) => {
   const { camera } = useThree();
 
@@ -270,8 +274,8 @@ const SceneContent: React.FC<SceneContainerProps> = ({
       <DynamicAudioBackgrounds />
       <DynamicLights />
       <Suspense fallback={null}>
-        {/* 房間場景 */}
-        {showRoomScene && (
+      {/* 房間場景 */}
+      {showRoomScene && !headOnly && (
           <RoomScene
             roomModelUrl={roomSceneUrl}
             position={roomPosition}
@@ -281,27 +285,30 @@ const SceneContent: React.FC<SceneContainerProps> = ({
         )}
 
         {(() => {
-          // 從 store 讀取頭模型的位置和旋轉
+          // 從 store 讀取頭模型的位置和旋轉（一般模式用）
           const modelPosition = useStore((s) => s.modelPosition);
           const modelRotation = useStore((s) => s.modelRotation);
-          const baseScale = 10;
-          const basePosition: [number, number, number] = [0, -5, 0]; // 中央位置
 
-          /* HeadModel 暫時隱藏 */
-          return false && (
-            <group position={basePosition} scale={baseScale}>
-              <HeadModel 
-                headModelUrl={headModelUrl} 
-                scale={modelScale}
-                position={modelPosition}
-                rotation={modelRotation}
-              />
-            </group>
-          );
+          if (headOnly) {
+            // headonly 模式：只顯示頭，置中並放大到 20
+            return (
+              <group position={[0, 0, 0]}>
+                <HeadModel
+                  headModelUrl={headModelUrl}
+                  scale={50}
+                  position={[0, 0, 0]}
+                  rotation={[0, 0, 0]}
+                />
+              </group>
+            );
+          }
+
+          // 一般模式：目前仍隱藏 HeadModel（由 CharacterModel 呈現）
+          return null;
         })()}
         
-        {/* 角色模型 - 放在頭部旁邊 */}
-        <CharacterModel />
+        {/* 角色模型 - headonly 模式隱藏 */}
+        {!headOnly && <CharacterModel />}
         {/* 舞群暫時隱藏，以改善效能與維護性 */}
         {false && (() => {
           // 圓形軍隊陣列：100個人圍成圓圈
@@ -322,7 +329,7 @@ const SceneContent: React.FC<SceneContainerProps> = ({
         enableZoom
         enableRotate
         onStart={() => useStore.getState().setRuntime({ cameraPreset: "roam" })}
-        target={[0, 0.8, 0]} // OrbitControls 的 target 可能需要根據當前 cameraManager 的 target 動態調整，或者由 cameraManager 完全接管
+        target={headOnly ? [0, 0, 0] : [0, 0.8, 0]} // headonly 模式置中
         mouseButtons={{
           LEFT: THREE.MOUSE.PAN,
           MIDDLE: THREE.MOUSE.DOLLY,

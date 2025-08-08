@@ -343,37 +343,32 @@ export const HeadModel: React.FC<HeadModelProps> = ({
       const voiceVolume = audioAverageVolumeRef.current;
       const isSpeaking = isSpeakingRef.current;
       
-      // 量子機率雲控制 - 說話時激活三頭效果
+      // 量子機率雲控制 - 不講話也保留左右投影，講話時加強
       const quantumCloud = quantumCloudRef.current;
-      
-      if (isSpeaking && voiceVolume > 0.02) {
-        // 說話時：激活量子疊加態 - 三個位置同時存在
-        const speechIntensity = Math.min(voiceVolume * 12, 1.0); // 提高敏感度
-        
-                 // 根據語音強度決定機率分布 - 更敏感的門檻
-         if (speechIntensity > 0.4) {
-           // 強烈說話：三頭完全顯現 (降低門檻從 0.7 到 0.4)
-           quantumCloud.targetProbabilities = [1.0, 0.9, 0.9];
-           quantumCloud.entanglementFactor = speechIntensity;
-         } else if (speechIntensity > 0.15) {
-           // 中等說話：明顯的三頭效果 (降低門檻從 0.3 到 0.15)
-           quantumCloud.targetProbabilities = [1.0, 0.6, 0.6];
-           quantumCloud.entanglementFactor = speechIntensity * 0.7;
-         } else {
-           // 輕微說話：輕微的量子分裂 (門檻 0.02-0.15)
-           quantumCloud.targetProbabilities = [1.0, 0.3, 0.3];
-           quantumCloud.entanglementFactor = speechIntensity * 0.5;
-         }
-        
-        // 量子相位同步 - 讓三個頭的動作有關聯性
-        quantumCloud.coherencePhase += delta * (5 + speechIntensity * 10);
-        
-             } else {
-         // 不說話時：回到單一狀態（量子坍縮）
-         quantumCloud.targetProbabilities = [1.0, 0, 0];
-         quantumCloud.entanglementFactor *= 0.98; // 更慢的消失速度，避免閃爍
-         quantumCloud.coherencePhase += delta * 2;
-       }
+      {
+        const speechIntensity = isSpeaking ? Math.min(voiceVolume * 12, 1.0) : 0;
+        // 音樂影響下的基礎投影機率（不講話也會有）
+        const musicInfluence = Math.min(Math.max(musicIntensity, 0), 1);
+        const baseProjection = 0.18 + Math.tanh(musicInfluence * 2.5) * 0.35; // 約 0.18 - 0.53
+
+        if (speechIntensity > 0.4) {
+          // 強烈說話：三頭完全顯現
+          quantumCloud.targetProbabilities = [1.0, 0.9, 0.9];
+          quantumCloud.entanglementFactor = 0.6 + 0.4 * speechIntensity;
+        } else if (speechIntensity > 0.15) {
+          // 中度說話：明顯三頭效果，至少 0.6
+          const side = Math.max(0.6, baseProjection);
+          quantumCloud.targetProbabilities = [1.0, side, side];
+          quantumCloud.entanglementFactor = 0.4 + 0.4 * speechIntensity;
+        } else {
+          // 不講話或極輕微：保留音樂驅動的左右投影
+          quantumCloud.targetProbabilities = [1.0, baseProjection, baseProjection];
+          quantumCloud.entanglementFactor = 0.12 + baseProjection * 0.4;
+        }
+
+        // 相位演進：基礎 + 語音加成 + 音樂微加成
+        quantumCloud.coherencePhase += delta * (2 + speechIntensity * 8 + musicInfluence * 1.5);
+      }
       
       // 平滑過渡機率值
       quantumCloud.positions.forEach((pos, i) => {
