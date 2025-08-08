@@ -76,6 +76,11 @@ class APIIntegrations:
                 result = await self._handle_environment_config(arguments)
                 logger.info(f"💡 environment_config 處理結果: {result}")
                 return result
+            elif function_name == "speak_message":
+                logger.info("🗣️ 調用 speak_message 處理器")
+                result = await self._handle_speak_message(arguments)
+                logger.info(f"🗣️ speak_message 處理結果: {result}")
+                return result
             elif function_name == "show_images_by_preview":
                 logger.info("🖼️ 調用 show_images_by_preview 處理器")
                 result = await self._handle_show_images_by_preview(arguments)
@@ -681,6 +686,59 @@ class APIIntegrations:
                 "success": False,
                 "error": f"character_animation_mix failed: {str(e)}"
             }
+
+    async def _handle_speak_message(self, arguments: dict) -> dict:
+        """處理 speak_message 工具調用，讓虛擬角色說出指定台詞。
+
+        會呼叫本地 /api/control/send-message，伺服器端自動進行 TTS 並廣播到前端。
+        """
+        try:
+            content = arguments.get("content")
+            message_type = arguments.get("message_type", "chat-message")
+
+            if content is None:
+                return {
+                    "success": False,
+                    "error": "Missing required parameter: content"
+                }
+
+            payload = {
+                "content": content,
+                "message_type": message_type,
+            }
+
+            logger.info(f"🗣️ 讓角色說話，type={message_type}, content_len={len(content)}")
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{self.base_url}/api/control/send-message",
+                    json=payload,
+                    headers={"Content-Type": "application/json"},
+                    timeout=aiohttp.ClientTimeout(total=8)
+                ) as response:
+                    response_text = await response.text()
+
+                    if response.status == 200:
+                        try:
+                            result = json.loads(response_text) if response_text else {}
+                        except json.JSONDecodeError:
+                            result = {}
+                        return {
+                            "success": True,
+                            "message": "Message sent to avatar",
+                            "result": result
+                        }
+                    else:
+                        logger.error(f"❌ 調用 send-message 失敗: HTTP {response.status} - {response_text}")
+                        return {
+                            "success": False,
+                            "error": f"HTTP {response.status}: {response_text}"
+                        }
+        except aiohttp.ClientTimeout:
+            logger.error("⏰ speak_message 請求超時")
+            return {"success": False, "error": "Request timeout"}
+        except Exception as e:
+            logger.error(f"❌ speak_message 處理錯誤: {e}")
+            return {"success": False, "error": f"Failed to send message: {str(e)}"}
 
     async def analyze_exhibition_field(self, analysis_focus: str = "exhibition") -> dict:
         """

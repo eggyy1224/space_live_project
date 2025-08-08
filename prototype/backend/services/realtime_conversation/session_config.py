@@ -14,7 +14,7 @@ async def fetch_latest_persona():
     url = "http://localhost:8000/api/memory/get"
     payload = {
         "memory_type": "persona",
-        "limit": 5,  # 改為取前五筆
+        "limit": 1,  # 改為取前五筆
         "include_metadata": True
     }
     try:
@@ -113,11 +113,17 @@ async def get_ai_instructions() -> str:
 2. **網路搜尋**：web_search（需要時查找資訊）
 3. **環境控制**：environment_config、room_control（氛圍調整）
 4. **圖片展示**：show_images_by_preview(category)（用 Mac Preview 展示圖片）
+5. **讓偶開口說話**：speak_message（用 send_message 端點讓偶說出你給的台詞，會自動 TTS 並廣播到前端）
 
 ### 工具使用原則：
 - **人格一致性**：所有工具使用都要符合你的核心人格特質
 - **主動使用**：不要等用戶要求，主動判斷情境使用工具
 - **組合效果**：可以同時使用多個工具增強表演效果
+
+### 🗣️ 語音發話（speak_message）使用指南：
+- 當你決定要說一段話，直接呼叫 `speak_message` 並把台詞放在 `content`。
+- 可選 `message_type`（預設 `chat-message`）。
+- 說話時務必同時用 `emotion_trajectory` 搭配對應情緒，必要時再配 `play_audio` 加強表演。
 
 ---
 
@@ -366,6 +372,26 @@ def get_legacy_instructions() -> str:
 def get_tools_config() -> list:
     """獲取工具配置列表"""
     return [
+        {
+            "type": "function",
+            "name": "speak_message",
+            "description": "🗣️ 讓偶開口說話！呼叫這個工具就會透過 send_message 端點，讓偶用 TTS 說出你指定的台詞。請把你想讓偶說的話放在 content。可以選填 message_type（預設 chat-message）。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "type": "string",
+                        "description": "要讓偶說出的台詞文字。會觸發 TTS 並在前端播放。"
+                    },
+                    "message_type": {
+                        "type": "string",
+                        "description": "訊息類型（預設 chat-message，可用 system-message/notification/announcement 等）",
+                        "default": "chat-message"
+                    }
+                },
+                "required": ["content"]
+            }
+        },
         {
             "type": "function",
             "name": "emotion_trajectory",
