@@ -53,37 +53,7 @@ tell application "Terminal"
 end tell
 APPLESCRIPT
 
-# 將後端所在的 Terminal 視窗移到右側（主螢幕，小螢幕）並鋪滿
-osascript -l JavaScript -e '
-(() => {
-  ObjC.import("AppKit");
-  const delay = (s) => $.NSThread.sleepForTimeInterval(s);
-  const se = Application("System Events");
-  const mf = $.NSScreen.mainScreen.frame;
-  const mainHeight = Number(mf.size.height);
-  const rect = { x: Number(mf.origin.x), y: Number(mf.origin.y), w: Number(mf.size.width), h: Number(mf.size.height) };
-  const ax = { x: rect.x, y: mainHeight - (rect.y + rect.h), w: rect.w, h: rect.h };
-  let tries = 0;
-  while (tries < 80) {
-    try {
-      const proc = se.processes.byName("Terminal");
-      const wins = proc.windows;
-      if (wins.length > 0) {
-        proc.frontmost = true;
-        delay(0.1);
-        try { const menu = proc.menuBars[0].menuBarItems.byName("View").menus[0]; if (menu && menu.menuItems.byName("Exit Full Screen").exists()) menu.menuItems.byName("Exit Full Screen").click(); } catch (e) {}
-        const win = wins[0];
-        win.position = [ax.x, ax.y];
-        win.size = [ax.w, ax.h];
-        delay(0.2);
-        try { const menu2 = proc.menuBars[0].menuBarItems.byName("View").menus[0]; if (menu2 && menu2.menuItems.byName("Enter Full Screen").exists()) menu2.menuItems.byName("Enter Full Screen").click(); } catch (e) {}
-        break;
-      }
-    } catch (e) {}
-    delay(0.1);
-    tries++;
-  }
-})();'
+# （移除舊的 Terminal 強制全螢幕與鋪滿步驟，避免被系統切到其它桌面）
 echo "等待後端服務啟動..."
 sleep 15 # 給予後端足夠的啟動時間
 
@@ -143,99 +113,11 @@ echo "如需自動排程與隱藏控制，可使用 headonly 視窗 (稍後將�
 echo "等待頁面完全載入..."
 sleep 5  # 等待頁面載入
 
-echo "使用 chrome-cli 切換為全螢幕模式..."
-
-# 方法1: 使用 chrome-cli 設定視窗大小為全螢幕
-echo "設定 Chrome 視窗為螢幕大小..."
-
-# 動態獲取螢幕解析度
-RESOLUTION=$(system_profiler SPDisplaysDataType | grep "Resolution:" | head -1 | grep -o '[0-9]* x [0-9]*')
-if [ -n "$RESOLUTION" ]; then
-    SCREEN_WIDTH=$(echo "$RESOLUTION" | cut -d' ' -f1)
-    SCREEN_HEIGHT=$(echo "$RESOLUTION" | cut -d' ' -f3)
-    echo "檢測到螢幕解析度: ${SCREEN_WIDTH} x ${SCREEN_HEIGHT}"
-else
-    # 默認值（你的主螢幕）
-    SCREEN_WIDTH=2560
-    SCREEN_HEIGHT=1440
-    echo "使用默認螢幕解析度: ${SCREEN_WIDTH} x ${SCREEN_HEIGHT}"
-fi
-
-# 設定 Chrome 視窗位置和大小
-chrome-cli position 0 0
-chrome-cli size $SCREEN_WIDTH $SCREEN_HEIGHT
-
-sleep 1
-
-# 方法2: 使用 chrome-cli 執行 JavaScript 全螢幕
-echo "嘗試 JavaScript 全螢幕請求..."
-chrome-cli execute "
-// 在用戶互動後嘗試全螢幕
-const attemptFullscreen = () => {
-  try {
-    if (document.documentElement.requestFullscreen) {
-      document.documentElement.requestFullscreen();
-      console.log('✅ JavaScript 全螢幕成功');
-      return true;
-    }
-  } catch (error) {
-    console.log('⚠️ JavaScript 全螢幕失敗:', error);
-    return false;
-  }
-  return false;
-};
-
-// 立即嘗試（可能因為缺少用戶手勢而失敗）
-if (!attemptFullscreen()) {
-  // 如果失敗，添加點擊監聽器，在下次用戶點擊時觸發
-  document.addEventListener('click', function() {
-    attemptFullscreen();
-  }, { once: true });
-  
-  // 也可以在頁面載入完成後再次嘗試
-  if (document.readyState === 'complete') {
-    setTimeout(attemptFullscreen, 100);
-  } else {
-    window.addEventListener('load', () => setTimeout(attemptFullscreen, 100));
-  }
-}
-"
-
-sleep 2
-
-# 方法3: 備用 AppleScript（使用 key code 避免輸入法問題）
-echo "使用 AppleScript 備用方案（key code）..."
-osascript -e '
-tell application "Google Chrome"
-    activate
-    delay 1
-end tell
-
-tell application "System Events"
-    delay 1
-    -- 使用 key code 3 (F 鍵) + Cmd+Shift 組合鍵
-    key code 3 using {shift down, command down}
-end tell'
-
-# 方法4: 最後手段 - 使用選單方式
-echo "嘗試選單方式..."
-osascript -e '
-tell application "System Events"
-    tell process "Google Chrome"
-        set frontmost to true
-        delay 1
-        try
-            click menu item "Enter Full Screen" of menu "View" of menu bar 1
-        end try
-    end tell
-end tell'
-
-echo "全螢幕設定完成！"
 echo ""
 echo "🎉 所有設定完成！系統現在處於展示模式："
-echo "   ✅ 自動排程已啟用"
-echo "   ✅ 控制按鈕已隱藏"
-echo "   ✅ 全螢幕模式已啟用"
+echo "   ✅ 自動排程已啟用（headonly 視窗使用 autostart）"
+echo "   ✅ 控制按鈕已隱藏（在 headonly 視窗）"
+echo "   ⏭️ 全螢幕將於排版後依需求再設定（目前改用可視範圍定位以避免卡住）"
 echo ""
 echo "💡 快捷鍵提醒："
 echo "   - 按 C 鍵：顯示/隱藏控制按鈕"
@@ -245,13 +127,13 @@ echo "   - 按 ESC 鍵：退出全螢幕模式"
 # ==========================
 # 最後：多螢幕自動排版（不要動前面流程）
 # - 偵測兩個螢幕尺寸
-# - 較大螢幕：放 Google Chrome（主要角色畫面）並全螢幕
-# - 較小螢幕：Terminal 與 headonly Chrome 各佔一半（左右分布）
+# - 較大螢幕：放 Google Chrome（主要角色畫面），非全螢幕，以可視範圍定位
+# - 較小螢幕：Terminal 與 headonly Chrome 各佔一半（左右分布），非全螢幕
 # 以 JXA (osascript -l JavaScript) 實作，避免外部依賴
 # ==========================
 
 echo ""
-echo "開始進行雙螢幕自動排版（大螢幕：Chrome 全螢幕；小螢幕：Terminal + headonly Chrome 左右各半）..."
+echo "開始進行雙螢幕自動排版（大螢幕：Chrome 置入左螢幕；小螢幕：Terminal + headonly Chrome 左右各半）..."
 
 # 先開啟 headonly 的新 Chrome 視窗（自動初始化）
 echo "開啟 headonly Chrome 視窗於 http://localhost:5173/?headonly&&autostart=true ..."
@@ -406,6 +288,29 @@ osascript -l JavaScript <<'JXA'
     } catch (e) { /* 忽略單一 app 的錯誤 */ }
   };
 
+  // 在目標顯示器建立暫時錨點視窗（Finder），協助把其它 app 視窗帶到該顯示器與該空間
+  const anchorOnDisplay = (bounds) => {
+    try {
+      const finder = Application('Finder');
+      finder.activate();
+      delay(0.2);
+      // 嘗試取得第一個視窗，若沒有則新建
+      let win;
+      try { win = finder.windows[0]; } catch (e) { win = null; }
+      try { if (!win) finder.make({ new: 'Finder window' }); } catch (e) {}
+      delay(0.2);
+      const sys = Application('System Events');
+      const proc = sys.processes.byName('Finder');
+      try {
+        const fwin = proc.windows[0];
+        fwin.position = [bounds.x, bounds.y];
+        fwin.size = [bounds.w, bounds.h];
+        proc.frontmost = true;
+      } catch (e) {}
+      delay(0.25);
+    } catch (e) {}
+  };
+
   // 允許指定視窗索引的移動（不全螢幕）
   const moveWindow = (appName, bounds, winIndex = 0) => {
     try {
@@ -482,6 +387,8 @@ osascript -l JavaScript <<'JXA'
   };
 
   // 1) 將 Chrome 主視窗（非 headonly，網址以 localhost:5173 開頭且不含 headonly）放到左邊大螢幕
+  // 先在左螢幕建立 Finder 錨點以鎖定目標空間
+  anchorOnDisplay(largeVisibleAX);
   focusChromeWindowBy((u) => u.startsWith('http://localhost:5173') && !u.includes('headonly'));
   moveWindow('Google Chrome', largeVisibleAX);
   // 再保守縮小 96% 以避免任何邊界或縮放問題（針對目前前景視窗）
@@ -494,6 +401,17 @@ osascript -l JavaScript <<'JXA'
     const nh = Math.round(largeVisibleAX.h * 0.96);
     win.position = [nx, ny];
     win.size = [nw, nh];
+    // 驗證是否確實進入左螢幕（以 x 範圍判斷），若否則重試一次
+    try {
+      const pos = win.position();
+      const wx = Number(pos[0]);
+      if (wx < (largeVisibleAX.x - 20) || wx > (largeVisibleAX.x + largeVisibleAX.w + 20)) {
+        anchorOnDisplay(largeVisibleAX);
+        moveWindow('Google Chrome', largeVisibleAX);
+        win.position = [nx, ny];
+        win.size = [nw, nh];
+      }
+    } catch (e) {}
   } catch (e) { /* 忽略 */ }
 
   // 2) 小螢幕：Terminal（左半） + 新開的 headonly Chrome（右半）
