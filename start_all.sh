@@ -105,9 +105,9 @@ curl -X POST http://localhost:8000/api/perception/obs/stream/start
 echo "等待前端服務啟動..."
 sleep 10
 
-# 步驟 6: 開啟 Chrome 並導航到前端頁面（啟用自動初始化）
-echo "正在開啟 Chrome 並導航到 http://localhost:5173/?autostart=true..."
-open -a "Google Chrome" "http://localhost:5173/?autostart=true"
+# 步驟 6: 開啟 Chrome 並導航到前端頁面（不自動初始化）
+echo "正在開啟 Chrome 並導航到 http://localhost:5173..."
+open -a "Google Chrome" "http://localhost:5173"
 
 # 等待 Chrome 載入頁面
 sleep 8
@@ -137,8 +137,8 @@ end tell'
 
 echo ""
 echo "啟動腳本執行完畢。"
-echo "已自動開啟 Chrome、導航到 http://localhost:5173/?autostart=true 並使用 JavaScript 點擊頁面"
-echo "系統將自動啟用排程模式並隱藏所有控制按鈕"
+echo "已自動開啟 Chrome、導航到 http://localhost:5173 並使用 JavaScript 點擊頁面"
+echo "如需自動排程與隱藏控制，可使用 headonly 視窗 (稍後將自動開啟)"
 
 echo "等待頁面完全載入..."
 sleep 5  # 等待頁面載入
@@ -246,12 +246,23 @@ echo "   - 按 ESC 鍵：退出全螢幕模式"
 # 最後：多螢幕自動排版（不要動前面流程）
 # - 偵測兩個螢幕尺寸
 # - 較大螢幕：放 Google Chrome（主要角色畫面）並全螢幕
-# - 較小螢幕：放 Terminal（後端視窗）並全螢幕
+# - 較小螢幕：Terminal 與 headonly Chrome 各佔一半（左右分布）
 # 以 JXA (osascript -l JavaScript) 實作，避免外部依賴
 # ==========================
 
 echo ""
-echo "開始進行雙螢幕自動排版（Chrome → 大螢幕；Terminal → 小螢幕）..."
+echo "開始進行雙螢幕自動排版（大螢幕：Chrome 全螢幕；小螢幕：Terminal + headonly Chrome 左右各半）..."
+
+# 先開啟 headonly 的新 Chrome 視窗（自動初始化）
+echo "開啟 headonly Chrome 視窗於 http://localhost:5173/?headonly&&autostart=true ..."
+osascript -e '
+tell application "Google Chrome"
+    activate
+    set newWin to make new window
+    set URL of active tab of newWin to "http://localhost:5173/?headonly&&autostart=true"
+end tell'
+
+sleep 2 # 確保 headonly 視窗已建立再進行排版
 
 osascript -l JavaScript <<'JXA'
 (() => {
@@ -269,17 +280,22 @@ osascript -l JavaScript <<'JXA'
   const screens = [];
   for (let i = 0; i < count; i++) {
     const s = nsScreens.objectAtIndex(i);
-    // 在 JXA 中，NSScreen 的 frame 在橋接後通常為屬性而非可呼叫方法
+    // 在 JXA 中，NSScreen 的 frame/visibleFrame 在橋接後通常為屬性
     const f = s.frame;
+    const vf = s.visibleFrame; // 排除 Dock 與選單列的可見區域
     const x = Number(f.origin.x);
     const y = Number(f.origin.y);
     const w = Number(f.size.width);
     const h = Number(f.size.height);
+    const vx = Number(vf.origin.x);
+    const vy = Number(vf.origin.y);
+    const vw = Number(vf.size.width);
+    const vh = Number(vf.size.height);
     // 使用 backingScaleFactor 將點座標換算為近似像素面積，避免 4K 縮放成 1080p 的誤判
     let scale = 1;
     try { scale = Number(s.backingScaleFactor); } catch (e) { scale = 1; }
     const pixelArea = w * h * scale * scale;
-    screens.push({ x, y, width: w, height: h, scale, area: w * h, pixelArea, maxY: y + h });
+    screens.push({ x, y, width: w, height: h, vx, vy, vw, vh, scale, area: w * h, pixelArea, maxY: y + h });
   }
 
   // 主螢幕高度（JXA UI 坐標系統的 y=0 位於主螢幕左上角，往下為正）
@@ -302,16 +318,30 @@ osascript -l JavaScript <<'JXA'
     }
   }
 
+  // 計算全域最高 Y（避免不同螢幕高度導致 y 轉換錯誤）
+  const globalMaxY = screens.reduce((acc, s) => Math.max(acc, s.y + s.height), 0);
+
   const toAX = (r) => {
     // 將 AppKit 全域底左座標系（r.x, r.y，原點在主螢幕左下）
     // 轉成 UI 自動化所用的頂左座標系（原點在主螢幕左上，y 向下）
     const x = r.x; // x 可直接使用全域座標（可能為負數，表示在主螢幕左側）
-    const y = mainHeight - (r.y + r.height);
+    const y = globalMaxY - (r.y + r.height);
     return { x: Math.round(x), y: Math.round(y), w: Math.round(r.width), h: Math.round(r.height) };
   };
 
-  const largeAX = toAX(large);
-  const smallAX = toAX(small);
+  // 改為強制：左邊螢幕作為大螢幕、最右邊螢幕作為小螢幕
+  screens.sort((a,b) => a.x - b.x);
+  const leftMost = screens[0];
+  const rightMost = screens[screens.length - 1];
+  // 使用可見區域計算 AX 座標，避免超出螢幕（Dock/菜單列）
+  const largeAX = toAX({ x: leftMost.x, y: leftMost.y, width: leftMost.width, height: leftMost.height });
+  const smallAX = toAX({ x: rightMost.x, y: rightMost.y, width: rightMost.width, height: rightMost.height });
+  // 對可視區域再加上安全邊距，避免貼邊造成溢出
+  const safePad = 8;
+  const largeVisibleAXRaw = toAX({ x: leftMost.vx, y: leftMost.vy, width: leftMost.vw, height: leftMost.vh });
+  const largeVisibleAX = { x: largeVisibleAXRaw.x + safePad, y: largeVisibleAXRaw.y + safePad, w: largeVisibleAXRaw.w - safePad * 2, h: largeVisibleAXRaw.h - safePad * 2 };
+  const smallVisibleAXRaw = toAX({ x: rightMost.vx, y: rightMost.vy, width: rightMost.vw, height: rightMost.vh });
+  const smallVisibleAX = { x: smallVisibleAXRaw.x + safePad, y: smallVisibleAXRaw.y + safePad, w: smallVisibleAXRaw.w - safePad * 2, h: smallVisibleAXRaw.h - safePad * 2 };
 
   const sys = Application('System Events');
 
@@ -376,6 +406,24 @@ osascript -l JavaScript <<'JXA'
     } catch (e) { /* 忽略單一 app 的錯誤 */ }
   };
 
+  // 允許指定視窗索引的移動（不全螢幕）
+  const moveWindow = (appName, bounds, winIndex = 0) => {
+    try {
+      const app = Application(appName);
+      app.activate();
+      delay(0.2);
+      const proc = sys.processes.byName(appName);
+      // 退出全螢幕（若有）以便縮放
+      exitFullScreen(proc);
+      delay(0.2);
+      try {
+        const win = proc.windows[winIndex] || proc.windows[0];
+        win.position = [bounds.x, bounds.y];
+        win.size = [bounds.w, bounds.h];
+      } catch (e) {}
+    } catch (e) {}
+  };
+
   // 先找出 Terminal 中「後端」視窗（名稱或內容包含 backend 的 tab 所在視窗）
   let backendWinIndex = 0;
   try {
@@ -400,20 +448,69 @@ osascript -l JavaScript <<'JXA'
     }
   } catch (e) { /* 若失敗就用 0 */ }
 
-  // 1) Chrome → 大螢幕
-  moveAndFullscreen('Google Chrome', largeAX);
-  // 2) 只移動後端 Terminal 視窗到小螢幕，並保持其在最前面
+  // 便捷：半屏矩形生成器
+  const halfRects = (r) => {
+    const pad = 6; // 邊界留白，避免貼邊造成捲動條或誤差
+    const halfW = Math.round(r.w / 2);
+    return {
+      left: { x: r.x + pad, y: r.y + pad, w: halfW - pad * 2, h: r.h - pad * 2 },
+      right: { x: r.x + halfW + pad, y: r.y + pad, w: halfW - pad * 2, h: r.h - pad * 2 },
+    };
+  };
+
+  // 輔助：將特定 URL 條件的 Chrome 視窗設為前景（窗口本身到最前、對應分頁為 active）
+  const focusChromeWindowBy = (predicate) => {
+    try {
+      const chrome = Application('Google Chrome');
+      const wins = chrome.windows();
+      for (let i = 0; i < wins.length; i++) {
+        const tabs = wins[i].tabs();
+        for (let j = 0; j < tabs.length; j++) {
+          let u = '';
+          try { u = String(tabs[j].url()); } catch (e) { u = ''; }
+          if (predicate(u)) {
+            chrome.activate();
+            try { wins[i].activeTabIndex = j + 1; } catch (e) {}
+            try { wins[i].index = 1; } catch (e) {}
+            delay(0.2);
+            return true;
+          }
+        }
+      }
+    } catch (e) {}
+    return false;
+  };
+
+  // 1) 將 Chrome 主視窗（非 headonly，網址以 localhost:5173 開頭且不含 headonly）放到左邊大螢幕
+  focusChromeWindowBy((u) => u.startsWith('http://localhost:5173') && !u.includes('headonly'));
+  moveWindow('Google Chrome', largeVisibleAX);
+  // 再保守縮小 96% 以避免任何邊界或縮放問題（針對目前前景視窗）
+  try {
+    const proc = sys.processes.byName('Google Chrome');
+    const win = proc.windows[0]; // frontmost chrome window
+    const nx = largeVisibleAX.x;
+    const ny = largeVisibleAX.y;
+    const nw = Math.round(largeVisibleAX.w * 0.96);
+    const nh = Math.round(largeVisibleAX.h * 0.96);
+    win.position = [nx, ny];
+    win.size = [nw, nh];
+  } catch (e) { /* 忽略 */ }
+
+  // 2) 小螢幕：Terminal（左半） + 新開的 headonly Chrome（右半）
+  const halves = halfRects(smallVisibleAX);
+
+  // 2a) Terminal → 左半
   try {
     const term = Application('Terminal');
     term.activate();
     const proc = sys.processes.byName('Terminal');
-    // 先把後端視窗帶到最前（依索引）
     try { proc.windows[backendWinIndex].index = 1; } catch (e) {}
-    // 再進行移動與全螢幕
-    moveAndFullscreen('Terminal', smallAX, backendWinIndex);
-    // 確保 Terminal 留在最前（避免剛開的前端視窗搶前景）
-    try { proc.frontmost = true; } catch (e) {}
+    moveWindow('Terminal', halves.left, backendWinIndex);
   } catch (e) { /* 忽略 */ }
+
+  // 2b) headonly Chrome 視窗 → 右半（先聚焦含 headonly 的視窗，再移動前景視窗）
+  focusChromeWindowBy((u) => u.includes('headonly'));
+  moveWindow('Google Chrome', halves.right);
 })();
 JXA
 
