@@ -16,6 +16,7 @@ from .utils import pcm_to_wav
 from .session_config import create_session_config
 from .logging import WebSocketLogger
 from services.perception import YouTubeChatMonitorService
+from services.video_rotation_service import video_rotation_service
 from services.memory_system import MemorySystem
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 from core.config import settings
@@ -39,6 +40,7 @@ class WebSocketHandler:
         self._last_processed_message_count = 0
         # 記憶系統（懶加載）
         self._memory_system = None
+        # 影片輪播交給服務管理
     
     async def _set_initial_room_scene(self):
         """設定初始房間場景為賽博太空艙"""
@@ -166,6 +168,9 @@ class WebSocketHandler:
                 await self._send_session_update(ws)
                 # 新增：設定初始環境光強度
                 await self._set_initial_environment_light()
+                # 新增：即時對話啟動時關閉所有螢幕並停止任何既有輪播（服務化）
+                await video_rotation_service.stop_rotation()
+                await video_rotation_service.enable_inhibit()
                 # 新增：開始 YouTube 聊天室監控
                 logger.info("🎬 [DEBUG] 準備啟動 YouTube 聊天室監控...")
                 await self._start_youtube_chat_monitoring()
@@ -305,6 +310,11 @@ class WebSocketHandler:
                     # 新增：燈光直接關閉（設為 0）
                     import aiohttp
                     asyncio.create_task(self._set_light_off())
+                    # 新增：即時對話結束後啟動螢幕影片輪播（服務化）
+                    async def _resume_videos_after_inhibit():
+                        await video_rotation_service.disable_inhibit()
+                        await video_rotation_service.start_rotation()
+                    asyncio.create_task(_resume_videos_after_inhibit())
                     
         except ConnectionClosed:
             logger.error("WebSocket connection to OpenAI was closed")
@@ -983,3 +993,4 @@ class WebSocketHandler:
             logger.error(f"❌ [DEBUG] 注入 YouTube 聊天留言時發生錯誤: {e}")
             import traceback
             logger.error(f"🔍 [DEBUG] 注入錯誤詳情: {traceback.format_exc()}") 
+

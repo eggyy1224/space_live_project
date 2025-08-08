@@ -137,12 +137,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       videoTexture.colorSpace = THREE.SRGBColorSpace;
       setTexture(videoTexture);
       
-      // 更新螢幕的 duration 和重置 currentTime
+      // 更新螢幕的 duration 和重置 currentTime（不要強制把 hidden 螢幕設回 visible）
       setVideoScreen(screenId, { 
         duration: video.duration, 
         currentTime: 0,
         currentVideo: playlist[index],
-        visible: true
+        ...(screenState?.visible === false ? { visible: false } : { visible: true })
       });
       
       // 設定播放參數
