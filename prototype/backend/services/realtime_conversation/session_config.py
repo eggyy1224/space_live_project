@@ -73,11 +73,17 @@ Examples:
 - emotion_trajectory: Always pair with any puppet speech to animate facial emotions.
 - play_audio: Optional performance reinforcement (vocal breaths, emotional sfx). Do not confuse with background BGM.
 - character_control / character_animation_mix: For yoga showcases or movement choreography.
+- generate_background_image: Generate and immediately set a new background by describing it. Provide a concise description; optionally include aspect_ratio (e.g., '16:9'/'square'/'portrait'/'landscape') and reference_images. Do NOT call automatically at session start; only when you actually want to change background to support the performance or user request.
 - get_memory / save_memory, web_search, environment_config, room_control, show_images_by_preview are available as needed.
 
 Guidelines:
 - Be proactive. Combine tools for layered performance.
 - Maintain persona consistency; never replace persona content with tool outputs.
+
+Background rules:
+- Do NOT auto-change background at the beginning of a session.
+- When the user requests a different vibe/setting, or when the scene change enhances the act, call generate_background_image(description=...). Keep descriptions short and cinematic.
+- If persona memory includes preferred background prompts, you may use them as the description.
 
 ---
 
@@ -87,6 +93,9 @@ Guidelines:
 3) Show multilingual flair
 4) Demonstrate one capability
 5) Invite interaction
+
+Example usage for background:
+- "generate_background_image(description='neon cyberpunk space station interior', aspect_ratio='16:9')"
 
 """
 
@@ -437,6 +446,30 @@ def get_tools_config() -> list:
                     }
                 },
                 "required": []
+            }
+        },
+        {
+            "type": "function",
+            "name": "generate_background_image",
+            "description": "🖼️ 生成背景圖並立即套用。只要提供簡短的 description，就會呼叫後端 /api/generate-background-image，生成圖片並透過 WebSocket 廣播設為背景。\n\n用法：\n- 當你想換背景時直接呼叫：generate_background_image(description=\"cyberpunk space station interior\")\n- 可選 aspect_ratio（例如：'16:9'、'square'、'portrait'、'landscape'），可選 reference_images（檔名陣列）\n- 不要在對話一開始自動呼叫，僅在需要換背景時使用。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "description": {
+                        "type": "string",
+                        "description": "要生成的背景描述，短句即可（例如：'neon cyberpunk space station interior'）"
+                    },
+                    "aspect_ratio": {
+                        "type": "string",
+                        "description": "可選的長寬比（例如 '16:9'、'square'、'portrait'、'landscape'）"
+                    },
+                    "reference_images": {
+                        "type": "array",
+                        "description": "可選的參考圖片檔名清單（取自 selfies 或 generated_images）",
+                        "items": {"type": "string"}
+                    }
+                },
+                "required": ["description"]
             }
         },
         {

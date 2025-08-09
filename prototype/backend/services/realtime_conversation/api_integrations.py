@@ -106,6 +106,11 @@ class APIIntegrations:
                 result = await self._handle_get_youtube_chat_messages(arguments)
                 logger.info(f"💬 get_youtube_chat_messages 處理結果: {result}")
                 return result
+            elif function_name == "generate_background_image":
+                logger.info("🖼️ 調用 generate_background_image 處理器")
+                result = await self._handle_generate_background_image(arguments)
+                logger.info(f"🖼️ generate_background_image 處理結果: {result}")
+                return result
             else:
                 logger.warning(f"❓ 未知工具函數: {function_name}")
                 return {
@@ -1093,6 +1098,44 @@ class APIIntegrations:
             "桌面": "bottom-right"
         }
         return position_map.get(source_name, "center")
+
+    async def _handle_generate_background_image(self, arguments: Dict[str, Any]) -> dict:
+        """呼叫本地 /api/generate-background-image 生成背景並自動套用"""
+        try:
+            description = arguments.get("description")
+            aspect_ratio = arguments.get("aspect_ratio")
+            reference_images = arguments.get("reference_images")
+
+            if not description:
+                return {"success": False, "error": "Missing required parameter: description"}
+
+            payload = {"description": description}
+            if aspect_ratio:
+                payload["aspect_ratio"] = aspect_ratio
+            if reference_images:
+                payload["reference_images"] = reference_images
+
+            url = f"{self.base_url}/api/generate-background-image"
+            logger.info(f"🖼️ 發送背景生成請求: {url} payload={payload}")
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    url,
+                    json=payload,
+                    headers={"Content-Type": "application/json"},
+                    timeout=aiohttp.ClientTimeout(total=30)
+                ) as response:
+                    text = await response.text()
+                    if response.status == 200:
+                        try:
+                            data = json.loads(text) if text else {}
+                        except json.JSONDecodeError:
+                            data = {}
+                        return {"success": True, "message": "Background generated", "result": data}
+                    else:
+                        return {"success": False, "error": f"HTTP {response.status}: {text}"}
+        except Exception as e:
+            logger.error(f"❌ generate_background_image 處理錯誤: {e}")
+            return {"success": False, "error": str(e)}
     
     async def _handle_get_youtube_chat_messages(self, arguments: Dict[str, Any]) -> dict:
         """處理 YouTube 聊天室訊息獲取請求"""
