@@ -42,25 +42,6 @@ class WebSocketHandler:
         self._memory_system = None
         # 影片輪播交給服務管理
     
-    async def _set_initial_room_scene(self):
-        """設定初始房間場景為賽博太空艙"""
-        import aiohttp
-        try:
-            async with aiohttp.ClientSession() as session:
-                scene_data = {
-                    "displayScene": True,
-                    "sceneName": "賽博太空艙"
-                }
-                async with session.post(
-                    "http://localhost:8000/api/control/scene-display",
-                    json=scene_data
-                ) as response:
-                    if response.status == 200:
-                        logger.info("初始房間場景設置為：賽博太空艙")
-                    else:
-                        logger.warning(f"設置初始房間場景失敗: {await response.text()}")
-        except Exception as e:
-            logger.error(f"設置初始房間場景異常: {e}")
 
     async def _breathing_light_effect(self, brighten=True, steps=14, delay=0.08):
         """
@@ -223,7 +204,6 @@ class WebSocketHandler:
                 await ws.send(json.dumps(context_item))
                 logger.info("[MemoryInject] conversation.item.create 已送出")
                 
-                await self._set_initial_room_scene()  # 新增：切換到賽博太空艙
                 await self._set_initial_camera()
                 
                 # 設定初始動畫，避免T-pose
