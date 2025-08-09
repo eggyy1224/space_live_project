@@ -14,7 +14,7 @@ async def fetch_latest_persona():
     url = "http://localhost:8000/api/memory/get"
     payload = {
         "memory_type": "persona",
-        "limit": 1,  # 改為取前五筆
+        "limit": 5,  # 改為取前五筆
         "include_metadata": True
     }
     try:
@@ -631,7 +631,7 @@ async def create_session_config() -> dict:
         "session": {
             "modalities": ["audio", "text"],
             "instructions": await get_ai_instructions(),
-            "voice": "coral",
+            "voice": "echo",
             "input_audio_format": "pcm16",
             "output_audio_format": "pcm16",
             "input_audio_transcription": {
