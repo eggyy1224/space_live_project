@@ -42,6 +42,66 @@ class WebSocketHandler:
         self._memory_system = None
         # 影片輪播交給服務管理
     
+    async def _generate_background_from_conversation(self):
+        """在會話啟動時，根據最近的對話記憶產生並設置背景圖片。
+        策略：
+        1) 讀取最近 3 筆 conversation 記憶
+        2) 彙整為簡潔的場景描述，交由生成 API 逆向推測合適背景
+        3) 呼叫 /api/generate-background-image 生成並自動套用
+        """
+        import re
+        import aiohttp
+        try:
+            recent_contents = []
+            # 取得最近的對話記憶（3 筆）
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    "http://localhost:8000/api/memory/get",
+                    json={
+                        "memory_type": "conversation",
+                        "limit": 3,
+                        "include_metadata": False
+                    },
+                    timeout=aiohttp.ClientTimeout(total=6)
+                ) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        memories = data.get("data", {}).get("memories", [])
+                        for item in memories:
+                            if isinstance(item, dict):
+                                text = item.get("content")
+                                if text:
+                                    recent_contents.append(str(text))
+                            else:
+                                recent_contents.append(str(item))
+
+            # 構造描述（依最近對話內容逆向生成場景）
+            if recent_contents:
+                joined = " | ".join(recent_contents)
+                description = (
+                    f"Cinematic background that fits these recent conversation beats: {joined}. "
+                    f"Avoid text or logos; suggest environment, mood, lighting, and composition."
+                )
+            else:
+                description = (
+                    "Cinematic neutral space interior with gentle lights — fallback background"
+                )
+
+            payload = {"description": description, "aspect_ratio": "16:9"}
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    "http://localhost:8000/api/generate-background-image",
+                    json=payload,
+                    timeout=aiohttp.ClientTimeout(total=30)
+                ) as resp:
+                    text = await resp.text()
+                    if resp.status == 200:
+                        logger.info(f"✅ 背景已根據最近對話記憶生成並套用，描述: {description} | 回應: {text[:200]}...")
+                    else:
+                        logger.warning(f"❌ 背景生成失敗: HTTP {resp.status} - {text}")
+        except Exception as e:
+            logger.error(f"會話啟動背景生成異常: {e}")
+
 
     async def _breathing_light_effect(self, brighten=True, steps=14, delay=0.08):
         """
@@ -204,6 +264,9 @@ class WebSocketHandler:
                 await ws.send(json.dumps(context_item))
                 logger.info("[MemoryInject] conversation.item.create 已送出")
                 
+                # 根據最近對話記憶生成並套用背景圖片（不切換3D房間場景）
+                await self._generate_background_from_conversation()
+
                 await self._set_initial_camera()
                 
                 # 設定初始動畫，避免T-pose
