@@ -617,9 +617,17 @@ async def generate_background_image(request: BackgroundImageRequest):
     生成的圖片會被存儲並通過WebSocket廣播以設置為背景。
     """
     try:
-        prompt = f"Generate a background image of: {request.description}"
-        if request.aspect_ratio:
-            prompt += f" with an aspect ratio of {request.aspect_ratio}"
+        # 強化英文化提示並明確禁止文字/標誌/浮水印/字幕
+        aspect = request.aspect_ratio if request.aspect_ratio else "16:9"
+        prompt = (
+            "Create a cinematic, typography-free background image.\n"
+            "Requirements: no text, no letters, no numbers, no captions, no subtitles, no UI, "
+            "no logos, no watermarks, no signage, no banners, no labels.\n"
+            "Only the environment/background; avoid any on-screen typography or embedded prompts.\n"
+            f"Subject: {request.description}\n"
+            f"Use aspect ratio: {aspect}.\n"
+            "Style: clean composition, strong mood, clear lighting, detailed materials, suitable as a full-screen backdrop."
+        )
 
         # 使用修正後的 Gemini API 呼叫方式
         model = genai.GenerativeModel(model_name="gemini-2.0-flash-preview-image-generation")

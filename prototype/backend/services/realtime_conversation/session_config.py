@@ -451,25 +451,20 @@ def get_tools_config() -> list:
         {
             "type": "function",
             "name": "generate_background_image",
-            "description": "🖼️ 生成背景圖並立即套用。只要提供簡短的 description，就會呼叫後端 /api/generate-background-image，生成圖片並透過 WebSocket 廣播設為背景。\n\n用法：\n- 當你想換背景時直接呼叫：generate_background_image(description=\"cyberpunk space station interior\")\n- 可選 aspect_ratio（例如：'16:9'、'square'、'portrait'、'landscape'），可選 reference_images（檔名陣列）\n- 不要在對話一開始自動呼叫，僅在需要換背景時使用。",
+            "description": "🖼️ 生成背景圖並立即套用。後端會自動根據『最近 3 筆對話記憶』綜合產生描述。可選填 extra_hint 與 aspect_ratio 來微調效果。不要在開場自動呼叫，僅在需要換背景時使用。",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "description": {
+                    "extra_hint": {
                         "type": "string",
-                        "description": "要生成的背景描述，短句即可（例如：'neon cyberpunk space station interior'）"
+                        "description": "可選提示，補充對氣氛/光源/構圖的偏好（例如 'more serene, softer lights'）。"
                     },
                     "aspect_ratio": {
                         "type": "string",
                         "description": "可選的長寬比（例如 '16:9'、'square'、'portrait'、'landscape'）"
-                    },
-                    "reference_images": {
-                        "type": "array",
-                        "description": "可選的參考圖片檔名清單（取自 selfies 或 generated_images）",
-                        "items": {"type": "string"}
                     }
                 },
-                "required": ["description"]
+                "required": []
             }
         },
         {

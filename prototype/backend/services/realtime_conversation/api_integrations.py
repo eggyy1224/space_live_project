@@ -1100,23 +1100,49 @@ class APIIntegrations:
         return position_map.get(source_name, "center")
 
     async def _handle_generate_background_image(self, arguments: Dict[str, Any]) -> dict:
-        """呼叫本地 /api/generate-background-image 生成背景並自動套用"""
+        """呼叫本地 /api/generate-background-image 生成背景並自動套用。
+        策略：後端會自動從最近 3 筆 conversation 記憶生成描述；可選 extra_hint 與 aspect_ratio。
+        """
         try:
-            description = arguments.get("description")
+            extra_hint = arguments.get("extra_hint")
             aspect_ratio = arguments.get("aspect_ratio")
-            reference_images = arguments.get("reference_images")
 
-            if not description:
-                return {"success": False, "error": "Missing required parameter: description"}
+            # 取得最近 3 筆對話記憶
+            recent_contents: list[str] = []
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{self.base_url}/api/memory/get",
+                    json={"memory_type": "conversation", "limit": 3, "include_metadata": False},
+                    timeout=aiohttp.ClientTimeout(total=6)
+                ) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        memories = data.get("data", {}).get("memories", [])
+                        for item in memories:
+                            if isinstance(item, dict):
+                                text = item.get("content")
+                                if text:
+                                    recent_contents.append(str(text))
+                            else:
+                                recent_contents.append(str(item))
+
+            if recent_contents:
+                joined = " | ".join(recent_contents)
+                description = (
+                    f"Cinematic background that fits these recent conversation beats: {joined}. "
+                )
+            else:
+                description = "Cinematic neutral space interior, gentle lights"
+
+            if extra_hint:
+                description += f" Hint: {extra_hint}."
 
             payload = {"description": description}
             if aspect_ratio:
                 payload["aspect_ratio"] = aspect_ratio
-            if reference_images:
-                payload["reference_images"] = reference_images
 
             url = f"{self.base_url}/api/generate-background-image"
-            logger.info(f"🖼️ 發送背景生成請求: {url} payload={payload}")
+            logger.info(f"🖼️ 發送背景生成請求: {url} payload_desc_len={len(description)} aspect_ratio={aspect_ratio}")
             async with aiohttp.ClientSession() as session:
                 async with session.post(
                     url,
