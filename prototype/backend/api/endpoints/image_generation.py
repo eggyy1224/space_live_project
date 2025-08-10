@@ -667,7 +667,8 @@ async def generate_background_image(request: BackgroundImageRequest):
             "laser_grid": "scanning laser beams, diffraction sparkle, prism flares, chromatic streaks",
             "cosmic_rave": "psychedelic rave-in-space, saturated gradients, blacklight glow, energetic rhythm",
             "holographic": "iridescent interference patterns with sharp specular glints and spectral bloom",
-            "volumetric": "high-contrast volumetric shafts and haze with saturated color layering"
+            "volumetric": "high-contrast volumetric shafts and haze with saturated color layering",
+            "lunar_procession": "Earthrise over the lunar horizon; sparse procession of glowing orbs (lantern-like but abstract) and holographic energy filaments; incense-smoke aurora drifting above regolith; no flags, no poles, no identifiable religious symbols"
         }
         chosen_key = request.style_variant if request.style_variant in variant_pool else random.choice(list(variant_pool.keys()))
         variant_text = variant_pool[chosen_key]
@@ -681,16 +682,22 @@ async def generate_background_image(request: BackgroundImageRequest):
             "neon coral & cobalt"
         ])
 
-        # 以高能量太空迷幻為基調的背景生成提示
+        # 以高能量太空迷幻 + 超寫實攝影 為基調的背景生成提示
         prompt = (
-            "Create a high-quality, high-energy psychedelic space background image.\n"
+            "Create an ultra-photorealistic cinematic photograph of a high-energy psychedelic space scene.\n"
             "Mood: bold, kinetic, high-contrast, saturated; crisp contours and vivid glow. Avoid pastel softness, low-contrast wash, or flat fog.\n"
             f"Scene description (guidance only, do not render as text): {subject}\n"
-            "Add exactly one sign that reads SPACELIVE. Make it prominent and clearly legible (center or slightly off-center), cohesive with the scene using neon/volumetric/holographic glow.\n"
+            "Scene frame: standing on the lunar surface with regolith foreground and long shadows, looking toward Earth on the horizon (Earthrise). Starfield sky.\n"
+            "Theme motif '2049 Mazu around the Moon' — interpret purely as psychedelic energy: a minimal procession of glowing orbs/particle beads (lantern-like but non-literal) and ribbon-like energy filaments; incense-smoke forming aurora curtains; gentle ceremonial light trails. Avoid any explicit flags, banners, poles, deities, or recognizable religious symbols. No readable characters from these elements.\n"
+            "Place exactly one SPACELIVE neon sign on a low freestanding panel or monolith set on the lunar ground; visible cable and subtle light spill on regolith. Make it prominent and clearly legible (center or slightly off-center), cohesive with neon/volumetric/holographic glow.\n"
             f"Style variant: {chosen_key} — {variant_text}.\n"
             f"Color palette suggestion: {palette_text}.\n"
-            "Visual language: electric arcs, plasma filaments, neon ribbons and streaks with motion blur, fireworks trails and spark showers, prism flares, diffraction shimmer, chromatic aberration, energized particle fields.\n"
-            "Lighting: strong rim lights and neon bloom; glossy highlights allowed on non-industrial surfaces. Avoid mechanical industrial plating or gritty realism.\n"
+            "Visual language: electric arcs, plasma filaments, neon ribbons and streaks captured as long-exposure light painting from physical light sources (LED ropes, drones), fireworks trails and spark showers, prism flares, diffraction shimmer, chromatic aberration, energized particle fields; lunar regolith micro-detail and rim-lit dust.\n"
+            "Lighting: physically plausible. Key light from Earth bounce and starlight; neon sign adds localized colored spill on regolith. Include lens behavior (bokeh, sensor noise at low level, minor halation).\n"
+            "Camera: full-frame 24mm lens, f/2.8, 6s long exposure on tripod, ISO 400. White balance slightly cool.\n"
+            "Earth rendering: correct limb with blue atmospheric scattering and realistic albedo; no exaggerated stylization.\n"
+            "Materials: physically based textures for regolith (micro-displacement, roughness variation, granular shadows).\n"
+            "Stylistic bans: no illustration, no 2D art, no anime, no vector, no painterly brushstrokes, no CGI/3D-render look; must read as a real photograph.\n"
             "Do not add any other readable text, letters, numbers, captions, UI, logos, watermarks, banners, or labels (only the single SPACELIVE sign is allowed).\n"
             f"Use aspect ratio: {aspect}.\n"
             "Composition: dynamic S-curve light paths, clear focal hierarchy, sharp micro-contrast; suitable as a full-screen backdrop.\n"
