@@ -239,31 +239,68 @@ osascript -l JavaScript <<'JXA'
     }
   };
 
-  const exitFullScreen = (proc) => {
+  // 多語系選單工具
+  const getMenuBarItem = (proc, names) => {
     try {
-      const viewMenu = proc.menuBars[0].menuBarItems.byName('View').menus[0];
-      if (viewMenu && viewMenu.menuItems.byName('Exit Full Screen').exists()) {
-        viewMenu.menuItems.byName('Exit Full Screen').click();
-        delay(0.2);
-        return true;
+      const items = proc.menuBars[0].menuBarItems;
+      for (const n of names) {
+        try {
+          const it = items.byName(n);
+          if (it && it.exists()) return it;
+        } catch (e) {}
       }
-    } catch (e) { /* 忽略 */ }
-    // 回退：快捷鍵 Ctrl+Cmd+F
-    try { sys.keystroke('f', { using: ['control down', 'command down'] }); delay(0.2); return true; } catch (e) {}
+    } catch (e) {}
+    return null;
+  };
+
+  const getViewMenu = (proc) => {
+    const viewItem = getMenuBarItem(proc, ['View', '顯示', '显示', '表示']);
+    try { return viewItem ? viewItem.menus[0] : null; } catch (e) { return null; }
+  };
+
+  const menuItemExists = (menu, names) => {
+    for (const n of names) {
+      try { if (menu.menuItems.byName(n).exists()) return n; } catch (e) {}
+    }
+    return null;
+  };
+
+  const clickMenuItemIfExists = (menu, names) => {
+    const name = menuItemExists(menu, names);
+    if (name) {
+      try { menu.menuItems.byName(name).click(); delay(0.2); return true; } catch (e) {}
+    }
     return false;
   };
 
+  const isFullScreen = (proc) => {
+    const viewMenu = getViewMenu(proc);
+    if (!viewMenu) return null;
+    if (menuItemExists(viewMenu, ['Exit Full Screen', '退出全螢幕', '退出全屏', '退出全屏幕', '結束全螢幕', 'フルスクリーンを終了'])) return true;
+    if (menuItemExists(viewMenu, ['Enter Full Screen', '進入全螢幕', '进入全屏', '進入全屏幕', 'フルスクリーンにする'])) return false;
+    return null; // 無法判定
+  };
+
+  const exitFullScreen = (proc) => {
+    try {
+      const viewMenu = getViewMenu(proc);
+      if (!viewMenu) return false;
+      const state = isFullScreen(proc);
+      if (state === true) {
+        return clickMenuItemIfExists(viewMenu, ['Exit Full Screen', '退出全螢幕', '退出全屏', '退出全屏幕', '結束全螢幕', 'フルスクリーンを終了']);
+      }
+      // 非全螢幕就不做任何事（避免誤觸快捷鍵把視窗變全螢幕）
+    } catch (e) {}
+    return false;
+  };
+
+  // 保留但不使用：如需全螢幕，僅點擊對應選單（避免快捷鍵誤觸）
   const enterFullScreen = (proc) => {
     try {
-      const viewMenu = proc.menuBars[0].menuBarItems.byName('View').menus[0];
-      if (viewMenu && viewMenu.menuItems.byName('Enter Full Screen').exists()) {
-        viewMenu.menuItems.byName('Enter Full Screen').click();
-        delay(0.2);
-        return true;
-      }
-    } catch (e) { /* 忽略 */ }
-    // 回退：快捷鍵 Ctrl+Cmd+F
-    try { sys.keystroke('f', { using: ['control down', 'command down'] }); delay(0.2); return true; } catch (e) {}
+      const viewMenu = getViewMenu(proc);
+      if (!viewMenu) return false;
+      return clickMenuItemIfExists(viewMenu, ['Enter Full Screen', '進入全螢幕', '进入全屏', '進入全屏幕', 'フルスクリーンにする']);
+    } catch (e) {}
     return false;
   };
 
@@ -283,8 +320,7 @@ osascript -l JavaScript <<'JXA'
         delay(0.3);
         moved = tryMove(proc, bounds, winIndex);
       }
-      // 最後保險：進入全螢幕
-      enterFullScreen(proc);
+      // 不再自動進入全螢幕，維持可視範圍定位
     } catch (e) { /* 忽略單一 app 的錯誤 */ }
   };
 

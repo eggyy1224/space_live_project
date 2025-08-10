@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "space_live": {
+     "command": "/Users/spacelive/Desktop/space_live/space_live_project/prototype/backend/venv/bin/python",
+      "args": [
+        "/Users/spacelive/Desktop/space_live/space_live_project/prototype/backend/mcp_server/main.py"
+      ],
+      "env": {}
+    }
+  },
+  "theme": "Default",
+  "sandbox": false
+}
