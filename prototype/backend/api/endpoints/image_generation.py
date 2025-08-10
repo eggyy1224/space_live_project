@@ -620,10 +620,11 @@ async def generate_background_image(request: BackgroundImageRequest):
         # 強化英文化提示並明確禁止文字/標誌/浮水印/字幕
         aspect = request.aspect_ratio if request.aspect_ratio else "16:9"
         prompt = (
-            "Create a cinematic, typography-free background image.\n"
-            "Requirements: no text, no letters, no numbers, no captions, no subtitles, no UI, "
-            "no logos, no watermarks, no signage, no banners, no labels.\n"
-            "Only the environment/background; avoid any on-screen typography or embedded prompts.\n"
+            "Create a cinematic background image.\n"
+            "Must include a clearly visible neon sign that reads 'SPACELIVE' in English letters.\n"
+            "Guidelines: integrate the 'SPACELIVE' neon signage naturally into the environment (e.g., wall sign, storefront, billboard), with realistic neon glow and lighting spill. "
+            "Do not include any other text, letters, numbers, captions, subtitles, UI, logos, watermarks, banners, or labels besides the single 'SPACELIVE' neon sign.\n"
+            "Only the environment/background; avoid on-screen UI or embedded prompts.\n"
             f"Subject: {request.description}\n"
             f"Use aspect ratio: {aspect}.\n"
             "Style: clean composition, strong mood, clear lighting, detailed materials, suitable as a full-screen backdrop."
