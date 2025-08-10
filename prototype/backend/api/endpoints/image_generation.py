@@ -659,38 +659,41 @@ async def generate_background_image(request: BackgroundImageRequest):
         aspect = request.aspect_ratio if request.aspect_ratio else "16:9"
         subject = _sanitize_prompt_text(request.description)
 
-        # 多樣化的 SPACELIVE 呈現方式，避免固定工業霓虹風
+        # 風格變體：高能量、強對比、電光煙火感（避免傳統工業機械造型）
         variant_pool = {
-            "holographic": "floating holographic letterforms with thin volumetric glow and subtle scanlines",
-            "bioluminescent": "bioluminescent light arrays shaping the letters inside a transparent tank or dome",
-            "ice_crystal": "ice-crystal letterforms refracting light with faint frost and subsurface scattering",
-            "volumetric": "free-floating volumetric light letters with dust motes and soft godrays",
-            "retro_led": "retro-futuristic LED panel letters with pixel bloom and gentle chromatic aberration",
-            "lantern_chain": "microgravity paper-lantern chain arranged as letters with warm soft glow",
-            "gobo_projection": "projected light (gobo) casting SPACELIVE letters onto surfaces with no physical sign"
+            "electro_plasma": "electric arcs and plasma filaments weaving through colored fog, intense neon bloom",
+            "neon_streaks": "fast neon light trails and ribbon-like beams with motion blur and crisp edges",
+            "fireworks_burst": "fireworks bokeh, exploding sparks, comet trails, vivid particulate showers",
+            "laser_grid": "scanning laser beams, diffraction sparkle, prism flares, chromatic streaks",
+            "cosmic_rave": "psychedelic rave-in-space, saturated gradients, blacklight glow, energetic rhythm",
+            "holographic": "iridescent interference patterns with sharp specular glints and spectral bloom",
+            "volumetric": "high-contrast volumetric shafts and haze with saturated color layering"
         }
         chosen_key = request.style_variant if request.style_variant in variant_pool else random.choice(list(variant_pool.keys()))
         variant_text = variant_pool[chosen_key]
 
-        # 隨機色彩建議，提升視覺多樣性
+        # 隨機色彩建議：提高飽和度與對比，呈現電光能量感
         palette_text = random.choice([
-            "teal & magenta",
-            "amber & steel blue",
-            "violet & cyan",
-            "emerald & warm white",
-            "ice blue & silver"
+            "hot pink & electric blue",
+            "acid green & magenta",
+            "neon cyan & deep purple",
+            "ultraviolet & gold",
+            "neon coral & cobalt"
         ])
 
+        # 以高能量太空迷幻為基調的背景生成提示
         prompt = (
-            "Create a high-quality, photorealistic photography-style background image (documentary realism).\n"
+            "Create a high-quality, high-energy psychedelic space background image.\n"
+            "Mood: bold, kinetic, high-contrast, saturated; crisp contours and vivid glow. Avoid pastel softness, low-contrast wash, or flat fog.\n"
             f"Scene description (guidance only, do not render as text): {subject}\n"
-            "Add exactly one sign that reads SPACELIVE; vary its physical implementation per the style variant.\n"
+            "Add exactly one sign that reads SPACELIVE. Make it prominent and clearly legible (center or slightly off-center), cohesive with the scene using neon/volumetric/holographic glow.\n"
             f"Style variant: {chosen_key} — {variant_text}.\n"
             f"Color palette suggestion: {palette_text}.\n"
-            "Integrate lighting realistically (reflections, light spill).\n"
-            "Do not add any other readable text, letters, numbers, captions, UI, logos, watermarks, banners, or labels.\n"
+            "Visual language: electric arcs, plasma filaments, neon ribbons and streaks with motion blur, fireworks trails and spark showers, prism flares, diffraction shimmer, chromatic aberration, energized particle fields.\n"
+            "Lighting: strong rim lights and neon bloom; glossy highlights allowed on non-industrial surfaces. Avoid mechanical industrial plating or gritty realism.\n"
+            "Do not add any other readable text, letters, numbers, captions, UI, logos, watermarks, banners, or labels (only the single SPACELIVE sign is allowed).\n"
             f"Use aspect ratio: {aspect}.\n"
-            "Style: realistic lighting, plausible materials, lens behavior (depth of field, sensor noise), clean composition; suitable as a full-screen backdrop.\n"
+            "Composition: dynamic S-curve light paths, clear focal hierarchy, sharp micro-contrast; suitable as a full-screen backdrop.\n"
         )
 
         # 使用修正後的 Gemini API 呼叫方式
