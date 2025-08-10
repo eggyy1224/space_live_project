@@ -18,6 +18,50 @@ SEND_MESSAGE_ENDPOINT = f"{BASE_URL}/api/control/send-message"
 mcp = FastMCP("SpaceLiveServer")
 
 @mcp.tool()
+def start_realtime_conversation() -> str:
+    """
+    開始即時對話（前端將開始實時語音串流）
+    """
+    try:
+        endpoint = f"{BASE_URL}/api/control/realtime-voice"
+        payload = {"action": "start"}
+        response = requests.post(endpoint, json=payload, timeout=10)
+        if response.status_code == 200:
+            result = response.json()
+            conns = result.get("connections", 0)
+            return f"✅ 已廣播開始即時對話（連線數: {conns}）"
+        else:
+            return f"❌ 開始即時對話失敗 (HTTP {response.status_code}): {response.text}"
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+    except requests.exceptions.Timeout:
+        return "❌ 請求超時，服務器可能忙碌中"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool()
+def stop_realtime_conversation() -> str:
+    """
+    停止即時對話（前端將停止實時語音串流）
+    """
+    try:
+        endpoint = f"{BASE_URL}/api/control/realtime-voice"
+        payload = {"action": "stop"}
+        response = requests.post(endpoint, json=payload, timeout=10)
+        if response.status_code == 200:
+            result = response.json()
+            conns = result.get("connections", 0)
+            return f"✅ 已廣播停止即時對話（連線數: {conns}）"
+        else:
+            return f"❌ 停止即時對話失敗 (HTTP {response.status_code}): {response.text}"
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+    except requests.exceptions.Timeout:
+        return "❌ 請求超時，服務器可能忙碌中"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool()
 def send_message(content: str, message_type: str = "chat-message") -> str:
     """
     向太空直播系統發送訊息，讓 AI 角色說話
@@ -1998,7 +2042,7 @@ def get_memory_stats() -> str:
 
 if __name__ == "__main__":
     print("🚀 太空直播系統 MCP 服務器啟動中...", file=sys.stderr)
-    print("📡 提供工具: send_message, set_emotion, emotion_transition, set_main_character_animation, set_main_character_animation_mix, stop_main_character_animation_mix, dance_group_animation, set_dance_group, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size, set_character_scale, set_character_position, set_character_rotation, reset_character_transform, set_character_morph, set_body_shape, set_monitor_content, generate_image_overlay, generate_background_image, take_selfie, show_existing_image, generate_map_image, search_nasa_image, get_epic_image, get_available_songs, get_available_bgm, get_available_effects, get_available_videos, get_available_main_character_animations, get_available_dance_group_animations, get_all_resources, search_resources, configure_obs_connection, start_obs_streaming, stop_obs_streaming, connect_and_start_streaming, get_browser_screenshot, get_field_video_screenshot, get_memory, save_memory, get_memory_stats", file=sys.stderr)
+    print("📡 提供工具: start_realtime_conversation, stop_realtime_conversation, send_message, set_emotion, emotion_transition, set_main_character_animation, set_main_character_animation_mix, stop_main_character_animation_mix, dance_group_animation, set_dance_group, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size, set_character_scale, set_character_position, set_character_rotation, reset_character_transform, set_character_morph, set_body_shape, set_monitor_content, generate_image_overlay, generate_background_image, take_selfie, show_existing_image, generate_map_image, search_nasa_image, get_epic_image, get_available_songs, get_available_bgm, get_available_effects, get_available_videos, get_available_main_character_animations, get_available_dance_group_animations, get_all_resources, search_resources, configure_obs_connection, start_obs_streaming, stop_obs_streaming, connect_and_start_streaming, get_browser_screenshot, get_field_video_screenshot, get_memory, save_memory, get_memory_stats", file=sys.stderr)
     print("🔗 連接後端: http://localhost:8000", file=sys.stderr)
     print("\n要在 Cursor 中使用，請在 settings.json 中添加此服務器配置", file=sys.stderr)
     
