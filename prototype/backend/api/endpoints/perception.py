@@ -422,16 +422,16 @@ async def stop_obs_recording():
 @router.post("/perception/capture-and-analyze")
 async def capture_and_analyze_field():
     """
-    整合端點：截圖展場視訊源 -> 顯示圖片 -> 分析圖片內容
+    整合端點：截圖展場視訊源 -> 設為背景 -> 分析圖片內容
     
     執行流程：
     1. 使用 OBS 截圖 API 擷取「展場視訊源」
-    2. 透過 show_existing_image 顯示截圖到前端
+    2. 將截圖複製到前端 background_pictures 並呼叫 set-background-image 設為背景
     3. 使用視覺分析服務分析圖片內容
     4. 回傳分析結果
     
     Returns:
-        dict: 包含截圖資訊和分析結果
+        dict: 包含截圖資訊、背景設定狀態和分析結果
     """
     try:
         logger.info("開始執行展場視訊源截圖分析流程...")
@@ -454,42 +454,42 @@ async def capture_and_analyze_field():
         
         filename = screenshot_result["filename"]
         file_path = screenshot_result["file_path"]
-        
         logger.info(f"截圖成功: {filename}")
-        
-        # 步驟 2: 顯示圖片到前端
-        logger.info("步驟 2: 顯示截圖到前端...")
-        async with httpx.AsyncClient() as client:
-            show_image_payload = {
-                "filename": filename,
-                "caption": "展場視訊源即時截圖",
-                "position": "center-left",
-                "size": "large",
-                "duration": 20.0
-            }
-            
-            show_response = await client.post(
-                "http://localhost:8000/api/show-existing-image",
-                json=show_image_payload,
-                timeout=10.0
-            )
-            
-            if show_response.status_code != 200:
-                logger.warning(f"顯示圖片失敗: {show_response.status_code}")
-            else:
-                logger.info("圖片已顯示到前端")
-        
-        # 步驟 3: 分析圖片內容
-        logger.info("步驟 3: 分析圖片內容...")
-        
-        # 確保使用完整的檔案路徑
+
+        # 準備路徑
         import os
+        import shutil
         if not os.path.isabs(file_path):
-            # 如果是相對路徑，組合成絕對路徑
             BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             full_image_path = os.path.join(BACKEND_DIR, file_path)
         else:
             full_image_path = file_path
+
+        # 步驟 2: 設為背景（複製到前端 background_pictures 並通知前端切換）
+        logger.info("步驟 2: 設置截圖為背景...")
+        FRONTEND_BACKGROUND_DIR = os.path.normpath(os.path.join(BACKEND_DIR, "../frontend/public/background_pictures"))
+        os.makedirs(FRONTEND_BACKGROUND_DIR, exist_ok=True)
+        dest_path = os.path.join(FRONTEND_BACKGROUND_DIR, filename)
+        try:
+            shutil.copyfile(full_image_path, dest_path)
+            logger.info(f"已複製截圖至前端背景資料夾: {dest_path}")
+        except Exception as copy_err:
+            logger.warning(f"複製截圖到前端背景資料夾失敗: {copy_err}")
+
+        async with httpx.AsyncClient() as client:
+            set_bg_resp = await client.post(
+                "http://localhost:8000/api/set-background-image",
+                json={"filename": filename},
+                timeout=10.0
+            )
+        background_ok = set_bg_resp.status_code == 200
+        if background_ok:
+            logger.info("背景已更新為最新截圖")
+        else:
+            logger.warning(f"背景更新失敗: HTTP {set_bg_resp.status_code} - {set_bg_resp.text[:200]}")
+
+        # 步驟 3: 分析圖片內容
+        logger.info("步驟 3: 分析圖片內容...")
         
         analysis_result = await vision_service.analyze_image(
             image_path=full_image_path,
@@ -510,7 +510,7 @@ async def capture_and_analyze_field():
                 "source_name": screenshot_result.get("source_name")
             },
             "analysis": analysis_result,
-            "display_status": "圖片已顯示到前端" if show_response.status_code == 200 else "圖片顯示失敗"
+            "background_status": "背景已更新" if background_ok else "背景更新失敗"
         }
         
         logger.info("展場視訊源截圖分析流程完成")
