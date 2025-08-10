@@ -696,7 +696,8 @@ async def generate_background_image(request: BackgroundImageRequest):
         # 使用修正後的 Gemini API 呼叫方式
         model = genai.GenerativeModel(model_name="gemini-2.0-flash-preview-image-generation")
         generation_config = {
-            "response_modalities": ["IMAGE"]
+            # 模型僅支援同時回傳 IMAGE 與 TEXT 的組合
+            "response_modalities": ["IMAGE", "TEXT"]
         }
         response = model.generate_content(prompt, generation_config=generation_config)
 
