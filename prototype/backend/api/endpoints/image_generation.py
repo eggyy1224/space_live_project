@@ -1,4 +1,5 @@
 import json
+import random
 import logging
 import os
 import time
@@ -38,6 +39,41 @@ FRONTEND_BACKGROUND_DIR = os.path.join(
 os.makedirs(GENERATED_DIR, exist_ok=True)
 os.makedirs(SELFIES_DIR, exist_ok=True)
 os.makedirs(FRONTEND_BACKGROUND_DIR, exist_ok=True)
+
+
+def _sanitize_prompt_text(text: Optional[str]) -> str:
+    """移除各種引號字元，避免誘發模型生成多餘文字。
+    會處理半形/全形/中英文常見引號。
+    """
+    if not text:
+        return ""
+    quotes = ['"', "'", '`', '“', '”', '‘', '’', '「', '」', '『', '』']
+    sanitized = text
+    for q in quotes:
+        sanitized = sanitized.replace(q, "")
+    return sanitized
+
+
+def _to_concept_tags(text: Optional[str]) -> str:
+    """將輸入描述轉為概念關鍵詞串：
+    - 先移除引號
+    - 將換行與分號等切成逗號分隔
+    - 壓縮重複空白
+    目的：讓模型把這些視為語意標籤而非可讀字幕。
+    """
+    if not text:
+        return ""
+    t = _sanitize_prompt_text(text)
+    separators = ["\n", "\r", "；", ";", "|", "/"]
+    for sep in separators:
+        t = t.replace(sep, ", ")
+    # 移除過多的標點，保留逗號作為分隔
+    strip_list = [":", "：", "—", "-", "_", "[", "]", "(", ")"]
+    for s in strip_list:
+        t = t.replace(s, " ")
+    # 壓縮空白
+    t = " ".join(t.split())
+    return t
 
 
 class ImageGenerationRequest(BaseModel):
@@ -104,6 +140,8 @@ class BackgroundImageRequest(BaseModel):
     reference_images: Optional[list[str]] = None
     # 修改指令 (可選)
     modification: Optional[str] = None  # 例如: "基於這張自拍照創造背景", "融合多張照片的風格"
+    # 風格變體 (可選) 提升多樣性；若未指定則隨機
+    style_variant: Optional[str] = None  # 可用: holographic, bioluminescent, ice_crystal, volumetric, retro_led, lantern_chain, gobo_projection
 
 
 class MapGenerationRequest(BaseModel):
@@ -619,21 +657,46 @@ async def generate_background_image(request: BackgroundImageRequest):
     try:
         # 強化英文化提示並明確禁止文字/標誌/浮水印/字幕
         aspect = request.aspect_ratio if request.aspect_ratio else "16:9"
+        subject = _sanitize_prompt_text(request.description)
+
+        # 多樣化的 SPACELIVE 呈現方式，避免固定工業霓虹風
+        variant_pool = {
+            "holographic": "floating holographic letterforms with thin volumetric glow and subtle scanlines",
+            "bioluminescent": "bioluminescent light arrays shaping the letters inside a transparent tank or dome",
+            "ice_crystal": "ice-crystal letterforms refracting light with faint frost and subsurface scattering",
+            "volumetric": "free-floating volumetric light letters with dust motes and soft godrays",
+            "retro_led": "retro-futuristic LED panel letters with pixel bloom and gentle chromatic aberration",
+            "lantern_chain": "microgravity paper-lantern chain arranged as letters with warm soft glow",
+            "gobo_projection": "projected light (gobo) casting SPACELIVE letters onto surfaces with no physical sign"
+        }
+        chosen_key = request.style_variant if request.style_variant in variant_pool else random.choice(list(variant_pool.keys()))
+        variant_text = variant_pool[chosen_key]
+
+        # 隨機色彩建議，提升視覺多樣性
+        palette_text = random.choice([
+            "teal & magenta",
+            "amber & steel blue",
+            "violet & cyan",
+            "emerald & warm white",
+            "ice blue & silver"
+        ])
+
         prompt = (
-            "Create a cinematic background image.\n"
-            "Must include a clearly visible neon sign that reads 'SPACELIVE' in English letters.\n"
-            "Guidelines: integrate the 'SPACELIVE' neon signage naturally into the environment (e.g., wall sign, storefront, billboard), with realistic neon glow and lighting spill. "
-            "Do not include any other text, letters, numbers, captions, subtitles, UI, logos, watermarks, banners, or labels besides the single 'SPACELIVE' neon sign.\n"
-            "Only the environment/background; avoid on-screen UI or embedded prompts.\n"
-            f"Subject: {request.description}\n"
+            "Create a high-quality, photorealistic photography-style background image (documentary realism).\n"
+            f"Scene description (guidance only, do not render as text): {subject}\n"
+            "Add exactly one sign that reads SPACELIVE; vary its physical implementation per the style variant.\n"
+            f"Style variant: {chosen_key} — {variant_text}.\n"
+            f"Color palette suggestion: {palette_text}.\n"
+            "Integrate lighting realistically (reflections, light spill).\n"
+            "Do not add any other readable text, letters, numbers, captions, UI, logos, watermarks, banners, or labels.\n"
             f"Use aspect ratio: {aspect}.\n"
-            "Style: clean composition, strong mood, clear lighting, detailed materials, suitable as a full-screen backdrop."
+            "Style: realistic lighting, plausible materials, lens behavior (depth of field, sensor noise), clean composition; suitable as a full-screen backdrop.\n"
         )
 
         # 使用修正後的 Gemini API 呼叫方式
         model = genai.GenerativeModel(model_name="gemini-2.0-flash-preview-image-generation")
         generation_config = {
-            "response_modalities": ["TEXT", "IMAGE"]
+            "response_modalities": ["IMAGE"]
         }
         response = model.generate_content(prompt, generation_config=generation_config)
 
