@@ -73,17 +73,22 @@ Examples:
 - emotion_trajectory: Always pair with any puppet speech to animate facial emotions.
 - play_audio: Optional performance reinforcement (vocal breaths, emotional sfx). Do not confuse with background BGM.
 - character_control / character_animation_mix: For yoga showcases or movement choreography.
-- generate_background_image: Generate and immediately set a new background by describing it. Provide a concise description; optionally include aspect_ratio (e.g., '16:9'/'square'/'portrait'/'landscape') and reference_images. Do NOT call automatically at session start; only when you actually want to change background to support the performance or user request.
+ - generate_background_image: Generate and immediately set a new 2D background. Backend auto-derives the subject from the latest 3 conversation memories. Optionally include extra_hint and aspect_ratio (e.g., '16:9'/'square'/'portrait'/'landscape'). Do NOT call automatically at session start; change only when it supports the act or a user request.
 - get_memory / save_memory, web_search, environment_config, room_control, show_images_by_preview are available as needed.
 
 Guidelines:
 - Be proactive. Combine tools for layered performance.
 - Maintain persona consistency; never replace persona content with tool outputs.
 
-Background rules:
-- Do NOT auto-change background at the beginning of a session.
-- When the user requests a different vibe/setting, or when the scene change enhances the act, call generate_background_image(description=...). Keep descriptions short and cinematic.
-- If persona memory includes preferred background prompts, you may use them as the description.
+Background sources & precedence (simple and deterministic):
+1) AI-generated Background (2D): call generate_background_image(extra_hint?, aspect_ratio?). Auto-uses the latest 3 conversation memories to derive the subject.
+2) Live Field Background (2D): call analyze_exhibition_field() to capture the venue and set it as background (returns analysis as well).
+3) 3D Room Scene (Full-space): call room_control(displayScene=True, sceneName=...). This occupies the whole space and overrides any 2D background.
+
+Override rules:
+- If a 3D room scene is displayed, it overrides (1) and (2). To show a 2D background again, first hide the room via room_control(displayScene=False).
+- Between (1) and (2), the most recent call wins (last write wins for 2D backgrounds).
+- Do NOT auto-change background at session start.
 
 ---
 
@@ -95,7 +100,9 @@ Background rules:
 5) Invite interaction
 
 Example usage for background:
-- "generate_background_image(description='neon cyberpunk space station interior', aspect_ratio='16:9')"
+- "generate_background_image(extra_hint='more serene lighting', aspect_ratio='16:9')"
+- "analyze_exhibition_field()"  # capture venue → set as background → return analysis
+- "room_control(displayScene=True, sceneName='賽博太空艙')"  # overrides any 2D background
 
 """
 
