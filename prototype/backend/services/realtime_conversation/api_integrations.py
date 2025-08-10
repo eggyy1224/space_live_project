@@ -748,7 +748,8 @@ class APIIntegrations:
     async def analyze_exhibition_field(self, analysis_focus: str = "exhibition") -> dict:
         """
         展場視覺分析工具
-        截圖展場視訊源並進行智能分析，了解展場即時狀況
+        截圖展場視訊源並進行智能分析，了解展場即時狀況。
+        注意：不再將截圖顯示到前端或設為背景，僅回傳分析結果。
         
         Args:
             analysis_focus: 分析重點類型
@@ -759,40 +760,56 @@ class APIIntegrations:
         try:
             logger.info(f"🔍 開始展場視覺分析 (focus: {analysis_focus})")
             
-            # 呼叫後端的整合 API
+            # 1) 只截圖，不顯示到前端
             async with aiohttp.ClientSession() as session:
+                screenshot_payload = {
+                    "source_name": "展場視訊源",
+                    "width": 1280,
+                    "height": 720,
+                    "image_format": "png"
+                }
                 async with session.post(
-                    "http://localhost:8000/api/perception/capture-and-analyze",
-                    timeout=aiohttp.ClientTimeout(total=30)  # 增加超時時間，因為包含圖片分析
+                    "http://localhost:8000/api/perception/obs/screenshot",
+                    json=screenshot_payload,
+                    timeout=aiohttp.ClientTimeout(total=20)
                 ) as response:
-                    response_text = await response.text()
-                    logger.info(f"展場分析 API 回應狀態: {response.status}")
-                    
-                    if response.status == 200:
-                        result_data = json.loads(response_text)
-                        
-                        # 提取關鍵資訊
-                        screenshot_info = result_data.get("screenshot", {})
-                        analysis_info = result_data.get("analysis", {})
-                        
-                        logger.info(f"✅ 展場分析完成: {screenshot_info.get('filename', 'unknown')}")
-                        
-                        return {
-                            "success": True,
-                            "screenshot_filename": screenshot_info.get("filename"),
-                            "analysis_description": analysis_info.get("description", "分析失敗"),
-                            "timestamp": screenshot_info.get("timestamp"),
-                            "display_status": result_data.get("display_status"),
-                            "full_result": result_data
-                        }
-                    else:
-                        error_msg = f"展場分析 API 錯誤: HTTP {response.status}"
+                    if response.status != 200:
+                        response_text = await response.text()
+                        error_msg = f"展場截圖失敗: HTTP {response.status} - {response_text}"
                         logger.error(error_msg)
-                        return {
-                            "success": False,
-                            "error": error_msg,
-                            "response": response_text
-                        }
+                        return {"success": False, "error": error_msg}
+
+                    screenshot_result = await response.json()
+
+            # 2) 進行 AI 圖像分析
+            screenshot_path = screenshot_result.get("file_path")
+            analysis_result = await self.vision_service.analyze_image(
+                image_path=screenshot_path,
+                analysis_type="exhibition"
+            )
+
+            if analysis_result.get("success", False):
+                logger.info(f"✅ 展場分析完成: {screenshot_result.get('filename', 'unknown')}")
+                return {
+                    "success": True,
+                    "screenshot_filename": screenshot_result.get("filename"),
+                    "screenshot_path": screenshot_path,
+                    "timestamp": screenshot_result.get("timestamp"),
+                    "analysis_description": analysis_result.get("description", "分析失敗"),
+                    "full_result": {
+                        "screenshot": screenshot_result,
+                        "analysis": analysis_result
+                    }
+                }
+            else:
+                error_msg = analysis_result.get("error", "分析失敗")
+                logger.error(f"AI 分析失敗: {error_msg}")
+                return {
+                    "success": False,
+                    "error": error_msg,
+                    "screenshot_filename": screenshot_result.get("filename"),
+                    "screenshot_path": screenshot_path
+                }
                         
         except Exception as e:
             logger.error(f"❌ analyze_exhibition_field 處理錯誤: {e}")
@@ -881,7 +898,7 @@ class APIIntegrations:
                 if analysis_result.get("success", False):
                     logger.info(f"✅ {source_name} 分析完成")
                     
-                    # 顯示截圖到前端
+                    # 顯示截圖到前端（僅針對一般 OBS 場景分析；展場專用路徑已於 analyze_exhibition_field 中關閉顯示）
                     display_status = await self._display_screenshot_to_frontend(
                         screenshot_result.get("filename"),
                         source_name,
@@ -960,8 +977,8 @@ class APIIntegrations:
             
             # 生成對比分析報告
             comparison_report = self._generate_comparison_report(successful_results)
-            
-            # 顯示所有截圖到前端（如果有display_status說明已經顯示過了）
+
+            # 顯示所有截圖到前端（如果有 display_status 說明已經顯示過了）
             display_statuses = []
             for result in successful_results:
                 if "display_status" not in result:

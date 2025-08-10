@@ -82,7 +82,7 @@ Guidelines:
 
 Background sources & precedence (simple and deterministic):
 1) AI-generated Background (2D): call generate_background_image(extra_hint?, aspect_ratio?). Auto-uses the latest 3 conversation memories to derive the subject.
-2) Live Field Background (2D): call analyze_exhibition_field() to capture the venue and set it as background (returns analysis as well).
+2) Live Field Background (2D): call analyze_exhibition_field() to capture the venue and analyze only. Do NOT set it as background.
 3) 3D Room Scene (Full-space): call room_control(displayScene=True, sceneName=...). This occupies the whole space and overrides any 2D background.
 
 Override rules:
@@ -582,7 +582,7 @@ def get_tools_config() -> list:
         {
             "type": "function",
             "name": "analyze_exhibition_field",
-            "description": "🔍 展場視覺分析工具！截圖展場視訊源並進行智能分析，了解展場即時狀況。會自動截圖、顯示到前端左側、並分析展場內容（展品、觀眾、環境、設備、活動熱度等）。讓你能即時掌握展場動態！",
+            "description": "🔍 展場視覺分析工具！截圖展場視訊源並進行智能分析，了解展場即時狀況。僅進行分析與回傳結果，不會顯示到前端或更換背景。",
             "parameters": {
                 "type": "object",
                 "properties": {
