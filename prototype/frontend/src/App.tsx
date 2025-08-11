@@ -424,7 +424,9 @@ function App() {
               content: result.text,
               timestamp: new Date().toISOString(),
             };
-            addChatMessage(userMessage); 
+            addChatMessage(userMessage);
+            // Feed transcript to the 3D SpeechBackground display
+            useStore.getState().setSpeechText(result.text);
           }
 
           // 2. Handle bot's response (audio and/or text)
