@@ -654,16 +654,18 @@ def set_character_scale(scale: float) -> str:
     調整 AI 角色的整體大小
     
     Args:
-        scale: 縮放倍數 (建議範圍 0.1 到 3.0)
+        scale: 縮放倍數 (範圍 0.1 到 1.0)
     
     Returns:
         操作結果描述
     """
     try:
-        payload = {"scale": scale}
+        # 夾制範圍到 0.1-1.0
+        clamped_scale = max(0.1, min(1.0, scale))
+        payload = {"scale": clamped_scale}
         response = requests.post(f"{BASE_URL}/api/control/character/scale", json=payload, timeout=10)
         if response.status_code == 200:
-            return f"✅ 角色大小已設為 {scale} 倍。"
+            return f"✅ 角色大小已設為 {clamped_scale} 倍。"
         else:
             return f"❌ 設定角色大小失敗 (HTTP {response.status_code}): {response.text}"
     except Exception as e:
