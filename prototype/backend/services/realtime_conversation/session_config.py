@@ -14,7 +14,7 @@ async def fetch_latest_persona():
     url = "http://localhost:8000/api/memory/get"
     payload = {
         "memory_type": "persona",
-        "limit": 10,  # 改為取前五筆
+        "limit": 50,  # 改為取前五十筆
         "include_metadata": True
     }
     try:
