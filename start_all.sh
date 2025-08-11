@@ -469,3 +469,114 @@ osascript -l JavaScript <<'JXA'
 JXA
 
 echo "雙螢幕自動排版完成。"
+
+# ==========================
+# 額外：生成直播 QR Code 並顯示於大螢幕左上角（以 Preview 顯示，小尺寸）
+# - 來源：抓取頻道 /live 解析當前 videoId → 生成 QR 圖 → 用 Preview 開啟 → 移到大螢幕左上角
+# ==========================
+
+echo "準備生成直播 QR Code..."
+
+# 設定頻道 ID（如需變更請同步後端設定）
+CHANNEL_ID="UCV60MYR7dQJM8TqY5eXb7YA"
+
+# 解析當前直播 videoId（若無則退回至 /live 頁面）
+LIVE_HTML=$(curl -L -s "https://www.youtube.com/channel/${CHANNEL_ID}/live" || true)
+VIDEO_ID=$(echo "$LIVE_HTML" | grep -oE '"videoId":"[A-Za-z0-9_-]{11}"' | head -n1 | sed -E 's/"videoId":"([A-Za-z0-9_-]{11})"/\1/')
+
+if [ -n "$VIDEO_ID" ]; then
+  LIVE_URL="https://www.youtube.com/watch?v=${VIDEO_ID}"
+else
+  LIVE_URL="https://www.youtube.com/channel/${CHANNEL_ID}/live"
+fi
+
+QR_DIR="/Users/spacelive/Desktop/space_live/space_live_project/prototype/frontend/public/qr"
+QR_FILE="${QR_DIR}/live_qr.png"
+mkdir -p "$QR_DIR"
+
+# 使用線上 API 生成 QR Code（免安裝依賴）
+echo "正在生成 QR 圖檔：$QR_FILE (URL: $LIVE_URL)"
+curl -L --silent --show-error --fail --get \
+  --data-urlencode "data=${LIVE_URL}" \
+  "https://api.qrserver.com/v1/create-qr-code/?size=220x220&qzone=1&margin=1" \
+  -o "$QR_FILE" || echo "⚠️ QR 生成可能失敗，將略過顯示。"
+
+# 以 Preview 顯示 QR，之後用 JXA 移動到大螢幕左上角
+if [ -f "$QR_FILE" ]; then
+  echo "以 Preview 開啟 QR 圖..."
+  open -a Preview "$QR_FILE"
+  sleep 0.8
+
+  # 以 JXA 取得左側最大顯示器的可視區域，將 Preview 視窗移至左上，尺寸約 240x240
+  osascript -l JavaScript <<'JXA'
+(() => {
+  ObjC.import('AppKit');
+  const delay = (s) => $.NSThread.sleepForTimeInterval(s);
+
+  const nsScreens = $.NSScreen.screens;
+  const count = nsScreens.count;
+  if (count < 1) { return; }
+
+  const screens = [];
+  for (let i = 0; i < count; i++) {
+    const s = nsScreens.objectAtIndex(i);
+    const f = s.frame;
+    const vf = s.visibleFrame;
+    screens.push({
+      x: Number(f.origin.x),
+      y: Number(f.origin.y),
+      w: Number(f.size.width),
+      h: Number(f.size.height),
+      vx: Number(vf.origin.x),
+      vy: Number(vf.origin.y),
+      vw: Number(vf.size.width),
+      vh: Number(vf.size.height)
+    });
+  }
+
+  // 轉為由左到右排序，取最左為主要展示螢幕
+  screens.sort((a, b) => a.x - b.x);
+  const left = screens[0];
+
+  // AppKit 全域底左座標系 → UI 自動化頂左座標系
+  const globalMaxY = screens.reduce((acc, s) => Math.max(acc, s.y + s.h), 0);
+  const toAX = (r) => ({
+    x: Math.round(r.x),
+    y: Math.round(globalMaxY - (r.y + r.h)),
+    w: Math.round(r.w),
+    h: Math.round(r.h)
+  });
+  const visAX = toAX({ x: left.vx, y: left.vy, width: left.vw, height: left.vh });
+
+  const target = {
+    x: visAX.x + 12,
+    y: visAX.y + 12,
+    w: 420,
+    h: 480
+  };
+
+  try {
+    const app = Application('Preview');
+    app.activate();
+    delay(0.2);
+  } catch (e) { /* ignore */ }
+
+  try {
+    const sys = Application('System Events');
+    const proc = sys.processes.byName('Preview');
+    const win = proc.windows[0];
+    win.position = [target.x, target.y];
+    win.size = [target.w, target.h];
+    delay(0.15);
+    // 重設到「實際大小」後再放大兩次，讓 QR 更大且不會被裁切
+    try { sys.keystroke('0', { using: ['command down'] }); } catch (e) {}
+    delay(0.12);
+    try { sys.keystroke('+', { using: ['command down'] }); } catch (e) {}
+    delay(0.1);
+    try { sys.keystroke('+', { using: ['command down'] }); } catch (e) {}
+  } catch (e) { /* ignore */ }
+})();
+JXA
+else
+  echo "找不到 QR 圖檔，略過顯示。"
+fi

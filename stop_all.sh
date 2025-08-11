@@ -40,5 +40,11 @@ fi
 echo "正在關閉 Google Chrome..."
 killall "Google Chrome"
 
+# 關閉 Preview（若有用來顯示直播 QR）
+echo "正在關閉 Preview..."
+osascript -e 'tell application "Preview" to quit'
+sleep 1
+killall Preview 2>/dev/null || true
+
 echo ""
 echo "所有相關程序已嘗試關閉。" 
