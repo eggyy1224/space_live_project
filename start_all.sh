@@ -133,7 +133,7 @@ echo "   - 按 ESC 鍵：退出全螢幕模式"
 # ==========================
 
 echo ""
-echo "開始進行雙螢幕自動排版（大螢幕：Chrome 置入左螢幕；小螢幕：Terminal + headonly Chrome 左右各半）..."
+echo "開始進行雙螢幕自動排版（大螢幕：Chrome 置入左螢幕；小螢幕：Terminal + headonly Chrome 上下各半）..."
 
 # 先開啟 headonly 的新 Chrome 視窗（自動初始化）
 echo "開啟 headonly Chrome 視窗於 http://localhost:5173/?headonly&&autostart=true ..."
@@ -398,6 +398,14 @@ osascript -l JavaScript <<'JXA'
       right: { x: r.x + halfW + pad, y: r.y + pad, w: halfW - pad * 2, h: r.h - pad * 2 },
     };
   };
+  const verticalHalfRects = (r) => {
+    const pad = 6;
+    const halfH = Math.round(r.h / 2);
+    return {
+      top: { x: r.x + pad, y: r.y + pad, w: r.w - pad * 2, h: halfH - pad * 2 },
+      bottom: { x: r.x + pad, y: r.y + halfH + pad, w: r.w - pad * 2, h: halfH - pad * 2 },
+    };
+  };
 
   // 輔助：將特定 URL 條件的 Chrome 視窗設為前景（窗口本身到最前、對應分頁為 active）
   const focusChromeWindowBy = (predicate) => {
@@ -422,11 +430,29 @@ osascript -l JavaScript <<'JXA'
     return false;
   };
 
+  // 依據分頁 URL 尋找特定 Chrome 視窗索引（找不到則回傳 0）
+  const findChromeWindowIndexByUrl = (predicate) => {
+    try {
+      const chrome = Application('Google Chrome');
+      const wins = chrome.windows();
+      for (let i = 0; i < wins.length; i++) {
+        const tabs = wins[i].tabs();
+        for (let j = 0; j < tabs.length; j++) {
+          let u = '';
+          try { u = String(tabs[j].url()); } catch (e) { u = ''; }
+          if (predicate(u)) return i;
+        }
+      }
+    } catch (e) {}
+    return 0;
+  };
+
   // 1) 將 Chrome 主視窗（非 headonly，網址以 localhost:5173 開頭且不含 headonly）放到左邊大螢幕
   // 先在左螢幕建立 Finder 錨點以鎖定目標空間
   anchorOnDisplay(largeVisibleAX);
   focusChromeWindowBy((u) => u.startsWith('http://localhost:5173') && !u.includes('headonly'));
-  moveWindow('Google Chrome', largeVisibleAX);
+  const mainChromeIndex = findChromeWindowIndexByUrl((u) => u.startsWith('http://localhost:5173') && !u.includes('headonly'));
+  moveWindow('Google Chrome', largeVisibleAX, mainChromeIndex);
   // 再保守縮小 96% 以避免任何邊界或縮放問題（針對目前前景視窗）
   try {
     const proc = sys.processes.byName('Google Chrome');
@@ -450,29 +476,51 @@ osascript -l JavaScript <<'JXA'
     } catch (e) {}
   } catch (e) { /* 忽略 */ }
 
-  // 2) 小螢幕：Terminal（左半） + 新開的 headonly Chrome（右半）
-  const halves = halfRects(smallVisibleAX);
+  // 2) 小螢幕：Terminal（上半） + 新開的 headonly Chrome（下半）
+  const halves = verticalHalfRects(smallVisibleAX);
 
-  // 2a) Terminal → 左半
+  // 2a) headonly Chrome 視窗 → 上半（先聚焦含 headonly 的視窗，再移動前景視窗）
+  focusChromeWindowBy((u) => u.includes('headonly'));
+  const headonlyIndex = findChromeWindowIndexByUrl((u) => u.includes('headonly'));
+  moveWindow('Google Chrome', halves.top, headonlyIndex);
+
+  // 2b) Terminal → 下半（將所有 Terminal 視窗都移到下半，避免有前端視窗留在上半）
   try {
     const term = Application('Terminal');
     term.activate();
     const proc = sys.processes.byName('Terminal');
     try { proc.windows[backendWinIndex].index = 1; } catch (e) {}
-    moveWindow('Terminal', halves.left, backendWinIndex);
+    try {
+      const total = proc.windows.length;
+      for (let i = 0; i < total; i++) {
+        moveWindow('Terminal', halves.bottom, i);
+      }
+    } catch (e) {
+      // 後備：至少確保後端視窗在下半
+      moveWindow('Terminal', halves.bottom, backendWinIndex);
+    }
+  } catch (e) { /* 忽略 */ }
+ 
+  // 2c) 再次將 headonly Chrome 聚焦並放置到上半，確保視覺上覆蓋 Terminal
+  focusChromeWindowBy((u) => u.includes('headonly'));
+  const headonlyIndex2 = findChromeWindowIndexByUrl((u) => u.includes('headonly'));
+  moveWindow('Google Chrome', halves.top, headonlyIndex2);
+  try {
+    const sys2 = Application('System Events');
+    const chromeProc = sys2.processes.byName('Google Chrome');
+    // 嘗試把 headonly 的那個視窗放到最前面
+    try { chromeProc.windows[headonlyIndex2].index = 1; } catch (e) {}
+    chromeProc.frontmost = true;
   } catch (e) { /* 忽略 */ }
 
-  // 2b) headonly Chrome 視窗 → 右半（先聚焦含 headonly 的視窗，再移動前景視窗）
-  focusChromeWindowBy((u) => u.includes('headonly'));
-  moveWindow('Google Chrome', halves.right);
 })();
 JXA
 
 echo "雙螢幕自動排版完成。"
 
 # ==========================
-# 額外：生成直播 QR Code 並顯示於大螢幕左上角（以 Preview 顯示，小尺寸）
-# - 來源：抓取頻道 /live 解析當前 videoId → 生成 QR 圖 → 用 Preview 開啟 → 移到大螢幕左上角
+# 額外：生成直播 QR Code 並顯示於大螢幕左下角（以 Preview 顯示，小尺寸）
+# - 來源：抓取頻道 /live 解析當前 videoId → 生成 QR 圖 → 用 Preview 開啟 → 移到大螢幕左下角
 # ==========================
 
 echo "準備生成直播 QR Code..."
@@ -501,82 +549,14 @@ curl -L --silent --show-error --fail --get \
   "https://api.qrserver.com/v1/create-qr-code/?size=220x220&qzone=1&margin=1" \
   -o "$QR_FILE" || echo "⚠️ QR 生成可能失敗，將略過顯示。"
 
-# 以 Preview 顯示 QR，之後用 JXA 移動到大螢幕左上角
+# 以 Preview 顯示 QR，之後用 JXA 移動到大螢幕左下角
 if [ -f "$QR_FILE" ]; then
   echo "以 Preview 開啟 QR 圖..."
   open -a Preview "$QR_FILE"
-  sleep 0.8
+  sleep 1.2
 
-  # 以 JXA 取得左側最大顯示器的可視區域，將 Preview 視窗移至左上，尺寸約 240x240
-  osascript -l JavaScript <<'JXA'
-(() => {
-  ObjC.import('AppKit');
-  const delay = (s) => $.NSThread.sleepForTimeInterval(s);
-
-  const nsScreens = $.NSScreen.screens;
-  const count = nsScreens.count;
-  if (count < 1) { return; }
-
-  const screens = [];
-  for (let i = 0; i < count; i++) {
-    const s = nsScreens.objectAtIndex(i);
-    const f = s.frame;
-    const vf = s.visibleFrame;
-    screens.push({
-      x: Number(f.origin.x),
-      y: Number(f.origin.y),
-      w: Number(f.size.width),
-      h: Number(f.size.height),
-      vx: Number(vf.origin.x),
-      vy: Number(vf.origin.y),
-      vw: Number(vf.size.width),
-      vh: Number(vf.size.height)
-    });
-  }
-
-  // 轉為由左到右排序，取最左為主要展示螢幕
-  screens.sort((a, b) => a.x - b.x);
-  const left = screens[0];
-
-  // AppKit 全域底左座標系 → UI 自動化頂左座標系
-  const globalMaxY = screens.reduce((acc, s) => Math.max(acc, s.y + s.h), 0);
-  const toAX = (r) => ({
-    x: Math.round(r.x),
-    y: Math.round(globalMaxY - (r.y + r.h)),
-    w: Math.round(r.w),
-    h: Math.round(r.h)
-  });
-  const visAX = toAX({ x: left.vx, y: left.vy, width: left.vw, height: left.vh });
-
-  const target = {
-    x: visAX.x + 12,
-    y: visAX.y + 12,
-    w: 420,
-    h: 480
-  };
-
-  try {
-    const app = Application('Preview');
-    app.activate();
-    delay(0.2);
-  } catch (e) { /* ignore */ }
-
-  try {
-    const sys = Application('System Events');
-    const proc = sys.processes.byName('Preview');
-    const win = proc.windows[0];
-    win.position = [target.x, target.y];
-    win.size = [target.w, target.h];
-    delay(0.15);
-    // 重設到「實際大小」後再放大兩次，讓 QR 更大且不會被裁切
-    try { sys.keystroke('0', { using: ['command down'] }); } catch (e) {}
-    delay(0.12);
-    try { sys.keystroke('+', { using: ['command down'] }); } catch (e) {}
-    delay(0.1);
-    try { sys.keystroke('+', { using: ['command down'] }); } catch (e) {}
-  } catch (e) { /* ignore */ }
-})();
-JXA
+  # 直接把 Preview 貼到最右側螢幕的左下角（以主機當前座標）
+  osascript -l JavaScript -e '(() => { ObjC.import("AppKit"); const delay=(s)=>$.NSThread.sleepForTimeInterval(s); const nsScreens=$.NSScreen.screens; const count=nsScreens.count; if(count<1){return;} const screens=[]; for (let i=0;i<count;i++){ const s=nsScreens.objectAtIndex(i); const f=s.frame; const vf=s.visibleFrame; screens.push({x:Number(f.origin.x), y:Number(f.origin.y), w:Number(f.size.width), h:Number(f.size.height), vx:Number(vf.origin.x), vy:Number(vf.origin.y), vw:Number(vf.size.width), vh:Number(vf.size.height)});} screens.sort((a,b)=>a.x-b.x); const right=screens[screens.length-1]; const globalMaxY=screens.reduce((acc,s)=>Math.max(acc,s.y+s.h),0); const toAX=(r)=>({x:Math.round(r.x), y:Math.round(globalMaxY-(r.y+r.h)), w:Math.round(r.w), h:Math.round(r.h)}); const visAX=toAX({x:right.vx, y:right.vy, w:right.vw, h:right.vh}); const pad=12; const winW=420; const winH=480; try{ const app=Application("Preview"); app.activate(); delay(0.2);}catch(e){} try{ const sys=Application("System Events"); const proc=sys.processes.byName("Preview"); const wins=proc.windows(); if(!wins||wins.length===0){return;} const win=wins[0]; try{win.size=[winW,winH];}catch(e){} delay(0.15); const yBottom=visAX.y+visAX.h-winH-pad; try{win.position=[visAX.x+pad, yBottom];}catch(e){} delay(0.08); try{win.position=[visAX.x+pad, yBottom];}catch(e){} }catch(e){} })();'
 else
   echo "找不到 QR 圖檔，略過顯示。"
 fi
