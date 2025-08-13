@@ -6,6 +6,18 @@ sleep 2
 
 echo "啟動所有服務..."
 
+# 背景播放開機 MV（非同步，不阻塞後續流程）
+MV_SCRIPT="/Users/spacelive/Desktop/space_live/space_live_project/prototype/frontend/public/mv/play_mv_loop.sh"
+MV_LOG="/Users/spacelive/Desktop/space_live/space_live_project/prototype/frontend/public/mv/play_mv_loop.log"
+if [ -f "$MV_SCRIPT" ]; then
+  chmod +x "$MV_SCRIPT" 2>/dev/null || true
+  echo "背景啟動開機 MV：$MV_SCRIPT (log: $MV_LOG)"
+  nohup "$MV_SCRIPT" > "$MV_LOG" 2>&1 &
+  echo "MV 背景程序 PID: $!"
+else
+  echo "找不到 MV 腳本：$MV_SCRIPT，略過播放。"
+fi
+
 # 確保 Google Chrome 已開啟
 echo "正在開啟 Google Chrome..."
 open -a "Google Chrome"

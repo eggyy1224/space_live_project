@@ -46,5 +46,11 @@ osascript -e 'tell application "Preview" to quit'
 sleep 1
 killall Preview 2>/dev/null || true
 
+# 關閉 QuickTime Player（避免 MV 播放佔用而卡住）
+echo "正在關閉 QuickTime Player..."
+osascript -e 'tell application "QuickTime Player" to quit'
+sleep 1
+killall "QuickTime Player" 2>/dev/null || true
+
 echo ""
 echo "所有相關程序已嘗試關閉。" 
