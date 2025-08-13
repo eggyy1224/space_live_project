@@ -209,6 +209,8 @@ class WebSocketHandler:
                 await self._send_session_update(ws)
                 # 新增：設定初始環境光強度
                 await self._set_initial_environment_light()
+                # 新增：即時對話啟動時開啟招牌燈（channel 0 設為 1）
+                await self._set_sign_light(True)
                 # 新增：即時對話啟動時關閉所有螢幕並停止任何既有輪播（服務化）
                 await video_rotation_service.stop_rotation()
                 await video_rotation_service.enable_inhibit()
@@ -353,6 +355,8 @@ class WebSocketHandler:
                     # 新增：燈光直接關閉（設為 0）
                     import aiohttp
                     asyncio.create_task(self._set_light_off())
+                    # 新增：即時對話結束時關閉招牌燈（channel 0 設為 0）
+                    asyncio.create_task(self._set_sign_light(False))
                     # 新增：即時對話結束後啟動螢幕影片輪播（服務化）
                     async def _resume_videos_after_inhibit():
                         await video_rotation_service.disable_inhibit()
@@ -839,6 +843,18 @@ class WebSocketHandler:
         base_url = "http://localhost:8000/api/physical-light/set-brightness"
         async with aiohttp.ClientSession() as session:
             await session.post(base_url, json={"brightness": 0})
+
+    async def _set_sign_light(self, on: bool):
+        """控制招牌燈（通道 0，開關）。"""
+        import aiohttp
+        base_url = "http://localhost:8000/api/physical-light/set-channel-brightness"
+        payload = {"channel": 0, "brightness": 1 if on else 0}
+        try:
+            async with aiohttp.ClientSession() as session:
+                await session.post(base_url, json=payload)
+        except Exception:
+            # 靜默失敗以避免影響主要流程
+            pass
     
     async def _start_youtube_chat_monitoring(self):
         """開始 YouTube 聊天室監控"""
