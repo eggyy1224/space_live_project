@@ -216,16 +216,11 @@ class WebSocketHandler:
                     await self._reset_physical_light_connection()
                 except Exception as _e:
                     logger.warning(f"會話啟動前重置實體燈連線失敗: {_e}")
-                # 允許前端音量映射的亮度 WS 串流（只在會話期間）
+                # 新增：會話啟動時直接開啟物理燈光
                 try:
-                    import aiohttp
-                    async with aiohttp.ClientSession() as session:
-                        await session.post(
-                            "http://localhost:8000/api/physical-light/toggle-brightness-stream",
-                            json={"enabled": True}
-                        )
+                    await self._set_light_on()
                 except Exception as _e:
-                    logger.warning(f"啟用亮度串流失敗（可忽略）: {_e}")
+                    logger.warning(f"開啟燈光時發生例外: {_e}")
                 # 新增：設定初始環境光強度
                 await self._set_initial_environment_light()
                 # 新增：即時對話啟動時開啟招牌燈（channel 0 設為 1）
@@ -368,16 +363,6 @@ class WebSocketHandler:
                         await self._reset_physical_light_connection()
                     except Exception as _e:
                         logger.warning(f"重置實體燈連線時發生例外: {_e}")
-                    # 關閉前端亮度 WS 串流（避免對話結束後仍噴發）
-                    try:
-                        import aiohttp
-                        async with aiohttp.ClientSession() as session:
-                            await session.post(
-                                "http://localhost:8000/api/physical-light/toggle-brightness-stream",
-                                json={"enabled": False}
-                            )
-                    except Exception as _e:
-                        logger.warning(f"停用亮度串流失敗（可忽略）: {_e}")
                     # 變更：即時對話結束後不再恢復影片輪播，保持螢幕隱藏（inhibit 維持啟用）
                     logger.info("會話結束：不恢復影片輪播，保持螢幕關閉以符合待機需求")
                     
@@ -868,10 +853,17 @@ class WebSocketHandler:
                         logger.warning(f"重置環境光強度失敗: {await response.text()}")
         except Exception as e:
             logger.error(f"重置環境光強度異常: {e}")
-    
+
     def set_tool_executor(self, executor):
         """設定工具執行器"""
-        self.tool_executor = executor 
+        self.tool_executor = executor
+
+    async def _set_light_on(self):
+        """直接將燈光設為最大亮度"""
+        import aiohttp
+        base_url = "http://localhost:8000/api/physical-light/set-brightness"
+        async with aiohttp.ClientSession() as session:
+            await session.post(base_url, json={"brightness": 65535})
 
     async def _set_light_off(self):
         """直接將燈光設為 0（全暗）"""

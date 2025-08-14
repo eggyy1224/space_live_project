@@ -25,24 +25,7 @@ class AudioService {
   private animationFrameId: number | null = null;
   private mouthAnimationIntervalId: number | null = null;
   private modelService: ModelService;
-  // === 新增：物理燈光 WebSocket 連線 ===
-  private lightWs: WebSocket | null = null;
-
-  // === 新增：確保燈光 WebSocket 連線 ===
-  private ensureLightWs(): void {
-    if (!this.lightWs || this.lightWs.readyState === 3) { // 只在沒有連線或已關閉時重新連線
-      try {
-        console.log('[AudioService] Creating new light WebSocket connection...');
-        this.lightWs = new window.WebSocket('ws://localhost:8000/api/physical-light/ws/brightness');
-        this.lightWs.onopen = () => console.log('[AudioService] Light WebSocket connected');
-        this.lightWs.onerror = (error) => console.error('[AudioService] Light WebSocket error:', error);
-        this.lightWs.onclose = () => console.log('[AudioService] Light WebSocket closed');
-      } catch (error) {
-        console.warn('[AudioService] Failed to connect to light WebSocket:', error);
-      }
-    }
-  }
-  // === 新增結束 ===
+  // 物理燈光控制改為在會話層級處理，移除本地 WebSocket 邏輯
 
   public updateTtsVolume(volume: number): void {
     if (this.playbackAudio) {
@@ -471,18 +454,6 @@ class AudioService {
       useStore.getState().setAudioLipsyncTarget('jawOpen', 0); // <-- 使用新 Action
       logger.debug('Stopped playback audio analysis loop and reset jawOpen via setAudioLipsyncTarget.', LogCategory.AUDIO);
     }
-    // 新增：在分析停止時，嘗試將燈光設 0 並關閉 WS，避免殘留
-    try {
-      if (this.lightWs && this.lightWs.readyState === 1) {
-        this.lightWs.send(JSON.stringify({ brightness: 0 }));
-      }
-      if (this.lightWs) {
-        this.lightWs.close();
-        this.lightWs = null;
-      }
-    } catch (e) {
-      console.warn('[AudioService] Failed to shutdown light WS gracefully:', e);
-    }
   }
   // --- 新增結束 ---
 
@@ -514,18 +485,6 @@ class AudioService {
     // useStore.getState().updateMorphTarget('jawOpen', jawOpenValue);
     useStore.getState().setAudioLipsyncTarget('jawOpen', jawOpenValue); // <-- 使用新 Action
     useStore.getState().setAudioAverageVolume(rms); // <-- 新增：設定平均音量
-    
-    // === 新增：同步燈光控制 ===
-    this.ensureLightWs();
-    if (this.lightWs && this.lightWs.readyState === 1) {
-      // rms 0~1 映射到 0~65535，增加靈敏度
-      const brightness = Math.round(Math.max(0, Math.min(1, rms * 10)) * 65535);
-      console.log(`[AudioService] RMS: ${rms.toFixed(4)}, Brightness: ${brightness}, WebSocket ready: ${this.lightWs.readyState === 1}`);
-      this.lightWs.send(JSON.stringify({ brightness }));
-    } else {
-      console.warn(`[AudioService] Light WebSocket not ready. State: ${this.lightWs?.readyState || 'null'}`);
-    }
-    // === 新增結束 ===
     
     // 移除之前的調試日誌
     // logger.debug(`[AnalyseFrame] RMS: ${rms.toFixed(3)}, jawOpen: ${jawOpenValue.toFixed(3)}`, LogCategory.AUDIO);
