@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 // import ChatInterface from '../ChatInterface'; // <-- Remove import
 // import ControlPanel from '../ControlPanel'; // <-- Remove import
 // import AudioControls from '../AudioControls'; // <-- Remove import
@@ -72,29 +72,28 @@ interface AppUIProps {
 // === 新增：物理燈條亮度控制 bar 組件 ===
 function PhysicalLightBarPanel({ visible, onClose }: { visible: boolean, onClose: () => void }) {
   const [value, setValue] = useState(32767);
-  const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
     if (!visible) return;
-    const ws = new window.WebSocket('ws://localhost:8000/api/physical-light/ws/brightness');
-    wsRef.current = ws;
+    const url = `http://${window.location.hostname}:8000/api/physical-light/set-brightness`;
     return () => {
-      try {
-        if (ws.readyState === 1) {
-          ws.send(JSON.stringify({ brightness: 0 }));
-        }
-      } catch (e) {
-        console.warn('[PhysicalLightBarPanel] Failed to send off before close:', e);
-      }
-      ws.close();
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brightness: 0 }),
+      }).catch(e => console.warn('[PhysicalLightBarPanel] Failed to send off before close:', e));
     };
   }, [visible]);
 
   useEffect(() => {
-    if (wsRef.current && wsRef.current.readyState === 1) {
-      wsRef.current.send(JSON.stringify({ brightness: value }));
-    }
-  }, [value]);
+    if (!visible) return;
+    const url = `http://${window.location.hostname}:8000/api/physical-light/set-brightness`;
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ brightness: value }),
+    }).catch(e => console.warn('[PhysicalLightBarPanel] Failed to set brightness:', e));
+  }, [value, visible]);
 
   if (!visible) return null;
   return (
