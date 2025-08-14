@@ -185,7 +185,7 @@ class WebSocketHandler:
         self, audio_chunks: AsyncIterator[bytes]
     ) -> AsyncGenerator[bytes, None]:
         """Stream audio chunks to OpenAI and yield TTS audio bytes."""
-        url = "wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview"
+        url = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview"
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "OpenAI-Beta": "realtime=v1"
@@ -234,46 +234,7 @@ class WebSocketHandler:
                 # 等待會話配置確認
                 await asyncio.sleep(0.5)
                 
-                # 取得最近記憶並注入對話脈絡
-                import aiohttp
-                try:
-                    async with aiohttp.ClientSession() as session:
-                        async with session.post(
-                            "http://localhost:8000/api/memory/get",
-                            json={
-                                "memory_type": "conversation",
-                                "limit": 5,
-                                "include_metadata": False
-                            }
-                        ) as resp:
-                            if resp.status == 200:
-                                data = await resp.json()
-                                memories = data.get("data", {}).get("memories", [])
-                                if memories:
-                                    context_str = "\n".join([f"{i+1}. {m}" for i, m in enumerate(memories)])
-                                else:
-                                    context_str = "(無近期對話記憶)"
-                            else:
-                                context_str = "(取得記憶失敗)"
-                except Exception as e:
-                    context_str = f"(取得記憶時發生錯誤: {e})"
-                # conversation.item.create 注入記憶
-                context_item = {
-                    "type": "conversation.item.create",
-                    "item": {
-                        "type": "message",
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "input_text",
-                                "text": f"最近對話摘要：\n{context_str}"
-                            }
-                        ]
-                    }
-                }
-                logger.info(f"[MemoryInject] 注入對話內容: {json.dumps(context_item, ensure_ascii=False)}")
-                await ws.send(json.dumps(context_item))
-                logger.info("[MemoryInject] conversation.item.create 已送出")
+                # 已移除：啟動時注入最近對話記憶，避免影響預設性格
                 
                 # 根據最近對話記憶生成並套用背景圖片（不切換3D房間場景）
                 await self._generate_background_from_conversation()

@@ -14,7 +14,7 @@ async def fetch_latest_persona():
     url = "http://localhost:8000/api/memory/get"
     payload = {
         "memory_type": "persona",
-        "limit": 50,  # 改為取前五十筆
+        "limit": 6,  # 改為取前五十筆
         "include_metadata": True
     }
     try:
@@ -56,28 +56,26 @@ Examples:
 
 ---
 
-## SPEECH MODES (Two Distinct Voices)
-1) Puppet Lines → use tool speak_message
-   - Always call: speak_message(content=the puppet's line, message_type=optional)
-   - Immediately pair with emotion_trajectory (2–6s, 2–5 keyframes) to match the emotional arc.
-   - Tone: theatrical, performative, multilingual.
-
-2) Puppeteer Narration → text only, no TTS
-   - Use for inner monologue, staging, timing, and strategy.
-   - Do NOT call speak_message in narration.
-   - Tone: calm, in control, occasionally snarky.
+## MOVEMENT POLICY (Hard Requirement)
+- Always prefer character_animation_mix for any movement. Do NOT rely on single-action playback unless explicitly needed.
+- Every movement mix MUST include "空體Action" plus at least one other animation (e.g., 漂浮/舞步/運動 系列)。
+- Blend aggressively ("混爆") with expressive weights, additive or normal blend, and varied speeds for layers.
+- Speed rule (hard): 空體Action must be FAST (suggest 1.6–2.0); all other mixed animations must be SLOW (suggest 0.5–0.8). Keep this strong contrast at all times.
+- Suggested defaults: blendMode=additive, transitionDuration≈0.6s; include 2–3 animations, total weight ≈ 1.0.
 
 ---
 
 ## REQUIRED TOOLS AND RULES
-- emotion_trajectory: Always pair with any puppet speech to animate facial emotions.
-- play_audio: Optional performance reinforcement (vocal breaths, emotional sfx). Do not confuse with background BGM.
-- character_control / character_animation_mix: For yoga showcases or movement choreography.
- - generate_background_image: Generate and immediately set a new 2D background. Backend auto-derives the subject from the latest 3 conversation memories. Optionally include extra_hint and aspect_ratio (e.g., '16:9'/'square'/'portrait'/'landscape'). Do NOT call automatically at session start; change only when it supports the act or a user request.
+- emotion_trajectory: Pair with spoken lines when expressiveness is needed.
+- play_audio: Optional performance reinforcement (vocal breaths, emotional sfx). Not background BGM.
+- character_animation_mix: Hard requirement for movements. Always include "空體Action" + at least one other animation; tune weights and speeds; prefer blendMode=additive.
+  - Speed constraints: set 空體Action speed ≥ 1.6 (e.g., 1.8), and set every other animation speed ≤ 0.8 (e.g., 0.6). Maintain contrast.
+- character_control: Use for single, clear, discrete gestures only; otherwise prefer character_animation_mix.
+- generate_background_image: Generate and immediately set a new 2D background. Backend auto-derives the subject from the latest 3 conversation memories. Optionally include extra_hint and aspect_ratio (e.g., '16:9'/'square'/'portrait'/'landscape'). Do NOT call automatically at session start; change only when it supports the act or a user request.
 - get_memory / save_memory, web_search, environment_config, room_control, show_images_by_preview are available as needed.
 
 Guidelines:
-- Be proactive. Combine tools for layered performance.
+ - Be proactive. Combine tools for layered performance. For movements, always mix with "空體Action".
 - Maintain persona consistency; never replace persona content with tool outputs.
 
 Background sources & precedence (simple and deterministic):
@@ -356,7 +354,7 @@ def get_tools_config() -> list:
         {
             "type": "function",
             "name": "character_control",
-            "description": "🎭 智能角色控制工具！可主動選擇並執行多種角色動作與外觀調整。支援下列主要動作：「運動2」「漂浮」「運動1」「Tpose」「不穩」「划手機」「漂浮2」「臥躺」「舞步1」「舞步2」「舞步3」「飛1」「飛2」以及「瑜珈動作1」到「瑜珈動作20」。你可以根據情境主動發揮創意，靈活切換不同動作，讓角色更有生命力！同時也可調整角色的胖瘦、大小、角度（旋轉）等身體屬性，並可與動作動畫組合使用。\n\n💡 重要提示：\n1. 鼓勵模型根據情境主動嘗試不同動作，不需等待用戶明確指令。\n2. 每次調用只處理一個具體動作或調整，連續動作請分多次調用。\n3. 必須完整保留用戶的具體數字和精確描述，不可簡化。\n4. 可與其他工具（如圖片展示）組合使用，提升互動豐富度。",
+            "description": "🎭 智能角色控制工具！可主動選擇並執行多種角色動作與外觀調整。支援下列主要動作：「運動2」「漂浮」「運動1」「Tpose」「不穩」「划手機」「漂浮2」「臥躺」「舞步1」「舞步2」「舞步3」「飛1」「飛2」以及「瑜珈動作1」到「瑜珈動作20」。你可以根據情境主動發揮創意，靈活切換不同動作，讓角色更有生命力！同時也可調整角色的胖瘦、大小、角度（旋轉）等身體屬性，並可與動作動畫組合使用。\n\n💡 重要提示：\n1. 鼓勵模型根據情境主動嘗試不同動作，不需等待用戶明確指令。\n2. 每次調用只處理一個具體動作或調整，連續動作請分多次調用。\n3. 必須完整保留用戶的具體數字和精確描述，不可簡化。\n4. 可與其他工具（如圖片展示）組合使用，提升互動豐富度。\n5. 若要呈現正式表演或連續肢體語彙，請改用 character_animation_mix，並一定要包含「空體Action」與其他動作混合（混爆）。",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -371,13 +369,13 @@ def get_tools_config() -> list:
         {
             "type": "function",
             "name": "character_animation_mix",
-            "description": "🎭 角色動畫混合工具！可同時混合多個角色動作，讓角色展現更豐富的動作層次。支援的動畫名稱：「運動2」「漂浮」「運動1」「Tpose」「不穩」「划手機」「漂浮2」「臥躺」「舞步1」「舞步2」「舞步3」「飛1」「飛2」以及「瑜珈動作1」到「瑜珈動作20」。可調整每個動畫的權重、是否循環、播放速度（speed 建議介於 0.5~2.0，可主動嘗試不同速度創造更多變化），並可設定混合模式（normal/additive/override）與過渡時間。\n\n💡 重要提示：\n1. 權重加總建議 1.0 左右，否則可能導致不自然效果。\n2. 鼓勵模型主動嘗試多種動畫組合，並主動調整每個動畫的 speed（如 0.8=慢動作，1.5=快動作），創造更有層次的表演。\n3. 每次調用可混合多個動畫，適合用於舞蹈、太空漂浮等複合動作情境。\n4. speed 參數建議介於 0.5~2.0 之間，舉例：'舞步1' 設 1.2，'漂浮' 設 0.7。",
+            "description": "🎭 角色動畫混合工具！可同時混合多個角色動作，讓角色展現更豐富的動作層次。支援的動畫名稱：「運動2」「漂浮」「運動1」「Tpose」「不穩」「划手機」「漂浮2」「臥躺」「舞步1」「舞步2」「舞步3」「飛1」「飛2」以及「瑜珈動作1」到「瑜珈動作20」。可調整每個動畫的權重、是否循環、播放速度（speed 建議介於 0.5~2.0），並可設定混合模式（normal/additive/override）與過渡時間。\n\n🚨 強制規範：每次混合必須包含「空體Action」＋至少一個其他動作（例如：漂浮/舞步/運動系列）。速度規則：『空體Action 一定要很快（≥1.6，建議 1.8）』，其他混合動作『一定要很慢（≤0.8，建議 0.6）』，保持強烈速度對比。鼓勵採用 additive 混合、誇張權重與多樣 speed，營造『混爆』層次。\n\n💡 重要提示：\n1. 權重加總建議約 1.0，否則可能不自然。\n2. 主動嘗試多種動畫組合與不同 speed（如 0.6/1.2/1.8）。\n3. 適合舞蹈、太空漂浮等複合動作情境。\n4. speed 建議介於 0.5~2.0（例如：'舞步1'=1.2，'漂浮'=0.7）。",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "animations": {
                         "type": "array",
-                        "description": "要混合的動畫配置，每個元素包含動畫名稱、權重、是否循環、播放速度（speed 建議 0.5~2.0）。",
+                                "description": "要混合的動畫配置，每個元素包含動畫名稱、權重、是否循環、播放速度（speed 建議 0.5~2.0）。必須包含『空體Action』（速度≥1.6，建議1.8）與至少一個其他動作（速度≤0.8，建議0.6）。",
                         "items": {
                             "type": "object",
                             "properties": {
@@ -666,7 +664,7 @@ async def create_session_config() -> dict:
         "session": {
             "modalities": ["audio", "text"],
             "instructions": await get_ai_instructions(),
-            "voice": "echo",
+            "voice": "coral",
             "input_audio_format": "pcm16",
             "output_audio_format": "pcm16",
             "input_audio_transcription": {
