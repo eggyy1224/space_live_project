@@ -250,6 +250,8 @@ class WebSocketHandler:
                 await self._generate_background_from_conversation()
 
                 await self._set_initial_camera()
+                # 新增：設定初始角色位置（Y 軸下降 30 單位）
+                await self._set_initial_character_position()
                 
                 # 設定初始動畫，避免T-pose
                 await self._set_initial_animation()
@@ -679,6 +681,24 @@ class WebSocketHandler:
         except Exception as e:
             logger.error(f"設置初始相機預設異常: {e}")
     
+    async def _set_initial_character_position(self):
+        """設定初始角色位置：將 Y 軸往下移動 30 單位 (絕對座標 [0, -30, 0])"""
+        import aiohttp
+        try:
+            async with aiohttp.ClientSession() as session:
+                payload = {"position": [0, -10, 0]}
+                async with session.post(
+                    "http://localhost:8000/api/control/character/position",
+                    json=payload
+                ) as response:
+                    if response.status == 200:
+                        logger.info("初始角色位置已設定為 [0, -30, 0]")
+                    else:
+                        text = await response.text()
+                        logger.warning(f"設定初始角色位置失敗: HTTP {response.status} - {text}")
+        except Exception as e:
+            logger.error(f"設定初始角色位置異常: {e}")
+
     async def _set_initial_animation(self):
         """設定初始動畫，避免T-pose"""
         import aiohttp
