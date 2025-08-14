@@ -78,7 +78,16 @@ function PhysicalLightBarPanel({ visible, onClose }: { visible: boolean, onClose
     if (!visible) return;
     const ws = new window.WebSocket('ws://localhost:8000/api/physical-light/ws/brightness');
     wsRef.current = ws;
-    return () => ws.close();
+    return () => {
+      try {
+        if (ws.readyState === 1) {
+          ws.send(JSON.stringify({ brightness: 0 }));
+        }
+      } catch (e) {
+        console.warn('[PhysicalLightBarPanel] Failed to send off before close:', e);
+      }
+      ws.close();
+    };
   }, [visible]);
 
   useEffect(() => {

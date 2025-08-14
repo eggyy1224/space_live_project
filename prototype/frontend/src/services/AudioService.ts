@@ -471,6 +471,18 @@ class AudioService {
       useStore.getState().setAudioLipsyncTarget('jawOpen', 0); // <-- 使用新 Action
       logger.debug('Stopped playback audio analysis loop and reset jawOpen via setAudioLipsyncTarget.', LogCategory.AUDIO);
     }
+    // 新增：在分析停止時，嘗試將燈光設 0 並關閉 WS，避免殘留
+    try {
+      if (this.lightWs && this.lightWs.readyState === 1) {
+        this.lightWs.send(JSON.stringify({ brightness: 0 }));
+      }
+      if (this.lightWs) {
+        this.lightWs.close();
+        this.lightWs = null;
+      }
+    } catch (e) {
+      console.warn('[AudioService] Failed to shutdown light WS gracefully:', e);
+    }
   }
   // --- 新增結束 ---
 

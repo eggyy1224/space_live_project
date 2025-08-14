@@ -176,6 +176,19 @@ class RealtimeAudioPlayer {
     
     // 重置嘴型
     useStore.getState().setAudioLipsyncTarget('jawOpen', 0);
+
+    // 新增：在實時播放分析停止時，也將燈光關到 0 並關閉 WS，避免持續輸入
+    try {
+      if (this.lightWs && this.lightWs.readyState === 1) {
+        this.lightWs.send(JSON.stringify({ brightness: 0 }));
+      }
+      if (this.lightWs) {
+        this.lightWs.close();
+        this.lightWs = null;
+      }
+    } catch (e) {
+      console.warn('[RealtimeAudioPlayer] Failed to shutdown light WS gracefully:', e);
+    }
   }
 
   stopPlayback() {
@@ -232,6 +245,19 @@ class RealtimeAudioPlayer {
     
     this.analyser = null;
     this.gainNode = null;
+
+    // 確保清理燈光 WS
+    try {
+      if (this.lightWs && this.lightWs.readyState === 1) {
+        this.lightWs.send(JSON.stringify({ brightness: 0 }));
+      }
+      if (this.lightWs) {
+        this.lightWs.close();
+        this.lightWs = null;
+      }
+    } catch (e) {
+      console.warn('[RealtimeAudioPlayer] Failed to cleanup light WS:', e);
+    }
   }
 
   // 提供公開方法讓外部也能調用立即停止

@@ -216,6 +216,16 @@ class WebSocketHandler:
                     await self._reset_physical_light_connection()
                 except Exception as _e:
                     logger.warning(f"會話啟動前重置實體燈連線失敗: {_e}")
+                # 允許前端音量映射的亮度 WS 串流（只在會話期間）
+                try:
+                    import aiohttp
+                    async with aiohttp.ClientSession() as session:
+                        await session.post(
+                            "http://localhost:8000/api/physical-light/toggle-brightness-stream",
+                            json={"enabled": True}
+                        )
+                except Exception as _e:
+                    logger.warning(f"啟用亮度串流失敗（可忽略）: {_e}")
                 # 新增：設定初始環境光強度
                 await self._set_initial_environment_light()
                 # 新增：即時對話啟動時開啟招牌燈（channel 0 設為 1）
@@ -310,6 +320,14 @@ class WebSocketHandler:
                     await self._stop_bgm()
                     # 自動關閉場景顯示
                     await self._hide_scene()
+                    # 停用背景圖片，確保待機時無背景圖
+                    try:
+                        import aiohttp
+                        async with aiohttp.ClientSession() as session:
+                            await session.post("http://localhost:8000/api/disable-background-image")
+                        logger.info("已停用背景圖片（待機狀態）")
+                    except Exception as _e:
+                        logger.warning(f"停用背景圖片時發生例外: {_e}")
                     # 嘗試取消燈光呼吸效果任務，避免殘留持續改變亮度
                     if self._light_breath_task is not None and not self._light_breath_task.done():
                         try:
@@ -348,12 +366,18 @@ class WebSocketHandler:
                         await self._reset_physical_light_connection()
                     except Exception as _e:
                         logger.warning(f"重置實體燈連線時發生例外: {_e}")
-                    # 新增：即時對話結束後啟動螢幕影片輪播（服務化），等待 inhibit 解除並啟動
+                    # 關閉前端亮度 WS 串流（避免對話結束後仍噴發）
                     try:
-                        await video_rotation_service.disable_inhibit()
-                        await video_rotation_service.start_rotation()
+                        import aiohttp
+                        async with aiohttp.ClientSession() as session:
+                            await session.post(
+                                "http://localhost:8000/api/physical-light/toggle-brightness-stream",
+                                json={"enabled": False}
+                            )
                     except Exception as _e:
-                        logger.warning(f"恢復影片輪播時發生例外: {_e}")
+                        logger.warning(f"停用亮度串流失敗（可忽略）: {_e}")
+                    # 變更：即時對話結束後不再恢復影片輪播，保持螢幕隱藏（inhibit 維持啟用）
+                    logger.info("會話結束：不恢復影片輪播，保持螢幕關閉以符合待機需求")
                     
         except ConnectionClosed:
             logger.error("WebSocket connection to OpenAI was closed")
@@ -768,13 +792,13 @@ class WebSocketHandler:
             logger.error(f"發送歡迎訊息失敗: {e}")
     
     async def _stop_bgm(self):
-        """將背景音樂音量調整回 0.7（不直接關閉 BGM）"""
+        """將背景音樂音量調整為 0.3（不直接關閉 BGM）"""
         import aiohttp
         try:
             # 取得目前 BGM URL（假設前端會維持原 bgmUrl，不清空）
             # 若有全域變數或屬性可取得目前 bgmUrl，請取用，否則只設 volume
             bgm_url = getattr(self, "_current_bgm_url", None)
-            bgm_data = {"volume": 0.5}
+            bgm_data = {"volume": 0.3}
             if bgm_url:
                 bgm_data["bgmUrl"] = bgm_url
             async with aiohttp.ClientSession() as session:
@@ -783,7 +807,7 @@ class WebSocketHandler:
                     json=bgm_data
                 ) as response:
                     if response.status == 200:
-                        logger.info("已將背景音樂音量調整回 0.5（session 結束）")
+                        logger.info("已將背景音樂音量調整為 0.3（session 結束）")
                     else:
                         logger.warning(f"調整 BGM 音量失敗: {await response.text()}")
         except Exception as e:
