@@ -40,6 +40,8 @@ class WebSocketHandler:
         self._last_processed_message_count = 0
         # 記憶系統（懶加載）
         self._memory_system = None
+        # 追蹤燈光呼吸效果任務，方便在結束時取消
+        self._light_breath_task = None
         # 影片輪播交給服務管理
     
     async def _generate_background_from_conversation(self):
@@ -140,8 +142,10 @@ class WebSocketHandler:
                         logger.info("初始環境光強度設置為 1.0")
                     else:
                         logger.warning(f"設置初始環境光強度失敗: {await response.text()}")
-            # 新增：燈光漸亮呼吸效果（背景執行）
-            asyncio.create_task(self._breathing_light_effect(brighten=True))
+            # 新增：燈光漸亮呼吸效果（背景執行，並追蹤任務）
+            self._light_breath_task = asyncio.create_task(
+                self._breathing_light_effect(brighten=True)
+            )
         except Exception as e:
             logger.error(f"設置初始環境光強度異常: {e}")
 
@@ -207,6 +211,11 @@ class WebSocketHandler:
                 
                 # 發送初始會話配置
                 await self._send_session_update(ws)
+                # 啟動前重置實體燈連線，確保乾淨狀態
+                try:
+                    await self._reset_physical_light_connection()
+                except Exception as _e:
+                    logger.warning(f"會話啟動前重置實體燈連線失敗: {_e}")
                 # 新增：設定初始環境光強度
                 await self._set_initial_environment_light()
                 # 新增：即時對話啟動時開啟招牌燈（channel 0 設為 1）
@@ -340,6 +349,16 @@ class WebSocketHandler:
                     await self._stop_bgm()
                     # 自動關閉場景顯示
                     await self._hide_scene()
+                    # 嘗試取消燈光呼吸效果任務，避免殘留持續改變亮度
+                    if self._light_breath_task is not None and not self._light_breath_task.done():
+                        try:
+                            self._light_breath_task.cancel()
+                            await self._light_breath_task
+                        except asyncio.CancelledError:
+                            pass
+                        except Exception as _e:
+                            logger.warning(f"取消呼吸燈任務時發生例外: {_e}")
+                    self._light_breath_task = None
                     # 新增：停止 YouTube 聊天室監控
                     await self._stop_youtube_chat_monitoring()
                     # 停止 YouTube 聊天監控任務
@@ -352,16 +371,28 @@ class WebSocketHandler:
                     if self._session_logger:
                         self._session_logger.log_connection_closed("Normal closure")
                         self._session_logger = None
-                    # 新增：燈光直接關閉（設為 0）
+                    # 新增：燈光直接關閉（設為 0），且等待完成，避免殘留
                     import aiohttp
-                    asyncio.create_task(self._set_light_off())
-                    # 新增：即時對話結束時關閉招牌燈（channel 0 設為 0）
-                    asyncio.create_task(self._set_sign_light(False))
-                    # 新增：即時對話結束後啟動螢幕影片輪播（服務化）
-                    async def _resume_videos_after_inhibit():
+                    try:
+                        await self._set_light_off()
+                    except Exception as _e:
+                        logger.warning(f"關閉燈光時發生例外: {_e}")
+                    # 新增：即時對話結束時關閉招牌燈（channel 0 設為 0），等待完成
+                    try:
+                        await self._set_sign_light(False)
+                    except Exception as _e:
+                        logger.warning(f"關閉招牌燈時發生例外: {_e}")
+                    # 新增：重置實體燈連線，避免殘留序列埠被佔用
+                    try:
+                        await self._reset_physical_light_connection()
+                    except Exception as _e:
+                        logger.warning(f"重置實體燈連線時發生例外: {_e}")
+                    # 新增：即時對話結束後啟動螢幕影片輪播（服務化），等待 inhibit 解除並啟動
+                    try:
                         await video_rotation_service.disable_inhibit()
                         await video_rotation_service.start_rotation()
-                    asyncio.create_task(_resume_videos_after_inhibit())
+                    except Exception as _e:
+                        logger.warning(f"恢復影片輪播時發生例外: {_e}")
                     
         except ConnectionClosed:
             logger.error("WebSocket connection to OpenAI was closed")
@@ -855,6 +886,16 @@ class WebSocketHandler:
         except Exception:
             # 靜默失敗以避免影響主要流程
             pass
+
+    async def _reset_physical_light_connection(self):
+        """呼叫後端 API 重置實體燈序列埠連線，避免殘留連線干擾下次會話。"""
+        import aiohttp
+        try:
+            async with aiohttp.ClientSession() as session:
+                await session.post("http://localhost:8000/api/physical-light/reset-connection")
+        except Exception as e:
+            # 只記錄警告，不阻斷主要流程
+            logger.warning(f"重置實體燈序列埠連線失敗: {e}")
     
     async def _start_youtube_chat_monitoring(self):
         """開始 YouTube 聊天室監控"""
