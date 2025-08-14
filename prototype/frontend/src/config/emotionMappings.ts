@@ -7,7 +7,7 @@
 
 // Global multiplier applied to all emotion weights for exaggerated effect.
 // Set to 1.0 to disable exaggeration, >1.0 for stronger expressions, <1.0 for subtler ones.
-export const EXAGGERATION_FACTOR = 0.9;
+export const EXAGGERATION_FACTOR = 0.5;
 
 export const emotionBaseWeights: Record<string, Record<string, number>> = {
   // --- Foundational States ---
