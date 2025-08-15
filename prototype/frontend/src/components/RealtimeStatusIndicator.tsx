@@ -5,7 +5,7 @@ import { useStore } from '../store';
  * 終端機風格的即時對話狀態指示器
  * 顯示在左上角，排程面板收起來時顯示
  */
-export function RealtimeStatusIndicator() {
+export function RealtimeStatusIndicator({ className = '' }: { className?: string }) {
   // 不需要在這裡調用 useRealtimeScheduler，App.tsx 中已經調用了
 
   const realtimeCurrentlyActive = useStore(state => state.realtimeCurrentlyActive);
@@ -60,7 +60,9 @@ export function RealtimeStatusIndicator() {
   const isOnline = realtimeCurrentlyActive;
 
   return (
-    <div className={`font-mono text-sm select-none ${terminal.bgColor} ${terminal.borderColor} border-2 rounded-md shadow-lg backdrop-blur-sm bg-opacity-95 min-w-[280px]`}>
+    <div
+      className={`font-mono select-none ${terminal.bgColor} ${terminal.borderColor} border-2 rounded-md shadow-lg backdrop-blur-sm bg-opacity-95 min-w-[280px] text-sm ${className}`}
+    >
       {/* Terminal Header */}
       <div className="px-3 py-1 border-b border-gray-700 flex items-center justify-between">
         <div className="flex items-center space-x-2">

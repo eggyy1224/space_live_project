@@ -124,6 +124,10 @@ function App() {
   const isSideButtonsVisible = useStore((state) => state.isSideButtonsVisible);
   const toggleSideButtons = useStore((state) => state.toggleSideButtons);
   // <--- 結束 --->
+
+  // 即時排程狀態
+  const scheduleEnabled = useStore(state => state.scheduleEnabled);
+  const realtimeCurrentlyActive = useStore(state => state.realtimeCurrentlyActive);
   
   // 使用音頻服務
   const { 
@@ -735,10 +739,16 @@ function App() {
           />
         </div>
         
-        {/* 即時對話狀態指示器 - 移到右下角，只在排程啟用且面板未開啟時顯示 */}
-        {useStore(state => state.scheduleEnabled) && !isRealtimeSchedulePanelVisible && (
-          <div className="fixed top-4 left-4 z-50">
-            <RealtimeStatusIndicator />
+        {/* 即時對話狀態指示器 - 排程啟用且面板未開啟時顯示 */}
+        {scheduleEnabled && !isRealtimeSchedulePanelVisible && (
+          <div
+            className={
+              realtimeCurrentlyActive
+                ? 'fixed top-4 left-4 z-50'
+                : 'pointer-events-none fixed inset-0 flex items-center justify-center z-50'
+            }
+          >
+            <RealtimeStatusIndicator className={realtimeCurrentlyActive ? '' : 'text-2xl min-w-[360px]'} />
           </div>
         )}
         
