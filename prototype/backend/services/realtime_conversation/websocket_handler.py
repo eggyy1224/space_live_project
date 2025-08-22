@@ -185,7 +185,7 @@ class WebSocketHandler:
         self, audio_chunks: AsyncIterator[bytes]
     ) -> AsyncGenerator[bytes, None]:
         """Stream audio chunks to OpenAI and yield TTS audio bytes."""
-        url = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview"
+        url = "wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview"
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "OpenAI-Beta": "realtime=v1"
