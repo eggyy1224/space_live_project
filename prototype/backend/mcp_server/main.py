@@ -235,7 +235,7 @@ def set_main_character_animation_mix(animations: List[Dict[str, Any]], blend_mod
                     瑜珈動作10, 瑜珈動作11, 瑜珈動作12, 瑜珈動作13, 瑜珈動作14,
                     瑜珈動作15, 瑜珈動作16, 瑜珈動作17, 瑜珈動作18, 瑜珈動作19, 瑜珈動作20
             提示：可先呼叫 get_available_main_character_animations() 取得最新清單
-            權重範圍: 0.0-1.0，建議總權重保持在 1.0 左右
+            權重: 非負數（不再強制上限），建議總權重可依需求設定（多數情境下可維持在 1.0 附近或由後端自行正規化）
         blend_mode: 混合模式，可選項: "normal", "additive", "override"，預設為 "normal"
         transition_duration: 切換到混合模式的過渡時間（秒），預設為 0.5
     
@@ -258,8 +258,9 @@ def set_main_character_animation_mix(animations: List[Dict[str, Any]], blend_mod
                 return "❌ 每個動畫配置必須包含 'name' 和 'weight' 欄位"
             
             weight = anim.get("weight", 1.0)
-            if not isinstance(weight, (int, float)) or weight < 0 or weight > 1:
-                return f"❌ 動畫 '{anim['name']}' 的權重必須在 0-1 之間"
+            # 放寬權重檢查：允許任何非負數權重，交由後端決定是否正規化或截斷
+            if not isinstance(weight, (int, float)) or weight < 0:
+                return f"❌ 動畫 '{anim['name']}' 的權重必須為非負數"
             
             total_weight += weight
             
@@ -272,9 +273,7 @@ def set_main_character_animation_mix(animations: List[Dict[str, Any]], blend_mod
             }
             valid_animations.append(valid_anim)
         
-        # 檢查權重總和
-        if total_weight > 1.1:
-            return f"❌ 動畫權重總和 {total_weight:.2f} 過大，建議保持在 1.0 左右"
+        # 不再阻擋總權重；可於前端提示或交由後端自行處理正規化
         
         # 構建角色動畫混合 payload
         payload = {

@@ -148,7 +148,7 @@ character_animation(
 [
   {
     "name": "動畫名稱",
-    "weight": 權重值 (0.0-1.0),
+    "weight": 權重值（非負數，無上限；如需，後端可自動正規化）, 
     "loop": 是否循環 (true/false),
     "speed": 播放速度 (數字)
   }
