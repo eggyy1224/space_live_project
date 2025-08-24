@@ -1214,6 +1214,63 @@ def get_epic_image(
         return f"❌ 發生錯誤: {str(e)}"
 
 @mcp.tool()
+def web_search(
+    query: str,
+    num_results: int = 5,
+    language: str = "zh-TW",
+    safe_search: str = "active",
+) -> str:
+    """
+    進行網頁搜尋（透過後端 Google Custom Search API）
+
+    Args:
+        query: 搜尋關鍵字
+        num_results: 需要的結果數量（最多 10）
+        language: 語言（例如 zh-TW, en）
+        safe_search: 安全搜尋等級（off, medium, active）
+
+    Returns:
+        格式化的搜尋結果列表
+    """
+    try:
+        payload = {
+            "query": query,
+            "num_results": max(1, min(10, int(num_results))),
+            "language": language,
+            "safe_search": safe_search,
+        }
+
+        response = requests.post(f"{BASE_URL}/api/web-search", json=payload, timeout=12)
+
+        if response.status_code == 200:
+            data = response.json()
+            results = data.get("results", [])
+            total = data.get("total_results")
+            search_time = data.get("search_time")
+
+            if not results:
+                return f"🔍 網頁搜尋 '{query}' 無結果"
+
+            lines = []
+            for idx, item in enumerate(results, 1):
+                title = item.get("title", "")
+                link = item.get("link", "")
+                snippet = item.get("snippet", "")
+                lines.append(f"{idx}. {title}\n{link}\n{snippet}")
+
+            header = f"🔎 網頁搜尋 '{query}'（取前 {len(results)} 筆，總計 {total}，耗時 {search_time:.2f}s）\n"
+            return header + "\n\n" + "\n\n".join(lines)
+        else:
+            return f"❌ 網頁搜尋失敗 (HTTP {response.status_code}): {response.text}"
+
+    except requests.exceptions.Timeout:
+        return "❌ 網頁搜尋請求超時"
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認服務器是否運行在 http://localhost:8000"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
+@mcp.tool()
 def get_available_songs() -> str:
     """
     取得系統中所有可用的歌曲檔案
@@ -2071,7 +2128,7 @@ def get_memory_stats() -> str:
 
 if __name__ == "__main__":
     print("🚀 太空直播系統 MCP 服務器啟動中...", file=sys.stderr)
-    print("📡 提供工具: start_realtime_conversation, stop_realtime_conversation, send_message, set_emotion, emotion_transition, set_main_character_animation, set_main_character_animation_mix, stop_main_character_animation_mix, dance_group_animation, set_dance_group, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size, set_character_scale, set_character_position, set_character_rotation, reset_character_transform, set_character_morph, set_body_shape, set_monitor_content, generate_image_overlay, generate_background_image, take_selfie, show_existing_image, generate_map_image, search_nasa_image, get_epic_image, get_available_songs, get_available_bgm, get_available_effects, get_available_videos, get_available_main_character_animations, get_available_dance_group_animations, get_all_resources, search_resources, configure_obs_connection, start_obs_streaming, stop_obs_streaming, connect_and_start_streaming, get_browser_screenshot, get_field_video_screenshot, get_memory, save_memory, get_memory_stats", file=sys.stderr)
+    print("📡 提供工具: start_realtime_conversation, stop_realtime_conversation, send_message, set_emotion, emotion_transition, set_main_character_animation, set_main_character_animation_mix, stop_main_character_animation_mix, dance_group_animation, set_dance_group, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size, set_character_scale, set_character_position, set_character_rotation, reset_character_transform, set_character_morph, set_body_shape, set_monitor_content, generate_image_overlay, generate_background_image, take_selfie, show_existing_image, generate_map_image, search_nasa_image, get_epic_image, web_search, get_available_songs, get_available_bgm, get_available_effects, get_available_videos, get_available_main_character_animations, get_available_dance_group_animations, get_all_resources, search_resources, configure_obs_connection, start_obs_streaming, stop_obs_streaming, connect_and_start_streaming, get_browser_screenshot, get_field_video_screenshot, get_memory, save_memory, get_memory_stats", file=sys.stderr)
     print("🔗 連接後端: http://localhost:8000", file=sys.stderr)
     print("\n要在 Cursor 中使用，請在 settings.json 中添加此服務器配置", file=sys.stderr)
     
