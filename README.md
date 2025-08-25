@@ -20,6 +20,7 @@ Space Live Project 是一個互動藝術裝置，模擬一名被困於太空艙�
 - **攝影機控制系統**：支援預設位置、平滑轉換與即時角度調整
 - **場景管理**：動態場景切換與 3D 環境控制
 - **圖片生成**：整合 Gemini 圖片生成 API，支援位置與大小控制
+- **文字顯示面板**：透過 `/api/display_text` 端點取得文字並在前端專用面板呈現
 
 ## 快速開始
 
@@ -119,11 +120,11 @@ flowchart TD
     Backend -->|記憶檢索| ChromaDB[(ChromaDB)]
     Backend -->|語音服務| GoogleCloud[Google Cloud APIs]
     Backend -->|資料儲存| PostgreSQL[(PostgreSQL)]
-    
+
     Frontend --> ThreeJS[Three.js 3D 渲染]
     Frontend --> Audio[Web Audio API]
     Frontend --> State[Zustand 狀態管理]
-    
+
     Backend --> LangGraph[LangGraph 工作流程]
     Backend --> Memory[記憶系統]
     Backend --> Murmur[自言自語服務]
@@ -189,15 +190,15 @@ space_live_project/
 
 ### 主要 API 分類
 
-| 分類 | 端點數量 | 主要功能 |
-|------|---------|---------|
-| **健康檢查** | 1 | 服務狀態監控 |
-| **語音處理** | 2 | STT/TTS 語音轉換 |
-| **控制指令** | 15+ | 訊息發送、攝影機控制、動畫控制、場景管理 |
-| **圖片生成** | 1 | AI 圖片生成與顯示控制 |
-| **監控系統** | 3 | 系統狀態監控與管理 |
-| **WebSocket** | 1 | 即時雙向通訊 |
-| **靜態檔案** | 6 | 音訊、圖片、歌曲檔案服務 |
+| 分類          | 端點數量 | 主要功能                                 |
+| ------------- | -------- | ---------------------------------------- |
+| **健康檢查**  | 1        | 服務狀態監控                             |
+| **語音處理**  | 2        | STT/TTS 語音轉換                         |
+| **控制指令**  | 15+      | 訊息發送、攝影機控制、動畫控制、場景管理 |
+| **圖片生成**  | 1        | AI 圖片生成與顯示控制                    |
+| **監控系統**  | 3        | 系統狀態監控與管理                       |
+| **WebSocket** | 1        | 即時雙向通訊                             |
+| **靜態檔案**  | 6        | 音訊、圖片、歌曲檔案服務                 |
 
 ## Runtime Monitoring
 

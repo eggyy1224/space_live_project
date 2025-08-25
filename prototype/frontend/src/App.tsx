@@ -1,51 +1,55 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react'
-import './App.css'
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import "./App.css";
 
 // 引入拆分出的組件
-import SceneContainer from './components/SceneContainer'
-import AppUI from './components/layout/AppUI'
-import ModelDebugger from './components/ModelDebugger'
-import ModelAnalyzerTool from './components/ModelAnalyzerTool'
-import ErrorBoundary from './components/ErrorBoundary'
-import { ToastContainer } from './components/Toast'
-import FloatingChatWindow from './components/FloatingChatWindow'
-import ImageOverlay from './components/ImageOverlay'
-import SettingsPanel from './components/SettingsPanel'
-import BackgroundSoundSystem from './components/BackgroundSoundSystem'
-import DirectorMonitorHUD from './components/DirectorMonitorHUD'
-import SubtitlesOverlay from './components/SubtitlesOverlay'
-import RoomControlPanel from './components/RoomControlPanel'
-import { CharacterControlPanel } from './components/CharacterControlPanel'
-import EnvironmentControlPanel from './components/EnvironmentControlPanel'
-import { RealtimeSchedulePanel } from './components/RealtimeSchedulePanel'
-import { RealtimeStatusIndicator, RealtimeStatusBadge } from './components/RealtimeStatusIndicator'
-import { usePerformanceMetrics } from './hooks/usePerformanceMetrics'
-import { useRealtimeScheduler } from './hooks/useRealtimeScheduler'
+import SceneContainer from "./components/SceneContainer";
+import AppUI from "./components/layout/AppUI";
+import ModelDebugger from "./components/ModelDebugger";
+import ModelAnalyzerTool from "./components/ModelAnalyzerTool";
+import ErrorBoundary from "./components/ErrorBoundary";
+import { ToastContainer } from "./components/Toast";
+import FloatingChatWindow from "./components/FloatingChatWindow";
+import ImageOverlay from "./components/ImageOverlay";
+import SettingsPanel from "./components/SettingsPanel";
+import BackgroundSoundSystem from "./components/BackgroundSoundSystem";
+import DirectorMonitorHUD from "./components/DirectorMonitorHUD";
+import SubtitlesOverlay from "./components/SubtitlesOverlay";
+import RoomControlPanel from "./components/RoomControlPanel";
+import { CharacterControlPanel } from "./components/CharacterControlPanel";
+import EnvironmentControlPanel from "./components/EnvironmentControlPanel";
+import { RealtimeSchedulePanel } from "./components/RealtimeSchedulePanel";
+import TextDisplayPanel from "./components/TextDisplayPanel";
+import {
+  RealtimeStatusIndicator,
+  RealtimeStatusBadge,
+} from "./components/RealtimeStatusIndicator";
+import { usePerformanceMetrics } from "./hooks/usePerformanceMetrics";
+import { useRealtimeScheduler } from "./hooks/useRealtimeScheduler";
 
 // 引入服務
-import { 
-  useWebSocket, 
-  useAudioService, 
+import {
+  useWebSocket,
+  useAudioService,
   useHeadService,
   useChatService,
   useBodyService,
-  useCharacterService
-} from './services'
-import { useRealtimeVoice } from './services'
+  useCharacterService,
+} from "./services";
+import { useRealtimeVoice } from "./services";
 
 // 引入 API 函數
-import { speechToText, processSpeechAudio } from './services/api';
+import { speechToText, processSpeechAudio } from "./services/api";
 
 // 引入 AudioService
-import AudioService from './services/AudioService';
+import AudioService from "./services/AudioService";
 // 引入 MessageType
-import { type MessageType } from './services/ChatService';
+import { type MessageType } from "./services/ChatService";
 
 // 引入 Zustand Store
-import { useStore } from './store'
-import logger, { LogCategory } from './utils/LogManager'
-import { toast } from 'react-hot-toast'
-import { Formation } from './store/slices/danceSlice';
+import { useStore } from "./store";
+import logger, { LogCategory } from "./utils/LogManager";
+import { toast } from "react-hot-toast";
+import { Formation } from "./store/slices/danceSlice";
 
 // --- 引入模型設定 ---
 // import { AVAILABLE_MODELS } from './config/modelConfig';
@@ -89,36 +93,59 @@ function App() {
   // 從 Zustand Store 獲取 WebSocket 連接狀態
   const wsConnected = useStore((state) => state.isConnected);
   // 從 Zustand Store 獲取最後的 WebSocket 訊息
-  const lastJsonMessage = useStore((state) => state.lastJsonMessage) as BackendMessage | null; // Add type assertion
-  
+  const lastJsonMessage = useStore(
+    (state) => state.lastJsonMessage,
+  ) as BackendMessage | null; // Add type assertion
+
   // 從 Zustand Store 獲取聊天視窗狀態和操作
   const isChatWindowVisible = useStore((state) => state.isChatWindowVisible);
   const toggleChatWindow = useStore((state) => state.toggleChatWindow);
-  
+
   // <--- 從 Zustand Store 獲取設定面板狀態和操作 --->
-  const isSettingsPanelVisible = useStore((state) => state.isSettingsPanelVisible);
+  const isSettingsPanelVisible = useStore(
+    (state) => state.isSettingsPanelVisible,
+  );
   const toggleSettingsPanel = useStore((state) => state.toggleSettingsPanel);
   // <--- 結束 --->
-  
+
   // --- 從 Zustand Store 獲取舞團控制 actions ---
   const setFormation = useStore((state) => state.setFormation);
   const setDancerCount = useStore((state) => state.setDancerCount);
-  const setDanceGroupPosition = useStore((state) => state.setDanceGroupPosition);
+  const setDanceGroupPosition = useStore(
+    (state) => state.setDanceGroupPosition,
+  );
   const setDanceGroupScale = useStore((state) => state.setDanceGroupScale);
-  
+
   // <--- 從 Zustand Store 獲取角色控制面板狀態和操作 --->
-  const isCharacterControlPanelVisible = useStore((state) => state.isCharacterControlPanelVisible);
-  const toggleCharacterControlPanel = useStore((state) => state.toggleCharacterControlPanel);
+  const isCharacterControlPanelVisible = useStore(
+    (state) => state.isCharacterControlPanelVisible,
+  );
+  const toggleCharacterControlPanel = useStore(
+    (state) => state.toggleCharacterControlPanel,
+  );
   // <--- 結束 --->
-  
+
   // <--- 從 Zustand Store 獲取環境光照控制面板狀態和操作 --->
-  const isEnvironmentControlPanelVisible = useStore((state) => state.isEnvironmentControlPanelVisible);
-  const toggleEnvironmentControlPanel = useStore((state) => state.toggleEnvironmentControlPanel);
+  const isEnvironmentControlPanelVisible = useStore(
+    (state) => state.isEnvironmentControlPanelVisible,
+  );
+  const toggleEnvironmentControlPanel = useStore(
+    (state) => state.toggleEnvironmentControlPanel,
+  );
   // <--- 結束 --->
-  
+
   // <--- 從 Zustand Store 獲取排程控制面板狀態和操作 --->
-  const isRealtimeSchedulePanelVisible = useStore((state) => state.isRealtimeSchedulePanelVisible);
-  const toggleRealtimeSchedulePanel = useStore((state) => state.toggleRealtimeSchedulePanel);
+  const isRealtimeSchedulePanelVisible = useStore(
+    (state) => state.isRealtimeSchedulePanelVisible,
+  );
+  const toggleRealtimeSchedulePanel = useStore(
+    (state) => state.toggleRealtimeSchedulePanel,
+  );
+  // <--- 結束 --->
+
+  // <--- 從 Zustand Store 獲取文字顯示面板狀態和操作 --->
+  const isTextPanelVisible = useStore((state) => state.isTextPanelVisible);
+  const toggleTextPanel = useStore((state) => state.toggleTextPanel);
   // <--- 結束 --->
 
   // <--- 從 Zustand Store 獲取右側按鈕顯示狀態和操作 --->
@@ -127,18 +154,20 @@ function App() {
   // <--- 結束 --->
 
   // 即時排程狀態
-  const scheduleEnabled = useStore(state => state.scheduleEnabled);
-  const realtimeCurrentlyActive = useStore(state => state.realtimeCurrentlyActive);
-  
+  const scheduleEnabled = useStore((state) => state.scheduleEnabled);
+  const realtimeCurrentlyActive = useStore(
+    (state) => state.realtimeCurrentlyActive,
+  );
+
   // 使用音頻服務
-  const { 
-    isRecording, 
+  const {
+    isRecording,
     isSpeaking,
     isProcessing: audioProcessing,
-    micPermission, 
-    startRecording, 
-    stopRecording, 
-    playAudio
+    micPermission,
+    startRecording,
+    stopRecording,
+    playAudio,
   } = useAudioService();
 
   const {
@@ -155,37 +184,42 @@ function App() {
   useEffect(() => {
     // 檢查是否應該啟用自動初始化（通過 URL 參數或簡化條件）
     const urlParams = new URLSearchParams(window.location.search);
-    const autoStart = urlParams.get('autostart') === 'true' || 
-                      window.location.hostname !== 'localhost'; // 非本地環境下預設啟用
-    
+    const autoStart =
+      urlParams.get("autostart") === "true" ||
+      window.location.hostname !== "localhost"; // 非本地環境下預設啟用
+
     if (!autoStart) {
-      console.log('[App] Auto-start disabled, skipping happy path initialization');
+      console.log(
+        "[App] Auto-start disabled, skipping happy path initialization",
+      );
       return;
     }
 
     // 頁面載入後 3 秒自動啟用排程模式並隱藏按鈕
     const initTimer = setTimeout(() => {
-      console.log('[App] Auto-initializing happy path...');
-      
+      console.log("[App] Auto-initializing happy path...");
+
       // 1. 啟用排程模式
       useStore.getState().setScheduleEnabled(true);
-      console.log('[App] ✅ Schedule enabled');
-      
+      console.log("[App] ✅ Schedule enabled");
+
       // 2. 隱藏右側按鈕（只有在顯示時才隱藏）
       if (useStore.getState().isSideButtonsVisible) {
         useStore.getState().toggleSideButtons();
-        console.log('[App] ✅ Side buttons hidden');
+        console.log("[App] ✅ Side buttons hidden");
       }
-      
+
       // 3. 確保不是手動模式
       if (useStore.getState().isManualMode) {
         useStore.getState().disableManualMode();
-        console.log('[App] ✅ Manual mode disabled');
+        console.log("[App] ✅ Manual mode disabled");
       }
-      
+
       // 全螢幕模式由 AppleScript 腳本處理
-      
-      console.log('[App] 🚀 Happy path initialized - Schedule running with hidden UI');
+
+      console.log(
+        "[App] 🚀 Happy path initialized - Schedule running with hidden UI",
+      );
     }, 3000); // 3秒後執行
 
     return () => clearTimeout(initTimer);
@@ -195,19 +229,23 @@ function App() {
   useEffect(() => {
     console.log(`[App] RealtimeStreaming changed to: ${realtimeStreaming}`);
     const currentScheduleState = useStore.getState().realtimeCurrentlyActive;
-    
+
     // 只有在狀態真的不同時才更新，避免循環
     if (currentScheduleState !== realtimeStreaming) {
-      console.log(`[App] Syncing schedule state from ${currentScheduleState} to ${realtimeStreaming}`);
+      console.log(
+        `[App] Syncing schedule state from ${currentScheduleState} to ${realtimeStreaming}`,
+      );
       useStore.getState().setRealtimeActive(realtimeStreaming);
     }
   }, [realtimeStreaming]);
 
   const toggleRealtime = useCallback(() => {
-    console.log(`[App] Manual toggle realtime, current streaming: ${realtimeStreaming}`);
+    console.log(
+      `[App] Manual toggle realtime, current streaming: ${realtimeStreaming}`,
+    );
     // 啟用手動模式，暫停自動排程
     useStore.getState().enableManualMode();
-    
+
     if (realtimeStreaming) {
       stopRealtime();
     } else {
@@ -221,13 +259,13 @@ function App() {
     const realtimeVoiceHandler = (e: Event) => {
       const action = (e as CustomEvent<string>).detail;
       console.log(`[App] Received realtime voice control: ${action}`);
-      
+
       // 只有在非手動模式時才處理自動排程的消息
       const isManualMode = useStore.getState().isManualMode;
       if (!isManualMode) {
-        if (action === 'start') {
+        if (action === "start") {
           startRealtime();
-        } else if (action === 'stop') {
+        } else if (action === "stop") {
           stopRealtime();
         }
       }
@@ -235,44 +273,48 @@ function App() {
 
     // 監聽手動控制事件
     const manualControlHandler = (e: Event) => {
-      const { action, source } = (e as CustomEvent<{action: string, source: string}>).detail;
-      console.log(`[App] Received manual realtime control: ${action} from ${source}`);
-      
-      if (action === 'start') {
+      const { action, source } = (
+        e as CustomEvent<{ action: string; source: string }>
+      ).detail;
+      console.log(
+        `[App] Received manual realtime control: ${action} from ${source}`,
+      );
+
+      if (action === "start") {
         startRealtime();
-      } else if (action === 'stop') {
+      } else if (action === "stop") {
         stopRealtime();
       }
     };
 
-    window.addEventListener('realtimeVoiceControl', realtimeVoiceHandler);
-    window.addEventListener('manualRealtimeControl', manualControlHandler);
+    window.addEventListener("realtimeVoiceControl", realtimeVoiceHandler);
+    window.addEventListener("manualRealtimeControl", manualControlHandler);
 
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
-      
+
       // 避免在輸入框中觸發快捷鍵
-      if (target.tagName === 'INPUT' || target.isContentEditable) {
+      if (target.tagName === "INPUT" || target.isContentEditable) {
         return;
       }
-      
-      if (e.code === 'Space' && !e.repeat) {
+
+      if (e.code === "Space" && !e.repeat) {
         e.preventDefault();
         toggleRealtime();
-      } else if (e.code === 'KeyC' && !e.repeat) {
+      } else if (e.code === "KeyC" && !e.repeat) {
         e.preventDefault();
-        console.log('[App] C key pressed - toggling side buttons');
+        console.log("[App] C key pressed - toggling side buttons");
         toggleSideButtons();
       }
     };
-    window.addEventListener('keydown', onKey);
+    window.addEventListener("keydown", onKey);
     return () => {
-      window.removeEventListener('realtimeVoiceControl', realtimeVoiceHandler);
-      window.removeEventListener('manualRealtimeControl', manualControlHandler);
-      window.removeEventListener('keydown', onKey);
+      window.removeEventListener("realtimeVoiceControl", realtimeVoiceHandler);
+      window.removeEventListener("manualRealtimeControl", manualControlHandler);
+      window.removeEventListener("keydown", onKey);
     };
   }, [toggleRealtime, toggleSideButtons]);
-  
+
   // --- 使用頭部服務 (替換 useModelService) ---
   const {
     headModelLoaded,
@@ -291,67 +333,75 @@ function App() {
     updateMorphTargetInfluence,
     resetAllMorphTargets,
     applyPresetExpression,
-    switchHeadModel
+    switchHeadModel,
   } = useHeadService();
-  // --- 結束 --- 
-  
-  // --- 使用身體服務 ---
-  const {
-    availableAnimations,
-    currentAnimation,
-    selectAnimation
-  } = useBodyService();
   // --- 結束 ---
-  
+
+  // --- 使用身體服務 ---
+  const { availableAnimations, currentAnimation, selectAnimation } =
+    useBodyService();
+  // --- 結束 ---
+
   // --- 使用角色服務 ---
   useCharacterService(); // 初始化角色服務
   // --- 結束 ---
-  
+
   // 使用聊天服務
-  const {
-    messages,
-    sendMessage,
-    clearMessages
-  } = useChatService();
-  
+  const { messages, sendMessage, clearMessages } = useChatService();
+
   // 從 Zustand 直接獲取處理狀態
   const chatProcessing = useStore((state) => state.isProcessing);
-  
+
   // 從 Zustand 直接獲取情緒狀態
-  const currentEmotion = useStore((state) => state.currentEmotion.emotion || 'neutral');
-  const emotionConfidence = useStore((state) => state.currentEmotion.confidence || 0);
-  
+  const currentEmotion = useStore(
+    (state) => state.currentEmotion.emotion || "neutral",
+  );
+  const emotionConfidence = useStore(
+    (state) => state.currentEmotion.confidence || 0,
+  );
+
   // 使用本地狀態管理用戶輸入
-  const [userInput, setUserInput] = useState('');
-  
+  const [userInput, setUserInput] = useState("");
+
   // 選定的Morph Target
-  const [selectedMorphTarget, setSelectedMorphTarget] = useState<string | null>(null);
+  const [selectedMorphTarget, setSelectedMorphTarget] = useState<string | null>(
+    null,
+  );
 
   // 調試模式狀態
   const [debugMode, setDebugMode] = useState<boolean>(false);
-  
+
   // 模型分析工具狀態
   const [showModelAnalyzer, setShowModelAnalyzer] = useState<boolean>(false);
 
   // --- Zustand State and Actions ---
   const setProcessing = useStore((state) => state.setProcessing); // <-- Get action via selector
   const addChatMessage = useStore((state) => state.addMessage); // <-- Get chat message adding action. THIS IS THE CORRECT ONE.
-  // --- End Zustand --- 
+  // --- End Zustand ---
 
   // --- 從 Zustand 獲取/設置建議的動畫名稱 ---
-  const suggestedAnimationName = useStore((state) => state.suggestedAnimationName);
-  const setSuggestedAnimationName = useStore((state) => state.setSuggestedAnimationName);
+  const suggestedAnimationName = useStore(
+    (state) => state.suggestedAnimationName,
+  );
+  const setSuggestedAnimationName = useStore(
+    (state) => state.setSuggestedAnimationName,
+  );
 
   // --- 從 Zustand 獲取/設置動畫序列相關的狀態和操作 ---
   const animationSequence = useStore((state) => state.animationSequence);
   const setAnimationSequence = useStore((state) => state.setAnimationSequence);
-  const startSequencePlayback = useStore((state) => state.startSequencePlayback);
+  const startSequencePlayback = useStore(
+    (state) => state.startSequencePlayback,
+  );
   const stopSequencePlayback = useStore((state) => state.stopSequencePlayback);
 
   // 處理 WebSocket 訊息，提取並設置建議的動畫名稱到 Zustand
   useEffect(() => {
     // 使用 JSON.stringify 確保傳遞給 logger 的是字符串
-    logger.debug(`[AppWS Parse Effect] Running. lastJsonMessage: ${JSON.stringify(lastJsonMessage)}`, LogCategory.WEBSOCKET);
+    logger.debug(
+      `[AppWS Parse Effect] Running. lastJsonMessage: ${JSON.stringify(lastJsonMessage)}`,
+      LogCategory.WEBSOCKET,
+    );
     // Assert lastJsonMessage to our more comprehensive type
     const currentMessage = lastJsonMessage as BackendMessage | null;
 
@@ -360,71 +410,118 @@ function App() {
     }
 
     switch (currentMessage.type) {
-      case 'chat-message':
-        if (currentMessage.message && typeof currentMessage.message === 'object') {
-            logger.debug('[AppWS Parse Effect] Condition 2 passed: Message payload exists and is object.', LogCategory.WEBSOCKET);
-            
-            // message 負載現在符合 ChatMessagePayload 類型
-            const messagePayload = currentMessage.message;
-            
-            // 處理 bodyAnimationSequence (新增)
-            if ('bodyAnimationSequence' in messagePayload && 
-                Array.isArray(messagePayload.bodyAnimationSequence) && 
-                messagePayload.bodyAnimationSequence.length > 0) {
-                
-                logger.info(`[AppWS] Received animation sequence with ${messagePayload.bodyAnimationSequence.length} keyframes.`, LogCategory.WEBSOCKET);
-                
-                // 儲存動畫序列到 Zustand
-                setAnimationSequence(messagePayload.bodyAnimationSequence);
-                
-                // 不再處理 bodyAnimationName，因為使用序列
-                return;
+      case "chat-message":
+        if (
+          currentMessage.message &&
+          typeof currentMessage.message === "object"
+        ) {
+          logger.debug(
+            "[AppWS Parse Effect] Condition 2 passed: Message payload exists and is object.",
+            LogCategory.WEBSOCKET,
+          );
+
+          // message 負載現在符合 ChatMessagePayload 類型
+          const messagePayload = currentMessage.message;
+
+          // 處理 bodyAnimationSequence (新增)
+          if (
+            "bodyAnimationSequence" in messagePayload &&
+            Array.isArray(messagePayload.bodyAnimationSequence) &&
+            messagePayload.bodyAnimationSequence.length > 0
+          ) {
+            logger.info(
+              `[AppWS] Received animation sequence with ${messagePayload.bodyAnimationSequence.length} keyframes.`,
+              LogCategory.WEBSOCKET,
+            );
+
+            // 儲存動畫序列到 Zustand
+            setAnimationSequence(messagePayload.bodyAnimationSequence);
+
+            // 不再處理 bodyAnimationName，因為使用序列
+            return;
+          }
+
+          // 如果沒有序列，則回退到處理單一動畫名稱
+          if ("bodyAnimationName" in messagePayload) {
+            logger.debug(
+              "[AppWS Parse Effect] Condition 3 passed: bodyAnimationName key exists in payload.",
+              LogCategory.WEBSOCKET,
+            );
+            const backendAnimationName = messagePayload.bodyAnimationName;
+            logger.debug(
+              `[AppWS Parse Effect] Extracted bodyAnimationName: ${backendAnimationName}`,
+              LogCategory.WEBSOCKET,
+            );
+
+            // 檢查提取到的名稱是否為字符串 (可能為 null)
+            if (
+              typeof backendAnimationName === "string" &&
+              backendAnimationName.trim() !== ""
+            ) {
+              logger.debug(
+                "[AppWS Parse Effect] Condition 4 passed: Animation name is a non-empty string.",
+                LogCategory.WEBSOCKET,
+              );
+              // 驗證是否在可用動畫列表中 (可選但建議)
+              if (availableAnimations.includes(backendAnimationName)) {
+                logger.info(
+                  `[AppWS] Received suggested animation: ${backendAnimationName} from chat-message. Storing to Zustand...`,
+                  LogCategory.WEBSOCKET,
+                );
+                // 存儲到 Zustand
+                setSuggestedAnimationName(backendAnimationName);
+              } else {
+                logger.warn(
+                  `[AppWS] Received suggested animation "${backendAnimationName}" not in available list. Ignoring. Available: ${availableAnimations.join(", ")}`,
+                  LogCategory.WEBSOCKET,
+                );
+                // setSuggestedAnimationName(null);
+              }
+            } else if (
+              backendAnimationName === null ||
+              backendAnimationName === ""
+            ) {
+              // 如果後端明確發送 null 或空字符串
+              logger.info(
+                `[AppWS] Received null/empty suggested animation. Setting to null.`,
+                LogCategory.WEBSOCKET,
+              );
+              // 設置為 null
+              setSuggestedAnimationName(null);
+            } else {
+              logger.warn(
+                `[AppWS] Received bodyAnimationName but it's not a valid string or null: ${backendAnimationName}`,
+                LogCategory.WEBSOCKET,
+              );
             }
-            
-            // 如果沒有序列，則回退到處理單一動畫名稱
-            if ('bodyAnimationName' in messagePayload) {
-                logger.debug('[AppWS Parse Effect] Condition 3 passed: bodyAnimationName key exists in payload.', LogCategory.WEBSOCKET);
-                const backendAnimationName = messagePayload.bodyAnimationName;
-                logger.debug(`[AppWS Parse Effect] Extracted bodyAnimationName: ${backendAnimationName}`, LogCategory.WEBSOCKET);
-                
-                // 檢查提取到的名稱是否為字符串 (可能為 null)
-                if (typeof backendAnimationName === 'string' && backendAnimationName.trim() !== '') {
-                  logger.debug('[AppWS Parse Effect] Condition 4 passed: Animation name is a non-empty string.', LogCategory.WEBSOCKET);
-                  // 驗證是否在可用動畫列表中 (可選但建議)
-                  if (availableAnimations.includes(backendAnimationName)) {
-                      logger.info(`[AppWS] Received suggested animation: ${backendAnimationName} from chat-message. Storing to Zustand...`, LogCategory.WEBSOCKET);
-                      // 存儲到 Zustand
-                      setSuggestedAnimationName(backendAnimationName);
-                  } else {
-                       logger.warn(`[AppWS] Received suggested animation "${backendAnimationName}" not in available list. Ignoring. Available: ${availableAnimations.join(', ')}`, LogCategory.WEBSOCKET);
-                       // setSuggestedAnimationName(null);
-                  }
-                } else if (backendAnimationName === null || backendAnimationName === '') {
-                   // 如果後端明確發送 null 或空字符串
-                   logger.info(`[AppWS] Received null/empty suggested animation. Setting to null.`, LogCategory.WEBSOCKET);
-                   // 設置為 null
-                   setSuggestedAnimationName(null);
-                } else {
-                   logger.warn(`[AppWS] Received bodyAnimationName but it's not a valid string or null: ${backendAnimationName}`, LogCategory.WEBSOCKET);
-                }
-             } else {
-                 logger.debug('[AppWS Parse Effect] Condition 3 FAILED: bodyAnimationName key NOT in payload.', LogCategory.WEBSOCKET);
-             }
+          } else {
+            logger.debug(
+              "[AppWS Parse Effect] Condition 3 FAILED: bodyAnimationName key NOT in payload.",
+              LogCategory.WEBSOCKET,
+            );
+          }
         } else {
-             logger.debug('[AppWS Parse Effect] Condition 2 FAILED: Message payload does not exist or is not an object.', LogCategory.WEBSOCKET);
+          logger.debug(
+            "[AppWS Parse Effect] Condition 2 FAILED: Message payload does not exist or is not an object.",
+            LogCategory.WEBSOCKET,
+          );
         }
         break;
 
-      case 'dance_group_update':
+      case "dance_group_update":
         if (currentMessage.payload) {
-          logger.info('[AppWS] Received dance group update.', LogCategory.WEBSOCKET);
-          const { formation, dancerCount, position, scale } = currentMessage.payload;
+          logger.info(
+            "[AppWS] Received dance group update.",
+            LogCategory.WEBSOCKET,
+          );
+          const { formation, dancerCount, position, scale } =
+            currentMessage.payload;
           if (formation) setFormation(formation as Formation);
           if (dancerCount) setDancerCount(dancerCount);
           if (position && position.length === 3) {
-            setDanceGroupPosition('x', position[0]);
-            setDanceGroupPosition('y', position[1]);
-            setDanceGroupPosition('z', position[2]);
+            setDanceGroupPosition("x", position[0]);
+            setDanceGroupPosition("y", position[1]);
+            setDanceGroupPosition("z", position[2]);
           }
           if (scale) setDanceGroupScale(scale);
         }
@@ -432,16 +529,25 @@ function App() {
 
       // ... (other cases like 'emotionalTrajectory')
     }
-  }, [lastJsonMessage, availableAnimations, setSuggestedAnimationName, setAnimationSequence, setFormation, setDancerCount, setDanceGroupPosition, setDanceGroupScale]);
+  }, [
+    lastJsonMessage,
+    availableAnimations,
+    setSuggestedAnimationName,
+    setAnimationSequence,
+    setFormation,
+    setDancerCount,
+    setDanceGroupPosition,
+    setDanceGroupScale,
+  ]);
   // ------------------------------------
 
   // --- 同步身體動畫與語音狀態 ---
   const prevIsSpeaking = useRef<boolean>(isSpeaking);
-  const sequenceTimers = useRef<number[]>([]);  // 新增：存放定時器 ID 的數組
+  const sequenceTimers = useRef<number[]>([]); // 新增：存放定時器 ID 的數組
 
   // 新增：清理所有動畫序列定時器的函數
   const clearAllSequenceTimers = () => {
-    sequenceTimers.current.forEach(timerId => {
+    sequenceTimers.current.forEach((timerId) => {
       clearTimeout(timerId);
     });
     sequenceTimers.current = [];
@@ -452,71 +558,92 @@ function App() {
     // 監聽 isSpeaking 狀態變化
     const speakingStarted = !prevIsSpeaking.current && isSpeaking;
     const speakingStopped = prevIsSpeaking.current && !isSpeaking;
-    
-    // ---> Add logging here <--- 
-    logger.debug(`[AppSync Effect Check] isSpeaking: ${isSpeaking}, prevIsSpeaking: ${prevIsSpeaking.current}, suggestedAnimationName: ${suggestedAnimationName}, animationSequence length: ${animationSequence.length}`, LogCategory.ANIMATION);
-    // ---> End logging <--- 
+
+    // ---> Add logging here <---
+    logger.debug(
+      `[AppSync Effect Check] isSpeaking: ${isSpeaking}, prevIsSpeaking: ${prevIsSpeaking.current}, suggestedAnimationName: ${suggestedAnimationName}, animationSequence length: ${animationSequence.length}`,
+      LogCategory.ANIMATION,
+    );
+    // ---> End logging <---
 
     if (speakingStarted) {
       // 清理任何先前的定時器
       clearAllSequenceTimers();
-      
+
       // 檢查是否有動畫序列
       if (animationSequence.length > 0) {
         // 獲取音頻時長 (從 Zustand store)
         const audioDuration = useStore.getState().audioDuration;
-        
+
         if (audioDuration && audioDuration > 0) {
-          logger.info(`[AppSync] Speech started. Playing animation sequence with ${animationSequence.length} keyframes over ${audioDuration.toFixed(2)} seconds.`, LogCategory.ANIMATION);
-          
+          logger.info(
+            `[AppSync] Speech started. Playing animation sequence with ${animationSequence.length} keyframes over ${audioDuration.toFixed(2)} seconds.`,
+            LogCategory.ANIMATION,
+          );
+
           // 設置動畫序列開始
           startSequencePlayback(); // 這會立即播放第一個動畫
-          
+
           // 為每個後續的動畫設置定時器
           animationSequence.forEach((keyframe, index) => {
             // 跳過第一個動畫，因為它已經在 startSequencePlayback 中開始播放
             if (index === 0) return;
-            
+
             // 計算該動畫的絕對開始時間（毫秒）
             const startTimeMs = keyframe.proportion * audioDuration * 1000;
-            
+
             // 設置定時器
             const timerId = window.setTimeout(() => {
               // 確保仍然在播放狀態和序列播放模式
-              if (useStore.getState().isSpeaking && useStore.getState().isPlayingSequence) {
-                logger.info(`[AppSync] Playing animation ${keyframe.name} at ${startTimeMs.toFixed(0)}ms (proportion: ${keyframe.proportion})`, LogCategory.ANIMATION);
+              if (
+                useStore.getState().isSpeaking &&
+                useStore.getState().isPlayingSequence
+              ) {
+                logger.info(
+                  `[AppSync] Playing animation ${keyframe.name} at ${startTimeMs.toFixed(0)}ms (proportion: ${keyframe.proportion})`,
+                  LogCategory.ANIMATION,
+                );
                 useStore.getState().playNextInSequence(index);
               }
             }, startTimeMs);
-            
+
             // 保存定時器 ID 以供後續清除
             sequenceTimers.current.push(timerId);
           });
         } else {
-          logger.warn(`[AppSync] Cannot play animation sequence: audio duration is not available or invalid (${audioDuration})`, LogCategory.ANIMATION);
+          logger.warn(
+            `[AppSync] Cannot play animation sequence: audio duration is not available or invalid (${audioDuration})`,
+            LogCategory.ANIMATION,
+          );
           // 回退到只播放第一個動畫
           if (animationSequence[0] && animationSequence[0].name) {
             selectAnimation(animationSequence[0].name);
           } else {
             // 完全回退到單一動畫名稱處理
-            const animToPlay = suggestedAnimationName || 'Idle';
+            const animToPlay = suggestedAnimationName || "Idle";
             selectAnimation(animToPlay);
           }
         }
       } else {
         // 如果沒有序列，則使用單一動畫名稱（向後兼容）
-        const animToPlay = suggestedAnimationName || 'Idle'; // 如果 Zustand 中沒有建議，播放 Idle
-        logger.info(`[AppSync] Speech started. Playing single animation: ${animToPlay}`, LogCategory.ANIMATION);
+        const animToPlay = suggestedAnimationName || "Idle"; // 如果 Zustand 中沒有建議，播放 Idle
+        logger.info(
+          `[AppSync] Speech started. Playing single animation: ${animToPlay}`,
+          LogCategory.ANIMATION,
+        );
         selectAnimation(animToPlay);
       }
     } else if (speakingStopped) {
       // 語音停止播放，清理定時器並停止序列播放
       clearAllSequenceTimers();
-      
+
       // 停止序列播放（會切換回 Idle）
       stopSequencePlayback();
-      
-      logger.info(`[AppSync] Speech stopped. Cleared all timers and reset to Idle animation.`, LogCategory.ANIMATION);
+
+      logger.info(
+        `[AppSync] Speech stopped. Cleared all timers and reset to Idle animation.`,
+        LogCategory.ANIMATION,
+      );
     }
 
     // 更新 previous state
@@ -526,147 +653,187 @@ function App() {
     return () => {
       clearAllSequenceTimers();
     };
-
-  }, [isSpeaking, selectAnimation, suggestedAnimationName, availableAnimations, animationSequence, startSequencePlayback, stopSequencePlayback]); // 依賴項添加序列相關項
+  }, [
+    isSpeaking,
+    selectAnimation,
+    suggestedAnimationName,
+    availableAnimations,
+    animationSequence,
+    startSequencePlayback,
+    stopSequencePlayback,
+  ]); // 依賴項添加序列相關項
   // ----------------------------
 
   // === 定義錄音結束後的回調 ===
-  const handleStopRecording = useCallback(async (audioBlob: Blob | null) => {
-    if (audioBlob && wsConnected) {
-      logger.info('[App] Sending audio for processing...', LogCategory.GENERAL);
-      setProcessing(true); // Set processing before API call
-      try {
-        // Assuming processSpeechAudio returns: { success: boolean, text?: string, response?: string, audio?: string, error?: string }
-        // And does NOT currently return audio_duration.
-        const result = await processSpeechAudio(audioBlob); 
-        
-        if (result && result.success) {
-          // 1. Add user's transcribed speech if available
-          if (result.text) {
-            logger.info(`[App] STT: "${result.text}"`, LogCategory.GENERAL);
-            const userMessage: MessageType = {
-              id: `user-stt-${Date.now()}`,
-              role: 'user',
-              content: result.text,
-              timestamp: new Date().toISOString(),
-            };
-            addChatMessage(userMessage); 
-          }
+  const handleStopRecording = useCallback(
+    async (audioBlob: Blob | null) => {
+      if (audioBlob && wsConnected) {
+        logger.info(
+          "[App] Sending audio for processing...",
+          LogCategory.GENERAL,
+        );
+        setProcessing(true); // Set processing before API call
+        try {
+          // Assuming processSpeechAudio returns: { success: boolean, text?: string, response?: string, audio?: string, error?: string }
+          // And does NOT currently return audio_duration.
+          const result = await processSpeechAudio(audioBlob);
 
-          // 2. Handle bot's response (audio and/or text)
-          if (result.response) { 
-            let speechDurationForTypingEffect: number | undefined = undefined;
-            
-            // Estimate duration based on text length and presence of audio
-            if (result.audio) { // Has audio, estimate duration based on text for lip-sync like effect
-              const estimatedDuration = result.response.length * 0.18; // Approx 0.18s per char
-              speechDurationForTypingEffect = Math.max(1, estimatedDuration); // Min 1 second for some effect
-              logger.info(`[App] Estimated audio duration for typing effect: ${speechDurationForTypingEffect}s for text length ${result.response.length}`, LogCategory.GENERAL);
-            } else { // No audio, just text response, estimate based on text for a comfortable reading speed
-              const estimatedDuration = result.response.length * 0.1; // Approx 0.1s per char for reading
-              speechDurationForTypingEffect = Math.max(1, estimatedDuration); // Min 1 second
-              logger.info(`[App] Estimated reading duration for typing effect (text only): ${speechDurationForTypingEffect}s for text length ${result.response.length}`, LogCategory.GENERAL);
+          if (result && result.success) {
+            // 1. Add user's transcribed speech if available
+            if (result.text) {
+              logger.info(`[App] STT: "${result.text}"`, LogCategory.GENERAL);
+              const userMessage: MessageType = {
+                id: `user-stt-${Date.now()}`,
+                role: "user",
+                content: result.text,
+                timestamp: new Date().toISOString(),
+              };
+              addChatMessage(userMessage);
             }
 
-            const botResponseMessage: MessageType = {
-              id: `bot-resp-${Date.now()}`,
-              role: 'bot',
-              content: result.response, 
-              fullContent: result.response, 
-              isTyping: true, 
-              timestamp: new Date().toISOString(),
-              speechDuration: speechDurationForTypingEffect, 
-            };
-            addChatMessage(botResponseMessage);
+            // 2. Handle bot's response (audio and/or text)
+            if (result.response) {
+              let speechDurationForTypingEffect: number | undefined = undefined;
 
-            if (result.audio) { 
-              logger.info(`[App] Playing bot audio.`, LogCategory.GENERAL);
-              AudioService.getInstance().playAudio(`data:audio/mp3;base64,${result.audio}`);
+              // Estimate duration based on text length and presence of audio
+              if (result.audio) {
+                // Has audio, estimate duration based on text for lip-sync like effect
+                const estimatedDuration = result.response.length * 0.18; // Approx 0.18s per char
+                speechDurationForTypingEffect = Math.max(1, estimatedDuration); // Min 1 second for some effect
+                logger.info(
+                  `[App] Estimated audio duration for typing effect: ${speechDurationForTypingEffect}s for text length ${result.response.length}`,
+                  LogCategory.GENERAL,
+                );
+              } else {
+                // No audio, just text response, estimate based on text for a comfortable reading speed
+                const estimatedDuration = result.response.length * 0.1; // Approx 0.1s per char for reading
+                speechDurationForTypingEffect = Math.max(1, estimatedDuration); // Min 1 second
+                logger.info(
+                  `[App] Estimated reading duration for typing effect (text only): ${speechDurationForTypingEffect}s for text length ${result.response.length}`,
+                  LogCategory.GENERAL,
+                );
+              }
+
+              const botResponseMessage: MessageType = {
+                id: `bot-resp-${Date.now()}`,
+                role: "bot",
+                content: result.response,
+                fullContent: result.response,
+                isTyping: true,
+                timestamp: new Date().toISOString(),
+                speechDuration: speechDurationForTypingEffect,
+              };
+              addChatMessage(botResponseMessage);
+
+              if (result.audio) {
+                logger.info(`[App] Playing bot audio.`, LogCategory.GENERAL);
+                AudioService.getInstance().playAudio(
+                  `data:audio/mp3;base64,${result.audio}`,
+                );
+              }
+            }
+          } else if (result && !result.success) {
+            logger.error(
+              `[App] Audio processing failed: ${result.error}`,
+              LogCategory.GENERAL,
+            );
+            toast.error(`語音處理失敗: ${result.error || "未知錯誤"}`);
+          } else {
+            logger.warn(
+              "[App] Audio processing returned unexpected result or no audio/response.",
+              LogCategory.GENERAL,
+            );
+            // Only show toast if there's no specific error message from backend
+            if (!(result && result.error)) {
+              toast("無法處理您的語音，請再試一次。");
             }
           }
-
-        } else if (result && !result.success) {
-          logger.error(`[App] Audio processing failed: ${result.error}`, LogCategory.GENERAL);
-          toast.error(`語音處理失敗: ${result.error || '未知錯誤'}`);
-        } else {
-          logger.warn('[App] Audio processing returned unexpected result or no audio/response.', LogCategory.GENERAL);
-          // Only show toast if there's no specific error message from backend
-          if (!(result && result.error)) {
-            toast('無法處理您的語音，請再試一次。');
-          }
+        } catch (error) {
+          logger.error(
+            "[App] Audio processing API call error:",
+            LogCategory.GENERAL,
+            error,
+          );
+          toast.error(
+            `語音處理請求失敗: ${error instanceof Error ? error.message : "未知網絡錯誤"}`,
+          );
+        } finally {
+          setProcessing(false);
         }
-      } catch (error) {
-        logger.error('[App] Audio processing API call error:', LogCategory.GENERAL, error);
-        toast.error(`語音處理請求失敗: ${error instanceof Error ? error.message : '未知網絡錯誤'}`);
-      } finally {
-        setProcessing(false);
+      } else if (!wsConnected) {
+        logger.warn(
+          "[App] Recording finished, but WebSocket not connected. Cannot process audio.",
+          LogCategory.GENERAL,
+        );
+        toast.error("網絡未連接，無法處理語音。");
+      } else if (!audioBlob) {
+        logger.warn(
+          "[App] Recording finished, but audio blob is null.",
+          LogCategory.GENERAL,
+        );
+        // No toast here as this might be an intentional quick tap without speech
       }
-      
-    } else if (!wsConnected) {
-      logger.warn('[App] Recording finished, but WebSocket not connected. Cannot process audio.', LogCategory.GENERAL);
-      toast.error('網絡未連接，無法處理語音。');
-    } else if (!audioBlob) {
-      logger.warn('[App] Recording finished, but audio blob is null.', LogCategory.GENERAL);
-      // No toast here as this might be an intentional quick tap without speech
-    }
-  }, [wsConnected, setProcessing, addChatMessage]); // addChatMessage from useStore is correctly in dependencies now
+    },
+    [wsConnected, setProcessing, addChatMessage],
+  ); // addChatMessage from useStore is correctly in dependencies now
   // === 回調定義結束 ===
 
-  // 切換調試模式 
+  // 切換調試模式
   const toggleDebugMode = useCallback(() => {
-    setDebugMode(prev => !prev);
+    setDebugMode((prev) => !prev);
   }, []);
-  
+
   // 切換模型分析工具
   const toggleModelAnalyzer = () => setShowModelAnalyzer(!showModelAnalyzer);
 
   // 處理發送消息 (Enter 鍵或點擊按鈕)
   const handleSendMessage = useCallback(() => {
-    if (userInput.trim() && wsConnected) { // 確保已連接才發送
+    if (userInput.trim() && wsConnected) {
+      // 確保已連接才發送
       sendMessage(userInput); // This is from useChatService, sends text via WebSocket
-      setUserInput(''); // 清空輸入
+      setUserInput(""); // 清空輸入
     } else if (!wsConnected) {
       console.warn("嘗試發送消息但 WebSocket 未連接");
-      toast.error('網絡未連接，無法發送消息。');
+      toast.error("網絡未連接，無法發送消息。");
     }
   }, [userInput, wsConnected, sendMessage]);
 
   // 處理鍵盤事件 (Enter發送)
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLInputElement>) => {
-      if (event.key === 'Enter' && !event.shiftKey) {
+      if (event.key === "Enter" && !event.shiftKey) {
         event.preventDefault();
         handleSendMessage();
         // 確保輸入框被清空
-        setTimeout(() => setUserInput(''), 50);
+        setTimeout(() => setUserInput(""), 50);
       }
     },
-    [handleSendMessage, setUserInput]
+    [handleSendMessage, setUserInput],
   );
 
   return (
     <ErrorBoundary>
       <div className="app-container">
         <BackgroundSoundSystem />
-        <SceneContainer 
+        <SceneContainer
           headModelUrl={headModelUrl}
           isHeadModelLoaded={headModelLoaded}
           showSpaceBackground={showSpaceBackground}
           modelScale={modelScale}
-          headOnly={new URLSearchParams(window.location.search).has('headonly')}
+          headOnly={new URLSearchParams(window.location.search).has("headonly")}
         />
         {/* === 刪除：燈光亮度控制 bar === */}
         {/* <LightBarControl /> */}
         {/* === 刪除結束 === */}
-        
+
         {/* 調試面板 (保持在 App 層) */}
         {debugMode && <ModelDebugger url={headModelUrl} />}
-        
+
         {/* 模型分析工具 (保持在 App 層) */}
         {showModelAnalyzer && <div>模型分析工具 (模型列表待定)</div>}
 
         {/* 渲染新的浮動聊天視窗 */}
-        <FloatingChatWindow 
+        <FloatingChatWindow
           isVisible={isChatWindowVisible}
           onClose={toggleChatWindow}
           messages={messages || []} // messages from useChatService
@@ -701,9 +868,9 @@ function App() {
           applyPresetExpression={applyPresetExpression}
           showSpaceBackground={showSpaceBackground}
           // Pass body animation props
-          availableAnimations={availableAnimations} 
-          currentAnimation={currentAnimation} 
-          selectAnimation={selectAnimation} 
+          availableAnimations={availableAnimations}
+          currentAnimation={currentAnimation}
+          selectAnimation={selectAnimation}
           // Pass emotion state for display
           currentEmotion={currentEmotion}
           emotionConfidence={emotionConfidence}
@@ -713,55 +880,75 @@ function App() {
           modelUrl={headModelUrl} // Use headModelUrl here
           toggleDebugMode={toggleDebugMode}
           toggleModelAnalyzer={toggleModelAnalyzer}
-          handleModelSwitch={() => { logger.warn('Model switching is temporarily disabled.', LogCategory.GENERAL); }} // Placeholder
+          handleModelSwitch={() => {
+            logger.warn(
+              "Model switching is temporarily disabled.",
+              LogCategory.GENERAL,
+            );
+          }} // Placeholder
         />
         {/* <--- 結束 ---> */}
-        
+
         {/* 房間控制面板 */}
-        <RoomControlPanel isVisible={useStore((state) => state.isRoomControlPanelVisible)} />
-        
+        <RoomControlPanel
+          isVisible={useStore((state) => state.isRoomControlPanelVisible)}
+        />
+
         {/* 角色控制面板 */}
-        <CharacterControlPanel 
+        <CharacterControlPanel
           isVisible={isCharacterControlPanelVisible}
           onClose={toggleCharacterControlPanel}
         />
-        
+
         {/* 環境光照控制面板 */}
-        <EnvironmentControlPanel 
+        <EnvironmentControlPanel
           isVisible={isEnvironmentControlPanelVisible}
           onClose={toggleEnvironmentControlPanel}
         />
-        
+
+        {/* 文字顯示面板 */}
+        <TextDisplayPanel
+          isVisible={isTextPanelVisible}
+          onClose={toggleTextPanel}
+        />
+
         {/* 即時對話排程控制面板 - 移到左下角 */}
         <div className="fixed bottom-4 left-4 z-50 w-80">
-          <RealtimeSchedulePanel 
+          <RealtimeSchedulePanel
             isVisible={isRealtimeSchedulePanelVisible}
             onClose={toggleRealtimeSchedulePanel}
           />
         </div>
-        
+
         {/* 即時對話狀態指示器 - 排程啟用且面板未開啟時顯示 */}
         {scheduleEnabled && !isRealtimeSchedulePanelVisible && (
           <div
             className={
               realtimeCurrentlyActive
-                ? 'fixed top-4 left-4 z-50'
-                : 'pointer-events-none fixed inset-0 flex items-center justify-center z-50'
+                ? "fixed top-4 left-4 z-50"
+                : "pointer-events-none fixed inset-0 flex items-center justify-center z-50"
             }
           >
-            <RealtimeStatusIndicator className={realtimeCurrentlyActive ? '' : 'text-2xl min-w-[360px]'} />
+            <RealtimeStatusIndicator
+              className={
+                realtimeCurrentlyActive ? "" : "text-2xl min-w-[360px]"
+              }
+            />
           </div>
         )}
-        
+
         {/* 渲染 AppUI (只傳遞必要 props) */}
         <AppUI
           wsConnected={wsConnected}
           toggleChatWindow={toggleChatWindow}
           toggleSettingsPanel={toggleSettingsPanel}
-          toggleRoomControlPanel={useStore((state) => state.toggleRoomControlPanel)}
+          toggleRoomControlPanel={useStore(
+            (state) => state.toggleRoomControlPanel,
+          )}
           toggleCharacterControlPanel={toggleCharacterControlPanel}
           toggleEnvironmentControlPanel={toggleEnvironmentControlPanel}
           toggleRealtimeSchedulePanel={toggleRealtimeSchedulePanel}
+          toggleTextPanel={toggleTextPanel}
           toggleRealtime={toggleRealtime}
           realtimeStreaming={realtimeStreaming}
           realtimeError={realtimeError}
@@ -776,7 +963,7 @@ function App() {
         <DirectorMonitorHUD />
       </div>
     </ErrorBoundary>
-  )
+  );
 }
 
 export default App;

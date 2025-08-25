@@ -11,15 +11,16 @@ from admin import setup_admin
 from .base import create_app
 from .endpoints import (
     control,
+    display_text,
     health,
     image_generation,
     monitors,
+    news,
     perception,
     realtime_conversation,
     speech,
-    websocket,
-    news,
     web_search,
+    websocket,
 )
 from .middleware.cors import setup_cors
 
@@ -56,6 +57,7 @@ def init_app() -> FastAPI:
     app.include_router(realtime_conversation.router, prefix="/api", tags=["realtime"])
     app.include_router(news.router, prefix="/api/news", tags=["news"])
     app.include_router(web_search.router, prefix="/api", tags=["search"])
+    app.include_router(display_text.router, prefix="/api", tags=["display"])
 
     # 創建音頻目錄（如果不存在）
     audio_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "audio")
@@ -72,9 +74,7 @@ def init_app() -> FastAPI:
     os.makedirs(images_dir, exist_ok=True)
 
     # Create selfies directory
-    selfies_dir = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), "selfies"
-    )
+    selfies_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "selfies")
     os.makedirs(selfies_dir, exist_ok=True)
 
     # 確保音頻目錄有正確的權限
