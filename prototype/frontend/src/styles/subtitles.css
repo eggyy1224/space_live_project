@@ -1,0 +1,70 @@
+.subtitle-container {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 5vh;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 60; /* above canvas and most HUD */
+}
+
+.subtitle-box {
+  max-width: min(84vw, 1400px);
+  padding: 12px 20px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.subtitle-text {
+  text-align: center;
+  line-height: 1.35;
+  letter-spacing: 0.02em;
+  font-weight: 700;
+  font-size: clamp(16px, 2.4vw, 30px);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Neon rainbow animated gradient with glow */
+.rainbow-neon {
+  background: linear-gradient(
+    90deg,
+    #ff0080,
+    #ff8c00,
+    #ffd300,
+    #00e676,
+    #00b0ff,
+    #7c4dff,
+    #ff0080
+  );
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: rainbowShift 8s linear infinite;
+  /* multi-layer glow */
+  text-shadow:
+    0 0 6px rgba(255,255,255,0.6),
+    0 0 12px rgba(255,0,128,0.45),
+    0 0 18px rgba(0,176,255,0.35),
+    0 0 26px rgba(124,77,255,0.25);
+}
+
+@keyframes rainbowShift {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+
+/* Slight breathing for subtle presence; disabled by default */
+.neon-breathe {
+  animation: rainbowShift 8s linear infinite, neonPulse 2.8s ease-in-out infinite;
+}
+
+@keyframes neonPulse {
+  0%, 100% { filter: drop-shadow(0 0 0.35rem rgba(255,255,255,0.3)); }
+  50% { filter: drop-shadow(0 0 0.8rem rgba(255,255,255,0.55)); }
+}

@@ -1,5 +1,4 @@
 import React from 'react';
-import SpeechBackground from './SpeechBackground';
 import VideoPlayer from './VideoPlayer';
 import MusicBackground from './MusicBackground';
 import EffectBackground from './EffectBackground';
@@ -46,7 +45,7 @@ const screenConfigs: ScreenConfig[] = [
 
 const DynamicAudioBackgrounds: React.FC = () => (
   <>
-    <SpeechBackground />
+    {/* SpeechBackground 移除：改用 DOM 底部字幕 Overlay 顯示台詞 */}
     {/* Render multiple video players based on configs */}
     {screenConfigs.map(config => (
       <VideoPlayer

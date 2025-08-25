@@ -13,6 +13,7 @@ import ImageOverlay from './components/ImageOverlay'
 import SettingsPanel from './components/SettingsPanel'
 import BackgroundSoundSystem from './components/BackgroundSoundSystem'
 import DirectorMonitorHUD from './components/DirectorMonitorHUD'
+import SubtitlesOverlay from './components/SubtitlesOverlay'
 import RoomControlPanel from './components/RoomControlPanel'
 import { CharacterControlPanel } from './components/CharacterControlPanel'
 import EnvironmentControlPanel from './components/EnvironmentControlPanel'
@@ -770,6 +771,8 @@ function App() {
 
         <ToastContainer />
         <ImageOverlay />
+        {/* 底部字幕（霓虹七彩） */}
+        <SubtitlesOverlay />
         <DirectorMonitorHUD />
       </div>
     </ErrorBoundary>
