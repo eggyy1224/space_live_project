@@ -67,7 +67,7 @@ export const createAppSlice: StateCreator<AppSlice> = (set) => ({
   isCharacterControlPanelVisible: false,
   isEnvironmentControlPanelVisible: false,
   isRealtimeSchedulePanelVisible: false,
-  isSideButtonsVisible: true, // 預設顯示右側按鈕
+  isSideButtonsVisible: false, // 預設隱藏右側按鈕
   isLoading: false,
   errorMessage: null,
   currentAction: null,
