@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 // import ChatInterface from '../ChatInterface'; // <-- Remove import
 // import ControlPanel from '../ControlPanel'; // <-- Remove import
 // import AudioControls from '../AudioControls'; // <-- Remove import
@@ -8,10 +8,10 @@ interface AppUIProps {
   // // Tab 狀態與切換 (REMOVED)
   // activeTab: 'control' | 'chat';
   // switchTab: (tab: 'control' | 'chat') => void;
-  
+
   // WebSocket 連接狀態
   wsConnected: boolean;
-  
+
   // 音頻控制相關 props
   // isRecording: boolean;
   // isSpeaking: boolean;
@@ -20,7 +20,7 @@ interface AppUIProps {
   // startRecording: () => Promise<void>;
   // stopRecording: () => void;
   // playAudio: (url: string) => void;
-  
+
   // 控制面板相關 props
   // modelLoaded: boolean;
   // modelScale: number;
@@ -40,7 +40,7 @@ interface AppUIProps {
   // selectAnimation: (name: string) => void;
   // applyPresetExpression: (expression: string) => Promise<boolean>;
   // showSpaceBackground: boolean;
-  
+
   // 聊天界面相關 props
   // messages: any[]; // 替換為更精確的類型
   // userInput: string;
@@ -49,7 +49,7 @@ interface AppUIProps {
   // sendMessage: () => void; // 修改這裡，對應 App.tsx 傳遞的函數
   // handleKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void; // 添加 handleKeyDown
   // clearMessages: () => void; // 添加 clearMessages
-  
+
   // 浮動聊天視窗控制
   toggleChatWindow: () => void;
   // 設定面板控制
@@ -62,6 +62,8 @@ interface AppUIProps {
   toggleEnvironmentControlPanel: () => void;
   // 排程控制面板控制
   toggleRealtimeSchedulePanel: () => void;
+  // 文字顯示面板控制
+  toggleTextPanel: () => void;
   toggleRealtime: () => void;
   realtimeStreaming: boolean;
   realtimeError: string | null;
@@ -70,34 +72,47 @@ interface AppUIProps {
 }
 
 // === 新增：物理燈條亮度控制 bar 組件 ===
-function PhysicalLightBarPanel({ visible, onClose }: { visible: boolean, onClose: () => void }) {
+function PhysicalLightBarPanel({
+  visible,
+  onClose,
+}: {
+  visible: boolean;
+  onClose: () => void;
+}) {
   const [value, setValue] = useState(32767);
 
   useEffect(() => {
     if (!visible) return;
     // 關閉面板時將燈光關掉
     return () => {
-      fetch('http://localhost:8000/api/physical-light/set-brightness', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ brightness: 0 })
-      }).catch(e => console.warn('[PhysicalLightBarPanel] Failed to turn off light:', e));
+      fetch("http://localhost:8000/api/physical-light/set-brightness", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brightness: 0 }),
+      }).catch((e) =>
+        console.warn("[PhysicalLightBarPanel] Failed to turn off light:", e),
+      );
     };
   }, [visible]);
 
   useEffect(() => {
     if (visible) {
-      fetch('http://localhost:8000/api/physical-light/set-brightness', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ brightness: value })
-      }).catch(e => console.warn('[PhysicalLightBarPanel] Failed to set brightness:', e));
+      fetch("http://localhost:8000/api/physical-light/set-brightness", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brightness: value }),
+      }).catch((e) =>
+        console.warn("[PhysicalLightBarPanel] Failed to set brightness:", e),
+      );
     }
   }, [value, visible]);
 
   if (!visible) return null;
   return (
-    <div className="bg-gray-900 text-white p-4 rounded-lg shadow-lg mb-2 flex flex-col items-center" style={{ minWidth: 260 }}>
+    <div
+      className="bg-gray-900 text-white p-4 rounded-lg shadow-lg mb-2 flex flex-col items-center"
+      style={{ minWidth: 260 }}
+    >
       <div className="flex w-full items-center mb-2">
         <span className="mr-2">亮度</span>
         <input
@@ -105,12 +120,17 @@ function PhysicalLightBarPanel({ visible, onClose }: { visible: boolean, onClose
           min={0}
           max={65535}
           value={value}
-          onChange={e => setValue(Number(e.target.value))}
+          onChange={(e) => setValue(Number(e.target.value))}
           className="flex-1 mx-2"
         />
         <span className="ml-2 text-xs">{value}</span>
       </div>
-      <button onClick={onClose} className="mt-2 px-3 py-1 bg-gray-700 rounded hover:bg-gray-600 text-xs">關閉</button>
+      <button
+        onClick={onClose}
+        className="mt-2 px-3 py-1 bg-gray-700 rounded hover:bg-gray-600 text-xs"
+      >
+        關閉
+      </button>
     </div>
   );
 }
@@ -134,6 +154,8 @@ const AppUI: React.FC<AppUIProps> = ({
   toggleEnvironmentControlPanel,
   // 排程控制面板控制
   toggleRealtimeSchedulePanel,
+  // 文字顯示面板控制
+  toggleTextPanel,
   toggleRealtime,
   realtimeStreaming,
   realtimeError,
@@ -171,120 +193,142 @@ const AppUI: React.FC<AppUIProps> = ({
 
       {/* Keep Debug Buttons and Trigger Buttons */}
       {isSideButtonsVisible && (
-        <div 
+        <div
           // Container for bottom-right buttons (Use Tailwind)
           className="fixed bottom-5 right-5 z-[1000] flex flex-col items-end space-y-2"
         >
-        {/* Trigger Floating Chat Window Button */}
-        <button
-          onClick={toggleChatWindow}
-          // Apply Tailwind classes
-          className="w-12 h-12 rounded-full bg-green-500 hover:bg-green-600 text-white text-2xl shadow-md flex items-center justify-center cursor-pointer transition-colors duration-200"
-          title="開啟/關閉聊天視窗"
-          aria-label="開啟/關閉聊天視窗"
-        >
-          💬
-        </button>
-
-        {/* Real-time Voice Button */}
-        <div className="flex flex-col items-end">
+          {/* Trigger Floating Chat Window Button */}
           <button
-            onClick={toggleRealtime}
-            className={`
+            onClick={toggleChatWindow}
+            // Apply Tailwind classes
+            className="w-12 h-12 rounded-full bg-green-500 hover:bg-green-600 text-white text-2xl shadow-md flex items-center justify-center cursor-pointer transition-colors duration-200"
+            title="開啟/關閉聊天視窗"
+            aria-label="開啟/關閉聊天視窗"
+          >
+            💬
+          </button>
+
+          {/* Real-time Voice Button */}
+          <div className="flex flex-col items-end">
+            <button
+              onClick={toggleRealtime}
+              className={`
               relative w-12 h-12 rounded-full shadow-md flex items-center justify-center cursor-pointer transition-all duration-200
-              ${realtimeStreaming
-                ? 'bg-red-600 hover:bg-red-700 animate-pulse ring-2 ring-red-300'
-                : realtimeError
-                  ? 'bg-red-400 hover:bg-red-500'
-                  : 'bg-red-500 hover:bg-red-600'
+              ${
+                realtimeStreaming
+                  ? "bg-red-600 hover:bg-red-700 animate-pulse ring-2 ring-red-300"
+                  : realtimeError
+                    ? "bg-red-400 hover:bg-red-500"
+                    : "bg-red-500 hover:bg-red-600"
               }
               text-white text-2xl
             `}
-            title={realtimeStreaming ? '停止實時語音通話 (空白鍵)' : '啟動實時語音通話 (空白鍵)'}
-            aria-label={realtimeStreaming ? '停止實時語音通話 (空白鍵)' : '啟動實時語音通話 (空白鍵)'}
-          >
-            {realtimeStreaming ? '🔴' : '🎤'}
-            {realtimeStreaming && (
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-ping"></div>
+              title={
+                realtimeStreaming
+                  ? "停止實時語音通話 (空白鍵)"
+                  : "啟動實時語音通話 (空白鍵)"
+              }
+              aria-label={
+                realtimeStreaming
+                  ? "停止實時語音通話 (空白鍵)"
+                  : "啟動實時語音通話 (空白鍵)"
+              }
+            >
+              {realtimeStreaming ? "🔴" : "🎤"}
+              {realtimeStreaming && (
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-ping"></div>
+              )}
+            </button>
+
+            {/* 錯誤提示 */}
+            {realtimeError && (
+              <div className="mt-1 bg-red-100 border border-red-400 text-red-700 px-2 py-1 rounded text-xs max-w-48">
+                {realtimeError}
+              </div>
             )}
+          </div>
+
+          {/* Trigger Settings Panel Button */}
+          <button
+            onClick={toggleSettingsPanel}
+            // Apply Tailwind classes
+            className="w-12 h-12 rounded-full bg-gray-600 hover:bg-gray-700 text-white text-2xl shadow-md flex items-center justify-center cursor-pointer transition-colors duration-200"
+            title="開啟/關閉設定面板"
+            aria-label="開啟/關閉設定面板"
+          >
+            ⚙️
           </button>
-          
-          {/* 錯誤提示 */}
-          {realtimeError && (
-            <div className="mt-1 bg-red-100 border border-red-400 text-red-700 px-2 py-1 rounded text-xs max-w-48">
-              {realtimeError}
-            </div>
-          )}
-        </div>
 
-        {/* Trigger Settings Panel Button */}
-        <button
-          onClick={toggleSettingsPanel}
-          // Apply Tailwind classes
-          className="w-12 h-12 rounded-full bg-gray-600 hover:bg-gray-700 text-white text-2xl shadow-md flex items-center justify-center cursor-pointer transition-colors duration-200"
-          title="開啟/關閉設定面板"
-          aria-label="開啟/關閉設定面板"
-        >
-          ⚙️
-        </button>
+          {/* Trigger Room Control Panel Button */}
+          <button
+            onClick={toggleRoomControlPanel}
+            // Apply Tailwind classes
+            className="w-12 h-12 rounded-full bg-purple-600 hover:bg-purple-700 text-white text-2xl shadow-md flex items-center justify-center cursor-pointer transition-colors duration-200"
+            title="開啟/關閉房間場景控制"
+            aria-label="開啟/關閉房間場景控制"
+          >
+            🏠
+          </button>
 
-        {/* Trigger Room Control Panel Button */}
-        <button
-          onClick={toggleRoomControlPanel}
-          // Apply Tailwind classes
-          className="w-12 h-12 rounded-full bg-purple-600 hover:bg-purple-700 text-white text-2xl shadow-md flex items-center justify-center cursor-pointer transition-colors duration-200"
-          title="開啟/關閉房間場景控制"
-          aria-label="開啟/關閉房間場景控制"
-        >
-          🏠
-        </button>
+          {/* Trigger Character Control Panel Button */}
+          <button
+            onClick={toggleCharacterControlPanel}
+            // Apply Tailwind classes
+            className="w-12 h-12 rounded-full bg-orange-600 hover:bg-orange-700 text-white text-2xl shadow-md flex items-center justify-center cursor-pointer transition-colors duration-200"
+            title="開啟/關閉角色控制面板"
+            aria-label="開啟/關閉角色控制面板"
+          >
+            🚶
+          </button>
 
-        {/* Trigger Character Control Panel Button */}
-        <button
-          onClick={toggleCharacterControlPanel}
-          // Apply Tailwind classes
-          className="w-12 h-12 rounded-full bg-orange-600 hover:bg-orange-700 text-white text-2xl shadow-md flex items-center justify-center cursor-pointer transition-colors duration-200"
-          title="開啟/關閉角色控制面板"
-          aria-label="開啟/關閉角色控制面板"
-        >
-          🚶
-        </button>
+          {/* Trigger Environment Control Panel Button */}
+          <button
+            onClick={toggleEnvironmentControlPanel}
+            // Apply Tailwind classes
+            className="w-12 h-12 rounded-full bg-yellow-600 hover:bg-yellow-700 text-white text-2xl shadow-md flex items-center justify-center cursor-pointer transition-colors duration-200"
+            title="開啟/關閉環境光照控制"
+            aria-label="開啟/關閉環境光照控制"
+          >
+            ✨
+          </button>
 
-        {/* Trigger Environment Control Panel Button */}
-        <button
-          onClick={toggleEnvironmentControlPanel}
-          // Apply Tailwind classes
-          className="w-12 h-12 rounded-full bg-yellow-600 hover:bg-yellow-700 text-white text-2xl shadow-md flex items-center justify-center cursor-pointer transition-colors duration-200"
-          title="開啟/關閉環境光照控制"
-          aria-label="開啟/關閉環境光照控制"
-        >
-          ✨
-        </button>
+          {/* Trigger Realtime Schedule Panel Button */}
+          <button
+            onClick={toggleRealtimeSchedulePanel}
+            className="w-12 h-12 rounded-full bg-purple-600 hover:bg-purple-700 text-white text-2xl shadow-md flex items-center justify-center cursor-pointer transition-colors duration-200"
+            title="開啟/關閉即時對話排程控制"
+            aria-label="開啟/關閉即時對話排程控制"
+          >
+            ⏰
+          </button>
 
-        {/* Trigger Realtime Schedule Panel Button */}
-        <button
-          onClick={toggleRealtimeSchedulePanel}
-          className="w-12 h-12 rounded-full bg-purple-600 hover:bg-purple-700 text-white text-2xl shadow-md flex items-center justify-center cursor-pointer transition-colors duration-200"
-          title="開啟/關閉即時對話排程控制"
-          aria-label="開啟/關閉即時對話排程控制"
-        >
-          ⏰
-        </button>
-        {/* === 新增：物理燈條控制 toggle 按鈕 === */}
-        <button
-          onClick={() => setShowLightBar((v) => !v)}
-          className="w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-2xl shadow-md flex items-center justify-center cursor-pointer transition-colors duration-200"
-          title="開啟/關閉物理燈條控制"
-          aria-label="開啟/關閉物理燈條控制"
-        >
-          💡
-        </button>
-        <PhysicalLightBarPanel visible={showLightBar} onClose={() => setShowLightBar(false)} />
-        {/* === 新增結束 === */}
+          {/* Trigger Text Display Panel Button */}
+          <button
+            onClick={toggleTextPanel}
+            className="w-12 h-12 rounded-full bg-teal-600 hover:bg-teal-700 text-white text-2xl shadow-md flex items-center justify-center cursor-pointer transition-colors duration-200"
+            title="開啟/關閉文字顯示面板"
+            aria-label="開啟/關閉文字顯示面板"
+          >
+            📝
+          </button>
+          {/* === 新增：物理燈條控制 toggle 按鈕 === */}
+          <button
+            onClick={() => setShowLightBar((v) => !v)}
+            className="w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-2xl shadow-md flex items-center justify-center cursor-pointer transition-colors duration-200"
+            title="開啟/關閉物理燈條控制"
+            aria-label="開啟/關閉物理燈條控制"
+          >
+            💡
+          </button>
+          <PhysicalLightBarPanel
+            visible={showLightBar}
+            onClose={() => setShowLightBar(false)}
+          />
+          {/* === 新增結束 === */}
         </div>
       )}
     </>
   );
 };
 
-export default AppUI; 
+export default AppUI;
