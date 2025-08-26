@@ -190,6 +190,38 @@ YOGA_SPEED_MAX=0.7
 YOGA_WEIGHT_MIN=0.9
 YOGA_WEIGHT_MAX=1.0
 
+# --- 表情序列池（僅調整腳本，不改程式碼） ---
+# 每個元素是一條以逗號分隔的 emotion_trajectory 標籤序列
+EMO_WARMUP=(
+  "serene,interested,content"
+  "listening,interested,serene"
+  "serene,grateful,content"
+)
+EMO_PLAYFUL=(
+  "playful,amused,joyful"
+  "smug,playful,joyful"
+  "playful,joyful,content"
+)
+EMO_EFFORT=(
+  "determined,proud,triumphant"
+  "interested,determined,proud"
+  "determined,proud,joyful"
+)
+EMO_FOCUS=(
+  "neutral,determined,proud"
+  "listening,thinking,determined"
+  "interested,determined,proud"
+)
+EMO_RELAX=(
+  "serene,content,joyful"
+  "grateful,content,serene"
+  "relieved,grateful,serene"
+)
+EMO_AWE=(
+  "awe,hopeful,joyful"
+  "surprised,awe,joyful"
+)
+
 step_mix_random() {
   # 隨機挑一個瑜珈動作，並用隨機速度/權重與空體Action混合
   local MOVE; MOVE=$(rand_choice YOGA_MOVES[@])
@@ -212,7 +244,8 @@ $CURL_POST "$BASE_URL/control/broadcast" -H "Content-Type: application/json" -d 
 cam_preset "head_close_up" 1.2
 env_preset "dawn" || true
 bgm "/audio/BGM/space_live_country_theme1.mp3" 0.25
-head_size 1.0
+# 調整頭部大小為 10（0.1–20.0 合法範圍內）
+head_size 10.0
 # 角色大小設定為 0.1（API 最小值）；搭配位置退後模擬更小視覺比例
 char_scale 0.1
 # 位置：往上 Y=8，往後 Z=-30（X=0）
@@ -220,8 +253,12 @@ char_position 0.0 8.0 -30.0
 anim_char "空體Action" 1.0 true
 sleep 1.5
 
-# 開場短句（配情緒）+ 明確停頓
-say "Lai — tsiah--khí lâi. Breathe in… out…" 3.0 "neutral,interested,content"
+# 開場短句（配情緒）+ 明確停頓（暖身：隨機挑選暖身序列）
+OPEN_SEQ=$(rand_choice EMO_WARMUP[@])
+say "Lai — tsiah--khí lâi. Breathe in… out…" 3.0 "$OPEN_SEQ"
+# 開場加一段表情過渡，讓臉部更有存在感（同樣從暖身池隨機挑選）
+OPEN_EMOTE=$(rand_choice EMO_WARMUP[@])
+emote 2.2 "$OPEN_EMOTE"
 sleep 1.0
 
 ########################################
@@ -231,6 +268,9 @@ for i in {1..8}; do
   # 位置左右切換
   X=$(rand_choice X_CHOICES[@])
   char_position "$X" 8.0 -30.0
+  # micro 表情預熱（從專注池挑一條，短促）
+  MICRO_SEQ=$(rand_choice EMO_FOCUS[@])
+  emote 1.0 "$MICRO_SEQ"
   # 動畫混合（隨機瑜珈動作 + 速度/權重）
   step_mix_random
   # 進段音效 + 動作播放時間
@@ -240,17 +280,30 @@ for i in {1..8}; do
   if (( i % 2 == 1 )); then
     case $((i%4)) in
       1)
-        say_zh_en "山式，站高，膝蓋柔軟。" "Mountain — stand tall, soft knees." 2.8 "interested,playful,confident";;
+        # 俏皮互動：從 PLAYFUL 池隨機
+        PSEQ=$(rand_choice EMO_PLAYFUL[@])
+        say_zh_en "山式，站高，膝蓋柔軟。" "Mountain — stand tall, soft knees." 2.8 "$PSEQ";;
       3)
-        say_zh_en "平衡放鬆，眼睛看前方。" "Balance soft—eyes forward." 2.8 "neutral,interested,confident";;
+        # 穩定聚焦：從 EFFORT/FOCUS 池隨機
+        FSEQ=$(rand_choice EMO_EFFORT[@])
+        say_zh_en "平衡放鬆，眼睛看前方。" "Balance soft—eyes forward." 2.8 "$FSEQ";;
       *)
-        say_zh_en "穩住核心，肩膀鬆開。" "Engage core—relax shoulders." 2.8 "neutral,interested,confident";;
+        # 核心力量：從 EFFORT 池隨機
+        ESEQ=$(rand_choice EMO_EFFORT[@])
+        say_zh_en "穩住核心，肩膀鬆開。" "Engage core—relax shoulders." 2.8 "$ESEQ";;
     esac
   else
     case $((i%4)) in
-      2) emote 3.0 "neutral,focused,confident";;
-      0) emote 3.2 "peaceful,content,joyful";;
+      2) # 穩定專注：從 FOCUS 池隨機
+         F2SEQ=$(rand_choice EMO_FOCUS[@]); emote 3.0 "$F2SEQ";;
+      0) # 放鬆愉悅：從 RELAX 池隨機
+         RSEQ=$(rand_choice EMO_RELAX[@]); emote 3.2 "$RSEQ";;
     esac
+  fi
+  # 偶爾穿插驚喜/敬畏，提升節奏變化（約每 6 次機率觸發一次）
+  if (( RANDOM % 6 == 0 )); then
+    AWE_SEQ=$(rand_choice EMO_AWE[@])
+    emote 1.4 "$AWE_SEQ"
   fi
   # 節拍提示 + 停頓拉長一點
   sfx "/audio/effects/taiwan_variety_sfx_01.mp3" 0.16 false
@@ -262,11 +315,13 @@ char_position 0.0 8.0 -30.0
 step_mix_random
 sleep 0.2; sfx "/audio/effects/winds_blowing.mp3" 0.06 false
 sleep 4
-say_zh_en "緩和：慢慢吸氣，吐氣更長。" "Cooldown—inhale slow, exhale longer." 3.0 "neutral,peaceful,content"
+END_SEQ=$(rand_choice EMO_RELAX[@])
+say_zh_en "緩和：慢慢吸氣，吐氣更長。" "Cooldown—inhale slow, exhale longer." 3.0 "$END_SEQ"
 sleep 1
-emote 3.0 "joyful,content,proud"
+TAIL_SEQ=$(rand_choice EMO_PLAYFUL[@])
+emote 3.0 "$TAIL_SEQ"
 sleep 0.6
-say_zh_en "做得很讚！下次再一起流動。" "Great job—see you next flow!" 2.6 "happy,content,confident"
+say_zh_en "做得很讚！下次再一起流動。" "Great job—see you next flow!" 2.6 "happy,content,proud"
 sleep 0.5
 
 # 收尾處理（不切鏡位）
