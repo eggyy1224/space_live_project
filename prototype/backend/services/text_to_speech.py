@@ -28,12 +28,13 @@ class TextToSpeechService:
             logger.error("警告: 找不到 OpenAI API 金鑰，文字轉語音功能將不可用")
             print("警告: 找不到 OpenAI API 金鑰，文字轉語音功能將不可用")
 
-    async def synthesize_speech(self, text: str) -> Optional[Dict]:
+    async def synthesize_speech(self, text: str, instructions: Optional[str] = None) -> Optional[Dict]:
         """
         將文字轉換為語音 (使用 OpenAI TTS)
 
         Args:
             text: 要轉換的文字
+            instructions: 可選，傳入給 TTS 模型的 instructions；未提供時使用預設常數
 
         Returns:
             包含 Base64 音訊數據和估算時長的字典，或 None（如果失敗）
@@ -49,13 +50,16 @@ class TextToSpeechService:
         try:
             logger.info(f"開始生成語音 (OpenAI TTS - gpt-4o-mini-tts): '{text[:50]}...' 使用 instruction") # 記錄部分文字
 
+            # 若呼叫端未提供，回退到預設的 TTS_INSTRUCTIONS
+            effective_instructions = instructions or TTS_INSTRUCTIONS
+
             response = await self.openai_client.audio.speech.create(
                 model="gpt-4o-mini-tts", # 使用指定的模型
                 voice="coral",          # 選擇聲音 (可調整，例如 fable, shimmer)
                 input=text,
                 response_format="mp3",
                 speed=1.2,             # 設定語速
-                instructions=TTS_INSTRUCTIONS # 加入 instructions 參數
+                instructions=effective_instructions # 加入 instructions 參數（可被覆蓋）
             )
 
             # 將原始音訊 bytes 轉為 Base64

@@ -62,7 +62,7 @@ def stop_realtime_conversation() -> str:
         return f"❌ 發生錯誤: {str(e)}"
 
 @mcp.tool()
-def send_message(content: str, message_type: str = "chat-message") -> str:
+def send_message(content: str, message_type: str = "chat-message", tts_instruction: Optional[str] = None) -> str:
     """
     向太空直播系統發送訊息，讓 AI 角色說話
     
@@ -78,6 +78,8 @@ def send_message(content: str, message_type: str = "chat-message") -> str:
             "content": content,
             "message_type": message_type
         }
+        if tts_instruction:
+            payload["tts_instruction"] = tts_instruction
         
         response = requests.post(SEND_MESSAGE_ENDPOINT, json=payload, timeout=10)
         

@@ -40,6 +40,7 @@ os.makedirs(GENERATED_SOUNDS_DIR, exist_ok=True)
 class SendMessageRequest(BaseModel):
     content: str
     message_type: Optional[str] = "chat-message"
+    tts_instruction: Optional[str] = None
 
 
 class TriggerMurmurRequest(BaseModel):
@@ -134,7 +135,10 @@ async def send_message_to_frontend(request: SendMessageRequest):
             logger.info(
                 f"API /send-message: 正在為內容進行 TTS: '{request.content[:30]}...'"
             )
-            tts_result = await tts_service.synthesize_speech(request.content)
+            # 傳入可選的 TTS 指令，未提供則使用服務內預設
+            tts_result = await tts_service.synthesize_speech(
+                request.content, instructions=request.tts_instruction
+            )
             if tts_result and tts_result.get("audio"):
                 audio_base64 = tts_result.get("audio")
                 temp_message_obj_for_audio = {
