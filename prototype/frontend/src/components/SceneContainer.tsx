@@ -290,12 +290,13 @@ const SceneContent: React.FC<SceneContainerProps> = ({
           const modelRotation = useStore((s) => s.modelRotation);
 
           if (headOnly) {
-            // headonly 模式：只顯示頭，置中並放大到 20
+            // headonly 模式：只顯示頭，置中，並使用全局狀態的 modelScale
+            // 這樣可讓 /api/control/head-size 的 WebSocket 訊息（setUniformScale）生效
             return (
               <group position={[0, 0, 0]}>
                 <HeadModel
                   headModelUrl={headModelUrl}
-                  scale={50}
+                  scale={modelScale}
                   position={[0, 0, 0]}
                   rotation={[0, 0, 0]}
                 />
