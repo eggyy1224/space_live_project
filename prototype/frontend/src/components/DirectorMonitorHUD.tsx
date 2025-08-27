@@ -10,7 +10,8 @@ import {
   EFFECT_FILES 
 } from '../config/resources';
 
-const hudStyle = 'fixed top-2 right-2 bg-black/70 text-white text-xs p-2 rounded shadow z-50';
+// 限制高度並允許內部滾動，提升層級避免被其他覆蓋層遮擋
+const hudStyle = 'fixed top-2 right-2 bg-black/70 text-white text-xs p-2 rounded shadow z-[1000] max-h-[80vh] overflow-y-auto overscroll-contain';
 
 const DirectorMonitorHUD: React.FC = () => {
   const bgm = useStore((s) => s.bgm);
@@ -30,6 +31,8 @@ const DirectorMonitorHUD: React.FC = () => {
   const cpu = useStore((s) => s.cpu);
   const videoScreens = useStore((s) => s.videoScreens);
   const setVideoScreen = useStore((s) => s.setVideoScreen);
+  // 跟右側按鈕群相同的顯示控制（按下 'c' 切換）
+  const isSideButtonsVisible = useStore((s) => s.isSideButtonsVisible);
 
   const [expanded, setExpanded] = useState(false);
   const [selectedEffect, setSelectedEffect] = useState<string>(EFFECT_FILES[0]);
@@ -88,11 +91,12 @@ const DirectorMonitorHUD: React.FC = () => {
     }
   };
 
-  if (import.meta.env.VITE_DIRECTOR !== 'true') return null;
+  // 與右側按鈕群一致：當側邊按鈕隱藏時以 CSS 隱藏（保持掛載以保留 'd' 快捷鍵）
+  const containerClassName = `${hudStyle} ${!isSideButtonsVisible ? 'hidden' : ''}`;
 
   return (
     <motion.div
-      className={hudStyle}
+      className={containerClassName}
       animate={{ width: expanded ? 320 : 120 }}
     >
       <div className="flex items-center justify-between mb-1">
