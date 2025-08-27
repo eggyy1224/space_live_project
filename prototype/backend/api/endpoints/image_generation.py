@@ -32,6 +32,12 @@ GENERATED_DIR = os.path.join(
 SELFIES_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "selfies"
 )
+# 供自拍生成時作為參考圖像來源的資料夾（會實際將圖片以 inline 形式送入模型）
+SPACE_LIVE_SELFIES_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+    "space_live_images",
+    "selfies",
+)
 # 背景圖片目錄 - 同步到前端
 FRONTEND_BACKGROUND_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "../frontend/public/background_pictures"
@@ -39,6 +45,11 @@ FRONTEND_BACKGROUND_DIR = os.path.join(
 os.makedirs(GENERATED_DIR, exist_ok=True)
 os.makedirs(SELFIES_DIR, exist_ok=True)
 os.makedirs(FRONTEND_BACKGROUND_DIR, exist_ok=True)
+# 參考資料夾不存在也不報錯；若存在就可用作多模態參考
+try:
+    os.makedirs(SPACE_LIVE_SELFIES_DIR, exist_ok=True)
+except Exception:
+    pass
 
 
 def _sanitize_prompt_text(text: Optional[str]) -> str:
@@ -492,6 +503,44 @@ async def take_selfie(request: SelfieRequest):
             ref_image_filenames.extend(request.reference_images)
 
         image_parts = []
+
+        # 新增：自動從 SPACE_LIVE_SELFIES_DIR 載入參考圖片
+        # 目的：確保模型「真的」看到該資料夾的圖片作為多模態參考
+        try:
+            # 搜尋支援格式
+            extra_patterns = [
+                os.path.join(SPACE_LIVE_SELFIES_DIR, "*.png"),
+                os.path.join(SPACE_LIVE_SELFIES_DIR, "*.jpg"),
+                os.path.join(SPACE_LIVE_SELFIES_DIR, "*.jpeg"),
+            ]
+            extra_selfies = []
+            for p in extra_patterns:
+                extra_selfies.extend(glob.glob(p))
+
+            # 避免傳太多圖片造成請求過大：限制最多 4 張（可後續調整）
+            # 策略：隨機挑選 4 張（或少於 4 張時全取）
+            if extra_selfies:
+                MAX_EXTRA = 4
+                pick_count = min(MAX_EXTRA, len(extra_selfies))
+                chosen_paths = random.sample(extra_selfies, k=pick_count)
+                for path in chosen_paths:
+                    try:
+                        with open(path, "rb") as f:
+                            img_bytes = f.read()
+                        ext = os.path.splitext(path)[1].lower()
+                        mime = "image/png" if ext == ".png" else "image/jpeg"
+                        image_parts.append({
+                            "inline_data": {
+                                "mime_type": mime,
+                                "data": img_bytes
+                            }
+                        })
+                    except Exception:
+                        # 單張讀取失敗不影響流程
+                        pass
+        except Exception:
+            # 參考資料夾不存在或讀取錯誤時，忽略即可
+            pass
         if ref_image_filenames:
             print(f"使用 {len(ref_image_filenames)} 張參考圖片: {', '.join(ref_image_filenames)}")
             for filename in ref_image_filenames:
