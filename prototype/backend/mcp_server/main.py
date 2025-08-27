@@ -64,14 +64,30 @@ def stop_realtime_conversation() -> str:
 @mcp.tool()
 def send_message(content: str, message_type: str = "chat-message", tts_instruction: Optional[str] = None) -> str:
     """
-    向太空直播系統發送訊息，讓 AI 角色說話
-    
+    向太空直播系統發送訊息，讓 AI 角色說話。
+
     Args:
-        content: 要發送的訊息內容
-        message_type: 訊息類型，預設為 "chat-message"
-    
+        content: 要發送的訊息內容（第一個參數）。
+        message_type: 訊息類型，預設為 "chat-message"。
+        tts_instruction: 傳給 TTS 模型的指令（可選）。
+            - 用於控制語氣、語速、音高、口音、敘述風格等。
+            - 不提供時，後端會使用預設值（與舊行為完全一致）。
+            - 範例：
+              * "zh-TW Mandarin, calm, low pitch, slower pace, intimate"
+              * "zh-TW Mandarin + English mix, lively, higher pitch, faster pace"
+              * "whisper / ASMR, very soft, close-mic, slow tempo"
+
     Returns:
-        操作結果描述
+        操作結果描述。
+
+    用法範例:
+        send_message("各位晚安～")
+        send_message("Yo，派對開始囉！", "chat-message")
+        send_message(
+            "今晚我們看見最亮的星。",
+            "chat-message",
+            tts_instruction="zh-TW Mandarin, documentary narrator, slow, rich resonance"
+        )
     """
     try:
         payload = {
