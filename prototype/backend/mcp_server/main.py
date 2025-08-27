@@ -61,8 +61,19 @@ def stop_realtime_conversation() -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
+ALLOWED_TTS_VOICES = [
+    "alloy", "ash", "ballad", "coral", "echo", "fable",
+    "onyx", "nova", "sage", "shimmer", "verse"
+]
+
 @mcp.tool()
-def send_message(content: str, message_type: str = "chat-message", tts_instruction: Optional[str] = None) -> str:
+def send_message(
+    content: str,
+    message_type: str = "chat-message",
+    tts_instruction: Optional[str] = None,
+    tts_voice: Optional[str] = None,
+    tts_speed: Optional[float] = None,
+) -> str:
     """
     向太空直播系統發送訊息，讓 AI 角色說話。
 
@@ -77,6 +88,13 @@ def send_message(content: str, message_type: str = "chat-message", tts_instructi
               * "zh-TW Mandarin + English mix, lively, higher pitch, faster pace"
               * "whisper / ASMR, very soft, close-mic, slow tempo"
 
+    其他可選參數:
+        tts_voice: 指定 TTS 聲音。允許值:
+            alloy, ash, ballad, coral, echo, fable, onyx, nova, sage, shimmer, verse
+            - 預設: coral
+        tts_speed: 指定語速 (0.5–3.0)。
+            - 預設: 1.2（與舊版一致）
+
     Returns:
         操作結果描述。
 
@@ -88,14 +106,30 @@ def send_message(content: str, message_type: str = "chat-message", tts_instructi
             "chat-message",
             tts_instruction="zh-TW Mandarin, documentary narrator, slow, rich resonance"
         )
+        send_message("換個聲音試試看", tts_voice="alloy")
+        send_message("講慢一點", tts_speed=0.8)
     """
     try:
-        payload = {
-            "content": content,
-            "message_type": message_type
-        }
+        payload = {"content": content, "message_type": message_type}
         if tts_instruction:
             payload["tts_instruction"] = tts_instruction
+        if tts_voice:
+            v = tts_voice.strip().lower()
+            if v in ALLOWED_TTS_VOICES:
+                payload["tts_voice"] = v
+            else:
+                return f"❌ 無效的 tts_voice: '{tts_voice}'. 允許: {', '.join(ALLOWED_TTS_VOICES)}"
+        if tts_speed is not None:
+            try:
+                speed_val = float(tts_speed)
+                # 限制範圍 0.5–3.0
+                if speed_val < 0.5:
+                    speed_val = 0.5
+                if speed_val > 3.0:
+                    speed_val = 3.0
+                payload["tts_speed"] = speed_val
+            except Exception:
+                return "❌ 無效的 tts_speed，請提供數值 (0.5–3.0)"
         
         response = requests.post(SEND_MESSAGE_ENDPOINT, json=payload, timeout=10)
         

@@ -13,6 +13,17 @@ logger.setLevel(logging.DEBUG)
 # 將 instructions 定義為常數或從配置讀取
 TTS_INSTRUCTIONS = "說台語＋English"
 
+# 允許的聲音清單
+ALLOWED_TTS_VOICES = {
+    "alloy", "ash", "ballad", "coral", "echo", "fable",
+    "onyx", "nova", "sage", "shimmer", "verse",
+}
+
+DEFAULT_TTS_VOICE = "coral"
+DEFAULT_TTS_SPEED = 1.2  # 與舊版保持一致
+MIN_TTS_SPEED = 0.5
+MAX_TTS_SPEED = 3.0
+
 class TextToSpeechService:
     """文字轉語音服務 (使用 OpenAI TTS)"""
 
@@ -28,7 +39,13 @@ class TextToSpeechService:
             logger.error("警告: 找不到 OpenAI API 金鑰，文字轉語音功能將不可用")
             print("警告: 找不到 OpenAI API 金鑰，文字轉語音功能將不可用")
 
-    async def synthesize_speech(self, text: str, instructions: Optional[str] = None) -> Optional[Dict]:
+    async def synthesize_speech(
+        self,
+        text: str,
+        instructions: Optional[str] = None,
+        voice: Optional[str] = None,
+        speed: Optional[float] = None,
+    ) -> Optional[Dict]:
         """
         將文字轉換為語音 (使用 OpenAI TTS)
 
@@ -48,18 +65,37 @@ class TextToSpeechService:
              return None
 
         try:
-            logger.info(f"開始生成語音 (OpenAI TTS - gpt-4o-mini-tts): '{text[:50]}...' 使用 instruction") # 記錄部分文字
+            logger.info(
+                f"開始生成語音 (OpenAI TTS - gpt-4o-mini-tts): '{text[:50]}...' 使用 instruction/voice/speed"
+            )  # 記錄部分文字
 
-            # 若呼叫端未提供，回退到預設的 TTS_INSTRUCTIONS
+            # 若呼叫端未提供，回退到預設值；同時限制聲音/語速範圍
             effective_instructions = instructions or TTS_INSTRUCTIONS
 
+            cand_voice = (voice or DEFAULT_TTS_VOICE).strip().lower()
+            if cand_voice not in ALLOWED_TTS_VOICES:
+                logger.warning(f"TTS voice '{voice}' 不在允許清單內，已回退為 '{DEFAULT_TTS_VOICE}'")
+                effective_voice = DEFAULT_TTS_VOICE
+            else:
+                effective_voice = cand_voice
+
+            if isinstance(speed, (int, float)):
+                clamped = max(MIN_TTS_SPEED, min(MAX_TTS_SPEED, float(speed)))
+                if clamped != speed:
+                    logger.warning(
+                        f"TTS speed {speed} 超出允許範圍 [{MIN_TTS_SPEED}, {MAX_TTS_SPEED}]，已調整為 {clamped}"
+                    )
+                effective_speed = clamped
+            else:
+                effective_speed = DEFAULT_TTS_SPEED
+
             response = await self.openai_client.audio.speech.create(
-                model="gpt-4o-mini-tts", # 使用指定的模型
-                voice="coral",          # 選擇聲音 (可調整，例如 fable, shimmer)
+                model="gpt-4o-mini-tts",  # 使用指定的模型
+                voice=effective_voice,     # 可被呼叫端覆蓋
                 input=text,
                 response_format="mp3",
-                speed=1.2,             # 設定語速
-                instructions=effective_instructions # 加入 instructions 參數（可被覆蓋）
+                speed=effective_speed,     # 可被呼叫端覆蓋
+                instructions=effective_instructions,  # 可被呼叫端覆蓋
             )
 
             # 將原始音訊 bytes 轉為 Base64

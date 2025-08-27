@@ -6,6 +6,7 @@ import os
 import requests
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+from enum import Enum
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -41,6 +42,27 @@ class SendMessageRequest(BaseModel):
     content: str
     message_type: Optional[str] = "chat-message"
     tts_instruction: Optional[str] = None
+
+    class VoiceName(str, Enum):
+        alloy = "alloy"
+        ash = "ash"
+        ballad = "ballad"
+        coral = "coral"
+        echo = "echo"
+        fable = "fable"
+        onyx = "onyx"
+        nova = "nova"
+        sage = "sage"
+        shimmer = "shimmer"
+        verse = "verse"
+
+    tts_voice: Optional[VoiceName] = None
+    tts_speed: Optional[float] = Field(
+        None,
+        ge=0.5,
+        le=3.0,
+        description="TTS 語速，允許範圍 0.5–3.0"
+    )
 
 
 class TriggerMurmurRequest(BaseModel):
@@ -135,9 +157,12 @@ async def send_message_to_frontend(request: SendMessageRequest):
             logger.info(
                 f"API /send-message: 正在為內容進行 TTS: '{request.content[:30]}...'"
             )
-            # 傳入可選的 TTS 指令，未提供則使用服務內預設
+            # 傳入可選的 TTS 參數（instruction / voice / speed），未提供則使用服務內預設
             tts_result = await tts_service.synthesize_speech(
-                request.content, instructions=request.tts_instruction
+                request.content,
+                instructions=request.tts_instruction,
+                voice=request.tts_voice,
+                speed=request.tts_speed,
             )
             if tts_result and tts_result.get("audio"):
                 audio_base64 = tts_result.get("audio")

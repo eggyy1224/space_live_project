@@ -98,12 +98,30 @@ python mcp_server/main.py
 **參數**:
 - `content` (必填): 要說的內容
 - `message_type` (選填): 訊息類型，預設為 "chat-message"
+- `tts_instruction` (選填): 傳給 TTS 的風格指令（語氣/音高/口音等）。
+- `tts_voice` (選填): 聲音；允許: alloy, ash, ballad, coral, echo, fable, onyx, nova, sage, shimmer, verse（預設 coral）。
+- `tts_speed` (選填): 語速範圍 0.5–3.0（預設 1.2）。
 
 **範例**:
 ```python
+# 基本用法
+send_message("大家好，我是太空站的 AI 助手！")
+
+# 自定風格
+send_message("今晚我們看見最亮的星。", tts_instruction="zh-TW Mandarin, calm, low pitch")
+
+# 指定聲音
+send_message("換個聲音試試看", tts_voice="alloy")
+
+# 指定語速（0.5–3.0）
+send_message("講快一點", tts_speed=1.5)
+
+# 聲音 + 語速 + 指令
 send_message(
-    content="大家好，我是太空站的 AI 助手！", 
-    message_type="chat-message"
+    "柔和旁白風",
+    tts_voice="verse",
+    tts_speed=0.9,
+    tts_instruction="soft, intimate, close-mic"
 )
 ```
 
