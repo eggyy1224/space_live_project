@@ -21,6 +21,8 @@ REGISTERED_SCRIPTS = [
     "space_yoga2.sh",
     # 新增：瑜伽教學基線腳本（位於子目錄 yoga_sessions）
     "yoga_sessions/space_yoga_teacher_baseline.sh",
+    # 新增：瑜伽教學基線腳本第二幕（位於子目錄 yoga_sessions）
+    "yoga_sessions/space_yoga_teacher_baseline_scene2.sh",
 ]
 
 class ScriptExecutionRequest(BaseModel):
