@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# 《Space Yoga Teacher — Baseline Flow》
-# 以本地 HTTP API 驅動的瑜伽老師底稿腳本（遵循人格規則：所有對外發聲均配對 emotion_trajectory）
-# 執行：bash prototype/backend/experiment_scripts/space_yoga_teacher_baseline.sh
+# 《Space Yoga Teacher — Baseline Flow：Scene 2》
+# 延續第一幕的節奏，加入輕微變化；規則維持：瑜伽進行期間不放 BGM，結束後才播放同一首背景音樂。
+# 執行：bash prototype/backend/experiment_scripts/yoga_sessions/space_yoga_teacher_baseline_scene2.sh
 
 set -euo pipefail
 
@@ -11,40 +11,32 @@ CURL_POST="curl -s -f -X POST"
 CURL_POST_NF="curl -s -X POST"   # 不因 HTTP 狀態碼中止（避免暫時無連線時整段中斷）
 
 # --- 全域 TTS 設定（台語／漢字）---
-# 依最新 TTS 能力：可指定 voice 與 speed（0.5–3.0）
-# 預設以「漢字台語」溫柔口吻，慢速教學語氣。
 TTS_INSTRUCTION="Taiwanese Hokkien, Han characters, natural, warm, friendly, accurate tones; avoid Mandarin accent"
 TTS_VOICE_DEFAULT="sage"
 TTS_SPEED_DEFAULT=0.5
 
-# TTS 節流/降載參數
-# 僅在每 N 次 say() 中執行 1 次 TTS（其餘僅表情與節奏）
+# TTS 節流/降載參數（延續第一幕設定）
 TTS_EVERY_N=3
-# 兩次 TTS 之間至少間隔（秒）
 TTS_COOLDOWN=5
-# 內部狀態（勿手動修改）
 __SAY_COUNT=0
 LAST_TTS_TS=0
 
 # --- 小工具 ---
 rand_float() {
-  # 用法: rand_float MIN MAX DECIMALS
   local MIN=$1; local MAX=$2; local DEC=${3:-2}
   awk -v min="$MIN" -v max="$MAX" -v dec="$DEC" 'BEGIN{srand(); v=min+rand()*(max-min); printf("%.*f\n", dec, v)}'
 }
 
 rand_choice() {
-  # 用法: rand_choice arr[@] -> 回傳隨機元素
   local arr=("${!1}"); local n=${#arr[@]}
   echo "${arr[$((RANDOM % n))]}"
 }
 
 say() {
-  # 用法: say "內容" 時長(秒) "emotion1,emotion2,..." [voice] [speed]
+  # 用法: say "內容" 時長(秒) "emotion1,emotion2,..." [voice] [speed] [force]
   local CONTENT="$1"; local DURATION=${2:-3.0}; local EMOS=${3:-"neutral,interested,confident"}
   local VOICE=${4:-$TTS_VOICE_DEFAULT}; local SPEED=${5:-$TTS_SPEED_DEFAULT}; local FORCE=${6:-0}
   echo ">> 說話: $CONTENT ($DURATION s / $EMOS)"
-  # TTS 節流：依比例與冷卻時間決定是否實際發聲
   __SAY_COUNT=$((__SAY_COUNT + 1))
   local DO_TTS=0
   local NOW_TS=$(date +%s)
@@ -66,7 +58,6 @@ say() {
   else
     echo "   >> [SKIP TTS]（降載：僅表情過渡）"
   fi
-  # 發送情緒軌跡（將情緒清單分三段過渡）
   local IFS=','; read -ra KFS <<< "$EMOS"; unset IFS
   local KF_JSON="[]"
   if (( ${#KFS[@]} == 1 )); then
@@ -79,13 +70,10 @@ say() {
   $CURL_POST "$BASE_URL/control/emotion-trajectory" \
     -H "Content-Type: application/json" \
     -d "{\"duration\": $DURATION, \"keyframes\": $KF_JSON}" >/dev/null
-  # 節奏控制（略短於全時長，避免阻塞下一拍）
   sleep $(echo "$DURATION * 0.85" | bc)
 }
 
-# 只走表情（不說話）
 emote() {
-  # 用法: emote 時長(秒) "emotion1,emotion2,emotion3"
   local DURATION=${1:-3.0}; local EMOS=${2:-"neutral,interested,content"}
   local IFS=','; read -ra KFS <<< "$EMOS"; unset IFS
   local KF_JSON="[]"
@@ -104,7 +92,6 @@ emote() {
 }
 
 bgm() {
-  # 用法: bgm "/audio/BGM/xxx.mp3" 0.4
   local URL="$1"; local VOL=${2:-0.4}
   echo ">> BGM: $URL @ $VOL"
   $CURL_POST "$BASE_URL/control/background-audio" \
@@ -120,7 +107,6 @@ stop_bgm() {
 }
 
 sfx() {
-  # 用法: sfx "/audio/effects/xxx.mp3" 0.2 false
   local URL="$1"; local VOL=${2:-0.2}; local INT=${3:-false}
   echo ">> 音效: $URL @ $VOL (interrupt=$INT)"
   $CURL_POST "$BASE_URL/control/play-audio" \
@@ -154,10 +140,7 @@ anim_char() {
     -d "{\"animation\": \"$ANIM\", \"speed\": $SPEED, \"loop\": $LOOP}" >/dev/null
 }
 
-# 動畫混合（建議預設 additive，務必包含「空體Action」作為基底）
 anim_mix() {
-  # 用法: anim_mix "瑜珈動作1" [otherWeight] [otherSpeed] [transitionDuration] [blendMode] [baseSpeed]
-  # 規則：空體Action 速度快(預設1.8)，瑜伽動作速度慢(預設0.6)，權重可到 1.0（總和>1允許，後端僅警告）
   local OTHER="$1"; local W=${2:-1.0}; local SPEED=${3:-0.6}; local TD=${4:-0.6}; local BLEND=${5:-"additive"}; local BASESPD=${6:-1.8}
   echo ">> 動畫混合: 空體Action($BASESPD) + $OTHER(w=$W spd=$SPEED) blend=$BLEND td=$TD"
   local PAYLOAD
@@ -197,7 +180,6 @@ head_size() { local S=${1:-1.0}; $CURL_POST "$BASE_URL/control/head-size" -H "Co
 char_scale() { local S=${1:-1.0}; $CURL_POST "$BASE_URL/control/character/scale" -H "Content-Type: application/json" -d "{\"scale\": $S}" >/dev/null; }
 char_position() { local X=${1:-0.0}; local Y=${2:-0.0}; local Z=${3:-0.0}; echo ">> 角色位置: [$X,$Y,$Z]"; $CURL_POST "$BASE_URL/control/character/position" -H "Content-Type: application/json" -d "{\"position\": [$X,$Y,$Z]}" >/dev/null; }
 
-# 中英雙語字幕
 say_zh_en() {
   # 用法: say_zh_en "中文" "English" 時長(秒) "emo1,emo2,emo3" [voice] [speed] [force]
   local ZH="$1"; local EN="$2"; local DUR=${3:-2.6}; local EMO=${4:-"neutral,interested,confident"}
@@ -205,7 +187,7 @@ say_zh_en() {
   say "$ZH\n$EN" "$DUR" "$EMO" "$VOICE" "$SPEED" "$FORCE"
 }
 
-# 可選瑜珈動作池（由空體Action作為基底混合）
+# 可選瑜珈動作池（與第一幕一致）
 YOGA_MOVES=(
   "瑜珈動作1" "瑜珈動作2" "瑜珈動作3" "瑜珈動作4" "瑜珈動作5"
   "瑜珈動作6" "瑜珈動作7" "瑜珈動作8" "瑜珈動作9" "瑜珈動作10"
@@ -213,21 +195,19 @@ YOGA_MOVES=(
   "瑜珈動作16" "瑜珈動作17" "瑜珈動作18" "瑜珈動作19" "瑜珈動作20"
 )
 
-# 左右位移備選（固定 Y、Z）
-X_CHOICES=(-1.6 -1.4 -1.2 0 1.2 1.4 1.6)
+X_CHOICES=(-1.4 -1.2 -0.8 0 0.8 1.2 1.4)
 
-# 全域參數（可調整）
+# 節奏微調（Scene 2 輕微變化：基底稍慢、瑜伽稍穩）
 BLEND_MODE="additive"
 TDUR=0.6
-BASE_SPEED_MIN=1.8
-BASE_SPEED_MAX=2.0
-YOGA_SPEED_MIN=0.5
-YOGA_SPEED_MAX=0.7
+BASE_SPEED_MIN=1.7
+BASE_SPEED_MAX=1.9
+YOGA_SPEED_MIN=0.6
+YOGA_SPEED_MAX=0.8
 YOGA_WEIGHT_MIN=0.9
 YOGA_WEIGHT_MAX=1.0
 
-# --- 表情序列池（僅調整腳本，不改程式碼） ---
-# 每個元素是一條以逗號分隔的 emotion_trajectory 標籤序列
+# 表情序列池（延用並加入少量新組合）
 EMO_WARMUP=(
   "serene,interested,content"
   "listening,interested,serene"
@@ -259,7 +239,6 @@ EMO_AWE=(
 )
 
 step_mix_random() {
-  # 隨機挑一個瑜珈動作，並用隨機速度/權重與空體Action混合
   local MOVE; MOVE=$(rand_choice YOGA_MOVES[@])
   local BASESPD; BASESPD=$(rand_float "$BASE_SPEED_MIN" "$BASE_SPEED_MAX" 2)
   local YOGASPD; YOGASPD=$(rand_float "$YOGA_SPEED_MIN" "$YOGA_SPEED_MAX" 2)
@@ -267,101 +246,90 @@ step_mix_random() {
   anim_mix "$MOVE" "$W" "$YOGASPD" "$TDUR" "$BLEND_MODE" "$BASESPD"
 }
 
-# --- 開始 ---
-echo "=== 🧘 Space Yoga Teacher — Baseline Flow 開始 ==="
+echo "=== 🧘 Space Yoga Teacher — Baseline Flow：Scene 2 開始 ==="
 
-# 關閉隨機鏡位，避免干擾（若無此功能可忽略）
+# 關閉隨機鏡位
 $CURL_POST "$BASE_URL/control/broadcast" -H "Content-Type: application/json" -d '{"type":"director-state","payload":{"randomMode":false}}' >/dev/null || true
 
 ########################################
-# 初始：固定鏡位、縮小角色、穩定節奏
+# 初始：延續上一幕構圖，微調節奏
 ########################################
-# 固定使用 head_close_up 鏡位，不再切換
-cam_preset "head_close_up" 1.2
+cam_preset "head_close_up" 1.0
 env_preset "dawn" || true
-# 確保瑜伽進行期間沒有背景音樂（若有則先關閉）
+# 確保瑜伽進行期間沒有背景音樂
 stop_bgm
-# 調整頭部大小為 10（0.1–20.0 合法範圍內）
 head_size 10.0
-# 角色大小設定為 0.1（API 最小值）；搭配位置退後模擬更小視覺比例
 char_scale 0.1
-# 位置：往上 Y=8，往後 Z=-30（X=0）
 char_position 0.0 8.0 -30.0
 anim_char "空體Action" 1.0 true
-sleep 1.5
+sleep 1.2
 
-# 開場短句（配情緒）+ 明確停頓（暖身：隨機挑選暖身序列）
+# 開場短句（延續與過門）
 OPEN_SEQ=$(rand_choice EMO_WARMUP[@])
-# 開場改用「漢字台語」語句（同時保留英語節奏詞），強制一次 TTS
-say "來——入氣，吐氣，慢慢來。Breathe in… out…" 3.0 "$OPEN_SEQ" "$TTS_VOICE_DEFAULT" $TTS_SPEED_DEFAULT 1
-# 開場加一段表情過渡，讓臉部更有存在感（同樣從暖身池隨機挑選）
-OPEN_EMOTE=$(rand_choice EMO_WARMUP[@])
-emote 2.2 "$OPEN_EMOTE"
-sleep 1.0
+say "咱繼續——入氣、吐氣，身心穩。Continue—inhale… exhale… steady." 3.0 "$OPEN_SEQ" "$TTS_VOICE_DEFAULT" $TTS_SPEED_DEFAULT 1
+emote 2.0 "$OPEN_SEQ"
+sleep 0.8
 
 ########################################
-# 瑜伽段落：每段 = 動作 4s +（交替）短句或表情 2.6–3.2s + 停頓 1.2s
+# 瑜伽段落（Scene 2）：每段 = 動作 4.2s +（交替）短句/表情 2.6–3.2s + 停頓 1.0s
 ########################################
-for i in {1..8}; do
-  # 位置左右切換
+for i in {1..6}; do
   X=$(rand_choice X_CHOICES[@])
   char_position "$X" 8.0 -30.0
-  # micro 表情預熱（從專注池挑一條，短促）
   MICRO_SEQ=$(rand_choice EMO_FOCUS[@])
-  emote 1.0 "$MICRO_SEQ"
-  # 動畫混合（隨機瑜珈動作 + 速度/權重）
+  emote 0.9 "$MICRO_SEQ"
   step_mix_random
-  # 進段音效 + 動作播放時間
   sleep 0.2; sfx "/audio/effects/winds_blowing.mp3" 0.06 false
-  sleep 4
-  # 交替：奇數講話（雙語字幕），偶數只表情（更密集情緒）
+  sleep 4.2
+
   if (( i % 2 == 1 )); then
-    case $((i%4)) in
+    case $((i%6)) in
       1)
-        # 俏皮互動：從 PLAYFUL 池隨機
         PSEQ=$(rand_choice EMO_PLAYFUL[@])
-        say_zh_en "山式，站高，膝蓋柔軟。" "Mountain — stand tall, soft knees." 2.8 "$PSEQ";;
+        say_zh_en "戰士二，腳踩穩，目視前方。" "Warrior II—feet rooted, eyes forward." 2.8 "$PSEQ";;
       3)
-        # 穩定聚焦：從 EFFORT/FOCUS 池隨機
         FSEQ=$(rand_choice EMO_EFFORT[@])
-        say_zh_en "平衡放鬆，眼睛看前方。" "Balance soft—eyes forward." 2.8 "$FSEQ";;
-      *)
-        # 核心力量：從 EFFORT 池隨機
+        say_zh_en "三角式，側身延伸，肩放鬆。" "Triangle—lengthen side body, soften shoulders." 2.8 "$FSEQ";;
+      5)
         ESEQ=$(rand_choice EMO_EFFORT[@])
-        say_zh_en "穩住核心，肩膀鬆開。" "Engage core—relax shoulders." 2.8 "$ESEQ";;
+        say_zh_en "橋式，臀部向上，頸部放鬆。" "Bridge—hips up, soften neck." 2.8 "$ESEQ";;
+      *)
+        F2=$(rand_choice EMO_FOCUS[@])
+        say_zh_en "穩住核心，呼吸順暢。" "Hold the core—breathe smoothly." 2.6 "$F2";;
     esac
   else
     case $((i%4)) in
-      2) # 穩定專注：從 FOCUS 池隨機
-         F2SEQ=$(rand_choice EMO_FOCUS[@]); emote 3.0 "$F2SEQ";;
-      0) # 放鬆愉悅：從 RELAX 池隨機
-         RSEQ=$(rand_choice EMO_RELAX[@]); emote 3.2 "$RSEQ";;
+      2)
+        F2SEQ=$(rand_choice EMO_FOCUS[@]); emote 3.0 "$F2SEQ";;
+      0)
+        RSEQ=$(rand_choice EMO_RELAX[@]); emote 3.2 "$RSEQ";;
     esac
   fi
-  # 偶爾穿插驚喜/敬畏，提升節奏變化（約每 6 次機率觸發一次）
-  if (( RANDOM % 6 == 0 )); then
+
+  if (( RANDOM % 5 == 0 )); then
     AWE_SEQ=$(rand_choice EMO_AWE[@])
-    emote 1.4 "$AWE_SEQ"
+    emote 1.2 "$AWE_SEQ"
   fi
-  # 節拍提示 + 停頓拉長一點
+
   sfx "/audio/effects/taiwan_variety_sfx_01.mp3" 0.16 false
-  sleep 1.2
+  sleep 1.0
 done
 
-# 緩和與收尾（保持相同鏡位與比例）
+# 緩和與收尾（維持同鏡位與比例）
 char_position 0.0 8.0 -30.0
 step_mix_random
 sleep 0.2; sfx "/audio/effects/winds_blowing.mp3" 0.06 false
-sleep 4
+sleep 4.0
 END_SEQ=$(rand_choice EMO_RELAX[@])
-say_zh_en "緩和：慢慢吸氣，吐氣更長。" "Cooldown—inhale slow, exhale longer." 3.0 "$END_SEQ"
-sleep 1
+say_zh_en "坐姿扭轉：吸氣延伸，吐氣輕扭。" "Seated twist—inhale lengthen, exhale gently twist." 3.0 "$END_SEQ"
+sleep 1.0
 TAIL_SEQ=$(rand_choice EMO_PLAYFUL[@])
 emote 3.0 "$TAIL_SEQ"
 sleep 0.6
-say_zh_en "做得很讚！下次再一起流動。" "Great job—see you next flow!" 2.6 "happy,content,proud" "$TTS_VOICE_DEFAULT" $TTS_SPEED_DEFAULT 1
+say_zh_en "第二幕完成，喝口水，休息一下。" "Scene two complete—sip water and rest." 2.6 "happy,content,proud" "$TTS_VOICE_DEFAULT" $TTS_SPEED_DEFAULT 1
 sleep 0.5
 
-# 收尾處理（不切鏡位）：瑜伽結束後開始播放背景音樂
+# 瑜伽結束後才播放相同 BGM（不更換曲目）
 bgm "/audio/BGM/space_live_country_theme1.mp3" 0.25
-echo "=== ✅ Space Yoga Teacher — Baseline Flow 結束 ==="
+echo "=== ✅ Space Yoga Teacher — Baseline Flow：Scene 2 結束 ==="
+

@@ -274,12 +274,16 @@ def set_main_character_animation(animation: str, loop: bool = True, speed: float
 @mcp.tool()
 def set_main_character_animation_mix(animations: List[Dict[str, Any]], blend_mode: str = "normal", transition_duration: float = 0.5) -> str:
     """
-    控制主要 AI 角色的多重動畫混合，可以同時播放多個動畫並控制它們的權重
-    
+    控制主要 AI 角色的多重動畫混合，可以同時播放多個動畫並控制它們的權重。
+
+    建議策略（重要）：
+    - 請「優先」在混合中加入「空體Action」作為基底層，並再疊加 1–2 個重點動作。
+    - 權重建議：每個動畫的 `weight` 以「約等於 1」為基準；不必讓總和=1，後端會視情況正規化或裁切。
+    - 漂浮感控制：由「空體Action」的 `speed` 來決定角色的漂浮/律動感。請模型依語境自行判斷合適速度（越慢越沉穩、越快越活潑）；其他動作的 `speed` 通常維持中性即可。
+
     Args:
         animations: 動畫配置的列表，格式為:
             [{"name": "動畫名稱", "weight": 權重值, "loop": (可選)布林值, "speed": (可選)浮點數}, ...]
-            範例: [{"name": "運動1", "weight": 0.7, "loop": true, "speed": 1.0}, {"name": "舞步1", "weight": 0.3}]
             可用動畫: 空體Action, 運動2, 漂浮, 運動1, Tpose, 不穩, 划手機, 漂浮2, 臥躺,
                     舞步1, 舞步2, 舞步3, 飛1, 飛2,
                     瑜珈動作1, 瑜珈動作2, 瑜珈動作3, 瑜珈動作4, 漂浮.001,
@@ -287,10 +291,10 @@ def set_main_character_animation_mix(animations: List[Dict[str, Any]], blend_mod
                     瑜珈動作10, 瑜珈動作11, 瑜珈動作12, 瑜珈動作13, 瑜珈動作14,
                     瑜珈動作15, 瑜珈動作16, 瑜珈動作17, 瑜珈動作18, 瑜珈動作19, 瑜珈動作20
             提示：可先呼叫 get_available_main_character_animations() 取得最新清單
-            權重: 非負數（不再強制上限），建議總權重可依需求設定（多數情境下可維持在 1.0 附近或由後端自行正規化）
+            權重: 非負數（不再強制上限）。建議每個動畫 weight ≈ 1；總和不需特意等於 1。
         blend_mode: 混合模式，可選項: "normal", "additive", "override"，預設為 "normal"
         transition_duration: 切換到混合模式的過渡時間（秒），預設為 0.5
-    
+
     Returns:
         操作結果描述
     """

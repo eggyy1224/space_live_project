@@ -708,48 +708,122 @@ async def generate_background_image(request: BackgroundImageRequest):
         aspect = request.aspect_ratio if request.aspect_ratio else "16:9"
         subject = _sanitize_prompt_text(request.description)
 
-        # 風格變體：高能量、強對比、電光煙火感（避免傳統工業機械造型）
+        # 風格族群（8-bit 終端機 / ANSI / 像素風基調）
         variant_pool = {
-            "electro_plasma": "electric arcs and plasma filaments weaving through colored fog, intense neon bloom",
-            "neon_streaks": "fast neon light trails and ribbon-like beams with motion blur and crisp edges",
-            "fireworks_burst": "fireworks bokeh, exploding sparks, comet trails, vivid particulate showers",
-            "laser_grid": "scanning laser beams, diffraction sparkle, prism flares, chromatic streaks",
-            "cosmic_rave": "psychedelic rave-in-space, saturated gradients, blacklight glow, energetic rhythm",
-            "holographic": "iridescent interference patterns with sharp specular glints and spectral bloom",
-            "volumetric": "high-contrast volumetric shafts and haze with saturated color layering",
-            "lunar_procession": "Earthrise over the lunar horizon; sparse procession of glowing orbs (lantern-like but abstract) and holographic energy filaments; incense-smoke aurora drifting above regolith; no flags, no poles, no identifiable religious symbols"
+            "cga_4color": "CGA 4-color palette (cyan, magenta, white, black), strong dither",
+            "ega_16color": "EGA 16-color palette, crisp edges, limited shading",
+            "vga_256_limited": "VGA-inspired but limited to ~32 colors, clean pixel steps",
+            "green_phosphor": "monochrome green phosphor terminal, scanlines optional",
+            "amber_phosphor": "monochrome amber phosphor terminal, warm glow",
+            "ansi_16color": "ANSI 16-color terminal palette, blocky shading",
+            "gameboy_duotone": "duotone greenish palette, strict shades, retro handheld feel",
+            "zx_spectrum": "ZX Spectrum-like vibrant limited palette, color clash awareness",
+            "apple_ii_hi_res": "Apple II hi-res palette quirks, visible artifacting",
+            "commodore64": "C64 palette, soft dither, nostalgic hue biases"
         }
         chosen_key = request.style_variant if request.style_variant in variant_pool else random.choice(list(variant_pool.keys()))
         variant_text = variant_pool[chosen_key]
 
-        # 隨機色彩建議：提高飽和度與對比，呈現電光能量感
-        palette_text = random.choice([
-            "hot pink & electric blue",
-            "acid green & magenta",
-            "neon cyan & deep purple",
-            "ultraviolet & gold",
-            "neon coral & cobalt"
-        ])
+        # 強制高對比四色調色盤：亮綠、亮紅、白、黑（可用抖動模擬中間調）
+        palette_text = (
+            "STRICT 4-COLOR PALETTE — bright green (#00FF00), bright red (#FF0000), white (#FFFFFF), black (#000000); "
+            "use only these hues; mid-tones via dithering only; maximize contrast on a black base"
+        )
 
-        # 以高能量太空迷幻 + 超寫實攝影 為基調的背景生成提示
+        # 隨機化：場景語境/構圖/像素化細節（轉為 8-bit/終端機語彙）
+        environments = [
+            "terminal dashboard skyline composed of pixel blocks",
+            "pixel-art alien valley with stepped cliffs and sparse vegetation",
+            "ansi block-art city waterfront with minimal reflections",
+            "duotone mountain ridge under a ringed sky",
+            "canyon with crystalline outcrops rendered in dither patterns",
+            "retro spaceport apron with simplified docking towers",
+            "meadow with bioluminescent shrubs as clustered pixels",
+            "asteroid surface with bold contrast and flat shadows",
+            "desert plateau with low-fi dunes and tiled gradients"
+        ]
+        # 終端機/像素風不再強調真實鏡頭，改為渲染管線與像素網格
+        pixel_grids = [
+            "160x144 base grid upscaled 6x with nearest-neighbor",
+            "256x192 base grid upscaled 4x with nearest-neighbor",
+            "320x200 base grid upscaled 4x with nearest-neighbor",
+            "240x160 base grid upscaled 5x with nearest-neighbor",
+            "200x150 base grid upscaled 6x with nearest-neighbor"
+        ]
+        dither_patterns = [
+            "ordered Bayer 2x2",
+            "ordered Bayer 4x4",
+            "Floyd–Steinberg",
+            "Atkinson",
+            "burkes"
+        ]
+        lightings = [
+            "dense neon signage glow with colored spill and rim edges",
+            "holographic projections casting translucent light layers",
+            "volumetric shafts in humid air and drifting vapor",
+            "planetshine or ringlight providing gentle cool fill",
+            "wet reflective surfaces amplifying highlights and bokeh",
+            "mixed-color key lights creating complementary accents"
+        ]
+        compositions = [
+            "rule of thirds with leading lines",
+            "centered composition with strong symmetry",
+            "asymmetrical balance with negative space",
+            "foreground occlusion framing the subject",
+            "backlit silhouette emphasizing contours",
+            "low-angle hero view for presence"
+        ]
+        textures = [
+            "subtle film grain and mild halation",
+            "light chromatic aberration at the edges",
+            "gentle lens bloom and micro-contrast",
+            "thin haze layering for depth",
+            "raindrops on lens with bokeh and specular trails",
+            "slight motion blur on moving elements"
+        ]
+        sign_styles = [
+            "pixelated neon tube sign with dithered halo",
+            "ANSI block-letter marquee with faux glow",
+            "dot-matrix LED panel with bright outline",
+            "CRT-style scrolling neon banner",
+            "ASCII-art banner with neon stroke"
+        ]
+        sign_placements = [
+            "rooftop billboard above a dense skyline",
+            "wall-mounted on a facade along the street",
+            "window signage glowing from inside a high-rise",
+            "street pole bracket over a pedestrian lane",
+            "freestanding monolith in a plaza",
+            "projected hologram hovering at an intersection"
+        ]
+
+        env_text = random.choice(environments)
+        grid_text = random.choice(pixel_grids)
+        dither_text = random.choice(dither_patterns)
+        light_text = random.choice(lightings)
+        comp_text = random.choice(compositions)
+        tex_text = random.choice(textures)
+        sign_style = random.choice(sign_styles)
+        sign_place = random.choice(sign_placements)
+
+        # 最小約束模板：以 description 為主，整體轉為 8-bit/終端機像素審美
         prompt = (
-            "Create an ultra-photorealistic cinematic photograph of a high-energy psychedelic space scene.\n"
-            "Mood: bold, kinetic, high-contrast, saturated; crisp contours and vivid glow. Avoid pastel softness, low-contrast wash, or flat fog.\n"
-            f"Scene description (guidance only, do not render as text): {subject}\n"
-            "Scene frame: standing on the lunar surface with regolith foreground and long shadows, looking toward Earth on the horizon (Earthrise). Starfield sky.\n"
-            "Theme motif '2049 Mazu around the Moon' — interpret purely as psychedelic energy: a minimal procession of glowing orbs/particle beads (lantern-like but non-literal) and ribbon-like energy filaments; incense-smoke forming aurora curtains; gentle ceremonial light trails. Avoid any explicit flags, banners, poles, deities, or recognizable religious symbols. No readable characters from these elements.\n"
-            "Place exactly one SPACELIVE neon sign on a low freestanding panel or monolith set on the lunar ground; visible cable and subtle light spill on regolith. Make it prominent and clearly legible (center or slightly off-center), cohesive with neon/volumetric/holographic glow.\n"
+            "Create a high-quality pixel-art / 8-bit terminal (ANSI) style background image.\n"
+            f"Primary scene (follow closely): {subject}\n"
+            f"Environment: {env_text}.\n"
+            f"Rendering grid: {grid_text}. Dithering: {dither_text}.\n"
+            "Hard style constraints: limited palette, crisp 1px square pixels, hard edges, visible dithering. Avoid gradients, avoid photoreal sheen.\n"
+            "Neon terminal aesthetic: dark background, high-contrast neon colors, simulated glow via 1px bright outlines and dithered halos; reflections only as pixel clusters.\n"
+            f"Lighting cue (stylized): {light_text}.\n"
+            f"Composition: {comp_text}.\n"
             f"Style variant: {chosen_key} — {variant_text}.\n"
-            f"Color palette suggestion: {palette_text}.\n"
-            "Visual language: electric arcs, plasma filaments, neon ribbons and streaks captured as long-exposure light painting from physical light sources (LED ropes, drones), fireworks trails and spark showers, prism flares, diffraction shimmer, chromatic aberration, energized particle fields; lunar regolith micro-detail and rim-lit dust.\n"
-            "Lighting: physically plausible. Key light from Earth bounce and starlight; neon sign adds localized colored spill on regolith. Include lens behavior (bokeh, sensor noise at low level, minor halation).\n"
-            "Camera: full-frame 24mm lens, f/2.8, 6s long exposure on tripod, ISO 400. White balance slightly cool.\n"
-            "Earth rendering: correct limb with blue atmospheric scattering and realistic albedo; no exaggerated stylization.\n"
-            "Materials: physically based textures for regolith (micro-displacement, roughness variation, granular shadows).\n"
-            "Stylistic bans: no illustration, no 2D art, no anime, no vector, no painterly brushstrokes, no CGI/3D-render look; must read as a real photograph.\n"
-            "Do not add any other readable text, letters, numbers, captions, UI, logos, watermarks, banners, or labels (only the single SPACELIVE sign is allowed).\n"
+            f"Color palette enforcement: {palette_text}.\n"
+            f"Surface/optical behavior (emulated): {tex_text}.\n"
+            "Terminal flavor: optional ANSI scanlines / CRT mask simulation at subtle strength.\n"
+            f"Include exactly one clearly readable terminal-style sign that says 'SPACELIVE' as a {sign_style}, {sign_place}; render letters as blocky pixel/ANSI characters with neon-like glow (dithered halo).\n"
+            "No other readable text, numbers, captions, UI, logos, banners, or watermarks besides 'SPACELIVE'.\n"
             f"Use aspect ratio: {aspect}.\n"
-            "Composition: dynamic S-curve light paths, clear focal hierarchy, sharp micro-contrast; suitable as a full-screen backdrop.\n"
+            "Make it suitable as a full-screen backdrop with clear focal hierarchy and clean negative space where appropriate.\n"
         )
 
         # 使用修正後的 Gemini API 呼叫方式
