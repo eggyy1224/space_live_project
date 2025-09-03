@@ -8,7 +8,7 @@ import json
 import sys
 import requests
 from fastmcp import FastMCP
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 
 # 後端 API 設定
 BASE_URL = "http://localhost:8000"
@@ -72,7 +72,8 @@ def send_message(
     message_type: str = "chat-message",
     tts_instruction: Optional[str] = None,
     tts_voice: Optional[str] = None,
-    tts_speed: Optional[float] = None,
+    # 接受數值或數字字串，避免外部呼叫方型別不一致造成驗證失敗
+    tts_speed: Optional[Union[float, str]] = None,
 ) -> str:
     """
     向太空直播系統發送訊息，讓 AI 角色說話。

@@ -102,6 +102,8 @@ python mcp_server/main.py
 - `tts_voice` (選填): 聲音；允許: alloy, ash, ballad, coral, echo, fable, onyx, nova, sage, shimmer, verse（預設 coral）。
 - `tts_speed` (選填): 語速範圍 0.5–3.0（預設 1.2）。
 
+備註：`tts_speed` 可傳數值或數字字串（例如 `0.95` 或 `"0.95"`），系統會自動轉為數值並夾限到 0.5–3.0。
+
 **範例**:
 ```python
 # 基本用法
