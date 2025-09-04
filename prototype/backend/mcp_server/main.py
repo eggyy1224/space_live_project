@@ -612,7 +612,7 @@ def generate_sound_effect(
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool()
+# @mcp.tool()
 def set_camera_preset(preset_name: str, duration: float = 2.0) -> str:
     """
     設置攝影機預設位置，創造戲劇性的視覺效果
@@ -653,7 +653,7 @@ def set_camera_preset(preset_name: str, duration: float = 2.0) -> str:
         return f"❌ 發生錯誤: {str(e)}"
 
 # @mcp.tool() 
-# def set_head_size(scale_factor: float) -> str:
+# def set_head_size(scale_factor: float = 10.0) -> str:
 #     """
 #     調整 AI 角色的頭部大小，創造戲劇效果
     
@@ -704,7 +704,7 @@ def set_camera_preset(preset_name: str, duration: float = 2.0) -> str:
 #         return f"❌ 發生錯誤: {str(e)}"
 
 @mcp.tool()
-def set_character_scale(scale: float) -> str:
+def set_character_scale(scale: float = 0.1) -> str:
     """
     調整 AI 角色的整體大小
     
@@ -727,7 +727,7 @@ def set_character_scale(scale: float) -> str:
         return f"❌ 發生錯誤: {str(e)}"
 
 @mcp.tool()
-def set_character_position(x: float, y: float, z: float) -> str:
+def set_character_position(x: float = 0.0, y: float = 8.0, z: float = -30.0) -> str:
     """
     設定 AI 角色的位置
     

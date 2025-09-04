@@ -50,9 +50,11 @@ export const createRuntimeSlice: StateCreator<RuntimeSlice> = (set) => ({
   sfxActive: false,
   selectedEffect: null,
   lightingPreset: null,
-  cameraPreset: null,
+  // 預設鏡位：對齊 baseline 使用 head_close_up
+  cameraPreset: 'head_close_up',
   cameraAngles: null,
-  cameraTransitionDuration: 1,
+  // 對齊 baseline 過渡時間 1.2 秒
+  cameraTransitionDuration: 1.2,
   randomMode: false,
   fps: 0,
   cpu: 0,

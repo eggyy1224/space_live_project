@@ -55,7 +55,8 @@ export interface HeadSlice {
 export const createHeadSlice: StateCreator<HeadSlice> = (set) => ({
   // 初始狀態
   headModelUrl: HEAD_MODEL_URL, // 使用導入的常數
-  modelScale: [15, 15, 15], // 調整頭部模型預設大小為15
+  // 對齊 baseline：預設頭部大小約 10
+  modelScale: [10, 10, 10],
   modelRotation: [0, 0, 0],
   modelPosition: [10, 3, 0], // 頭模型向右移動50個單位
   morphTargets: {},

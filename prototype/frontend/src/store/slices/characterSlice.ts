@@ -71,7 +71,8 @@ export const createCharacterSlice: StateCreator<CharacterSlice> = (set, get) => 
   // 初始狀態
   characterModelLoaded: false,
   characterVisible: true,
-  characterPosition: [0, 0, 0], // 主要角色移動到原點位置
+  // 預設對齊 baseline：位置(0, 8, -30)、縮放 0.1
+  characterPosition: [0, 8, -30],
   characterScale: 0.1,
   characterRotation: [0, Math.PI, 0],
   

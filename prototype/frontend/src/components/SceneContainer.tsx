@@ -104,10 +104,11 @@ const SceneContent: React.FC<SceneContainerProps> = ({
 }) => {
   const { camera } = useThree();
 
+  // 初始鏡位改為 head_close_up，與 baseline 對齊
   const cameraManager = useCameraManager(
     camera as THREE.PerspectiveCamera,
     CAMERA_PRESETS,
-    "overview",
+    "head_close_up",
   );
   const timerRef = useRef<number | null>(null);
   const randomMode = useStore((s) => s.randomMode); // 新增：監聽隨機模式狀態

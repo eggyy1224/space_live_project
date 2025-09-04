@@ -65,8 +65,8 @@ export const createRoomSlice = (set: any, get: any, api: any) => ({
   roomRotation: DEFAULT_SCENE.defaultRotation || [0, 0, 0],
   roomScale: DEFAULT_SCENE.defaultScale || [2, 2, 2],
   
-  // 環境光照初始設定
-  environmentPreset: 'studio' as EnvironmentPreset,
+  // 環境光照初始設定（預設 dawn 對齊 baseline）
+  environmentPreset: 'dawn' as EnvironmentPreset,
   environmentIntensity: 1.0,
   environmentBackground: false,
   
@@ -140,7 +140,8 @@ export const createRoomSlice = (set: any, get: any, api: any) => ({
   
   resetEnvironmentSettings: () => {
     set({
-      environmentPreset: 'studio' as EnvironmentPreset,
+      // 對齊 baseline：重置亦回到 dawn
+      environmentPreset: 'dawn' as EnvironmentPreset,
       environmentIntensity: 1.0,
       environmentBackground: false
     });
