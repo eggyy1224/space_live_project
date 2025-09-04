@@ -8,7 +8,7 @@ import json
 import sys
 import requests
 from fastmcp import FastMCP
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 
 # 後端 API 設定
 BASE_URL = "http://localhost:8000"
@@ -17,7 +17,7 @@ SEND_MESSAGE_ENDPOINT = f"{BASE_URL}/api/control/send-message"
 # 建立 MCP 服務器
 mcp = FastMCP("SpaceLiveServer")
 
-@mcp.tool()
+# @mcp.tool()
 def start_realtime_conversation() -> str:
     """
     開始即時對話（前端將開始實時語音串流）
@@ -39,7 +39,7 @@ def start_realtime_conversation() -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool()
+# @mcp.tool()
 def stop_realtime_conversation() -> str:
     """
     停止即時對話（前端將停止實時語音串流）
@@ -72,7 +72,8 @@ def send_message(
     message_type: str = "chat-message",
     tts_instruction: Optional[str] = None,
     tts_voice: Optional[str] = None,
-    tts_speed: Optional[float] = None,
+    # 接受數值或數字字串，避免外部呼叫方型別不一致造成驗證失敗
+    tts_speed: Optional[Union[float, str]] = None,
 ) -> str:
     """
     向太空直播系統發送訊息，讓 AI 角色說話。
@@ -931,7 +932,7 @@ async def set_body_shape(value: float):
         print(error_message)
         return f"Failed to set body shape. Check the server logs. Details: {error_message}"
 
-@mcp.tool()
+# @mcp.tool()
 def set_monitor_content(
     monitor_id: str,
     video_name: Optional[str] = None,
@@ -1574,7 +1575,7 @@ def get_available_main_character_animations() -> str:
 💡 提示: 這些是系統中實際可用的主角動畫，請使用 set_main_character_animation() 來播放
 ⚠️ 注意: 使用時請直接輸入動畫名稱，例如: "運動1", "漂浮", "舞步1" 等"""
 
-@mcp.tool()
+# @mcp.tool()
 def configure_obs_connection(host: str = "localhost", port: int = 4455, password: str = "", timeout: int = 10) -> str:
     """
     配置 OBS WebSocket 連接參數並重新連接
@@ -1626,7 +1627,7 @@ def configure_obs_connection(host: str = "localhost", port: int = 4455, password
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool()
+# @mcp.tool()
 def start_obs_streaming() -> str:
     """
     開始 OBS 串流
@@ -1662,7 +1663,7 @@ def start_obs_streaming() -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool()
+# @mcp.tool()
 def stop_obs_streaming() -> str:
     """
     停止 OBS 串流
@@ -1698,7 +1699,7 @@ def stop_obs_streaming() -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool()
+# @mcp.tool()
 def connect_and_start_streaming(host: str = "localhost", port: int = 4455, password: str = "", timeout: int = 10) -> str:
     """
     連接 OBS 並立即開始串流
@@ -1766,7 +1767,7 @@ def connect_and_start_streaming(host: str = "localhost", port: int = 4455, passw
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool()
+# @mcp.tool()
 def get_browser_screenshot() -> str:
     """
     擷取 OBS 中瀏覽器來源的即時截圖，並下載到本地 screen_shots 資料夾
@@ -1836,7 +1837,7 @@ def get_browser_screenshot() -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool()
+# @mcp.tool()
 def get_field_video_screenshot() -> str:
     """
     擷取 OBS 中展場視訊來源的即時截圖，並下載到本地 screen_shots 資料夾
@@ -1906,7 +1907,7 @@ def get_field_video_screenshot() -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
-@mcp.tool()
+# @mcp.tool()
 def get_obs_screenshot(
     source_name: Optional[str] = None,
     scene_name: Optional[str] = None,
