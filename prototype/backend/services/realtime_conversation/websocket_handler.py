@@ -241,12 +241,7 @@ class WebSocketHandler:
                 
                 # 已移除：啟動時注入最近對話記憶，避免影響預設性格
                 
-                # 根據最近對話記憶生成並套用背景圖片（不切換3D房間場景）
-                await self._generate_background_from_conversation()
-
-                await self._set_initial_camera()
-                # 新增：設定初始角色位置（Y 軸下降 30 單位）
-                await self._set_initial_character_position()
+                # 已改為使用固定背景與鏡位、角色位置由外部控制，移除啟動時的自動設定
                 
                 # 設定初始動畫，避免T-pose
                 await self._set_initial_animation()
@@ -685,36 +680,46 @@ class WebSocketHandler:
             logger.error(f"設定初始角色位置異常: {e}")
 
     async def _set_initial_animation(self):
-        """設定初始動畫，避免T-pose"""
+        """設定初始動畫為混合：空體Action + 隨機瑜珈動作。
+        對齊 space_yoga_teacher_baseline.sh 的策略：
+        - 基底空體Action（speed 約 1.8–2.0）
+        - 疊加隨機一個「瑜珈動作1..20」（weight 0.9–1.0, speed 0.5–0.7）
+        - blendMode = additive, transitionDuration = 0.6
+        """
         import aiohttp
         import random
         try:
-            # 可用的初始動畫清單（排除Tpose）
-            available_animations = [
-                "運動2", "漂浮", "運動1", "不穩", "划手機", 
-                "漂浮2", "臥躺", "舞步1", "舞步2", "舞步3", 
-                "飛1", "飛2"
-            ]
-            
-            # 隨機選擇一個動畫
-            selected_animation = random.choice(available_animations)
-            
+            yoga_moves = [f"瑜珈動作{i}" for i in range(1, 21)]
+            selected_yoga = random.choice(yoga_moves)
+
+            base_speed = round(random.uniform(1.8, 2.0), 2)
+            yoga_speed = round(random.uniform(0.5, 0.7), 2)
+            yoga_weight = round(random.uniform(0.9, 1.0), 2)
+
+            payload = {
+                "animations": [
+                    {"name": "空體Action", "weight": 1.0, "loop": True, "speed": base_speed},
+                    {"name": selected_yoga, "weight": yoga_weight, "loop": True, "speed": yoga_speed},
+                ],
+                "transitionDuration": 0.6,
+                "blendMode": "additive",
+            }
+
             async with aiohttp.ClientSession() as session:
-                animation_data = {
-                    "animation": selected_animation, 
-                    "loop": True, 
-                    "speed": 1.0
-                }
                 async with session.post(
-                    "http://localhost:8000/api/control/character/animation",
-                    json=animation_data
+                    "http://localhost:8000/api/control/character/animation-mix",
+                    json=payload
                 ) as response:
                     if response.status == 200:
-                        logger.info(f"初始動畫隨機設置為: {selected_animation}，避免T-pose")
+                        logger.info(
+                            f"初始動畫混合設置成功：空體Action({base_speed}) + {selected_yoga}"
+                            f"(w={yoga_weight}, spd={yoga_speed}), blend=additive, td=0.6"
+                        )
                     else:
-                        logger.warning(f"設置初始動畫失敗: {await response.text()}")
+                        text = await response.text()
+                        logger.warning(f"設置初始動畫混合失敗: HTTP {response.status} - {text}")
         except Exception as e:
-            logger.error(f"設置初始動畫異常: {e}")
+            logger.error(f"設置初始動畫混合異常: {e}")
     
     async def _play_initial_bgm(self):
         """隨機選擇一首 BGM 並播放（初始化用）"""
@@ -1076,12 +1081,11 @@ class WebSocketHandler:
             
             # 等待一小段時間確保訊息被處理
             await asyncio.sleep(0.1)
-            
-            # 觸發 AI 回應
+
+            # 觸發 AI 回應（恢復強制觸發）
             response_create = {
                 "type": "response.create"
             }
-            
             logger.debug(f"🎯 [DEBUG] 準備發送 response.create 觸發 AI 回應: {json.dumps(response_create)}")
             await self._current_ws.send(json.dumps(response_create))
             logger.info("🚀 [DEBUG] 已觸發 AI 回應 YouTube 聊天留言")
@@ -1090,4 +1094,3 @@ class WebSocketHandler:
             logger.error(f"❌ [DEBUG] 注入 YouTube 聊天留言時發生錯誤: {e}")
             import traceback
             logger.error(f"🔍 [DEBUG] 注入錯誤詳情: {traceback.format_exc()}") 
-
