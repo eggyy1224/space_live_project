@@ -2182,6 +2182,48 @@ def get_memory_stats() -> str:
     except Exception as e:
         return f"❌ 發生錯誤: {str(e)}"
 
+@mcp.tool()
+def play_random_yoga_session() -> str:
+    """
+    從 yoga_sessions/ 目錄隨機選擇一個已註冊腳本並執行（背景)。
+
+    說明:
+    - 資源來源：prototype/backend/experiment_scripts/yoga_sessions/*.sh
+    - 工具不需傳參：會自動列出可用清單並隨機選擇其一執行。
+    - 安全限制：後端僅允許 yoga_sessions/ 子資料夾內的腳本，並使用白名單。
+
+    Returns:
+        顯示可用腳本清單與實際啟動的腳本名稱。
+    """
+    try:
+        list_resp = requests.get(f"{BASE_URL}/api/scripts/list", timeout=10)
+        if list_resp.status_code != 200:
+            return f"❌ 無法取得腳本清單 (HTTP {list_resp.status_code}): {list_resp.text}"
+        data = list_resp.json()
+        scripts_info = data.get("registered_scripts", [])
+        available = [s for s in scripts_info if s.get("exists")]
+        names = [s.get("name") for s in available]
+        if not names:
+            return "❌ 找不到可用的瑜伽腳本（yoga_sessions/）"
+
+        exec_resp = requests.post(f"{BASE_URL}/api/scripts/execute/random-yoga", timeout=10)
+        if exec_resp.status_code == 200:
+            res = exec_resp.json()
+            chosen = res.get("script_name", "(unknown)")
+            return (
+                "✅ 已啟動隨機瑜伽腳本。\n"
+                f"可用腳本: {', '.join(names)}\n"
+                f"啟動: {chosen} (background)"
+            )
+        elif exec_resp.status_code == 409:
+            return "🤔 所有瑜伽腳本目前都在執行中，稍後再試"
+        else:
+            return f"❌ 執行腳本失敗 (HTTP {exec_resp.status_code}): {exec_resp.text}"
+    except requests.exceptions.ConnectionError:
+        return "❌ 無法連接到後端服務器，請確認 http://localhost:8000 已啟動"
+    except Exception as e:
+        return f"❌ 發生錯誤: {str(e)}"
+
 if __name__ == "__main__":
     print("🚀 太空直播系統 MCP 服務器啟動中...", file=sys.stderr)
     print("📡 提供工具: start_realtime_conversation, stop_realtime_conversation, send_message, set_emotion, emotion_transition, set_main_character_animation, set_main_character_animation_mix, stop_main_character_animation_mix, dance_group_animation, set_dance_group, play_song, play_background_music, stop_background_music, play_sound_effect, set_camera_preset, set_head_size, set_character_scale, set_character_position, set_character_rotation, reset_character_transform, set_character_morph, set_body_shape, set_monitor_content, generate_image_overlay, generate_background_image, take_selfie, show_existing_image, generate_map_image, search_nasa_image, get_epic_image, web_search, get_available_songs, get_available_bgm, get_available_effects, get_available_videos, get_available_main_character_animations, get_available_dance_group_animations, get_all_resources, search_resources, configure_obs_connection, start_obs_streaming, stop_obs_streaming, connect_and_start_streaming, get_browser_screenshot, get_field_video_screenshot, get_memory, save_memory, get_memory_stats", file=sys.stderr)

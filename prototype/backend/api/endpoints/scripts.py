@@ -9,21 +9,30 @@ from utils.logger import logger
 
 router = APIRouter()
 
+"""
+限制白名單：僅允許執行 `experiment_scripts/yoga_sessions/` 目錄下的腳本。
+會在啟動時掃描該資料夾下的 .sh 檔案形成白名單。
+"""
+
 # 腳本基礎路徑
 SCRIPTS_DIR = Path(__file__).parent.parent.parent / "experiment_scripts"
+YOGA_DIR = SCRIPTS_DIR / "yoga_sessions"
 
-# 已註冊的腳本列表（安全性考量，只允許執行預定義的腳本）
-REGISTERED_SCRIPTS = [
-    "meta_self.sh",
-    "remix_scene.sh",
-    "space_story_script.sh",
-    "news_broadcast.sh",
-    "space_yoga2.sh",
-    # 新增：瑜伽教學基線腳本（位於子目錄 yoga_sessions）
-    "yoga_sessions/space_yoga_teacher_baseline.sh",
-    # 新增：瑜伽教學基線腳本第二幕（位於子目錄 yoga_sessions）
-    "yoga_sessions/space_yoga_teacher_baseline_scene2.sh",
-]
+def _scan_yoga_scripts() -> list[str]:
+    try:
+        if not YOGA_DIR.exists():
+            return []
+        scripts = []
+        for p in sorted(YOGA_DIR.glob("*.sh")):
+            if p.is_file():
+                # 轉為相對於 experiment_scripts 的路徑字串
+                scripts.append(str(p.relative_to(SCRIPTS_DIR)))
+        return scripts
+    except Exception:
+        return []
+
+# 已註冊的腳本列表（僅 yoga_sessions 內檔案）
+REGISTERED_SCRIPTS = _scan_yoga_scripts()
 
 class ScriptExecutionRequest(BaseModel):
     script_name: str
@@ -45,6 +54,10 @@ async def list_registered_scripts():
     """
     scripts_info = []
     
+    # 重新掃描以確保清單最新（避免重啟前後清單不同步）
+    global REGISTERED_SCRIPTS
+    REGISTERED_SCRIPTS = _scan_yoga_scripts()
+
     for script_name in REGISTERED_SCRIPTS:
         script_path = SCRIPTS_DIR / script_name
         if script_path.exists():
@@ -143,6 +156,39 @@ async def execute_script(request: ScriptExecutionRequest, background_tasks: Back
             status_code=500,
             detail=f"執行腳本時發生錯誤: {str(e)}"
         )
+
+@router.post("/scripts/execute/random-yoga", response_model=ScriptExecutionResponse)
+async def execute_random_yoga_script(background_tasks: BackgroundTasks):
+    """
+    隨機執行 yoga_sessions 目錄中的任一已註冊腳本（背景執行）。
+    若所有腳本都在執行中，將返回 409。
+    """
+    global REGISTERED_SCRIPTS
+    if not REGISTERED_SCRIPTS:
+        REGISTERED_SCRIPTS = _scan_yoga_scripts()
+    if not REGISTERED_SCRIPTS:
+        raise HTTPException(status_code=404, detail="找不到可用的瑜伽腳本")
+
+    # 過濾尚未在執行的腳本
+    available = [s for s in REGISTERED_SCRIPTS if s not in running_scripts]
+    if not available:
+        raise HTTPException(status_code=409, detail="所有瑜伽腳本目前都在執行中")
+
+    import random
+    script_name = random.choice(available)
+    script_path = SCRIPTS_DIR / script_name
+
+    if not script_path.exists():
+        raise HTTPException(status_code=404, detail=f"腳本檔案不存在: {script_name}")
+
+    # 背景執行
+    background_tasks.add_task(run_script_background, script_path, script_name)
+    return ScriptExecutionResponse(
+        success=True,
+        message=f"腳本 '{script_name}' 已開始在背景執行",
+        script_name=script_name,
+        execution_mode="background"
+    )
 
 @router.post("/scripts/stop/{script_name}")
 async def stop_script(script_name: str):
