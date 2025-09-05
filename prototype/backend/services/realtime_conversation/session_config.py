@@ -573,22 +573,6 @@ def get_tools_config() -> list:
                 },
                 "required": ["query"]
             }
-        },  # 在此逗號後新增工具定義
-        {
-            "type": "function",
-            "name": "show_images_by_preview",
-            "description": "用 Mac Preview 展示指定分類資料夾下的所有圖片。參數 category: backgrounds/images/screenshots/selfies。",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "category": {
-                        "type": "string",
-                        "enum": ["backgrounds", "images", "screenshots", "selfies"],
-                        "description": "要展示的圖片分類"
-                    }
-                },
-                "required": ["category"]
-            }
         },
         {
             "type": "function",
