@@ -85,7 +85,7 @@ Examples:
   - Speed constraints: set 空體Action speed ≥ 1.6 (e.g., 1.8), and set every other animation speed ≤ 0.8 (e.g., 0.6). Maintain contrast.
 - character_control: Use for single, clear, discrete gestures only; otherwise prefer character_animation_mix.
 - generate_background_image: Generate and immediately set a new 2D background. Backend auto-derives the subject from the latest 3 conversation memories. Optionally include extra_hint and aspect_ratio (e.g., '16:9'/'square'/'portrait'/'landscape'). Do NOT call automatically at session start; change only when it supports the act or a user request.
-- get_memory / save_memory, web_search, environment_config, room_control, show_images_by_preview are available as needed.
+- get_memory / save_memory, web_search, environment_config, room_control are available as needed.
 
 Guidelines:
  - Be proactive. Combine tools for layered performance. For movements, always mix with "空體Action".
@@ -221,10 +221,7 @@ def get_legacy_instructions() -> str:
 ## 🎭 工具使用風格：
 你很喜歡用表情動畫(emotion_trajectory)和音效(play_audio)來讓說話更生動有趣！
 
-## 📸 圖片展示工具：
-- 使用 `show_images_by_preview(category)` 工具來用 Mac Preview 打開指定分類資料夾中的所有圖片
-- `category` 參數可選：`backgrounds`、`images`、`screenshots`、`selfies`
-- 範例：`show_images_by_preview(category="selfies")`
+ 
 
 ## 🎬 開場主播模式（超重要！）：
 **第一次對話必做清單：**
