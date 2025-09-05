@@ -246,9 +246,7 @@ class WebSocketHandler:
                 # 設定初始動畫，避免T-pose
                 await self._set_initial_animation()
                 
-                # 設定舞群初始動畫
-                # 新增：初始化時隨機播放一首 BGM
-                await self._play_initial_bgm()
+                # 設定舞群初始動畫（不自動播放任何 BGM）
                 # 自動發送歡迎訊息
                 await self._send_welcome_message()
                 
@@ -308,8 +306,7 @@ class WebSocketHandler:
                     # 取消所有任務
                     receive_task.cancel()
                     send_task.cancel()
-                    # 自動關閉背景音樂
-                    await self._stop_bgm()
+                    # 不進行任何 BGM 控制（保持無音樂版本）
                     # 自動關閉場景顯示
                     await self._hide_scene()
                     # 停用背景圖片，確保待機時無背景圖
@@ -721,42 +718,6 @@ class WebSocketHandler:
         except Exception as e:
             logger.error(f"設置初始動畫混合異常: {e}")
     
-    async def _play_initial_bgm(self):
-        """隨機選擇一首 BGM 並播放（初始化用）"""
-        import aiohttp
-        import random
-        try:
-            bgm_files = [
-                "spacelive_theme.mp3",
-                "spacelive_theme2.mp3",
-                "space_live_country_theme1.mp3",
-                "space_live_country_theme2.mp3",
-                "heavy_metal_bgm_01.mp3",
-                "heavy_metal_bgm_02.mp3",
-                "heavy_metal_bgm_03.mp3",
-                "星際狂舞.mp3",
-                "太空媽祖.mp3",
-                "hihi.mp3",
-                "hihi (1).mp3",
-                "hihi (2).mp3",
-                "hihi (3).mp3"
-            ]
-            selected_bgm = random.choice(bgm_files)
-            bgm_url = f"/audio/BGM/{selected_bgm}"
-            async with aiohttp.ClientSession() as session:
-                bgm_data = {"bgmUrl": bgm_url, "volume": 0.1}
-                async with session.post(
-                    "http://localhost:8000/api/control/background-audio",
-                    json=bgm_data
-                ) as response:
-                    if response.status == 200:
-                        logger.info(f"初始隨機 BGM 播放成功: {selected_bgm}")
-                        self._current_bgm_url = bgm_url # 儲存 BGM URL
-                    else:
-                        logger.warning(f"初始 BGM 播放失敗: {await response.text()}")
-        except Exception as e:
-            logger.error(f"初始 BGM 播放異常: {e}")
-    
     async def _send_welcome_message(self):
         """自動發送隨機歡迎訊息"""
         import aiohttp
@@ -801,27 +762,7 @@ class WebSocketHandler:
         except Exception as e:
             logger.error(f"發送歡迎訊息失敗: {e}")
     
-    async def _stop_bgm(self):
-        """將背景音樂音量調整為 0.3（不直接關閉 BGM）"""
-        import aiohttp
-        try:
-            # 取得目前 BGM URL（假設前端會維持原 bgmUrl，不清空）
-            # 若有全域變數或屬性可取得目前 bgmUrl，請取用，否則只設 volume
-            bgm_url = getattr(self, "_current_bgm_url", None)
-            bgm_data = {"volume": 0.3}
-            if bgm_url:
-                bgm_data["bgmUrl"] = bgm_url
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    "http://localhost:8000/api/control/background-audio",
-                    json=bgm_data
-                ) as response:
-                    if response.status == 200:
-                        logger.info("已將背景音樂音量調整為 0.3（session 結束）")
-                    else:
-                        logger.warning(f"調整 BGM 音量失敗: {await response.text()}")
-        except Exception as e:
-            logger.error(f"調整 BGM 音量發生異常: {e}")
+    # 已移除 BGM 播放/控制方法：保持即時對話無音樂版本
     
     async def _hide_scene(self):
         """關閉場景顯示（隱藏背景）"""
