@@ -108,6 +108,7 @@ JSON
 
 env_preset() { local PRE="$1"; $CURL_POST "$BASE_URL/control/environment/preset" -H "Content-Type: application/json" -d "{\"preset\": \"$PRE\"}" >/dev/null; }
 env_intensity() { local I=${1:-0.8}; $CURL_POST "$BASE_URL/control/environment/intensity" -H "Content-Type: application/json" -d "{\"intensity\": $I}" >/dev/null; }
+env_background() { local B=${1:-false}; $CURL_POST "$BASE_URL/control/environment/background" -H "Content-Type: application/json" -d "{\"background\": $B}" >/dev/null; }
 
 head_size() { local S=${1:-10.0}; $CURL_POST "$BASE_URL/control/head-size" -H "Content-Type: application/json" -d "{\"scaleFactor\": $S}" >/dev/null; }
 char_scale() { local S=${1:-0.1}; $CURL_POST "$BASE_URL/control/character/scale" -H "Content-Type: application/json" -d "{\"scale\": $S}" >/dev/null; }
@@ -174,6 +175,7 @@ $CURL_POST "$BASE_URL/control/broadcast" -H "Content-Type: application/json" -d 
 cam_preset "head_close_up" 1.0
 env_preset "dawn" || true
 env_intensity 0.85 || true
+env_background false || true
 stop_bgm
 head_size 10.0
 char_scale 0.1

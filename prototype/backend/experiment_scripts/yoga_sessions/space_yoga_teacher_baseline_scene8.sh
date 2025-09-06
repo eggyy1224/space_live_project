@@ -118,6 +118,7 @@ JSON
 
 env_preset() { local PRE="$1"; $CURL_POST "$BASE_URL/control/environment/preset" -H "Content-Type: application/json" -d "{\"preset\": \"$PRE\"}" >/dev/null; }
 env_intensity() { local I=${1:-1.0}; $CURL_POST "$BASE_URL/control/environment/intensity" -H "Content-Type: application/json" -d "{\"intensity\": $I}" >/dev/null; }
+env_background() { local B=${1:-false}; $CURL_POST "$BASE_URL/control/environment/background" -H "Content-Type: application/json" -d "{\"background\": $B}" >/dev/null; }
 
 head_size() { local S=${1:-10.0}; $CURL_POST "$BASE_URL/control/head-size" -H "Content-Type: application/json" -d "{\"scaleFactor\": $S}" >/dev/null; }
 char_scale() { local S=${1:-0.1}; $CURL_POST "$BASE_URL/control/character/scale" -H "Content-Type: application/json" -d "{\"scale\": $S}" >/dev/null; }
@@ -142,6 +143,7 @@ $CURL_POST "$BASE_URL/control/broadcast" -H "Content-Type: application/json" -d 
 cam_preset "head_close_up" 0.8
 env_preset "studio" || true
 env_intensity 1.2 || true
+env_background false || true
 stop_bgm
 head_size 10.0
 char_scale 0.1
@@ -190,4 +192,3 @@ emote 1.6 "grateful,content,serene"
 say_with_inst "完成——速度對比，心猶穩。\nDone—contrast held, center steady." 2.8 "grateful,content,serene" "$VOICE_COOL" "$(rand_float $SPEED_COOL_MIN $SPEED_COOL_MAX 2)" 1 "$TTS_INSTR_COOL"
 
 echo "=== ✅ Scene 8 結束（安靜氛圍，無 BGM） ==="
-

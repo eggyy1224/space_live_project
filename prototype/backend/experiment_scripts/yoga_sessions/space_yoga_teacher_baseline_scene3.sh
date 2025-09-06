@@ -177,6 +177,9 @@ env_preset() {
     -d "{\"preset\": \"$PRE\"}" >/dev/null
 }
 
+# 明確控制是否顯示環境背景（避免沿用前一幕的狀態）
+env_background() { local B=${1:-false}; $CURL_POST "$BASE_URL/control/environment/background" -H "Content-Type: application/json" -d "{\"background\": $B}" >/dev/null; }
+
 head_size() { local S=${1:-1.0}; $CURL_POST "$BASE_URL/control/head-size" -H "Content-Type: application/json" -d "{\"scaleFactor\": $S}" >/dev/null; }
 char_scale() { local S=${1:-1.0}; $CURL_POST "$BASE_URL/control/character/scale" -H "Content-Type: application/json" -d "{\"scale\": $S}" >/dev/null; }
 char_position() { local X=${1:-0.0}; local Y=${2:-0.0}; local Z=${3:-0.0}; echo ">> 角色位置: [$X,$Y,$Z]"; $CURL_POST "$BASE_URL/control/character/position" -H "Content-Type: application/json" -d "{\"position\": [$X,$Y,$Z]}" >/dev/null; }
@@ -258,6 +261,7 @@ $CURL_POST "$BASE_URL/control/broadcast" -H "Content-Type: application/json" -d 
 ########################################
 cam_preset "head_close_up" 1.0
 env_preset "dawn" || true
+env_background false || true
 stop_bgm
 head_size 10.0
 char_scale 0.1
