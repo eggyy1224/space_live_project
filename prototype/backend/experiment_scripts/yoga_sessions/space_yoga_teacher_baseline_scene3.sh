@@ -280,7 +280,7 @@ for i in {1..6}; do
   MICRO_SEQ=$(rand_choice EMO_FOCUS[@])
   emote 0.9 "$MICRO_SEQ"
   step_mix_random
-  sleep 0.2; sfx "/audio/effects/winds_blowing.mp3" 0.06 false
+  sleep 0.2; sfx "/audio/effects/spaceship_ambience_02.mp3" 0.03 false
 
   # 動作持續時間略帶隨機（4.0/4.2/4.4）以避免過度機械
   case $((RANDOM % 3)) in
@@ -318,8 +318,6 @@ for i in {1..6}; do
     AWE_SEQ=$(rand_choice EMO_AWE[@])
     emote 1.2 "$AWE_SEQ"
   fi
-
-  sfx "/audio/effects/taiwan_variety_sfx_01.mp3" 0.16 false
   case $((RANDOM % 3)) in
     0) sleep 0.9 ;;
     1) sleep 1.0 ;;
@@ -330,7 +328,7 @@ done
 # 緩和與收尾（維持鏡位與比例）
 char_position 0.0 8.0 -30.0
 step_mix_random
-sleep 0.2; sfx "/audio/effects/winds_blowing.mp3" 0.06 false
+sleep 0.2; sfx "/audio/effects/spaceship_ambience_02.mp3" 0.03 false
 sleep 4.2
 END_SEQ=$(rand_choice EMO_RELAX[@])
 say_zh_en "仰躺休息：全身沉，心更輕。" "Savasana—let body sink, heart lighter." 3.0 "$END_SEQ"
@@ -344,4 +342,3 @@ sleep 0.5
 # 瑜伽結束後才播放相同 BGM（不更換曲目）
 bgm "/audio/BGM/space_live_country_theme1.mp3" 0.25
 echo "=== ✅ Space Yoga Teacher — Baseline Flow：Scene 3 結束 ==="
-
