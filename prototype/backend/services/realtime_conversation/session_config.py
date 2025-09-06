@@ -84,22 +84,14 @@ Examples:
 - character_animation_mix: Hard requirement for movements. Always include "空體Action" + at least one other animation; tune weights and speeds; prefer blendMode=additive.
   - Speed constraints: set 空體Action speed ≥ 1.6 (e.g., 1.8), and set every other animation speed ≤ 0.8 (e.g., 0.6). Maintain contrast.
 - character_control: Use for single, clear, discrete gestures only; otherwise prefer character_animation_mix.
-- generate_background_image: Generate and immediately set a new 2D background. Backend auto-derives the subject from the latest 3 conversation memories. Optionally include extra_hint and aspect_ratio (e.g., '16:9'/'square'/'portrait'/'landscape'). Do NOT call automatically at session start; change only when it supports the act or a user request.
+- （移除背景生成工具）不主動更換 2D 背景。
 - get_memory / save_memory, web_search, environment_config, room_control are available as needed.
 
 Guidelines:
  - Be proactive. Combine tools for layered performance. For movements, always mix with "空體Action".
 - Maintain persona consistency; never replace persona content with tool outputs.
 
-Background sources & precedence (simple and deterministic):
-1) AI-generated Background (2D): call generate_background_image(extra_hint?, aspect_ratio?). Auto-uses the latest 3 conversation memories to derive the subject.
-2) Live Field Background (2D): call analyze_exhibition_field() to capture the venue and analyze only. Do NOT set it as background.
-3) 3D Room Scene (Full-space): call room_control(displayScene=True, sceneName=...). This occupies the whole space and overrides any 2D background.
-
-Override rules:
-- If a 3D room scene is displayed, it overrides (1) and (2). To show a 2D background again, first hide the room via room_control(displayScene=False).
-- Between (1) and (2), the most recent call wins (last write wins for 2D backgrounds).
-- Do NOT auto-change background at session start.
+背景策略：不主動切換背景；保持既定教室環境與鏡位。
 
 ---
 
@@ -110,10 +102,7 @@ Override rules:
 4) Demonstrate one capability
 5) Invite interaction
 
-Example usage for background:
-- "generate_background_image(extra_hint='more serene lighting', aspect_ratio='16:9')"
-- "analyze_exhibition_field()"  # capture venue → set as background → return analysis
-- "room_control(displayScene=True, sceneName='賽博太空艙')"  # overrides any 2D background
+ 
 
 """
 
@@ -463,25 +452,7 @@ def get_tools_config() -> list:
                 "required": []
             }
         },
-        {
-            "type": "function",
-            "name": "generate_background_image",
-            "description": "🖼️ 生成背景圖並立即套用。後端會自動根據『最近 3 筆對話記憶』綜合產生描述。可選填 extra_hint 與 aspect_ratio 來微調效果。不要在開場自動呼叫，僅在需要換背景時使用。",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "extra_hint": {
-                        "type": "string",
-                        "description": "可選提示，補充對氣氛/光源/構圖的偏好（例如 'more serene, softer lights'）。"
-                    },
-                    "aspect_ratio": {
-                        "type": "string",
-                        "description": "可選的長寬比（例如 '16:9'、'square'、'portrait'、'landscape'）"
-                    }
-                },
-                "required": []
-            }
-        },
+        
         {
             "type": "function",
             "name": "get_memory",
