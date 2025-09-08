@@ -128,7 +128,8 @@ cam_preset "head_close_up" 0.8
 env_preset "dawn" || true
 env_intensity 1.1 || true
 env_background false || true
-bgm "/audio/BGM/ambient_solar_wind.mp3" 0.15
+## 使用現成環境音效作為柔和背景
+sfx "/audio/effects/winds_blowing.mp3" 0.05
 head_size 10.0
 char_scale 0.1
 char_position 0.0 8.0 -30.0
