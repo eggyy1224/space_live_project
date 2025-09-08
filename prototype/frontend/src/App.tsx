@@ -21,6 +21,8 @@ import { RealtimeSchedulePanel } from './components/RealtimeSchedulePanel'
 import { RealtimeStatusIndicator, RealtimeStatusBadge } from './components/RealtimeStatusIndicator'
 import { usePerformanceMetrics } from './hooks/usePerformanceMetrics'
 import { useRealtimeScheduler } from './hooks/useRealtimeScheduler'
+import { useAutoplayScheduler, AutoplayOptions } from './hooks/useAutoplayScheduler'
+import { getActiveMode } from './utils/mode'
 
 // 引入服務
 import { 
@@ -151,45 +153,73 @@ function App() {
   // 使用排程器 (全域唯一)
   const realtimeScheduler = useRealtimeScheduler();
 
+  // 解析模式與參數
+  const { mode: activeMode, conflict } = getActiveMode(window.location.search);
+  const urlParams = new URLSearchParams(window.location.search);
+  const isAutoplayMode = activeMode === 'autoplay';
+  const autoStart = activeMode === 'autostart' ||
+                    (activeMode === null && window.location.hostname !== 'localhost');
+
+  const autoplayOptions = React.useMemo<AutoplayOptions | null>(() => {
+    if (!isAutoplayMode) return null;
+    const startAtParam = urlParams.get('startAt');
+    const countParam = urlParams.get('count');
+    let startAt = new Date();
+    if (startAtParam) {
+      if (/^\d{2}:\d{2}$/.test(startAtParam)) {
+        const [h, m] = startAtParam.split(':').map(Number);
+        startAt.setHours(h, m, 0, 0);
+        if (startAt.getTime() < Date.now()) {
+          startAt.setDate(startAt.getDate() + 1);
+        }
+      } else {
+        const parsed = new Date(startAtParam);
+        if (!isNaN(parsed.getTime())) startAt = parsed;
+      }
+    }
+    const count = countParam ? parseInt(countParam, 10) : undefined;
+    return { startAt, count };
+  }, [isAutoplayMode, urlParams]);
+
+  useAutoplayScheduler(autoplayOptions);
+
+  useEffect(() => {
+    if (conflict) {
+      toast('autoplay 與 autostart 同時存在，將以 autoplay 為主');
+    }
+  }, [conflict]);
+
   // === 自動初始化 Happy Path ===
   useEffect(() => {
-    // 檢查是否應該啟用自動初始化（通過 URL 參數或簡化條件）
-    const urlParams = new URLSearchParams(window.location.search);
-    const autoStart = urlParams.get('autostart') === 'true' || 
-                      window.location.hostname !== 'localhost'; // 非本地環境下預設啟用
-    
+    if (isAutoplayMode) {
+      return;
+    }
     if (!autoStart) {
       console.log('[App] Auto-start disabled, skipping happy path initialization');
       return;
     }
 
-    // 頁面載入後 3 秒自動啟用排程模式並隱藏按鈕
     const initTimer = setTimeout(() => {
       console.log('[App] Auto-initializing happy path...');
-      
-      // 1. 啟用排程模式
+
       useStore.getState().setScheduleEnabled(true);
       console.log('[App] ✅ Schedule enabled');
-      
-      // 2. 隱藏右側按鈕（只有在顯示時才隱藏）
+
       if (useStore.getState().isSideButtonsVisible) {
         useStore.getState().toggleSideButtons();
         console.log('[App] ✅ Side buttons hidden');
       }
-      
-      // 3. 確保不是手動模式
+
       if (useStore.getState().isManualMode) {
         useStore.getState().disableManualMode();
         console.log('[App] ✅ Manual mode disabled');
       }
-      
-      // 全螢幕模式由 AppleScript 腳本處理
-      
+
       console.log('[App] 🚀 Happy path initialized - Schedule running with hidden UI');
-    }, 3000); // 3秒後執行
+    }, 3000);
 
     return () => clearTimeout(initTimer);
-  }, []); // 只在組件掛載時執行一次
+  }, [autoStart, isAutoplayMode]);
 
   // 監聽 realtimeStreaming 狀態變化，同步到排程系統（避免循環更新）
   useEffect(() => {
