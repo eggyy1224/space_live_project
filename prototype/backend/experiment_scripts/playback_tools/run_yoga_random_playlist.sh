@@ -6,9 +6,9 @@
 # - Avoids selecting itself/helper scripts
 #
 # Usage examples:
-#   bash prototype/backend/experiment_scripts/yoga_sessions/run_yoga_random_playlist.sh
-#   bash prototype/backend/experiment_scripts/yoga_sessions/run_yoga_random_playlist.sh --count 3
-#   BASE_URL=http://localhost:8000 bash prototype/backend/experiment_scripts/yoga_sessions/run_yoga_random_playlist.sh --count 5
+#   bash prototype/backend/experiment_scripts/playback_tools/run_yoga_random_playlist.sh
+#   bash prototype/backend/experiment_scripts/playback_tools/run_yoga_random_playlist.sh --count 3
+#   BASE_URL=http://localhost:8000 bash prototype/backend/experiment_scripts/playback_tools/run_yoga_random_playlist.sh --count 5
 
 set -euo pipefail
 
@@ -137,4 +137,3 @@ main() {
 }
 
 main "$@"
-

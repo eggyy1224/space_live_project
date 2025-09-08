@@ -6,8 +6,8 @@
 # - Prints concise status updates with timestamps
 #
 # Usage:
-#   bash scripts/run_yoga_playlist.sh
-#   BASE_URL=http://localhost:8000 bash scripts/run_yoga_playlist.sh
+#   bash prototype/backend/experiment_scripts/playback_tools/run_yoga_playlist.sh
+#   BASE_URL=http://localhost:8000 bash prototype/backend/experiment_scripts/playback_tools/run_yoga_playlist.sh
 
 set -euo pipefail
 
@@ -87,4 +87,3 @@ main() {
 }
 
 main "$@"
-
