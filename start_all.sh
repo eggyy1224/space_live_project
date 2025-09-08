@@ -127,7 +127,7 @@ sleep 5  # 等待頁面載入
 
 echo ""
 echo "🎉 所有設定完成！系統現在處於展示模式："
-echo "   ✅ 自動排程已啟用（headonly 視窗使用 autostart）"
+echo "   ✅ 自動排程可於前端設定啟用（headonly 視窗不使用 autostart）"
 echo "   ✅ 控制按鈕已隱藏（在 headonly 視窗）"
 echo "   ⏭️ 全螢幕將於排版後依需求再設定（目前改用可視範圍定位以避免卡住）"
 echo ""
@@ -147,13 +147,13 @@ echo "   - 按 ESC 鍵：退出全螢幕模式"
 echo ""
 echo "開始進行雙螢幕自動排版（大螢幕：Chrome 置入左螢幕；小螢幕：Terminal + headonly Chrome 上下各半）..."
 
-# 先開啟 headonly 的新 Chrome 視窗（自動初始化）
-echo "開啟 headonly Chrome 視窗於 http://localhost:5173/?headonly&&autostart=true ..."
+# 先開啟 headonly 的新 Chrome 視窗（不含 autostart）
+echo "開啟 headonly Chrome 視窗於 http://localhost:5173/?headonly ..."
 osascript -e '
 tell application "Google Chrome"
     activate
     set newWin to make new window
-    set URL of active tab of newWin to "http://localhost:5173/?headonly&&autostart=true"
+    set URL of active tab of newWin to "http://localhost:5173/?headonly"
 end tell'
 
 sleep 2 # 確保 headonly 視窗已建立再進行排版
@@ -223,20 +223,13 @@ osascript -l JavaScript <<'JXA'
     return { x: Math.round(x), y: Math.round(y), w: Math.round(r.width), h: Math.round(r.height) };
   };
 
-  // 以「實際像素面積」挑選大/小螢幕（避免只按左右位置判斷導致錯置）
-  // 若面積相近，偏好 X 座標較小者為大螢幕
-  const byArea = screens.slice().sort((a, b) => b.pixelArea - a.pixelArea);
-  let largeScreen = byArea[0];
-  let smallScreen = byArea[byArea.length - 1];
-  if (screens.length >= 2) {
-    const a0 = byArea[0], a1 = byArea[1];
-    const relDiff = Math.abs(a0.pixelArea - a1.pixelArea) / Math.max(a0.pixelArea, a1.pixelArea);
-    if (relDiff < 0.01) {
-      // 面積幾乎相同 → 取更靠左者為大螢幕
-      largeScreen = (a0.x <= a1.x) ? a0 : a1;
-      smallScreen = (largeScreen === a0) ? a1 : a0;
-    }
-  }
+  // 直接以 X 座標選擇顯示器：
+  // - 最左邊的螢幕作為「大螢幕」（主要顯示 Chrome 主畫面）
+  // - 最右邊的螢幕作為「小螢幕」（Terminal + headonly）
+  // 這樣可避免像素面積較大的直立螢幕被誤判為「大螢幕」。
+  const byX = screens.slice().sort((a, b) => a.x - b.x);
+  const largeScreen = byX[0];
+  const smallScreen = byX[byX.length - 1];
 
   // 使用可見區域計算 AX 座標，避免超出螢幕（Dock/選單列）
   const largeAX = toAX({ x: largeScreen.x, y: largeScreen.y, width: largeScreen.width, height: largeScreen.height });
@@ -467,19 +460,21 @@ osascript -l JavaScript <<'JXA'
         }
       }
     } catch (e) {}
-    return 0;
+    return -1; // 找不到就傳回 -1，避免誤操作第 0 個視窗
   };
 
   // 1) 將 Chrome 主視窗（非 headonly，網址以 localhost:5173 開頭且不含 headonly）放到左邊大螢幕
   // 先在左螢幕建立 Finder 錨點以鎖定目標空間
   anchorOnDisplay(largeVisibleAX);
-  focusChromeWindowBy((u) => u.startsWith('http://localhost:5173') && !u.includes('headonly'));
-  const mainChromeIndex = findChromeWindowIndexByUrl((u) => u.startsWith('http://localhost:5173') && !u.includes('headonly'));
-  moveWindow('Google Chrome', largeVisibleAX, mainChromeIndex);
+  focusChromeWindowBy((u) => /^https?:\/\/localhost:5173\b/.test(u) && !u.includes('headonly'));
+  const mainChromeIndex = findChromeWindowIndexByUrl((u) => /^https?:\/\/localhost:5173\b/.test(u) && !u.includes('headonly'));
+  if (mainChromeIndex >= 0) {
+    moveWindow('Google Chrome', largeVisibleAX, mainChromeIndex);
+  }
   // 再保守縮小 96% 以避免任何邊界或縮放問題（針對目前前景視窗）
   try {
     const proc = sys.processes.byName('Google Chrome');
-    const win = proc.windows[0]; // frontmost chrome window
+    const win = (mainChromeIndex >= 0 ? proc.windows[mainChromeIndex] : proc.windows[0]);
     const nx = largeVisibleAX.x;
     const ny = largeVisibleAX.y;
     const nw = Math.round(largeVisibleAX.w * 0.96);
@@ -492,7 +487,7 @@ osascript -l JavaScript <<'JXA'
       const wx = Number(pos[0]);
       if (wx < (largeVisibleAX.x - 20) || wx > (largeVisibleAX.x + largeVisibleAX.w + 20)) {
         anchorOnDisplay(largeVisibleAX);
-        moveWindow('Google Chrome', largeVisibleAX);
+        moveWindow('Google Chrome', largeVisibleAX, (mainChromeIndex >= 0 ? mainChromeIndex : 0));
         win.position = [nx, ny];
         win.size = [nw, nh];
       }
@@ -505,7 +500,9 @@ osascript -l JavaScript <<'JXA'
   // 2a) headonly Chrome 視窗 → 上半（先聚焦含 headonly 的視窗，再移動前景視窗）
   focusChromeWindowBy((u) => u.includes('headonly'));
   const headonlyIndex = findChromeWindowIndexByUrl((u) => u.includes('headonly'));
-  moveWindow('Google Chrome', halves.top, headonlyIndex);
+  if (headonlyIndex >= 0) {
+    moveWindow('Google Chrome', halves.top, headonlyIndex);
+  }
 
   // 2b) Terminal → 下半（將所有 Terminal 視窗都移到下半，避免有前端視窗留在上半）
   try {
@@ -527,12 +524,14 @@ osascript -l JavaScript <<'JXA'
   // 2c) 再次將 headonly Chrome 聚焦並放置到上半，確保視覺上覆蓋 Terminal
   focusChromeWindowBy((u) => u.includes('headonly'));
   const headonlyIndex2 = findChromeWindowIndexByUrl((u) => u.includes('headonly'));
-  moveWindow('Google Chrome', halves.top, headonlyIndex2);
+  if (headonlyIndex2 >= 0) {
+    moveWindow('Google Chrome', halves.top, headonlyIndex2);
+  }
   try {
     const sys2 = Application('System Events');
     const chromeProc = sys2.processes.byName('Google Chrome');
     // 嘗試把 headonly 的那個視窗放到最前面
-    try { chromeProc.windows[headonlyIndex2].index = 1; } catch (e) {}
+    try { if (headonlyIndex2 >= 0) chromeProc.windows[headonlyIndex2].index = 1; } catch (e) {}
     chromeProc.frontmost = true;
   } catch (e) { /* 忽略 */ }
 

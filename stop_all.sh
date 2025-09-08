@@ -52,5 +52,11 @@ osascript -e 'tell application "QuickTime Player" to quit'
 sleep 1
 killall "QuickTime Player" 2>/dev/null || true
 
+# 關閉 Terminal（所有終端機視窗與分頁）
+echo "正在關閉所有 Terminal 終端機..."
+osascript -e 'tell application "Terminal" to quit'
+sleep 1
+killall Terminal 2>/dev/null || true
+
 echo ""
 echo "所有相關程序已嘗試關閉。" 
