@@ -223,18 +223,29 @@ osascript -l JavaScript <<'JXA'
     return { x: Math.round(x), y: Math.round(y), w: Math.round(r.width), h: Math.round(r.height) };
   };
 
-  // 改為強制：左邊螢幕作為大螢幕、最右邊螢幕作為小螢幕
-  screens.sort((a,b) => a.x - b.x);
-  const leftMost = screens[0];
-  const rightMost = screens[screens.length - 1];
-  // 使用可見區域計算 AX 座標，避免超出螢幕（Dock/菜單列）
-  const largeAX = toAX({ x: leftMost.x, y: leftMost.y, width: leftMost.width, height: leftMost.height });
-  const smallAX = toAX({ x: rightMost.x, y: rightMost.y, width: rightMost.width, height: rightMost.height });
-  // 對可視區域再加上安全邊距，避免貼邊造成溢出
+  // 以「實際像素面積」挑選大/小螢幕（避免只按左右位置判斷導致錯置）
+  // 若面積相近，偏好 X 座標較小者為大螢幕
+  const byArea = screens.slice().sort((a, b) => b.pixelArea - a.pixelArea);
+  let largeScreen = byArea[0];
+  let smallScreen = byArea[byArea.length - 1];
+  if (screens.length >= 2) {
+    const a0 = byArea[0], a1 = byArea[1];
+    const relDiff = Math.abs(a0.pixelArea - a1.pixelArea) / Math.max(a0.pixelArea, a1.pixelArea);
+    if (relDiff < 0.01) {
+      // 面積幾乎相同 → 取更靠左者為大螢幕
+      largeScreen = (a0.x <= a1.x) ? a0 : a1;
+      smallScreen = (largeScreen === a0) ? a1 : a0;
+    }
+  }
+
+  // 使用可見區域計算 AX 座標，避免超出螢幕（Dock/選單列）
+  const largeAX = toAX({ x: largeScreen.x, y: largeScreen.y, width: largeScreen.width, height: largeScreen.height });
+  const smallAX = toAX({ x: smallScreen.x, y: smallScreen.y, width: smallScreen.width, height: smallScreen.height });
+  // 對可視區域加上安全邊距
   const safePad = 8;
-  const largeVisibleAXRaw = toAX({ x: leftMost.vx, y: leftMost.vy, width: leftMost.vw, height: leftMost.vh });
+  const largeVisibleAXRaw = toAX({ x: largeScreen.vx, y: largeScreen.vy, width: largeScreen.vw, height: largeScreen.vh });
   const largeVisibleAX = { x: largeVisibleAXRaw.x + safePad, y: largeVisibleAXRaw.y + safePad, w: largeVisibleAXRaw.w - safePad * 2, h: largeVisibleAXRaw.h - safePad * 2 };
-  const smallVisibleAXRaw = toAX({ x: rightMost.vx, y: rightMost.vy, width: rightMost.vw, height: rightMost.vh });
+  const smallVisibleAXRaw = toAX({ x: smallScreen.vx, y: smallScreen.vy, width: smallScreen.vw, height: smallScreen.vh });
   const smallVisibleAX = { x: smallVisibleAXRaw.x + safePad, y: smallVisibleAXRaw.y + safePad, w: smallVisibleAXRaw.w - safePad * 2, h: smallVisibleAXRaw.h - safePad * 2 };
 
   const sys = Application('System Events');
