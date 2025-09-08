@@ -466,15 +466,13 @@ osascript -l JavaScript <<'JXA'
   // 1) 將 Chrome 主視窗（非 headonly，網址以 localhost:5173 開頭且不含 headonly）放到左邊大螢幕
   // 先在左螢幕建立 Finder 錨點以鎖定目標空間
   anchorOnDisplay(largeVisibleAX);
+  // 將主畫面視窗設為前景，接著以前景視窗進行移動（避免跨 API 的索引不一致）
   focusChromeWindowBy((u) => /^https?:\/\/localhost:5173\b/.test(u) && !u.includes('headonly'));
-  const mainChromeIndex = findChromeWindowIndexByUrl((u) => /^https?:\/\/localhost:5173\b/.test(u) && !u.includes('headonly'));
-  if (mainChromeIndex >= 0) {
-    moveWindow('Google Chrome', largeVisibleAX, mainChromeIndex);
-  }
+  moveWindow('Google Chrome', largeVisibleAX);
   // 再保守縮小 96% 以避免任何邊界或縮放問題（針對目前前景視窗）
   try {
     const proc = sys.processes.byName('Google Chrome');
-    const win = (mainChromeIndex >= 0 ? proc.windows[mainChromeIndex] : proc.windows[0]);
+    const win = proc.windows[0]; // 已確保主畫面為前景
     const nx = largeVisibleAX.x;
     const ny = largeVisibleAX.y;
     const nw = Math.round(largeVisibleAX.w * 0.96);
@@ -487,7 +485,7 @@ osascript -l JavaScript <<'JXA'
       const wx = Number(pos[0]);
       if (wx < (largeVisibleAX.x - 20) || wx > (largeVisibleAX.x + largeVisibleAX.w + 20)) {
         anchorOnDisplay(largeVisibleAX);
-        moveWindow('Google Chrome', largeVisibleAX, (mainChromeIndex >= 0 ? mainChromeIndex : 0));
+        moveWindow('Google Chrome', largeVisibleAX);
         win.position = [nx, ny];
         win.size = [nw, nh];
       }
@@ -498,11 +496,10 @@ osascript -l JavaScript <<'JXA'
   const halves = verticalHalfRects(smallVisibleAX);
 
   // 2a) headonly Chrome 視窗 → 上半（先聚焦含 headonly 的視窗，再移動前景視窗）
+  // 先把 headonly 那個視窗設為前景，再移動前景視窗
+  anchorOnDisplay(smallVisibleAX);
   focusChromeWindowBy((u) => u.includes('headonly'));
-  const headonlyIndex = findChromeWindowIndexByUrl((u) => u.includes('headonly'));
-  if (headonlyIndex >= 0) {
-    moveWindow('Google Chrome', halves.top, headonlyIndex);
-  }
+  moveWindow('Google Chrome', halves.top);
 
   // 2b) Terminal → 下半（將所有 Terminal 視窗都移到下半，避免有前端視窗留在上半）
   try {
@@ -523,17 +520,19 @@ osascript -l JavaScript <<'JXA'
  
   // 2c) 再次將 headonly Chrome 聚焦並放置到上半，確保視覺上覆蓋 Terminal
   focusChromeWindowBy((u) => u.includes('headonly'));
-  const headonlyIndex2 = findChromeWindowIndexByUrl((u) => u.includes('headonly'));
-  if (headonlyIndex2 >= 0) {
-    moveWindow('Google Chrome', halves.top, headonlyIndex2);
-  }
+  moveWindow('Google Chrome', halves.top);
   try {
     const sys2 = Application('System Events');
     const chromeProc = sys2.processes.byName('Google Chrome');
     // 嘗試把 headonly 的那個視窗放到最前面
-    try { if (headonlyIndex2 >= 0) chromeProc.windows[headonlyIndex2].index = 1; } catch (e) {}
+    try { chromeProc.windows[0].index = 1; } catch (e) {}
     chromeProc.frontmost = true;
   } catch (e) { /* 忽略 */ }
+
+  // 最終保險：再次把主畫面視窗帶回左邊大螢幕，避免 Chrome 聚焦 headonly 後把主視窗帶回直立螢幕
+  anchorOnDisplay(largeVisibleAX);
+  focusChromeWindowBy((u) => /^https?:\/\/localhost:5173\b/.test(u) && !u.includes('headonly'));
+  moveWindow('Google Chrome', largeVisibleAX);
 
 })();
 JXA
