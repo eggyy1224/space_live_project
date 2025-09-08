@@ -21,6 +21,7 @@
 | `/api/scripts/execute` | POST | 執行指定腳本 |
 | `/api/scripts/status` | GET | 查看執行狀態 |
 | `/api/scripts/stop/{script_name}` | POST | 停止執行中的腳本 |
+| `/api/scripts/execute/random-yoga` | POST | 隨機執行瑜伽腳本，支援 `count` 參數 |
 
 ## 🎭 可用腳本
 
@@ -85,9 +86,12 @@ curl -X POST "http://localhost:8000/api/scripts/execute" \
   -H "Content-Type: application/json" \
   -d '{
     "script_name": "meta_self.sh",
-    "background": true
+    "background": true,
+    "args": ["--foo", "bar"]
   }'
 ```
+
+其中 `args` 陣列為可選，用於向腳本傳遞參數。
 
 **回應範例:**
 ```json
@@ -116,6 +120,17 @@ curl -X GET "http://localhost:8000/api/scripts/status"
 ```bash
 curl -X POST "http://localhost:8000/api/scripts/stop/meta_self.sh"
 ```
+
+### 5. 隨機播放瑜伽腳本
+```bash
+curl -X POST "http://localhost:8000/api/scripts/execute/random-yoga" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "count": 3
+  }'
+```
+
+上述範例將呼叫 `run_yoga_random_playlist.sh` 並播放 3 個隨機瑜伽腳本。
 
 **回應範例:**
 ```json
