@@ -55,8 +55,7 @@ emote() {
 bgm() { local URL="$1"; local VOL=${2:-0.25}; $CURL_POST "$BASE_URL/control/background-audio" -H "Content-Type: application/json" -d "{\"bgmUrl\": \"$URL\", \"bgmPlaying\": true, \"loop\": true, \"volume\": $VOL}" >/dev/null; }
 stop_bgm() { $CURL_POST "$BASE_URL/control/background-audio" -H "Content-Type: application/json" -d '{"bgmUrl":"","bgmPlaying":false}' >/dev/null; }
 
-cam_preset() { local NAME="$1"; local D=${2:-1.2}; $CURL_POST "$BASE_URL/control/camera/set-frontend-preset" -H "Content-Type: application/json" -d "{\"name\": \"$NAME\", \"duration\": $D}" >/dev/null; sleep $D; }
-cam_transition() { local P=${1:-0}; local Y=${2:-0}; local R=${3:-0}; local F=${4:-55}; local D=${5:-1.0}; $CURL_POST "$BASE_URL/control/camera/transition" -H "Content-Type: application/json" -d "{\"pitch\": $P, \"yaw\": $Y, \"roll\": $R, \"fov\": $F, \"duration\": $D}" >/dev/null; sleep $D; }
+## 鏡位相關操作已移除
 
 anim_char() { local ANIM="$1"; local SPEED=${2:-1.0}; local LOOP=${3:-true}; $CURL_POST "$BASE_URL/control/character/animation" -H "Content-Type: application/json" -d "{\"animation\": \"$ANIM\", \"loop\": $LOOP, \"speed\": $SPEED}" >/dev/null; }
 anim_mix() {
@@ -99,8 +98,7 @@ EMO_SINK=("relieved,grateful,serene" "serene,content,joyful" "grateful,content,s
 
 echo "=== 🧘 Space Yoga Teacher — Pulse Flow 開始 ==="
 
-$CURL_POST "$BASE_URL/control/broadcast" -H "Content-Type: application/json" -d '{"type":"director-state","payload":{"randomMode":false}}' >/dev/null || true
-cam_preset "head_close_up" 0.8
+## 已移除：關閉隨機鏡位與鏡位 preset 設定
 env_preset "studio" || true
 env_intensity 1.3 || true
 env_background false || true
@@ -111,7 +109,7 @@ char_position 0.0 8.0 -30.0
 anim_char "空體Action" 1.0 true
 
 # 開場：單一穩定推鏡（取消連續變焦）
-cam_transition -2 0 0 55 1.0
+## 已移除：鏡位過渡
 say_zh_en "這段，照脈動收束。" "This segment—ride the pulse to close." 2.8 "interested,hopeful,joyful" "$TTS_VOICE_DEFAULT" $TTS_SPEED_DEFAULT 1
 emote 1.4 "playful,amused,joyful"
 
@@ -124,7 +122,7 @@ for i in {1..6}; do
   # 微位移（取消每回合變焦與左右搖鏡）
   DX=$(rand_float -1.0 1.0 2); char_position "$DX" 8.0 -30.0
   # 在第三回合做一次有意義的推鏡以強化段落感
-  if (( i == 3 )); then cam_transition -3 0 0 52 1.0; fi
+  # 已移除：鏡位過渡（第 3 回合）
   # 表情 groove / impact 交替
   if (( i % 2 == 1 )); then EM=$(rand_choice EMO_GROOVE[@]); else EM=$(rand_choice EMO_IMPACT[@]); fi
   emote 1.2 "$EM"

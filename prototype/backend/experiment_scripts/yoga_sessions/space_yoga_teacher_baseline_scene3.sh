@@ -115,23 +115,7 @@ sfx() {
     -d "{\"url\": \"$URL\", \"volume\": $VOL, \"interrupt\": $INT}" >/dev/null
 }
 
-cam_preset() {
-  local NAME="$1"; local D=${2:-2.0}
-  echo ">> 鏡位 preset: $NAME ($D s)"
-  $CURL_POST "$BASE_URL/control/camera/set-frontend-preset" \
-    -H "Content-Type: application/json" \
-    -d "{\"name\": \"$NAME\", \"duration\": $D}" >/dev/null
-  sleep $D
-}
-
-cam_transition() {
-  local P=${1:-0}; local Y=${2:-0}; local R=${3:-0}; local F=${4:-55}; local D=${5:-2.0}
-  echo ">> 鏡位過渡: pitch=$P yaw=$Y roll=$R fov=$F ($D s)"
-  $CURL_POST "$BASE_URL/control/camera/transition" \
-    -H "Content-Type: application/json" \
-    -d "{\"pitch\": $P, \"yaw\": $Y, \"roll\": $R, \"fov\": $F, \"duration\": $D}" >/dev/null
-  sleep $D
-}
+## 鏡位相關操作已移除
 
 anim_char() {
   local ANIM="$1"; local SPEED=${2:-1.0}; local LOOP=${3:-true}
@@ -254,12 +238,12 @@ step_mix_random() {
 echo "=== 🧘 Space Yoga Teacher — Baseline Flow 開始 ==="
 
 # 關閉隨機鏡位（若前端無此狀態則忽略）
-$CURL_POST "$BASE_URL/control/broadcast" -H "Content-Type: application/json" -d '{"type":"director-state","payload":{"randomMode":false}}' >/dev/null || true
+## 已移除：關閉隨機鏡位（randomMode）
 
 ########################################
 # 初始：維持構圖與音場規則；短促進場
 ########################################
-cam_preset "head_close_up" 1.0
+## 已移除：鏡位 preset 設定
 env_preset "dawn" || true
 env_background false || true
 stop_bgm

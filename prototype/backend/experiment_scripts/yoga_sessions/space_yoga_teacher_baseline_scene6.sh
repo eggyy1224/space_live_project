@@ -63,8 +63,7 @@ bgm() { local URL="$1"; local VOL=${2:-0.2}; $CURL_POST "$BASE_URL/control/backg
 stop_bgm() { $CURL_POST "$BASE_URL/control/background-audio" -H "Content-Type: application/json" -d '{"bgmUrl":"","bgmPlaying":false}' >/dev/null; }
 sfx() { local URL="$1"; local VOL=${2:-0.06}; $CURL_POST "$BASE_URL/control/background-audio" -H "Content-Type: application/json" -d "{\"sfxUrl\": \"$URL\", \"volume\": $VOL}" >/dev/null; }
 
-cam_preset() { local NAME="$1"; local D=${2:-1.2}; $CURL_POST "$BASE_URL/control/camera/set-frontend-preset" -H "Content-Type: application/json" -d "{\"name\": \"$NAME\", \"duration\": $D}" >/dev/null; sleep $D; }
-cam_transition() { local P=${1:-0}; local Y=${2:-0}; local R=${3:-0}; local F=${4:-56}; local D=${5:-1.2}; $CURL_POST "$BASE_URL/control/camera/transition" -H "Content-Type: application/json" -d "{\"pitch\": $P, \"yaw\": $Y, \"roll\": $R, \"fov\": $F, \"duration\": $D}" >/dev/null; sleep $D; }
+## 鏡位相關操作已移除
 
 anim_char() { local ANIM="$1"; local SPEED=${2:-1.0}; local LOOP=${3:-true}; $CURL_POST "$BASE_URL/control/character/animation" -H "Content-Type: application/json" -d "{\"animation\": \"$ANIM\", \"loop\": $LOOP, \"speed\": $SPEED}" >/dev/null; }
 
@@ -169,10 +168,10 @@ EMO_AWE=("awe,hopeful,joyful" "surprised,awe,joyful")
 echo "=== 🧘 Space Yoga Teacher — Nebula Stillness 開始 ==="
 
 # 關閉隨機鏡位（若前端無此狀態則忽略）
-$CURL_POST "$BASE_URL/control/broadcast" -H "Content-Type: application/json" -d '{"type":"director-state","payload":{"randomMode":false}}' >/dev/null || true
+## 已移除：關閉隨機鏡位（randomMode）
 
 # 初始：黎明/夜色的靜定氛圍
-cam_preset "head_close_up" 1.0
+## 已移除：鏡位 preset 設定
 env_preset "dawn" || true
 env_intensity 0.85 || true
 env_background false || true
@@ -181,7 +180,7 @@ head_size 10.0
 char_scale 0.1
 char_position 0.0 8.0 -30.0
 anim_char "空體Action" 1.0 true
-cam_transition -4 0 0 56 1.2
+## 已移除：鏡位過渡
 
 # 開場短句（承上啟下）
 OPEN=$(shuf -e "${EMO_WARM[@]}" | head -n1 2>/dev/null || echo "serene,content,grateful")
@@ -221,7 +220,7 @@ for i in {1..5}; do
 done
 
 # 中段輕推鏡（可選）
-cam_transition -5 0 0 55 1.2
+## 已移除：鏡位過渡
 emote 1.4 "grateful,content,serene"
 
 # 收束：臥躺 → 靜停

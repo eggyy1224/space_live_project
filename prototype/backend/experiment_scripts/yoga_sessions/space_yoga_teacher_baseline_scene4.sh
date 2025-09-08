@@ -57,8 +57,7 @@ emote() {
 bgm() { local URL="$1"; local VOL=${2:-0.25}; $CURL_POST "$BASE_URL/control/background-audio" -H "Content-Type: application/json" -d "{\"bgmUrl\": \"$URL\", \"bgmPlaying\": true, \"loop\": true, \"volume\": $VOL}" >/dev/null; }
 stop_bgm() { $CURL_POST "$BASE_URL/control/background-audio" -H "Content-Type: application/json" -d '{"bgmUrl":"","bgmPlaying":false}' >/dev/null; }
 
-cam_preset() { local NAME="$1"; local D=${2:-1.5}; $CURL_POST "$BASE_URL/control/camera/set-frontend-preset" -H "Content-Type: application/json" -d "{\"name\": \"$NAME\", \"duration\": $D}" >/dev/null; sleep $D; }
-cam_transition() { local P=${1:-0}; local Y=${2:-0}; local R=${3:-0}; local F=${4:-55}; local D=${5:-1.2}; $CURL_POST "$BASE_URL/control/camera/transition" -H "Content-Type: application/json" -d "{\"pitch\": $P, \"yaw\": $Y, \"roll\": $R, \"fov\": $F, \"duration\": $D}" >/dev/null; sleep $D; }
+## 鏡位相關操作已移除
 
 anim_char() { local ANIM="$1"; local SPEED=${2:-1.0}; local LOOP=${3:-true}; $CURL_POST "$BASE_URL/control/character/animation" -H "Content-Type: application/json" -d "{\"animation\": \"$ANIM\", \"loop\": $LOOP, \"speed\": $SPEED}" >/dev/null; }
 anim_mix() {
@@ -106,8 +105,7 @@ EMO_SOFT=("grateful,content,serene" "relieved,grateful,serene" "serene,content,j
 echo "=== 🧘 Space Yoga Teacher — Zero-Gravity Flow 開始 ==="
 
 # 關閉隨機鏡位，切夜景 + 降強度 + 背景可見
-$CURL_POST "$BASE_URL/control/broadcast" -H "Content-Type: application/json" -d '{"type":"director-state","payload":{"randomMode":false}}' >/dev/null || true
-cam_preset "head_close_up" 1.0
+## 已移除：關閉隨機鏡位與鏡位 preset 設定
 env_preset "night" || true
 env_intensity 0.7 || true
 env_background true || true
@@ -123,7 +121,7 @@ say_zh_en "咱攏輕輕浮起，先攏呼吸的步調。" "We rise light—find 
 emote 1.6 "serene,awe,joyful"
 anim_mix "瑜珈動作7" 0.9 0.7 0.8 "additive" 1.5
 # 穩定鏡位：取消 yaw/roll 的大幅變化，僅做溫和推進
-cam_transition -4 0 0 58 1.4
+## 已移除：鏡位過渡
 
 # 主段：5 回合 — 旋轉、漂浮、縮放脈動，口令更完整
 for i in {1..5}; do
@@ -132,7 +130,7 @@ for i in {1..5}; do
   # 位置輕移（維持鏡位穩定，不再每回合轉動相機）
   DX=$(rand_float -1.0 1.0 2); char_position "$DX" 8.2 -37.8
   # 僅在中段做一次有意義的輕推鏡（pitch 輕微、FOV 微調）
-  if (( i == 3 )); then cam_transition -5 0 0 56 1.2; fi
+  # 已移除：鏡位過渡（第 3 回合）
   # 漂浮 + 瑜伽混合（隨機挑）
   MOVE=$(rand_choice YOGA_MOVES[@])
   anim_mix "$MOVE" 0.95 0.75 0.8 "additive" 1.55
@@ -154,7 +152,7 @@ char_visible false; sleep 0.25; char_visible true
 emote 1.8 "surprised,awe,joyful"
 
 # 收束：回正 — 低角度望上（語句更有情緒）
-cam_transition -10 0 0 56 1.4
+## 已移除：鏡位過渡
 say_zh_en "慢慢回正，心沉落，呼吸繼續。" "Return to center—let the heart settle, breath continues." 2.8 "grateful,content,serene" "$TTS_VOICE_DEFAULT" $TTS_SPEED_DEFAULT 1
 emote 2.4 "grateful,content,serene"
 

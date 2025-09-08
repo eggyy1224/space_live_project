@@ -119,7 +119,7 @@ EMO_COOL=("serene,content,relieved" "grateful,content,serene" "relieved,grateful
 echo "=== 🧘 Space Yoga Teacher — Meteor Burst Flow 開始 ==="
 
 # 固定鏡位，不搖鏡；安靜環境
-$CURL_POST "$BASE_URL/control/broadcast" -H "Content-Type: application/json" -d '{"type":"director-state","payload":{"randomMode":false}}' >/dev/null || true
+## 已移除：關閉隨機鏡位（randomMode）
 env_preset "studio" || true
 stop_bgm
 head_size 10.0

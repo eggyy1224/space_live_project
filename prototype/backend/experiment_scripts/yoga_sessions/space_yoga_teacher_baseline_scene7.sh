@@ -67,8 +67,7 @@ bgm() { local URL="$1"; local VOL=${2:-0.2}; $CURL_POST "$BASE_URL/control/backg
 stop_bgm() { $CURL_POST "$BASE_URL/control/background-audio" -H "Content-Type: application/json" -d '{"bgmUrl":"","bgmPlaying":false}' >/dev/null; }
 sfx() { local URL="$1"; local VOL=${2:-0.03}; $CURL_POST "$BASE_URL/control/background-audio" -H "Content-Type: application/json" -d "{\"sfxUrl\": \"$URL\", \"volume\": $VOL}" >/dev/null; }
 
-cam_preset() { local NAME="$1"; local D=${2:-1.0}; $CURL_POST "$BASE_URL/control/camera/set-frontend-preset" -H "Content-Type: application/json" -d "{\"name\": \"$NAME\", \"duration\": $D}" >/dev/null; sleep $D; }
-cam_transition() { local P=${1:-0}; local Y=${2:-0}; local R=${3:-0}; local F=${4:-56}; local D=${5:-1.0}; $CURL_POST "$BASE_URL/control/camera/transition" -H "Content-Type: application/json" -d "{\"pitch\": $P, \"yaw\": $Y, \"roll\": $R, \"fov\": $F, \"duration\": $D}" >/dev/null; sleep $D; }
+## 鏡位相關操作已移除
 
 anim_char() { local ANIM="$1"; local SPEED=${2:-1.0}; local LOOP=${3:-true}; $CURL_POST "$BASE_URL/control/character/animation" -H "Content-Type: application/json" -d "{\"animation\": \"$ANIM\", \"loop\": $LOOP, \"speed\": $SPEED}" >/dev/null; }
 
@@ -150,10 +149,10 @@ LINES_OUTRO=(
 echo "=== 🧘 Space Yoga Teacher — Spicy Nebula Comedy 開始 ==="
 
 # 關閉隨機鏡位
-$CURL_POST "$BASE_URL/control/broadcast" -H "Content-Type: application/json" -d '{"type":"director-state","payload":{"randomMode":false}}' >/dev/null || true
+## 已移除：關閉隨機鏡位（randomMode）
 
 # 初始：夜景 + 輕 ambience
-cam_preset "head_close_up" 0.8
+## 已移除：鏡位 preset 設定
 env_preset "night" || true
 env_intensity 0.9 || true
 env_background false || true
@@ -162,7 +161,7 @@ head_size 10.0
 char_scale 0.1
 char_position 0.0 8.2 -33.0
 anim_char "空體Action" 3.2 true
-cam_transition -6 0 0 58 1.0
+## 已移除：鏡位過渡
 sfx "/audio/effects/spaceship_ambience_02.mp3" 0.03
 
 # 開場台詞
@@ -244,7 +243,7 @@ for i in {1..2}; do
 done
 
 # 收尾：回艙體（不放 BGM）
-cam_transition -8 0 0 56 1.0
+## 已移除：鏡位過渡
 char_position 0.0 8.0 -33.0
 emote 1.6 "grateful,content,serene"
 say "$(rand_choice LINES_OUTRO[@])" 2.8 "playful,grateful,content" "$TTS_VOICE_DEFAULT" $TTS_SPEED_DEFAULT 1

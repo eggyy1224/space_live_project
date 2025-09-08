@@ -121,7 +121,7 @@ EMO_SHARP=("playful,amused,joyful" "awe,hopeful,joyful")
 echo "=== 🧘 Space Yoga Teacher — Stardust Echo Flow 開始 ==="
 
 # 固定鏡位，不搖鏡；安靜環境
-$CURL_POST "$BASE_URL/control/broadcast" -H "Content-Type: application/json" -d '{"type":"director-state","payload":{"randomMode":false}}' >/dev/null || true
+## 已移除：關閉隨機鏡位（randomMode）
 env_preset "dawn" || true
 stop_bgm
 head_size 10.0
