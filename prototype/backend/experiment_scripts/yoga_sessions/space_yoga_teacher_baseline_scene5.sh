@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 《Space Yoga Teacher — Pulse Flow：Scene 5》
+# 《Space Yoga Teacher — Pulse Flow》
 # 以「脈動 × 定格」結束整輪：變焦、縮放、定格與再啟；語句更短，表情更豐富。
 # 執行：bash prototype/backend/experiment_scripts/yoga_sessions/space_yoga_teacher_baseline_scene5.sh
 
@@ -10,7 +10,7 @@ BASE_URL="http://localhost:8000/api"
 CURL_POST="curl -s -f -X POST"
 CURL_POST_NF="curl -s -X POST"
 
-# --- TTS 設定（回到 Scene 3 樣態）---
+# --- TTS 設定（自然樣態）---
 TTS_INSTRUCTION="Taiwanese Hokkien, Han characters, natural, warm, friendly, accurate tones; avoid Mandarin accent"
 TTS_VOICE_DEFAULT="sage"
 TTS_SPEED_DEFAULT=0.5
@@ -84,7 +84,7 @@ head_size() { local S=${1:-10.0}; $CURL_POST "$BASE_URL/control/head-size" -H "C
 char_scale() { local S=${1:-0.1}; $CURL_POST "$BASE_URL/control/character/scale" -H "Content-Type: application/json" -d "{\"scale\": $S}" >/dev/null; }
 char_position() { local X=${1:-0.0}; local Y=${2:-8.0}; local Z=${3:-30.0}; $CURL_POST "$BASE_URL/control/character/position" -H "Content-Type: application/json" -d "{\"position\": [$X,$Y,$Z]}" >/dev/null; }
 
-# 中英併行語句（與 Scene 3 保持一致風格）
+# 中英併行語句（保持一致風格）
 say_zh_en() {
   # 用法: say_zh_en "中文" "English" 時長(秒) "emo1,emo2,emo3" [voice] [speed] [force]
   local ZH="$1"; local EN="$2"; local DUR=${3:-2.6}; local EMO=${4:-"neutral,interested,confident"}
@@ -97,7 +97,7 @@ EMO_IMPACT=("awe,triumphant,joyful" "surprised,awe,joyful" "determined,proud,tri
 EMO_GROOVE=("playful,amused,joyful" "smug,playful,joyful" "interested,playful,joyful")
 EMO_SINK=("relieved,grateful,serene" "serene,content,joyful" "grateful,content,serene")
 
-echo "=== 🧘 Space Yoga Teacher — Pulse Flow：Scene 5 開始 ==="
+echo "=== 🧘 Space Yoga Teacher — Pulse Flow 開始 ==="
 
 $CURL_POST "$BASE_URL/control/broadcast" -H "Content-Type: application/json" -d '{"type":"director-state","payload":{"randomMode":false}}' >/dev/null || true
 cam_preset "head_close_up" 0.8
@@ -112,7 +112,7 @@ anim_char "空體Action" 1.0 true
 
 # 開場：單一穩定推鏡（取消連續變焦）
 cam_transition -2 0 0 55 1.0
-say_zh_en "最後一幕，照脈動收束。" "Final scene—ride the pulse to close." 2.8 "interested,hopeful,joyful" "$TTS_VOICE_DEFAULT" $TTS_SPEED_DEFAULT 1
+say_zh_en "這段，照脈動收束。" "This segment—ride the pulse to close." 2.8 "interested,hopeful,joyful" "$TTS_VOICE_DEFAULT" $TTS_SPEED_DEFAULT 1
 emote 1.4 "playful,amused,joyful"
 
 # 主段：6 回合 — 定格(Freeze) × 動作 × 再啟
@@ -147,4 +147,4 @@ anim_char "漂浮" 0.9 true; emote 1.6 "serene,hopeful,joyful"
 say_zh_en "感謝共下流動，下擺見。" "Thank you for flowing—see you next time." 2.8 "grateful,content,serene" "$TTS_VOICE_DEFAULT" $TTS_SPEED_DEFAULT 1
 
 # 收束（不播放 BGM）
-echo "=== ✅ Scene 5 結束 ==="
+echo "=== ✅ Pulse Flow 結束 ==="

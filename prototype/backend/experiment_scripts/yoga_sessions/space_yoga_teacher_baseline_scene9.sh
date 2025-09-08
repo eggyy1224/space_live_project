@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 《Space Yoga Teacher — Gravity Drift Balance：Scene 9》
+# 《Space Yoga Teacher — Gravity Drift Balance》
 # 方向：交替重力與漂浮。無 BGM，僅安靜太空艙 ambience。
 # 重點：
 # - 重力段基底慢、過渡長；漂浮段基底快、過渡短
@@ -136,7 +136,7 @@ _refill_bag() { _BAG=("${YOGA_MOVES[@]}"); for ((i=${#_BAG[@]}-1;i>0;i--)); do j
 next_yoga_move() { (( ${#_BAG[@]}==0 )) && _refill_bag; local pick=${_BAG[0]}; _BAG=(${_BAG[@]:1}); if [[ "$pick" == "$_LAST" && ${#_BAG[@]}>0 ]]; then local swap=${_BAG[0]}; _BAG[0]="$pick"; pick="$swap"; fi; _LAST="$pick"; echo "$pick"; }
 
 # === 場景開始 ===
-echo "=== 🧘 Space Yoga Teacher — Gravity Drift Balance：Scene 9 開始 ==="
+echo "=== 🧘 Space Yoga Teacher — Gravity Drift Balance 開始 ==="
 
 $CURL_POST "$BASE_URL/control/broadcast" -H "Content-Type: application/json" -d '{"type":"director-state","payload":{"randomMode":false}}' >/dev/null || true
 
@@ -151,7 +151,7 @@ char_position 0.0 8.0 -30.0
 anim_char "空體Action" 2.0 true
 sfx "/audio/effects/spaceship_ambience_02.mp3" 0.03
 
-say_with_inst "第九幕——重力漂浮交錯。\nGravity and drift, finding balance." 2.8 "serene,content,relieved" "$VOICE_HEAVY" "$(rand_float $SPEED_HEAVY_MIN $SPEED_HEAVY_MAX 2)" 1 "$TTS_INSTR_HEAVY"
+say_with_inst "重力漂浮交錯。\nGravity and drift, finding balance." 2.8 "serene,content,relieved" "$VOICE_HEAVY" "$(rand_float $SPEED_HEAVY_MIN $SPEED_HEAVY_MAX 2)" 1 "$TTS_INSTR_HEAVY"
 emote 1.2 "serene,content,relieved"
 
 for i in {1..4}; do
@@ -183,4 +183,4 @@ char_position 0.0 8.0 -30.0
 emote 1.6 "grateful,content,serene"
 say_with_inst "重與輕之間，身心找到軸心。\nBetween weight and drift, the center holds." 2.8 "grateful,content,serene" "$VOICE_HEAVY" "$(rand_float $SPEED_HEAVY_MIN $SPEED_HEAVY_MAX 2)" 1 "$TTS_INSTR_HEAVY"
 
-echo "=== ✅ Scene 9 結束（安靜氛圍，無 BGM） ==="
+echo "=== ✅ Gravity Drift Balance 結束（安靜氛圍，無 BGM） ==="

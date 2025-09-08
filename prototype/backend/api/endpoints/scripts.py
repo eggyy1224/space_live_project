@@ -6,6 +6,8 @@ import subprocess
 import asyncio
 from pathlib import Path
 from utils.logger import logger
+import threading
+from services.physical_light_control import PhysicalLightControlService
 
 router = APIRouter()
 
@@ -46,6 +48,39 @@ class ScriptExecutionResponse(BaseModel):
 
 # 儲存正在執行的腳本狀態
 running_scripts: Dict[str, subprocess.Popen] = {}
+
+# 物理燈條控制：只控制通道 1-3（透過 set_brightness 同步套用），不處理招牌燈（channel 0）
+_light_service = PhysicalLightControlService()
+_active_scripts_count = 0
+_active_scripts_lock = threading.Lock()
+
+def _on_script_start_light():
+    global _active_scripts_count
+    try:
+        with _active_scripts_lock:
+            was_zero = (_active_scripts_count == 0)
+            _active_scripts_count += 1
+        if was_zero:
+            logger.info("開啟物理燈條（腳本開始）")
+            # 全亮（僅 1-3 通道）
+            _light_service.set_brightness(65535)
+    except Exception as e:
+        logger.error(f"開啟燈條時發生錯誤: {e}")
+
+def _on_script_end_light():
+    global _active_scripts_count
+    try:
+        should_turn_off = False
+        with _active_scripts_lock:
+            if _active_scripts_count > 0:
+                _active_scripts_count -= 1
+            if _active_scripts_count == 0:
+                should_turn_off = True
+        if should_turn_off:
+            logger.info("關閉物理燈條（所有腳本結束）")
+            _light_service.set_brightness(0)
+    except Exception as e:
+        logger.error(f"關閉燈條時發生錯誤: {e}")
 
 @router.get("/scripts/list")
 async def list_registered_scripts():
@@ -142,7 +177,12 @@ async def execute_script(request: ScriptExecutionRequest, background_tasks: Back
             )
         else:
             # 同步執行（等待完成）
-            result = await run_script_sync(script_path, script_name)
+            # 腳本開始：開燈；腳本結束：關燈（僅在所有腳本都結束時）
+            _on_script_start_light()
+            try:
+                result = await run_script_sync(script_path, script_name)
+            finally:
+                _on_script_end_light()
             return ScriptExecutionResponse(
                 success=result["success"],
                 message=result["message"],
@@ -335,9 +375,11 @@ def run_script_background(script_path: Path, script_name: str):
     try:
         # 使腳本可執行
         os.chmod(script_path, 0o755)
-        
+
         logger.info(f"開始背景執行腳本: {script_name}")
-        
+        # 腳本開始：開燈
+        _on_script_start_light()
+
         # 啟動進程
         process = subprocess.Popen(
             ["bash", str(script_path)],
@@ -355,7 +397,7 @@ def run_script_background(script_path: Path, script_name: str):
         # 從執行列表中移除
         if script_name in running_scripts:
             del running_scripts[script_name]
-        
+
         if process.returncode == 0:
             logger.info(f"背景腳本 {script_name} 執行完成")
         else:
@@ -366,4 +408,7 @@ def run_script_background(script_path: Path, script_name: str):
         logger.error(f"背景執行腳本時發生異常: {str(e)}")
         # 確保從執行列表中移除
         if script_name in running_scripts:
-            del running_scripts[script_name] 
+            del running_scripts[script_name]
+    finally:
+        # 腳本結束：關燈（僅在所有腳本都結束時）
+        _on_script_end_light()

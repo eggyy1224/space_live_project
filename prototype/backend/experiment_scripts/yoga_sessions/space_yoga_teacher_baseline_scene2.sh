@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# 《Space Yoga Teacher — Baseline Flow：Scene 2》
-# 延續第一幕的節奏，加入輕微變化；規則維持：瑜伽進行期間不放 BGM，結束後才播放同一首背景音樂。
+# 《Space Yoga Teacher — Baseline Flow》
+# 延續前段的節奏，加入輕微變化；規則維持：瑜伽進行期間不放 BGM，結束後才播放同一首背景音樂。
 # 執行：bash prototype/backend/experiment_scripts/yoga_sessions/space_yoga_teacher_baseline_scene2.sh
 
 set -euo pipefail
@@ -15,7 +15,7 @@ TTS_INSTRUCTION="Taiwanese Hokkien, Han characters, natural, warm, friendly, acc
 TTS_VOICE_DEFAULT="sage"
 TTS_SPEED_DEFAULT=0.5
 
-# TTS 節流/降載參數（延續第一幕設定）
+# TTS 節流/降載參數（延續基準設定）
 TTS_EVERY_N=3
 TTS_COOLDOWN=5
 __SAY_COUNT=0
@@ -187,7 +187,7 @@ say_zh_en() {
   say "$ZH\n$EN" "$DUR" "$EMO" "$VOICE" "$SPEED" "$FORCE"
 }
 
-# 可選瑜珈動作池（與第一幕一致）
+# 可選瑜珈動作池（基準）
 YOGA_MOVES=(
   "瑜珈動作1" "瑜珈動作2" "瑜珈動作3" "瑜珈動作4" "瑜珈動作5"
   "瑜珈動作6" "瑜珈動作7" "瑜珈動作8" "瑜珈動作9" "瑜珈動作10"
@@ -197,7 +197,7 @@ YOGA_MOVES=(
 
 X_CHOICES=(-1.4 -1.2 -0.8 0 0.8 1.2 1.4)
 
-# 節奏微調（Scene 2 輕微變化：基底稍慢、瑜伽稍穩）
+# 節奏微調（輕微變化：基底稍慢、瑜伽稍穩）
 BLEND_MODE="additive"
 TDUR=0.6
 BASE_SPEED_MIN=1.7
@@ -246,7 +246,7 @@ step_mix_random() {
   anim_mix "$MOVE" "$W" "$YOGASPD" "$TDUR" "$BLEND_MODE" "$BASESPD"
 }
 
-echo "=== 🧘 Space Yoga Teacher — Baseline Flow：Scene 2 開始 ==="
+echo "=== 🧘 Space Yoga Teacher — Baseline Flow 開始 ==="
 
 # 關閉隨機鏡位
 $CURL_POST "$BASE_URL/control/broadcast" -H "Content-Type: application/json" -d '{"type":"director-state","payload":{"randomMode":false}}' >/dev/null || true
@@ -271,7 +271,7 @@ emote 2.0 "$OPEN_SEQ"
 sleep 0.8
 
 ########################################
-# 瑜伽段落（Scene 2）：每段 = 動作 4.2s +（交替）短句/表情 2.6–3.2s + 停頓 1.0s
+# 瑜珈段落：每段 = 動作 4.2s +（交替）短句/表情 2.6–3.2s + 停頓 1.0s
 ########################################
 for i in {1..6}; do
   X=$(rand_choice X_CHOICES[@])
@@ -326,10 +326,9 @@ sleep 1.0
 TAIL_SEQ=$(rand_choice EMO_PLAYFUL[@])
 emote 3.0 "$TAIL_SEQ"
 sleep 0.6
-say_zh_en "第二幕完成，喝口水，休息一下。" "Scene two complete—sip water and rest." 2.6 "happy,content,proud" "$TTS_VOICE_DEFAULT" $TTS_SPEED_DEFAULT 1
+say_zh_en "這段完成，喝口水，休息一下。" "Segment complete—sip water and rest." 2.6 "happy,content,proud" "$TTS_VOICE_DEFAULT" $TTS_SPEED_DEFAULT 1
 sleep 0.5
 
 # 瑜伽結束後才播放相同 BGM（不更換曲目）
 bgm "/audio/BGM/space_live_country_theme1.mp3" 0.25
-echo "=== ✅ Space Yoga Teacher — Baseline Flow：Scene 2 結束 ==="
-
+echo "=== ✅ Space Yoga Teacher — Baseline Flow 結束 ==="

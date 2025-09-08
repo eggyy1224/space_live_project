@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 《Space Yoga Teacher — Zero-Gravity Flow：Scene 4》
+# 《Space Yoga Teacher — Zero-Gravity Flow》
 # 更自由的零重力瑜伽：旋轉、漂浮、縮放脈動；語句極短；情緒更豐富。
 # 執行：bash prototype/backend/experiment_scripts/yoga_sessions/space_yoga_teacher_baseline_scene4.sh
 
@@ -10,7 +10,7 @@ BASE_URL="http://localhost:8000/api"
 CURL_POST="curl -s -f -X POST"
 CURL_POST_NF="curl -s -X POST"
 
-# --- TTS 設定（回到 Scene 3 樣態）---
+# --- TTS 設定（自然樣態）---
 TTS_INSTRUCTION="Taiwanese Hokkien, Han characters, natural, warm, friendly, accurate tones; avoid Mandarin accent"
 TTS_VOICE_DEFAULT="sage"
 TTS_SPEED_DEFAULT=0.5
@@ -88,7 +88,7 @@ char_scale() { local S=${1:-0.1}; $CURL_POST "$BASE_URL/control/character/scale"
 char_position() { local X=${1:-0.0}; local Y=${2:-8.0}; local Z=${3:-30.0}; $CURL_POST "$BASE_URL/control/character/position" -H "Content-Type: application/json" -d "{\"position\": [$X,$Y,$Z]}" >/dev/null; }
 char_visible() { local V=${1:-true}; $CURL_POST "$BASE_URL/control/character/visibility" -H "Content-Type: application/json" -d "{\"visible\": $V}" >/dev/null; }
 
-# 中英併行語句（與 Scene 3 保持一致風格）
+# 中英併行語句（保持一致風格）
 say_zh_en() {
   # 用法: say_zh_en "中文" "English" 時長(秒) "emo1,emo2,emo3" [voice] [speed] [force]
   local ZH="$1"; local EN="$2"; local DUR=${3:-2.6}; local EMO=${4:-"neutral,interested,confident"}
@@ -103,7 +103,7 @@ EMO_FLOAT=("serene,hopeful,joyful" "serene,awe,joyful" "serene,interested,awe")
 EMO_PULSE=("determined,proud,triumphant" "interested,determined,proud" "awe,proud,triumphant")
 EMO_SOFT=("grateful,content,serene" "relieved,grateful,serene" "serene,content,joyful")
 
-echo "=== 🧘 Space Yoga Teacher — Zero-Gravity Flow：Scene 4 開始 ==="
+echo "=== 🧘 Space Yoga Teacher — Zero-Gravity Flow 開始 ==="
 
 # 關閉隨機鏡位，切夜景 + 降強度 + 背景可見
 $CURL_POST "$BASE_URL/control/broadcast" -H "Content-Type: application/json" -d '{"type":"director-state","payload":{"randomMode":false}}' >/dev/null || true
@@ -118,7 +118,7 @@ char_position 0.0 8.0 -38.0
 anim_char "空體Action" 1.0 true
 sleep 0.8
 
-# 開場：回到 Scene 3 較自然的語句
+# 開場：自然的語句
 say_zh_en "咱攏輕輕浮起，先攏呼吸的步調。" "We rise light—find a steady rhythm." 2.8 "serene,interested,content" "$TTS_VOICE_DEFAULT" $TTS_SPEED_DEFAULT 1
 emote 1.6 "serene,awe,joyful"
 anim_mix "瑜珈動作7" 0.9 0.7 0.8 "additive" 1.5
@@ -159,4 +159,4 @@ say_zh_en "慢慢回正，心沉落，呼吸繼續。" "Return to center—let t
 emote 2.4 "grateful,content,serene"
 
 # 結束（不播放 BGM）
-echo "=== ✅ Scene 4 結束 ==="
+echo "=== ✅ Zero-Gravity Flow 結束 ==="

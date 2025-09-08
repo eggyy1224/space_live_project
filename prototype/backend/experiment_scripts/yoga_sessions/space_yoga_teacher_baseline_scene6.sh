@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 《Space Yoga Teacher — Nebula Stillness：Scene 6》
+# 《Space Yoga Teacher — Nebula Stillness》
 # 方向：星雲靜定。以極穩的鏡頭與慢速動作，營造「靜中有動」。
 # 規則：瑜伽進行期間不放 BGM；僅在段落邊界給極輕環境音效提示；結尾不播 BGM。
 # 執行：bash prototype/backend/experiment_scripts/yoga_sessions/space_yoga_teacher_baseline_scene6.sh
@@ -166,7 +166,7 @@ EMO_WARM=("serene,interested,content" "serene,content,grateful")
 EMO_STILL=("serene,content,grateful" "grateful,content,serene")
 EMO_AWE=("awe,hopeful,joyful" "surprised,awe,joyful")
 
-echo "=== 🧘 Space Yoga Teacher — Nebula Stillness：Scene 6 開始 ==="
+echo "=== 🧘 Space Yoga Teacher — Nebula Stillness 開始 ==="
 
 # 關閉隨機鏡位（若前端無此狀態則忽略）
 $CURL_POST "$BASE_URL/control/broadcast" -H "Content-Type: application/json" -d '{"type":"director-state","payload":{"randomMode":false}}' >/dev/null || true
@@ -185,7 +185,7 @@ cam_transition -4 0 0 56 1.2
 
 # 開場短句（承上啟下）
 OPEN=$(shuf -e "${EMO_WARM[@]}" | head -n1 2>/dev/null || echo "serene,content,grateful")
-say_zh_en "第六幕——星雲靜定。細看一息一動。" "Scene six—nebula stillness, one breath, subtle move." 3.0 "$OPEN" "$TTS_VOICE_DEFAULT" $TTS_SPEED_DEFAULT 1
+say_zh_en "星雲靜定。細看一息一動。" "Nebula stillness—one breath, subtle move." 3.0 "$OPEN" "$TTS_VOICE_DEFAULT" $TTS_SPEED_DEFAULT 1
 emote 1.6 "$OPEN"
 # 僅保留安靜的太空艙環境音，音量極低
 sfx "/audio/effects/spaceship_ambience_02.mp3" 0.03
@@ -230,4 +230,4 @@ anim_char "臥躺" 1.0 true
 emote 2.0 "relieved,grateful,serene"
 say_zh_en "收心歸靜，呼吸仍在。" "Return to quiet—the breath remains." 2.8 "grateful,content,serene" "$TTS_VOICE_DEFAULT" $TTS_SPEED_DEFAULT 1
 
-echo "=== ✅ Scene 6 結束（不播放 BGM） ==="
+echo "=== ✅ Nebula Stillness 結束（不播放 BGM） ==="

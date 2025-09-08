@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 《Space Yoga Teacher — Solar Breeze Cooldown：Scene 10》
+# 《Space Yoga Teacher — Solar Breeze Cooldown》
 # 方向：晨光與太陽風收束。柔和 BGM，沉穩結尾。
 # 重點：
 # - 全程緩慢動作與漂浮感
@@ -120,7 +120,7 @@ _refill_bag() { _BAG=("${YOGA_MOVES[@]}"); for ((i=${#_BAG[@]}-1;i>0;i--)); do j
 next_yoga_move() { (( ${#_BAG[@]}==0 )) && _refill_bag; local pick=${_BAG[0]}; _BAG=(${_BAG[@]:1}); if [[ "$pick" == "$_LAST" && ${#_BAG[@]}>0 ]]; then local swap=${_BAG[0]}; _BAG[0]="$pick"; pick="$swap"; fi; _LAST="$pick"; echo "$pick"; }
 
 # === 場景開始 ===
-echo "=== 🧘 Space Yoga Teacher — Solar Breeze Cooldown：Scene 10 開始 ==="
+echo "=== 🧘 Space Yoga Teacher — Solar Breeze Cooldown 開始 ==="
 
 $CURL_POST "$BASE_URL/control/broadcast" -H "Content-Type: application/json" -d '{"type":"director-state","payload":{"randomMode":false}}' >/dev/null || true
 
@@ -135,7 +135,7 @@ char_scale 0.1
 char_position 0.0 8.0 -30.0
 anim_char "空體Action" 1.8 true
 
-say_with_inst "第十幕——太陽風收束，準備回艙。\nSolar breeze cools us, return to vessel." 3.0 "serene,content,relieved" "$VOICE_SOFT" "$(rand_float $SPEED_SOFT_MIN $SPEED_SOFT_MAX 2)" 1 "$TTS_INSTR_SOFT"
+say_with_inst "太陽風收束，準備回艙。\nSolar breeze cools us, return to vessel." 3.0 "serene,content,relieved" "$VOICE_SOFT" "$(rand_float $SPEED_SOFT_MIN $SPEED_SOFT_MAX 2)" 1 "$TTS_INSTR_SOFT"
 emote 1.6 "serene,content,relieved"
 
 for i in {1..3}; do
@@ -155,4 +155,4 @@ emote 2.0 "grateful,content,serene"
 say_soft_zh_en "今天的航行結束，身心都輕。" "Voyage complete, body and mind light." 3.0 "grateful,content,serene"
 stop_bgm
 
-echo "=== ✅ Scene 10 結束（柔和收束） ==="
+echo "=== ✅ Solar Breeze Cooldown 結束（柔和收束） ==="

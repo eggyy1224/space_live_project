@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 《Space Yoga Teacher — Comet Interval Flow：Scene 8》
+# 《Space Yoga Teacher — Comet Interval Flow》
 # 方向：彗星間歇（爆發 × 回復交替）。鏡位穩定、無 BGM、僅安靜太空艙 ambience。
 # 重點：
 # - 快慢強烈對比（base 與瑜伽速度成對調），過渡時長亦對比（短/長）
@@ -135,7 +135,7 @@ _BAG=(); _LAST=""
 _refill_bag() { _BAG=("${YOGA_MOVES[@]}"); for ((i=${#_BAG[@]}-1;i>0;i--)); do j=$((RANDOM%(i+1))); tmp=${_BAG[i]}; _BAG[i]=${_BAG[j]}; _BAG[j]=$tmp; done; }
 next_yoga_move() { (( ${#_BAG[@]}==0 )) && _refill_bag; local pick=${_BAG[0]}; _BAG=(${_BAG[@]:1}); if [[ "$pick" == "$_LAST" && ${#_BAG[@]}>0 ]]; then local swap=${_BAG[0]}; _BAG[0]="$pick"; pick="$swap"; fi; _LAST="$pick"; echo "$pick"; }
 
-echo "=== 🧘 Space Yoga Teacher — Comet Interval Flow：Scene 8 開始 ==="
+echo "=== 🧘 Space Yoga Teacher — Comet Interval Flow 開始 ==="
 
 $CURL_POST "$BASE_URL/control/broadcast" -H "Content-Type: application/json" -d '{"type":"director-state","payload":{"randomMode":false}}' >/dev/null || true
 
@@ -152,7 +152,7 @@ anim_char "空體Action" 2.2 true
 sfx "/audio/effects/spaceship_ambience_02.mp3" 0.03
 
 # 導語（平靜語氣）
-say_with_inst "第八幕——彗星間歇。快爆一段，慢回一段。\nComet intervals—burst, then recover." 2.8 "serene,content,relieved" "$VOICE_COOL" "$(rand_float $SPEED_COOL_MIN $SPEED_COOL_MAX 2)" 1 "$TTS_INSTR_COOL"
+say_with_inst "彗星間歇。快爆一段，慢回一段。\nComet intervals—burst, then recover." 2.8 "serene,content,relieved" "$VOICE_COOL" "$(rand_float $SPEED_COOL_MIN $SPEED_COOL_MAX 2)" 1 "$TTS_INSTR_COOL"
 emote 1.2 "serene,content,relieved"
 
 # 主段：6 回合（爆發×回復 交替）
@@ -191,4 +191,4 @@ char_position 0.0 8.0 -30.0
 emote 1.6 "grateful,content,serene"
 say_with_inst "完成——速度對比，心猶穩。\nDone—contrast held, center steady." 2.8 "grateful,content,serene" "$VOICE_COOL" "$(rand_float $SPEED_COOL_MIN $SPEED_COOL_MAX 2)" 1 "$TTS_INSTR_COOL"
 
-echo "=== ✅ Scene 8 結束（安靜氛圍，無 BGM） ==="
+echo "=== ✅ Comet Interval Flow 結束（安靜氛圍，無 BGM） ==="

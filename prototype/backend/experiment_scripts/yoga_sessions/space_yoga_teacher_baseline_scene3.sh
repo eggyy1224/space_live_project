@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# 《Space Yoga Teacher — Baseline Flow：Scene 3》
-# 承接前兩幕，第三幕以「穩定節奏 × 更清晰口令」作為收束；
+# 《Space Yoga Teacher — Baseline Flow》
+# 承接前段，以「穩定節奏 × 更清晰口令」作為收束；
 # 規則維持：瑜伽進行期間不放 BGM，結束後才播放同一首背景音樂。
 # 執行：bash prototype/backend/experiment_scripts/yoga_sessions/space_yoga_teacher_baseline_scene3.sh
 
@@ -16,7 +16,7 @@ TTS_INSTRUCTION="Taiwanese Hokkien, Han characters, natural, warm, friendly, acc
 TTS_VOICE_DEFAULT="sage"
 TTS_SPEED_DEFAULT=0.5
 
-# TTS 節流/降載參數（承接前兩幕設定）
+# TTS 節流/降載參數（承接前段設定）
 TTS_EVERY_N=3
 TTS_COOLDOWN=5
 __SAY_COUNT=0
@@ -191,7 +191,7 @@ say_zh_en() {
   say "$ZH\n$EN" "$DUR" "$EMO" "$VOICE" "$SPEED" "$FORCE"
 }
 
-# 瑜珈動作池（與前兩幕一致）
+# 瑜珈動作池（基準）
 YOGA_MOVES=(
   "瑜珈動作1" "瑜珈動作2" "瑜珈動作3" "瑜珈動作4" "瑜珈動作5"
   "瑜珈動作6" "瑜珈動作7" "瑜珈動作8" "瑜珈動作9" "瑜珈動作10"
@@ -199,10 +199,10 @@ YOGA_MOVES=(
   "瑜珈動作16" "瑜珈動作17" "瑜珈動作18" "瑜珈動作19" "瑜珈動作20"
 )
 
-# Scene 3 輕微收束：位置變化更集中
+# 輕微收束：位置變化更集中
 X_CHOICES=(-1.2 -1.0 -0.8 0 0.8 1.0 1.2)
 
-# 節奏（Scene 3：收束但不鬆散）
+# 節奏（收束但不鬆散）
 BLEND_MODE="additive"
 TDUR=0.6
 BASE_SPEED_MIN=1.85
@@ -251,7 +251,7 @@ step_mix_random() {
   anim_mix "$MOVE" "$W" "$YOGASPD" "$TDUR" "$BLEND_MODE" "$BASESPD"
 }
 
-echo "=== 🧘 Space Yoga Teacher — Baseline Flow：Scene 3 開始 ==="
+echo "=== 🧘 Space Yoga Teacher — Baseline Flow 開始 ==="
 
 # 關閉隨機鏡位（若前端無此狀態則忽略）
 $CURL_POST "$BASE_URL/control/broadcast" -H "Content-Type: application/json" -d '{"type":"director-state","payload":{"randomMode":false}}' >/dev/null || true
@@ -271,12 +271,12 @@ sleep 1.0
 
 # 開場短句（承先啟後）
 OPEN_SEQ=$(rand_choice EMO_WARMUP[@])
-say "第三幕——穩住呼吸，慢慢收束。Breathe steady—we gather and seal." 3.0 "$OPEN_SEQ" "$TTS_VOICE_DEFAULT" $TTS_SPEED_DEFAULT 1
+say "穩住呼吸，慢慢收束。Breathe steady—we gather and seal." 3.0 "$OPEN_SEQ" "$TTS_VOICE_DEFAULT" $TTS_SPEED_DEFAULT 1
 emote 1.8 "$OPEN_SEQ"
 sleep 0.8
 
 ########################################
-# 瑜伽段落（Scene 3）：每段 = 動作 4.0–4.4s +（交替）短句/表情 2.6–3.2s + 停頓 0.9–1.1s
+# 瑜珈段落：每段 = 動作 4.0–4.4s +（交替）短句/表情 2.6–3.2s + 停頓 0.9–1.1s
 ########################################
 for i in {1..6}; do
   X=$(rand_choice X_CHOICES[@])
@@ -317,7 +317,7 @@ for i in {1..6}; do
     esac
   fi
 
-  # 第三幕提高驚喜頻率（約 1/4）
+  # 提高驚喜頻率（約 1/4）
   if (( RANDOM % 4 == 0 )); then
     AWE_SEQ=$(rand_choice EMO_AWE[@])
     emote 1.2 "$AWE_SEQ"
@@ -340,9 +340,9 @@ sleep 1.0
 TAIL_SEQ=$(rand_choice EMO_PLAYFUL[@])
 emote 3.0 "$TAIL_SEQ"
 sleep 0.6
-say_zh_en "第三幕完成——感謝流動。下次見。" "Scene three complete—thank you for flowing." 2.6 "happy,content,proud" "$TTS_VOICE_DEFAULT" $TTS_SPEED_DEFAULT 1
+say_zh_en "這段完成——感謝流動。下次見。" "Segment complete—thank you for flowing." 2.6 "happy,content,proud" "$TTS_VOICE_DEFAULT" $TTS_SPEED_DEFAULT 1
 sleep 0.5
 
 # 瑜伽結束後才播放相同 BGM（不更換曲目）
 bgm "/audio/BGM/space_live_country_theme1.mp3" 0.25
-echo "=== ✅ Space Yoga Teacher — Baseline Flow：Scene 3 結束 ==="
+echo "=== ✅ Space Yoga Teacher — Baseline Flow 結束 ==="

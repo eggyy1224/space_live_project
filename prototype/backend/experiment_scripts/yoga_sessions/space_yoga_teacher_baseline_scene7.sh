@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 《Space Yoga Teacher — Spicy Nebula Comedy：Scene 7》
+# 《Space Yoga Teacher — Spicy Nebula Comedy》
 # 參考 docs/scrip_prototype/space_yoga.md（太空辣妹瑜伽教室）
 # 風格：輕鬆搞笑 × 失重亂飄 × 即興口白（保持安靜氛圍，避免吵雜 SFX）
 # 規則：瑜伽段不放 BGM；背景僅少量太空艙 ambience；角色可說短句（台語/漢字 + EN）。
@@ -147,7 +147,7 @@ LINES_OUTRO=(
   "下次見，記得補給控肉飯～\nSee you—bring braised pork rice!"
 )
 
-echo "=== 🧘 Space Yoga Teacher — Spicy Nebula Comedy：Scene 7 開始 ==="
+echo "=== 🧘 Space Yoga Teacher — Spicy Nebula Comedy 開始 ==="
 
 # 關閉隨機鏡位
 $CURL_POST "$BASE_URL/control/broadcast" -H "Content-Type: application/json" -d '{"type":"director-state","payload":{"randomMode":false}}' >/dev/null || true
@@ -249,4 +249,4 @@ char_position 0.0 8.0 -33.0
 emote 1.6 "grateful,content,serene"
 say "$(rand_choice LINES_OUTRO[@])" 2.8 "playful,grateful,content" "$TTS_VOICE_DEFAULT" $TTS_SPEED_DEFAULT 1
 
-echo "=== ✅ Scene 7 結束（安靜氛圍） ==="
+echo "=== ✅ Spicy Nebula Comedy 結束（安靜氛圍） ==="
