@@ -37,4 +37,119 @@
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  // --- Program Manager ---
+  const pmList = document.getElementById('pm-list');
+  const pmStatus = document.getElementById('pm-status');
+  const pmMsg = document.getElementById('pm-msg');
+  const pmRefreshBtn = document.getElementById('pm-refresh');
+  const pmStopAllBtn = document.getElementById('pm-stop-all');
+
+  async function fetchJson(url, options){
+    const res = await fetch(url, options);
+    const ct = res.headers.get('content-type') || '';
+    let data = null;
+    try { data = ct.includes('application/json') ? await res.json() : await res.text(); } catch(e){}
+    if(!res.ok){
+      throw new Error(`HTTP ${res.status}: ${JSON.stringify(data)}`);
+    }
+    return data;
+  }
+
+  function renderList(registered, running){
+    const runningSet = new Set((running?.running_scripts)||[]);
+    const rows = registered.map(item => {
+      const name = item.name;
+      const isRunning = item.is_running || runningSet.has(name);
+      const desc = item.description || '';
+      const playDisabled = isRunning ? 'disabled' : '';
+      const stopDisabled = isRunning ? '' : 'disabled';
+      return `
+        <tr>
+          <td style="white-space:nowrap;">${name}</td>
+          <td>${desc}</td>
+          <td style="text-align:center;">${isRunning ? '<span style="color:#2e7d32;">執行中</span>' : '<span style="color:#555;">待機</span>'}</td>
+          <td style="text-align:right; white-space:nowrap;">
+            <button class="pm-play" data-name="${name}" ${playDisabled}>播放</button>
+            <button class="pm-stop" data-name="${name}" ${stopDisabled} style="margin-left:6px;">停止</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    pmList.innerHTML = `
+      <table style="width:100%; border-collapse:collapse;">
+        <thead>
+          <tr style="background:#f7f7f7;">
+            <th style="text-align:left;padding:6px 8px; border-bottom:1px solid #eee; width:30%">名稱</th>
+            <th style="text-align:left;padding:6px 8px; border-bottom:1px solid #eee;">描述</th>
+            <th style="text-align:center;padding:6px 8px; border-bottom:1px solid #eee; width:10%">狀態</th>
+            <th style="text-align:right;padding:6px 8px; border-bottom:1px solid #eee; width:160px;">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    `;
+
+    // Bind buttons
+    pmList.querySelectorAll('.pm-play').forEach(btn => btn.addEventListener('click', async (e) => {
+      const name = e.currentTarget.getAttribute('data-name');
+      try{
+        pmMsg.textContent = `播放中: ${name}...`;
+        await fetchJson('/api/scripts/execute', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ script_name: name, background: true })
+        });
+        pmMsg.textContent = `已觸發播放: ${name}`;
+        await refresh();
+      }catch(err){
+        pmMsg.textContent = `播放失敗: ${err.message}`;
+      }
+    }));
+
+    pmList.querySelectorAll('.pm-stop').forEach(btn => btn.addEventListener('click', async (e) => {
+      const name = e.currentTarget.getAttribute('data-name');
+      try{
+        pmMsg.textContent = `停止中: ${name}...`;
+        // 注意：名稱包含斜線，encodeURIComponent 處理
+        await fetchJson(`/api/scripts/stop/${encodeURIComponent(name)}`, { method: 'POST' });
+        pmMsg.textContent = `已停止: ${name}`;
+        await refresh();
+      }catch(err){
+        pmMsg.textContent = `停止失敗: ${err.message}`;
+      }
+    }));
+  }
+
+  async function refresh(){
+    try{
+      const [list, status] = await Promise.all([
+        fetchJson('/api/scripts/list'),
+        fetchJson('/api/scripts/status')
+      ]);
+      pmStatus.textContent = `可用腳本: ${list.total_count}，執行中: ${status.total_running}`;
+      renderList(list.registered_scripts || [], status);
+    }catch(err){
+      pmStatus.textContent = `讀取失敗: ${err.message}`;
+    }
+  }
+
+  pmRefreshBtn.addEventListener('click', refresh);
+  pmStopAllBtn.addEventListener('click', async () => {
+    try{
+      pmMsg.textContent = '正在停止全部...';
+      await fetchJson('/api/scripts/stop-all', { method: 'POST' });
+      pmMsg.textContent = '已停止全部';
+      await refresh();
+    }catch(err){
+      pmMsg.textContent = `停止全部失敗: ${err.message}`;
+    }
+  });
+
+  // 啟動輪詢（每 3 秒）
+  refresh();
+  setInterval(refresh, 3000);
 })();

@@ -12,6 +12,16 @@
 </head>
 <body>
   <div id="swagger-ui"></div>
+  <div id="program-manager" style="padding: 1em; border-top: 1px solid #e5e5e5;">
+    <h2>節目管理 Program Manager</h2>
+    <div style="margin-bottom: 0.5em; display:flex; gap:8px; align-items:center;">
+      <button id="pm-refresh">刷新</button>
+      <button id="pm-stop-all" style="background:#c62828;color:#fff;border:none;padding:6px 10px;border-radius:4px;">全部停止</button>
+      <span id="pm-status" style="margin-left:8px;color:#555;"></span>
+    </div>
+    <div id="pm-list"></div>
+    <div id="pm-msg" style="margin-top:8px;color:#666;font-size:12px;"></div>
+  </div>
   <div id="console">
     <h2>WebSocket Console</h2>
     <input id="ws-input" type="text" placeholder="Message" />
