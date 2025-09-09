@@ -108,11 +108,11 @@ stop_bgm() {
 }
 
 sfx() {
-  local URL="$1"; local VOL=${2:-0.2}; local INT=${3:-false}
-  echo ">> 音效: $URL @ $VOL (interrupt=$INT)"
-  $CURL_POST "$BASE_URL/control/play-audio" \
+  local URL="$1"; local VOL=${2:-0.2}
+  echo ">> 音效: $URL @ $VOL"
+  $CURL_POST "$BASE_URL/control/background-audio" \
     -H "Content-Type: application/json" \
-    -d "{\"url\": \"$URL\", \"volume\": $VOL, \"interrupt\": $INT}" >/dev/null
+    -d "{\"sfxUrl\": \"$URL\", \"volume\": $VOL}"
 }
 
 ## 鏡位相關操作已移除

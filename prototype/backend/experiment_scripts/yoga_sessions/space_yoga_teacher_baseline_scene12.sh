@@ -62,8 +62,8 @@ emote() {
 }
 
 sfx() {
-  local URL="$1"; local VOL=${2:-0.10}; local INT=${3:-false}
-  $CURL_POST "$BASE_URL/control/play-audio" -H "Content-Type: application/json" -d "{\"url\": \"$URL\", \"volume\": $VOL, \"interrupt\": $INT}" >/dev/null
+  local URL="$1"; local VOL=${2:-0.10}
+  $CURL_POST "$BASE_URL/control/background-audio" -H "Content-Type: application/json" -d "{\"sfxUrl\": \"$URL\", \"volume\": $VOL}" >/dev/null
 }
 
 anim_char() { local ANIM="$1"; local SPEED=${2:-1.0}; local LOOP=${3:-true}; $CURL_POST "$BASE_URL/control/character/animation" -H "Content-Type: application/json" -d "{\"animation\": \"$ANIM\", \"loop\": $LOOP, \"speed\": $SPEED}" >/dev/null; }
@@ -146,7 +146,7 @@ for i in {1..4}; do
   # 回應：迅速兩式（不搖鏡）+ 节拍 SFX
   M1=$(rand_choice YOGA_MOVES_FAST[@]); M2=$(rand_choice YOGA_MOVES_FAST[@])
   anim_mix_burst $(rand_float 2.0 2.4 2) $(rand_float 0.90 1.10 2) $(rand_float 0.45 0.60 2) "$M1" "$M2"
-  sfx "/audio/effects/taiwan_variety_sfx_01.mp3" 0.16 false
+  # 移除綜藝音效（保持安靜的節奏）
   emote 1.0 "$(rand_choice EMO_SHARP[@])"
 
   # 額外緩衝

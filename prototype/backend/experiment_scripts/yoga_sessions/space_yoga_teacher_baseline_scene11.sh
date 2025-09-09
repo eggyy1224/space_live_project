@@ -63,9 +63,9 @@ emote() {
 }
 
 sfx() {
-  local URL="$1"; local VOL=${2:-0.12}; local INT=${3:-false}
+  local URL="$1"; local VOL=${2:-0.12}
   echo ">> SFX: $URL @ $VOL"
-  $CURL_POST "$BASE_URL/control/play-audio" -H "Content-Type: application/json" -d "{\"url\": \"$URL\", \"volume\": $VOL, \"interrupt\": $INT}" >/dev/null
+  $CURL_POST "$BASE_URL/control/background-audio" -H "Content-Type: application/json" -d "{\"sfxUrl\": \"$URL\", \"volume\": $VOL}" >/dev/null
 }
 
 anim_char() { local ANIM="$1"; local SPEED=${2:-1.0}; local LOOP=${3:-true}; $CURL_POST "$BASE_URL/control/character/animation" -H "Content-Type: application/json" -d "{\"animation\": \"$ANIM\", \"loop\": $LOOP, \"speed\": $SPEED}" >/dev/null; }
@@ -141,7 +141,7 @@ for i in {1..5}; do
     $(rand_float 0.40 0.55 2) \
     0.0 \
     $(shuf -e 2 3 3 2 | head -n1 2>/dev/null || echo 2)
-  sfx "/audio/effects/taiwan_variety_sfx_01.mp3" 0.18 false
+  # 移除綜藝音效（保持安靜的節奏）
 
   # 中段：只用表情，不說話
   emote 1.2 "$(rand_choice EMO_COOL[@])"

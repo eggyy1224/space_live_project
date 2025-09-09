@@ -107,11 +107,11 @@ stop_bgm() {
 }
 
 sfx() {
-  local URL="$1"; local VOL=${2:-0.2}; local INT=${3:-false}
-  echo ">> 音效: $URL @ $VOL (interrupt=$INT)"
-  $CURL_POST "$BASE_URL/control/play-audio" \
+  local URL="$1"; local VOL=${2:-0.2}
+  echo ">> 音效: $URL @ $VOL"
+  $CURL_POST "$BASE_URL/control/background-audio" \
     -H "Content-Type: application/json" \
-    -d "{\"url\": \"$URL\", \"volume\": $VOL, \"interrupt\": $INT}" >/dev/null
+    -d "{\"sfxUrl\": \"$URL\", \"volume\": $VOL}"
 }
 
 ## 鏡位相關操作已移除
@@ -262,7 +262,7 @@ for i in {1..6}; do
   MICRO_SEQ=$(rand_choice EMO_FOCUS[@])
   emote 0.9 "$MICRO_SEQ"
   step_mix_random
-  sleep 0.2; sfx "/audio/effects/winds_blowing.mp3" 0.06 false
+  # 移除風聲音效（太空環境不應有風）
   sleep 4.2
 
   if (( i % 2 == 1 )); then
@@ -294,14 +294,14 @@ for i in {1..6}; do
     emote 1.2 "$AWE_SEQ"
   fi
 
-  sfx "/audio/effects/taiwan_variety_sfx_01.mp3" 0.16 false
+  # 移除綜藝音效（保持安靜的節奏）
   sleep 1.0
 done
 
 # 緩和與收尾（維持同鏡位與比例）
 char_position 0.0 8.0 -30.0
 step_mix_random
-sleep 0.2; sfx "/audio/effects/winds_blowing.mp3" 0.06 false
+# 移除風聲音效（太空環境不應有風）
 sleep 4.0
 END_SEQ=$(rand_choice EMO_RELAX[@])
 say_zh_en "坐姿扭轉：吸氣延伸，吐氣輕扭。" "Seated twist—inhale lengthen, exhale gently twist." 3.0 "$END_SEQ"

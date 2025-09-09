@@ -120,12 +120,12 @@ stop_bgm() {
 }
 
 sfx() {
-  # 用法: sfx "/audio/effects/xxx.mp3" 0.2 false
-  local URL="$1"; local VOL=${2:-0.2}; local INT=${3:-false}
-  echo ">> 音效: $URL @ $VOL (interrupt=$INT)"
-  $CURL_POST "$BASE_URL/control/play-audio" \
+  # 用法: sfx "/audio/effects/xxx.mp3" 0.2
+  local URL="$1"; local VOL=${2:-0.2}
+  echo ">> 音效: $URL @ $VOL"
+  $CURL_POST "$BASE_URL/control/background-audio" \
     -H "Content-Type: application/json" \
-    -d "{\"url\": \"$URL\", \"volume\": $VOL, \"interrupt\": $INT}" >/dev/null
+    -d "{\"sfxUrl\": \"$URL\", \"volume\": $VOL}"
 }
 
 ## 鏡位相關操作已移除
@@ -293,8 +293,8 @@ for i in {1..8}; do
   emote 1.0 "$MICRO_SEQ"
   # 動畫混合（隨機瑜珈動作 + 速度/權重）
   step_mix_random
-  # 進段音效 + 動作播放時間
-  sleep 0.2; sfx "/audio/effects/winds_blowing.mp3" 0.06 false
+  # 動作播放時間（移除風聲）
+  sleep 0.2
   sleep 4
   # 交替：奇數講話（雙語字幕），偶數只表情（更密集情緒）
   if (( i % 2 == 1 )); then
@@ -326,14 +326,14 @@ for i in {1..8}; do
     emote 1.4 "$AWE_SEQ"
   fi
   # 節拍提示 + 停頓拉長一點
-  sfx "/audio/effects/taiwan_variety_sfx_01.mp3" 0.16 false
+  # 移除綜藝音效（保持安靜的節奏）
   sleep 1.2
 done
 
 # 緩和與收尾（保持相同鏡位與比例）
 char_position 0.0 8.0 -30.0
 step_mix_random
-sleep 0.2; sfx "/audio/effects/winds_blowing.mp3" 0.06 false
+# 移除風聲音效（太空環境不應有風）
 sleep 4
 END_SEQ=$(rand_choice EMO_RELAX[@])
 say_zh_en "緩和：慢慢吸氣，吐氣更長。" "Cooldown—inhale slow, exhale longer." 3.0 "$END_SEQ"

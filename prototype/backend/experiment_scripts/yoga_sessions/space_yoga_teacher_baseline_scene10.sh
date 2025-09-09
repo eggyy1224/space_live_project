@@ -127,8 +127,7 @@ echo "=== 🧘 Space Yoga Teacher — Solar Breeze Cooldown 開始 ==="
 env_preset "dawn" || true
 env_intensity 1.1 || true
 env_background false || true
-## 使用現成環境音效作為柔和背景
-sfx "/audio/effects/winds_blowing.mp3" 0.05
+## 取消風聲（太空不應有風）
 head_size 10.0
 char_scale 0.1
 char_position 0.0 8.0 -30.0
