@@ -230,7 +230,7 @@ async def execute_random_yoga_script(background_tasks: BackgroundTasks):
         execution_mode="background"
     )
 
-@router.post("/scripts/stop/{script_name}")
+@router.post("/scripts/stop/{script_name:path}")
 async def stop_script(script_name: str):
     """
     停止正在執行的腳本
