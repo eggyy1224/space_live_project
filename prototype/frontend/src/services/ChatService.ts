@@ -70,10 +70,30 @@ class ChatService {
     this.currentClip = { id: clip.id, url: clip.url };
     this.waitingForAck = true;
     try {
-      await this.audioService.playAudio(clip.url);
+      // 防止瀑布式錯誤：為播放加入超時保護，避免卡死在 waitingForAck 狀態
+      const PLAYBACK_TIMEOUT_MS = 15000; // 15 秒超時（含慢網路、載入延遲的餘裕）
+      await Promise.race([
+        this.audioService.playAudio(clip.url),
+        new Promise<void>((_, reject) => {
+          const timer = setTimeout(() => {
+            // 超時：嘗試停止播放並釋放資源，優雅略過此段
+            try { this.audioService.stopPlayback(); } catch { /* no-op */ }
+            reject(new Error(`Playback timeout after ${PLAYBACK_TIMEOUT_MS}ms for clip ${clip.id}`));
+          }, PLAYBACK_TIMEOUT_MS);
+          // 透過 finally 清掉計時器（在 Promise.race 外處理）
+          // 無法於此處清，改在 finally 中統一處理
+          (this as any)._playbackTimeoutTimer = timer;
+        })
+      ]);
     } catch (err) {
       logger.error('音頻播放失敗', LogCategory.CHAT, err);
     } finally {
+      // 清掉可能存在的超時計時器
+      const t = (this as any)._playbackTimeoutTimer as number | undefined;
+      if (t) {
+        clearTimeout(t);
+        (this as any)._playbackTimeoutTimer = undefined;
+      }
       this.websocket.sendMessage({ type: 'playback_ack', id: clip.id });
       this.currentClip = null;
       this.waitingForAck = false;

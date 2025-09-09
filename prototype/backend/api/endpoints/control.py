@@ -187,8 +187,9 @@ async def send_message_to_frontend(request: SendMessageRequest):
                     f"API /send-message: TTS 失敗或未返回音訊內容 for: '{request.content[:30]}...'"
                 )
 
+        # 使用更強健的唯一 ID，避免高併發下毫秒時間戳重複
         bot_message = {
-            "id": f"api-bot-{int(asyncio.get_event_loop().time() * 1000)}",
+            "id": f"api-bot-{uuid.uuid4().hex[:8]}-{int(asyncio.get_event_loop().time() * 1000)}",
             "role": "bot",
             "content": request.content,
             "timestamp": datetime.utcnow().isoformat(),

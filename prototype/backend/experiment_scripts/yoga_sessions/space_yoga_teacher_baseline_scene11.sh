@@ -152,5 +152,6 @@ done
 
 # 收束
 emote 1.6 "grateful,content,serene"
+say_with_inst "做得真好——讓熱度慢慢沉下來。\nWell done—let the heat settle." 2.8 "grateful,content,serene" "$VOICE_COOL" "$(rand_float $SPEED_COOL_MIN $SPEED_COOL_MAX 2)" 1 "$TTS_INSTR_COOL"
 
 echo "=== ✅ Meteor Burst Flow 結束（安靜氛圍） ==="
