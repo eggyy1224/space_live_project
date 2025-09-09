@@ -46,7 +46,7 @@ export const createMicTriggerSlice: StateCreator<MicTriggerSlice> = (set, get) =
   micTriggerEnabled: false,
   micThresholdRms: 0.03,
   micMinHoldMs: 250,
-  micCooldownMs: 10000,
+  micCooldownMs: 20000,
   micCurrentRms: 0,
   micLastTriggeredAt: null,
   micError: null,
@@ -129,4 +129,3 @@ export const createMicTriggerSlice: StateCreator<MicTriggerSlice> = (set, get) =
     });
   }
 });
-

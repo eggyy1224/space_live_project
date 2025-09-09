@@ -68,7 +68,7 @@ export const MicTriggerPanel: React.FC<MicTriggerPanelProps> = ({ isVisible, onC
         <div>
           <label className="block mb-1">冷卻毫秒 Cooldown</label>
           <input type="number" min={500} max={60000} value={cooldown}
-            onChange={e => setCooldown(parseInt(e.target.value)||10000)} className="w-full bg-gray-700 p-1 rounded"/>
+            onChange={e => setCooldown(parseInt(e.target.value)||cooldown)} className="w-full bg-gray-700 p-1 rounded"/>
         </div>
       </div>
 

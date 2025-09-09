@@ -39,6 +39,7 @@ import { speechToText, processSpeechAudio } from './services/api';
 
 // 引入 AudioService
 import AudioService from './services/AudioService';
+import MicTriggerService from './services/MicTriggerService';
 // 引入 MessageType
 import { type MessageType } from './services/ChatService';
 
@@ -630,6 +631,16 @@ function App() {
   // 切換調試模式 
   const toggleDebugMode = useCallback(() => {
     setDebugMode(prev => !prev);
+  }, []);
+
+  // 自動啟用 Mic Trigger（網址參數 autoplay=true）
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const autoPlayMic = urlParams.get('autoplay') === 'true';
+    if (autoPlayMic) {
+      // 僅啟用監聽，不自動打開面板
+      MicTriggerService.getInstance().enable().catch(() => {/* error handled in service */});
+    }
   }, []);
   
   // 切換模型分析工具
