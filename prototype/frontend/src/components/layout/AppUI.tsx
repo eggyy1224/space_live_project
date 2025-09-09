@@ -62,6 +62,8 @@ interface AppUIProps {
   toggleEnvironmentControlPanel: () => void;
   // 排程控制面板控制
   toggleRealtimeSchedulePanel: () => void;
+  // Mic Trigger 面板
+  toggleMicTriggerPanel: () => void;
   toggleRealtime: () => void;
   realtimeStreaming: boolean;
   realtimeError: string | null;
@@ -139,6 +141,7 @@ const AppUI: React.FC<AppUIProps> = ({
   realtimeError,
   isSideButtonsVisible,
   toggleSideButtons,
+  toggleMicTriggerPanel,
 }) => {
   // // REMOVED micPermission logic
   // const micPermissionBool: boolean | null = ...
@@ -269,6 +272,15 @@ const AppUI: React.FC<AppUIProps> = ({
           aria-label="開啟/關閉即時對話排程控制"
         >
           ⏰
+        </button>
+        {/* Trigger Mic Trigger Panel Button */}
+        <button
+          onClick={toggleMicTriggerPanel}
+          className="w-12 h-12 rounded-full bg-teal-600 hover:bg-teal-700 text-white text-2xl shadow-md flex items-center justify-center cursor-pointer transition-colors duration-200"
+          title="開啟/關閉麥克風觸發面板"
+          aria-label="開啟/關閉麥克風觸發面板"
+        >
+          🎙️
         </button>
         {/* === 新增：物理燈條控制 toggle 按鈕 === */}
         <button

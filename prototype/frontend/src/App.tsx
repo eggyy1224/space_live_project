@@ -18,6 +18,7 @@ import RoomControlPanel from './components/RoomControlPanel'
 import { CharacterControlPanel } from './components/CharacterControlPanel'
 import EnvironmentControlPanel from './components/EnvironmentControlPanel'
 import { RealtimeSchedulePanel } from './components/RealtimeSchedulePanel'
+import MicTriggerPanel from './components/MicTriggerPanel'
 import { RealtimeStatusIndicator, RealtimeStatusBadge } from './components/RealtimeStatusIndicator'
 import { usePerformanceMetrics } from './hooks/usePerformanceMetrics'
 import { useRealtimeScheduler } from './hooks/useRealtimeScheduler'
@@ -119,6 +120,8 @@ function App() {
   // <--- 從 Zustand Store 獲取排程控制面板狀態和操作 --->
   const isRealtimeSchedulePanelVisible = useStore((state) => state.isRealtimeSchedulePanelVisible);
   const toggleRealtimeSchedulePanel = useStore((state) => state.toggleRealtimeSchedulePanel);
+  const isMicTriggerPanelVisible = useStore((state) => state.isMicTriggerPanelVisible);
+  const toggleMicTriggerPanel = useStore((state) => state.toggleMicTriggerPanel);
   // <--- 結束 --->
 
   // <--- 從 Zustand Store 獲取右側按鈕顯示狀態和操作 --->
@@ -150,6 +153,18 @@ function App() {
 
   // 使用排程器 (全域唯一)
   const realtimeScheduler = useRealtimeScheduler();
+  // 已移除 MicTrigger 排程，僅保留手動開始/停止
+
+  // 快捷鍵：按 M 鍵開/關麥克風觸發面板
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === 'm') {
+        toggleMicTriggerPanel();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [toggleMicTriggerPanel]);
 
   // === 自動初始化 Happy Path ===
   useEffect(() => {
@@ -654,6 +669,7 @@ function App() {
           showSpaceBackground={showSpaceBackground}
           modelScale={modelScale}
           headOnly={new URLSearchParams(window.location.search).has('headonly')}
+          toggleMicTriggerPanel={toggleMicTriggerPanel}
         />
         {/* === 刪除：燈光亮度控制 bar === */}
         {/* <LightBarControl /> */}
@@ -774,6 +790,10 @@ function App() {
         {/* 底部字幕（霓虹七彩） */}
         <SubtitlesOverlay />
         <DirectorMonitorHUD />
+        {/* 麥克風觸發面板 - 固定在右下角 */}
+        <div className="fixed bottom-24 right-6 z-[1000] w-96 pointer-events-auto">
+          <MicTriggerPanel isVisible={isMicTriggerPanelVisible} onClose={toggleMicTriggerPanel} />
+        </div>
       </div>
     </ErrorBoundary>
   )

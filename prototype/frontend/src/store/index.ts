@@ -16,6 +16,7 @@ import { RuntimeSlice, createRuntimeSlice } from './slices/runtimeSlice';
 import { RoomSlice, createRoomSlice } from './slices/roomSlice';
 import { createDanceSlice, DanceSlice } from './slices/danceSlice';
 import { RealtimeScheduleSlice, createRealtimeScheduleSlice } from './slices/realtimeScheduleSlice';
+import { MicTriggerSlice, createMicTriggerSlice } from './slices/micTriggerSlice';
 // import { EmotionSlice, createEmotionSlice } from './slices/emotionSlice';
 // import { AudioSlice, createAudioSlice } from './slices/audioSlice';
 
@@ -34,7 +35,8 @@ export type AppState =
   RuntimeSlice &
   RoomSlice &
   DanceSlice &
-  RealtimeScheduleSlice;
+  RealtimeScheduleSlice &
+  MicTriggerSlice;
 
 // 創建 Zustand Store
 export const useStore = create<AppState>()(
@@ -54,6 +56,7 @@ export const useStore = create<AppState>()(
       ...createRoomSlice(...a),
       ...createDanceSlice(...a),
       ...createRealtimeScheduleSlice(...a),
+      ...createMicTriggerSlice(...a),
     }),
     { name: 'AppStore' } // Optional: Name for Redux DevTools
   )

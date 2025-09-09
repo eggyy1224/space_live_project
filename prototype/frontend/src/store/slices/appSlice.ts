@@ -19,6 +19,7 @@ export interface AppSlice {
   isCharacterControlPanelVisible: boolean;
   isEnvironmentControlPanelVisible: boolean;
   isRealtimeSchedulePanelVisible: boolean;
+  isMicTriggerPanelVisible: boolean;
   isSideButtonsVisible: boolean; // 控制右側按鈕的顯示/隱藏
   isLoading: boolean;
   errorMessage: string | null;
@@ -42,6 +43,7 @@ export interface AppSlice {
   toggleCharacterControlPanel: () => void;
   toggleEnvironmentControlPanel: () => void;
   toggleRealtimeSchedulePanel: () => void;
+  toggleMicTriggerPanel: () => void;
   toggleSideButtons: () => void; // 切換右側按鈕顯示狀態
   setLoading: (loading: boolean) => void;
   setError: (message: string | null) => void;
@@ -67,6 +69,7 @@ export const createAppSlice: StateCreator<AppSlice> = (set) => ({
   isCharacterControlPanelVisible: false,
   isEnvironmentControlPanelVisible: false,
   isRealtimeSchedulePanelVisible: false,
+  isMicTriggerPanelVisible: false,
   isSideButtonsVisible: false, // 預設隱藏右側按鈕
   isLoading: false,
   errorMessage: null,
@@ -105,6 +108,7 @@ export const createAppSlice: StateCreator<AppSlice> = (set) => ({
   toggleEnvironmentControlPanel: () => set((state) => ({ isEnvironmentControlPanelVisible: !state.isEnvironmentControlPanelVisible })),
   
   toggleRealtimeSchedulePanel: () => set((state) => ({ isRealtimeSchedulePanelVisible: !state.isRealtimeSchedulePanelVisible })),
+  toggleMicTriggerPanel: () => set((state) => ({ isMicTriggerPanelVisible: !state.isMicTriggerPanelVisible })),
   
   toggleSideButtons: () => set((state) => ({ isSideButtonsVisible: !state.isSideButtonsVisible })),
   
