@@ -76,6 +76,11 @@ class APIIntegrations:
                 result = await self._handle_environment_config(arguments)
                 logger.info(f"💡 environment_config 處理結果: {result}")
                 return result
+            elif function_name == "background_audio":
+                logger.info("🎧 調用 background_audio 處理器")
+                result = await self._handle_background_audio(arguments)
+                logger.info(f"🎧 background_audio 處理結果: {result}")
+                return result
             elif function_name == "speak_message":
                 logger.info("🗣️ 調用 speak_message 處理器")
                 result = await self._handle_speak_message(arguments)
@@ -759,6 +764,64 @@ class APIIntegrations:
         except Exception as e:
             logger.error(f"❌ speak_message 處理錯誤: {e}")
             return {"success": False, "error": f"Failed to send message: {str(e)}"}
+
+    async def _handle_background_audio(self, arguments: dict) -> dict:
+        """處理背景音訊/音效控制，透過 /api/control/background-audio
+
+        參數（全部可選，至少一項）：
+        - bgmUrl: 後端可存取的背景音樂路徑（如 /audio/BGM/xxx.mp3，空字串表示停止）
+        - sfxUrl: 前端可存取的音效路徑（如 /audio/effects/xxx.mp3）
+        - bgmPlaying: 顯式播放/暫停控制
+        - volume: 0.0–1.0 的音量（BGM）
+        """
+        try:
+            payload: Dict[str, Any] = {}
+            if "bgmUrl" in arguments:
+                payload["bgmUrl"] = arguments.get("bgmUrl")
+            if "sfxUrl" in arguments:
+                payload["sfxUrl"] = arguments.get("sfxUrl")
+            if "bgmPlaying" in arguments:
+                payload["bgmPlaying"] = arguments.get("bgmPlaying")
+            if "volume" in arguments:
+                payload["volume"] = arguments.get("volume")
+
+            if not payload:
+                return {"success": False, "error": "At least one parameter required: bgmUrl | sfxUrl | bgmPlaying | volume"}
+
+            logger.info(f"🎧 發送背景音訊控制: {payload}")
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{self.base_url}/api/control/background-audio",
+                    json=payload,
+                    headers={"Content-Type": "application/json"},
+                    timeout=aiohttp.ClientTimeout(total=6)
+                ) as response:
+                    text = await response.text()
+                    if response.status == 200:
+                        # 建立友善訊息
+                        messages = []
+                        if "bgmUrl" in payload:
+                            if payload["bgmUrl"] == "":
+                                messages.append("BGM已停止")
+                            else:
+                                messages.append("BGM已設置")
+                        if "bgmPlaying" in payload:
+                            messages.append("已播放" if payload["bgmPlaying"] else "已暫停")
+                        if "sfxUrl" in payload:
+                            messages.append("音效已播放")
+                        msg = "、".join(messages) if messages else "背景音訊已更新"
+                        try:
+                            result = json.loads(text) if text else {}
+                        except json.JSONDecodeError:
+                            result = {}
+                        return {"success": True, "message": msg, "result": result}
+                    else:
+                        return {"success": False, "error": f"HTTP {response.status}: {text}"}
+        except aiohttp.ClientTimeout:
+            return {"success": False, "error": "Request timeout"}
+        except Exception as e:
+            logger.error(f"❌ background_audio 處理錯誤: {e}")
+            return {"success": False, "error": f"Failed to control background audio: {str(e)}"}
 
     async def analyze_exhibition_field(self, analysis_focus: str = "exhibition") -> dict:
         """

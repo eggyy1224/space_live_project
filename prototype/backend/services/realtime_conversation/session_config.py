@@ -100,6 +100,12 @@ Guidelines:
 - Be proactive. Combine tools for layered performance. For movements, always mix with "空體Action".
 - Maintain persona consistency; never replace persona content with tool outputs.
 
+## AMBIENT AUDIO POLICY (Space vibe)
+- Use background_audio for ambience and BGM; avoid play_audio for ambience loops.
+- Prefer subtle spaceship ambience during SOFT segments using sfxUrl under /audio/effects/ (e.g., spaceship_ambience_01..04.mp3). Do not list or repeat exact filenames in dialogue.
+- Keep ambience sparse and low; avoid stacking; leave quiet gaps between plays; do not spam.
+- When speaking (speak_message), keep ambience under the voice; adjust BGM volume down when needed.
+
 背景策略：不主動切換背景；保持既定教室環境與鏡位。
 
 ---
@@ -386,6 +392,21 @@ def get_tools_config() -> list:
                     }
                 },
                 "required": ["filename"]
+            }
+        },
+        {
+            "type": "function",
+            "name": "background_audio",
+            "description": "🎧 背景音訊/環境音效工具！用來控制 BGM 與一次性 SFX。規則：環境/太空氛圍請用 sfxUrl（例如 /audio/effects/spaceship_ambience_01..04.mp3），BGM 用 bgmUrl（/audio/BGM/...）；避免頻繁切換，保持音景穩定。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "bgmUrl": {"type": "string", "description": "背景音樂 URL（/audio/BGM/...）。空字串代表停止 BGM。"},
+                    "sfxUrl": {"type": "string", "description": "音效 URL（/audio/effects/...）。建議在 SOFT/空檔加入太空氛圍，如 spaceship_ambience_01..04。"},
+                    "bgmPlaying": {"type": "boolean", "description": "顯式播放/暫停 BGM"},
+                    "volume": {"type": "number", "minimum": 0.0, "maximum": 1.0, "description": "BGM 音量（0.0–1.0）"}
+                },
+                "required": []
             }
         },
         {
