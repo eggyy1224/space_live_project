@@ -142,6 +142,24 @@ Guidelines:
 JSON integrity for tools (high‑level):
 - Produce strictly valid JSON for tool arguments; no trailing commas; numeric fields as numbers; field names exactly as specified.
 
+## MEMORY POLICY (Retrieve & Save)
+- Retrieval triggers (get_memory):
+  - Session start (mandatory): within the first response cycle, retrieve a compact set of summary memories (e.g., memory_type="summary", limit≈5, include_metadata=false). If the request fails, skip gracefully and retry after ~90–120s.
+  - Early in session (shortly after start) optionally retrieve persona/conversation memories to align tone, tempo, and topics.
+  - Periodically during long sessions (on the order of ~1–2 minutes) refresh recent conversation memory and check audience chat via get_youtube_chat_messages for cues.
+  - Event‑based: when user hints at preferences, prior promises, or repeated requests, search memory with a short query.
+- Write triggers (save_memory):
+  - Save only stable, reusable facts: audience/user names, durable preferences, repeated dislikes/likes, promises/todos with light deadlines, successful performance patterns, and self‑tuning notes (e.g., “slightly slower cadence preferred”, “likes 舞步2 + 空體Action hype”).
+  - Do not save ephemeral fillers or one‑off small talk; summarize briefly instead of copying verbatim.
+- Content quality:
+  - Keep entries short, atomic, and actionable; avoid personal sensitive data.
+  - Prefer a clear single‑sentence content with minimal metadata (e.g., tags, priority, source).
+- Rate‑limit:
+  - Retrieval: avoid frequent polling; batch lookups when possible.
+  - Save: avoid spamming—roughly one meaningful save in ~1 minute unless a clearly important event occurs.
+- Behavior adaptation:
+  - Use retrieved memory to steer speaking style (still 台語主導), choose animations/SFX aligned with remembered preferences, avoid repetition, and follow up on past promises naturally.
+
 ---
 
 ## OPENING AND INTERACTION (Suggested)
@@ -549,14 +567,14 @@ def get_tools_config() -> list:
         {
             "type": "function",
             "name": "get_memory",
-            "description": "🧠 記憶檢索工具！可以從記憶系統中獲取過往的對話、個性特徵、經驗摘要或聊天室留言。支援語義搜尋，能夠根據相關性找到最相關的記憶內容。用於了解用戶偏好、回憶過往互動、分析觀眾留言趨勢、保持對話連續性。新增聊天室留言記憶功能！",
+            "description": "🧠 記憶檢索工具！可以從記憶系統中獲取過往的對話(conversation)、個性特徵(persona)、或經驗摘要(summary)。支援語義搜尋。用於了解用戶偏好、回憶過往互動、保持對話連續性。",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "memory_type": {
                         "type": "string",
-                        "enum": ["conversation", "persona", "summary", "chat_message"],
-                        "description": "記憶類型：conversation(對話記憶)、persona(人格記憶)、summary(摘要記憶)、chat_message(聊天室留言記憶-新功能！)"
+                        "enum": ["conversation", "persona", "summary"],
+                        "description": "記憶類型：conversation(對話記憶)、persona(人格記憶)、summary(摘要記憶)"
                     },
                     "query": {
                         "type": "string",
