@@ -268,12 +268,14 @@ function App() {
       const target = e.target as HTMLElement;
       
       // 避免在輸入框中觸發快捷鍵
-      if (target.tagName === 'INPUT' || target.isContentEditable) {
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
         return;
       }
       
-      if (e.code === 'Space' && !e.repeat) {
-        e.preventDefault();
+      // 改為 Ctrl+R 觸發即時對話切換
+      if (e.ctrlKey && e.code === 'KeyR' && !e.repeat) {
+        e.preventDefault(); // 避免瀏覽器重新整理（Windows/Linux）
+        e.stopPropagation();
         toggleRealtime();
       } else if (e.code === 'KeyC' && !e.repeat) {
         e.preventDefault();

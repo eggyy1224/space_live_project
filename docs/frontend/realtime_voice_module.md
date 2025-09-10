@@ -10,8 +10,7 @@ import { useRealtimeVoice } from '@/services';
 const { start, stop, streaming } = useRealtimeVoice();
 ```
 
-介面提供可切換的麥克風按鈕或使用空白鍵觸發。按一次啟動串流，再按一次立即停止。
+介面提供可切換的麥克風按鈕或使用 Ctrl+R 觸發。按一次啟動串流，再按一次立即停止。
 
 預設會連線至 `ws://<host>/api/real-time/ws` WebSocket 端點。
-
 

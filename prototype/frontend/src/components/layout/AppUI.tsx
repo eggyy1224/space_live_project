@@ -203,8 +203,8 @@ const AppUI: React.FC<AppUIProps> = ({
               }
               text-white text-2xl
             `}
-            title={realtimeStreaming ? '停止實時語音通話 (空白鍵)' : '啟動實時語音通話 (空白鍵)'}
-            aria-label={realtimeStreaming ? '停止實時語音通話 (空白鍵)' : '啟動實時語音通話 (空白鍵)'}
+            title={realtimeStreaming ? '停止實時語音通話 (Ctrl+R)' : '啟動實時語音通話 (Ctrl+R)'}
+            aria-label={realtimeStreaming ? '停止實時語音通話 (Ctrl+R)' : '啟動實時語音通話 (Ctrl+R)'}
           >
             {realtimeStreaming ? '🔴' : '🎤'}
             {realtimeStreaming && (
