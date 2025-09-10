@@ -700,6 +700,9 @@ class APIIntegrations:
         try:
             content = arguments.get("content")
             message_type = arguments.get("message_type", "chat-message")
+            tts_instruction = arguments.get("tts_instruction")
+            tts_voice = arguments.get("tts_voice")
+            tts_speed = arguments.get("tts_speed")
 
             if content is None:
                 return {
@@ -711,8 +714,20 @@ class APIIntegrations:
                 "content": content,
                 "message_type": message_type,
             }
+            # 透傳可選的 TTS 參數（僅在提供時加入 payload）
+            if tts_instruction:
+                payload["tts_instruction"] = tts_instruction
+            if tts_voice:
+                payload["tts_voice"] = tts_voice
+            if tts_speed is not None:
+                payload["tts_speed"] = tts_speed
 
-            logger.info(f"🗣️ 讓角色說話，type={message_type}, content_len={len(content)}")
+            logger.info(
+                f"🗣️ 讓角色說話，type={message_type}, content_len={len(content)}, "
+                f"tts_instruction={'set' if bool(tts_instruction) else 'none'}, "
+                f"tts_voice={tts_voice if tts_voice else 'default'}, "
+                f"tts_speed={tts_speed if tts_speed is not None else 'default'}"
+            )
             async with aiohttp.ClientSession() as session:
                 async with session.post(
                     f"{self.base_url}/api/control/send-message",
