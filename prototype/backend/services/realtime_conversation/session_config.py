@@ -79,16 +79,25 @@ Examples:
 ---
 
 ## REQUIRED TOOLS AND RULES
-- emotion_trajectory: Pair with spoken lines when expressiveness is needed.
-- play_audio: Optional performance reinforcement (vocal breaths, emotional sfx). Not background BGM.
+- SPEECH OUTPUT (Hard Requirement): You MUST ONLY speak via the tool speak_message.
+  - Never emit direct assistant audio or text as the spoken line.
+  - After every speak_message, also trigger emotion_trajectory to match the line’s mood.
+  - speak_message can take tts_instruction, tts_voice, tts_speed to shape delivery.
+- emotion_trajectory: Pair with spoken lines when expressiveness is needed (in practice, after every speak_message).
+- play_audio: Optional performance reinforcement (vocal breaths, emotional sfx). Not background BGM. Never use it to speak lines.
 - character_animation_mix: Hard requirement for movements. Always include "空體Action" + at least one other animation; tune weights and speeds; prefer blendMode=additive.
   - Speed constraints: set 空體Action speed ≥ 1.6 (e.g., 1.8), and set every other animation speed ≤ 0.8 (e.g., 0.6). Maintain contrast.
 - character_control: Use for single, clear, discrete gestures only; otherwise prefer character_animation_mix.
 - （移除背景生成工具）不主動更換 2D 背景。
 - get_memory / save_memory, web_search, environment_config, room_control are available as needed.
 
+Assistant Output Policy (Enforced):
+- When delivering a line to the audience, call speak_message(content=...). Do not include the line as assistant message content; let the tool output handle speech.
+- Keep assistant messages minimal, focused on tool calls and necessary reasoning for tool selection.
+- Do not generate response audio directly; rely on speak_message for voice output.
+
 Guidelines:
- - Be proactive. Combine tools for layered performance. For movements, always mix with "空體Action".
+- Be proactive. Combine tools for layered performance. For movements, always mix with "空體Action".
 - Maintain persona consistency; never replace persona content with tool outputs.
 
 背景策略：不主動切換背景；保持既定教室環境與鏡位。
@@ -183,6 +192,17 @@ def get_legacy_instructions() -> str:
 - **表演感強化**：把音效當作你的live表演
 - **台語+音效**：「按呢～」+ 對應音效加強語氣
 
+## 🔊 語音輸出政策（只用 speak_message）
+必守規則：
+1) 所有要「說給觀眾聽」的台詞，一律使用 speak_message(content=...)
+2) 每次 speak_message 之後，必須再呼叫一次 emotion_trajectory，讓表情與語氣同步。
+3) 絕對不要用直接的 assistant 音訊或文字輸出來代替說話；真正的說話只發生在 speak_message 工具。
+4) 需要變化語速、人聲或說話風格時，請用 speak_message 的參數：
+   - tts_instruction：簡短說明語氣/風格（例如：soft, breathy, playful, slow）
+   - tts_voice：人聲（例如：coral, nova, verse...）
+   - tts_speed：語速（0.5–3.0，常用 0.9–1.2）
+5) play_audio 只能作為效果音或小段唱和，不可用來說出台詞。
+
 ## 🎭 角色控制與工具組合策略 - 重要！🎭
 你擁有強大的角色控制能力！透過 character_control 工具可以控制角色的各種動作和外觀。
 
@@ -237,7 +257,7 @@ def get_tools_config() -> list:
         {
             "type": "function",
             "name": "speak_message",
-            "description": "🗣️ 讓偶開口說話！呼叫這個工具就會透過 send_message 端點，讓偶用 TTS 說出你指定的台詞。請把你想讓偶說的話放在 content。可以選填 message_type（預設 chat-message）。",
+            "description": "🗣️ 唯一的說話渠道！呼叫這個工具會透過 /api/control/send-message 讓角色用 TTS 說出台詞。必須把台詞放在 content，並可指定 tts_instruction/tts_voice/tts_speed 來控制語氣、人聲與語速。每次 speak_message 後請再呼叫 emotion_trajectory 做表情同步。",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -249,6 +269,24 @@ def get_tools_config() -> list:
                         "type": "string",
                         "description": "訊息類型（預設 chat-message，可用 system-message/notification/announcement 等）",
                         "default": "chat-message"
+                    },
+                    "tts_instruction": {
+                        "type": "string",
+                        "description": "TTS 語氣/風格提示（例如：soft, breathy, playful, slow）"
+                    },
+                    "tts_voice": {
+                        "type": "string",
+                        "description": "TTS 人聲（與後端相容的選項）",
+                        "enum": [
+                            "alloy", "ash", "ballad", "coral", "echo", "fable",
+                            "onyx", "nova", "sage", "shimmer", "verse"
+                        ]
+                    },
+                    "tts_speed": {
+                        "type": "number",
+                        "description": "TTS 語速（0.5–3.0）",
+                        "minimum": 0.5,
+                        "maximum": 3.0
                     }
                 },
                 "required": ["content"]
