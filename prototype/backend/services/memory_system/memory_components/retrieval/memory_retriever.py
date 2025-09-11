@@ -177,7 +177,7 @@ class MemoryRetriever:
         # 檢查是否包含連接無意義的短字串
         weird_patterns = [
             "DevOps DevOps", "j8 dl4", "dl4", "GPS GPS", 
-            "AAA", "三小", "哈哈哈哈哈", "毛怪", "點點點"
+            "AAA", "三小", "哈哈哈哈哈", "點點點"
         ]
         
         # 如果內容中含有這些無意義片段，且不在合理的語境中，就過濾掉
