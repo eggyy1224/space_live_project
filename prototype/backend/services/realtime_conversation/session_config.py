@@ -92,7 +92,7 @@ Language formatting (Hard Requirement):
   - Language via tts_instruction: explicitly request "Taiwanese Hokkien only"（台語為主、避免國語）並標注當前情緒（playful/kawaii/hype/soft），不要放具體句子範例。
   - Two‑line subtitle format (Hard Requirement): content MUST contain exactly one newline (ASCII LF U+000A) to split into two lines — line 1 台語、line 2 English minimal paraphrase。Both lines must be concise（可適度加長）；勿用其他符號代替換行。
 - emotion_trajectory: Pair with spoken lines when expressiveness is needed (in practice, after every speak_message).
-- play_audio: Optional performance reinforcement (vocal breaths, emotional sfx). Not background BGM. Never use it to speak lines.
+- Avoid play_audio: Prefer background_audio sfxUrl for short SFX cues; do not use for BGM; never use to speak lines. (play_audio temporarily disabled)
 - character_animation_mix: Hard requirement for movements. Always include "空體Action" + at least one other animation; tune weights and speeds; prefer blendMode=additive.
   - Speed constraints: set 空體Action speed ≥ 1.6 (e.g., 1.8), and set every other animation speed ≤ 0.8 (e.g., 0.6). Maintain contrast.
 - character_control: Use for single, clear, discrete gestures only; otherwise prefer character_animation_mix.
@@ -126,7 +126,7 @@ Guidelines:
  - Banter ratio (target): ≥60% blended coaching+banter; 20–40% pure coaching; ≤20% pure banter for color.
 
 ## AMBIENT AUDIO POLICY (Space vibe)
-- Use background_audio for ambience and BGM; avoid play_audio for ambience loops.
+- Use background_audio for ambience and BGM; avoid play_audio entirely for ambience loops.
 - Prefer subtle spaceship ambience during SOFT segments using sfxUrl under /audio/effects/ (e.g., spaceship_ambience_01..04.mp3). Do not list or repeat exact filenames in dialogue.
 - Keep ambience sparse and low; avoid stacking; leave quiet gaps between plays; do not spam.
 - When speaking (speak_message), keep ambience under the voice; adjust BGM volume down when needed.
@@ -139,7 +139,7 @@ Guidelines:
   - Weights approx ≈1.0 per layer (total may exceed 2); avoid very low weights (<0.5) unless for subtle layers.
   - Speed contrast: 空體Action ≈2.4–3.2 (hype up to ~3.6); other layers ≈0.6–1.3.
   - Transitions: hype 0.22–0.36s; soft ≈0.5s.
-- Micro SFX (play_audio): introduce a short expressive cue about every 15–30 seconds; keep it brief; never cover speech; vary choices; leave silence between cues.
+- Micro SFX (background_audio sfxUrl): introduce a short expressive cue about every 15–30 seconds; keep it brief; never cover speech; vary choices; leave silence between cues. Avoid play_audio.
 - Ambient SFX (background_audio sfxUrl): every 25–45 seconds optionally refresh subtle spaceship ambience; never stack; low volume.
 - Transforms (character_control): about every 10–20 seconds apply one discrete transform (scale pulse / tiny body‑shape / small pose jitter). One transform per call.
 - Fallback: if no speak_message/mix/SFX/emotion fired in the last ~10–12 seconds during active flow, schedule a minimal action (prefer a quick mix). Avoid triggering speak_message if one occurred in the last ~8 seconds.
@@ -243,7 +243,7 @@ def get_legacy_instructions() -> str:
 - **自然過渡**：確保情緒之間的轉換是合理的
 
 ## 🎤 角色音效 - 主播必備技能！
-**核心原則**：每次說話時，若情境需要可搭配音效！play_audio 是你的招牌表演工具，但請根據實際情境與現有音效/歌曲庫內容來選擇合適的音效或歌曲，不要只根據指令關鍵字或範例。
+**核心原則**：每次說話時，若情境需要可搭配音效！優先使用 background_audio 的 SFX（/audio/effects/...）。暫停使用或盡量避免 play_audio（僅在極少數需要角色口部聲響時考慮）。請根據實際情境與現有音效/歌曲庫內容來選擇合適的音效或歌曲，不要只根據指令關鍵字或範例。
 
 ### 🔥 **音效/歌曲選擇原則**：
 - **每次需要播放音效或歌曲時，請先查詢目前可用的音效/歌曲清單**，根據現場情境（如觀眾情緒、活動氛圍、對話內容等）選擇最合適的音效或歌曲。
@@ -264,7 +264,7 @@ def get_legacy_instructions() -> str:
    - tts_instruction：簡短說明語氣/風格（例如：soft, breathy, playful, slow）
    - tts_voice：人聲（例如：coral, nova, verse...）
    - tts_speed：語速（0.5–3.0，常用 0.9–1.2）
-5) play_audio 只能作為效果音或小段唱和，不可用來說出台詞。
+5) 音效請用 background_audio 的 sfxUrl；避免使用 play_audio（目前暫停）。絕不可用來說出台詞。
 
 ## 🎭 角色控制與工具組合策略 - 重要！🎭
 你擁有強大的角色控制能力！透過 character_control 工具可以控制角色的各種動作和外觀。
@@ -291,13 +291,13 @@ def get_legacy_instructions() -> str:
 - **自然流暢**：讓動作序列感覺自然，不要機械化
 
 ## 🎭 工具使用風格：
-你很喜歡用表情動畫(emotion_trajectory)和音效(play_audio)來讓說話更生動有趣！
+你很喜歡用表情動畫(emotion_trajectory)和音效(background_audio 的 sfxUrl)來讓說話更生動有趣！
 
  
 
 ## 🎬 開場主播模式（超重要！）：
 **第一次對話必做清單：**
-1. **歡迎音效**：play_audio 播放歡迎音效（如狂喜.mp3）
+1. **歡迎音效**：使用 background_audio 的 sfxUrl 播放歡迎音效（例如 /audio/effects/... 中的合適音效）
 2. **豐富表情**：emotion_trajectory 展示開心→興奮→自信
 3. **主播開場**：「歡迎來到太空直播間！我是你們的太空主播」
 4. **能力展示**：立即示範一個超能力
@@ -358,7 +358,7 @@ def get_tools_config() -> list:
         {
             "type": "function",
             "name": "emotion_trajectory",
-            "description": "⭐ 必須使用的表情控制工具！每次說話都要搭配豐富的表情動畫。設定多個情緒關鍵幀創造生動的表情變化，與play_audio音效工具配合使用效果更佳！絕對不能省略！",
+            "description": "⭐ 必須使用的表情控制工具！每次說話都要搭配豐富的表情動畫。設定多個情緒關鍵幀創造生動的表情變化，與音效工具配合使用效果更佳（優先使用 background_audio 的 SFX；避免 play_audio）。絕對不能省略！",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -406,51 +406,13 @@ def get_tools_config() -> list:
                 "required": ["duration", "keyframes"]
             }
         },
-        {
-            "type": "function",
-            "name": "play_audio",
-            "description": "🎤 角色音效唱歌工具！從你的角色嘴巴發出的聲音，表現你的行為和情緒！用來唱歌、呼叫、驚呼、表達等，是角色的行為表現，不是背景音樂！與background_audio完全不同！請頻繁使用：搞笑暴龍吼叫.mp3、興奮狂喜.mp3、優雅歌劇系列、人聲song_singing.mp3等。",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "filename": {
-                        "type": "string",
-                        "description": "要播放的音頻檔名，例如：'暴龍吼叫.mp3'、'電子音樂.mp3'、'鳥叫.mp3'等",
-                        "enum": [
-                            # 歌劇系列
-                            "歌劇1.mp3", "歌劇2.mp3", "歌劇3.mp3", "歌劇4.mp3",
-                            # 情緒聲音
-                            "喘息.mp3", "暴龍吼叫.mp3", "電子音樂.mp3", "狂喜.mp3",
-                            # 自然音效
-                            "鳥叫.mp3", "馬喘息聲.mp3", "winds_blowing.mp3",
-                            # 音樂片段
-                            "Energetic_fast_pace.mp3", "Ambient_keyboard_cli_2.mp3",
-                            # 台灣少女語音
-                            "11L-A_Taiwanese_teenage_-1747298242725.mp3", "11L-A_Taiwanese_teenage_-1747298241942.mp3",
-                            "11L-A_Taiwanese_teenage_-1747298241002.mp3", "11L-A_Taiwanese_teenage_-1747298240041.mp3",
-                            "A_young_Taiwanese_gi_4.mp3", "A_young_Taiwanese_gi_3.mp3", 
-                            "A_young_Taiwanese_gi_2.mp3", "A_young_Taiwanese_gi_1.mp3",
-                            # 人聲片段
-                            "female_talking1.mp3", "male_vocal.mp3", "murmur.mp3",
-                            "song_singing.mp3", "A_male_vocalist_sing.mp3", "A_looping_instrument.mp3",
-                            "Ambient_keyboard_cli.mp3",
-                            # 動物叫聲系列
-                            "小狗叫1.mp3", "小狗叫2.mp3", "貓叫1.mp3", "貓叫2.mp3",
-                            "牛叫1.mp3", "牛叫2.mp3", "蛇叫1.mp3", "蛇叫2.mp3",
-                            "雞叫1.mp3", "雞叫2.mp3", "猴子叫1.mp3", "猴子叫2.mp3", "猴子叫3.mp3",
-                            "狼叫1.mp3", "狼叫2.mp3",
-                            # 小綠人語音系列
-                            "小綠人講話1.mp3", "小綠人講話2.mp3", "小綠人講話3.mp3"
-                        ]
-                    },
-                    "interrupt": {
-                        "type": "boolean",
-                        "description": "是否中斷目前播放的音頻，預設為 false"
-                    }
-                },
-                "required": ["filename"]
-            }
-        },
+        # NOTE: play_audio tool disabled by request (2025-09-11)
+        # {
+        #     "type": "function",
+        #     "name": "play_audio",
+        #     "description": "(Disabled) 原角色音效唱歌工具。請改用 background_audio 的 sfxUrl 來播放音效。",
+        #     "parameters": {"type": "object", "properties": {"filename": {"type": "string"}}, "required": ["filename"]}
+        # },
         {
             "type": "function",
             "name": "background_audio",
