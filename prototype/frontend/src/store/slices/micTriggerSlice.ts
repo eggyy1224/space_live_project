@@ -44,9 +44,10 @@ export interface MicTriggerSlice {
 
 export const createMicTriggerSlice: StateCreator<MicTriggerSlice> = (set, get) => ({
   micTriggerEnabled: false,
-  micThresholdRms: 0.03,
-  micMinHoldMs: 250,
-  micCooldownMs: 20000,
+  // Defaults tuned for a noisier exhibition environment
+  micThresholdRms: 0.06,
+  micMinHoldMs: 350,
+  micCooldownMs: 25000,
   micCurrentRms: 0,
   micLastTriggeredAt: null,
   micError: null,
