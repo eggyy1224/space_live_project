@@ -147,13 +147,13 @@ echo "   - 按 ESC 鍵：退出全螢幕模式"
 echo ""
 echo "開始進行雙螢幕自動排版（大螢幕：Chrome 置入左螢幕；小螢幕：Terminal + headonly Chrome 上下各半）..."
 
-# 先開啟 headonly 的新 Chrome 視窗（不含 autostart）
-echo "開啟 headonly Chrome 視窗於 http://localhost:5173/?headonly ..."
+# 先開啟 headonly 的新 Chrome 視窗（加入 autoplay 參數）
+echo "開啟 headonly Chrome 視窗於 http://localhost:5173/?headonly&autoplay=true ..."
 osascript -e '
 tell application "Google Chrome"
     activate
     set newWin to make new window
-    set URL of active tab of newWin to "http://localhost:5173/?headonly"
+    set URL of active tab of newWin to "http://localhost:5173/?headonly&autoplay=true"
 end tell'
 
 sleep 2 # 確保 headonly 視窗已建立再進行排版
