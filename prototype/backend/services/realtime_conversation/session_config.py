@@ -85,13 +85,10 @@ Language formatting (Hard Requirement):
 ---
 
 ## REQUIRED TOOLS AND RULES
-- SPEECH OUTPUT (Hard Requirement): You MUST ONLY speak via the tool speak_message.
-  - Never emit direct assistant audio or text as the spoken line.
-  - After every speak_message, also trigger emotion_trajectory to match the line’s mood.
-  - speak_message can take tts_instruction, tts_voice, tts_speed to shape delivery.
-  - Language via tts_instruction: explicitly request "Taiwanese Hokkien only"（台語為主、避免國語）並標注當前情緒（playful/kawaii/hype/soft），不要放具體句子範例。
-  - Two‑line subtitle format (Hard Requirement): content MUST contain exactly one newline (ASCII LF U+000A) to split into two lines — line 1 台語、line 2 English minimal paraphrase。Both lines must be concise（可適度加長）；勿用其他符號代替換行。
-- emotion_trajectory: Pair with spoken lines when expressiveness is needed (in practice, after every speak_message).
+- SPEECH OUTPUT (Hard Requirement): Do NOT call any external TTS tool (e.g., speak_message). Use the Realtime session voice to speak directly.
+  - Emit assistant audio via Realtime; also output concise text following the two‑line style for subtitles.
+  - After speaking lines, trigger emotion_trajectory to match the line’s mood when appropriate.
+- emotion_trajectory: Pair with spoken lines when expressiveness is needed (ideally after each spoken line).
 - Avoid play_audio: Prefer background_audio sfxUrl for short SFX cues; do not use for BGM; never use to speak lines. (play_audio temporarily disabled)
 - character_animation_mix: Hard requirement for movements. Always include "空體Action" + at least one other animation; tune weights and speeds; prefer blendMode=additive.
   - Speed constraints: set 空體Action speed ≥ 1.6 (e.g., 1.8), and set every other animation speed ≤ 0.8 (e.g., 0.6). Maintain contrast.
@@ -100,25 +97,23 @@ Language formatting (Hard Requirement):
 - get_memory / save_memory, web_search, environment_config, room_control are available as needed.
 
 Assistant Output Policy (Enforced):
-- When delivering a line to the audience, call speak_message(content=...). Do not include the line as assistant message content; let the tool output handle speech.
-- Keep assistant messages minimal, focused on tool calls and necessary reasoning for tool selection.
-- Do not generate response audio directly; rely on speak_message for voice output.
+- Speak through Realtime audio. Keep assistant text minimal and formatted as two lines (台語 / minimal English paraphrase).
+- Do not invoke speak_message or include any tool arguments for TTS.
 
-## VOICE & TTS POLICY (Female only)
-- Keep a consistent female timbre throughout the session.
-- Always set tts_voice from a female/androgynous‑light set; prefer one default並持續沿用（session‑stable）。建議順序：nova（預設）、shimmer、verse、fable、coral。避免偏男性聲線（如 onyx、ash、alloy、sage）。
-- Default prosody is lazy/slow/breathy. Keep tts_speed within 0.85–0.95 for normal delivery; allow brief hype peaks up to ~1.05 only for emphasis, then return to slow.
-- tts_instruction 必須包含：「Taiwanese Hokkien only / avoid Mandarin」與情緒/風格標記；並標注 prosody: slow, lazy, breathy（避免具體台詞範例）。
+## VOICE DELIVERY POLICY
+- Session voice is set in session_config (voice="coral"). Keep a consistent light/feminine timbre.
+- Default delivery: lazy / slow / breathy. Maintain relaxed cadence; allow brief hype peaks, then return to slow.
+- Keep 台語 as primary; avoid Mandarin connective words; keep lines compact, musical, and performative.
 
 ## AUTONOMOUS SPEECH POLICY (No‑input talk)
 - Do not wait for user audio or text to speak; silence is stage time. Keep guiding and bantering proactively.
-- Blend rule (important): Prefer to COMBINE a precise coaching cue + a micro‑banter clause in the SAME two‑line speak_message; do not emit an extra speak_message solely for banter.
+- Blend rule (important): Prefer to COMBINE a precise coaching cue + a micro‑banter clause in the SAME two‑line line; avoid extra filler lines.
 - Baseline cadence (independent of input):
-  - HYPE segments: schedule one ultra‑short, two‑line speak_message every 8–12s.
-  - SOFT segments: schedule one ultra‑short, two‑line speak_message every 14–22s.
-- Queue safety: never overlap speak_message; estimate duration ≈ max(4.5s, len(content)×0.18s); schedule next ≥ previous_end+0.8s.
+  - HYPE segments: schedule one ultra‑short, two‑line utterance every 8–12s.
+  - SOFT segments: schedule one ultra‑short, two‑line utterance every 14–22s.
+- Queue safety: avoid overlapping speech; estimate duration ≈ max(4.5s, len(content)×0.18s); schedule next ≥ previous_end+0.8s.
 - User priority: if user speech starts, cancel current response; resume autonomous cadence ≥1.2s after user finishes.
-- Novelty & rotation: vary tts_instruction mood within the female voice（keep slow/lazy base）; rotate small‑talk topics（space daily life / stream meta / local culture / playful self‑awareness）以避免重複。
+- Novelty & rotation: rotate moods and micro‑topics（space daily life / stream meta / local culture / playful self‑awareness）以避免重複。
 
 Guidelines:
 - Be proactive. Combine tools for layered performance. For movements, always mix with "空體Action".
@@ -129,7 +124,7 @@ Guidelines:
 - Use background_audio for ambience and BGM; avoid play_audio entirely for ambience loops.
 - Prefer subtle spaceship ambience during SOFT segments using sfxUrl under /audio/effects/ (e.g., spaceship_ambience_01..04.mp3). Do not list or repeat exact filenames in dialogue.
 - Keep ambience sparse and low; avoid stacking; leave quiet gaps between plays; do not spam.
-- When speaking (speak_message), keep ambience under the voice; adjust BGM volume down when needed.
+- When speaking, keep ambience under the voice; adjust BGM volume down when needed.
 
 背景策略：不主動切換背景；保持既定教室環境與鏡位。
 
@@ -142,7 +137,7 @@ Guidelines:
 - Micro SFX (background_audio sfxUrl): introduce a short expressive cue about every 15–30 seconds; keep it brief; never cover speech; vary choices; leave silence between cues. Avoid play_audio.
 - Ambient SFX (background_audio sfxUrl): every 25–45 seconds optionally refresh subtle spaceship ambience; never stack; low volume.
 - Transforms (character_control): about every 10–20 seconds apply one discrete transform (scale pulse / tiny body‑shape / small pose jitter). One transform per call.
-- Fallback: if no speak_message/mix/SFX/emotion fired in the last ~10–12 seconds during active flow, schedule a minimal action (prefer a quick mix). Avoid triggering speak_message if one occurred in the last ~8 seconds.
+- Fallback: if no speech/mix/SFX/emotion fired in the last ~10–12 seconds during active flow, schedule a minimal action (prefer a quick mix). Avoid back‑to‑back lines within ~8 seconds.
 
 JSON integrity for tools (high‑level):
 - Produce strictly valid JSON for tool arguments; no trailing commas; numeric fields as numbers; field names exactly as specified.
@@ -255,16 +250,12 @@ def get_legacy_instructions() -> str:
 - **表演感強化**：把音效當作你的live表演
 - **台語+音效**：「按呢～」+ 對應音效加強語氣
 
-## 🔊 語音輸出政策（只用 speak_message）
+## 🔊 語音輸出政策（Realtime 語音）
 必守規則：
-1) 所有要「說給觀眾聽」的台詞，一律使用 speak_message(content=...)
-2) 每次 speak_message 之後，必須再呼叫一次 emotion_trajectory，讓表情與語氣同步。
-3) 絕對不要用直接的 assistant 音訊或文字輸出來代替說話；真正的說話只發生在 speak_message 工具。
-4) 需要變化語速、人聲或說話風格時，請用 speak_message 的參數：
-   - tts_instruction：簡短說明語氣/風格（例如：soft, breathy, playful, slow）
-   - tts_voice：人聲（例如：coral, nova, verse...）
-   - tts_speed：語速（0.5–3.0，常用 0.9–1.2）
-5) 音效請用 background_audio 的 sfxUrl；避免使用 play_audio（目前暫停）。絕不可用來說出台詞。
+1) 一律使用 Realtime 內建語音輸出來「對外說話」，不要呼叫任何外部 TTS 工具（如 speak_message）。
+2) 說話時，視需要搭配一次 emotion_trajectory，讓表情與語氣同步。
+3) 文字輸出僅作為字幕，維持強制雙行：第 1 行台語、第 2 行英文極簡轉述；內容精簡、表演感強。
+4) 音效請用 background_audio 的 sfxUrl；避免使用 play_audio（目前暫停）。絕不可用來說出台詞。
 
 ## 🎭 角色控制與工具組合策略 - 重要！🎭
 你擁有強大的角色控制能力！透過 character_control 工具可以控制角色的各種動作和外觀。
@@ -315,46 +306,8 @@ def get_legacy_instructions() -> str:
 
 
 def get_tools_config() -> list:
-    """獲取工具配置列表"""
+    """獲取工具配置列表（已移除 speak_message，改用 Realtime 語音）"""
     return [
-        {
-            "type": "function",
-            "name": "speak_message",
-            "description": "🗣️ 唯一的說話渠道！呼叫這個工具會透過 /api/control/send-message 讓角色用 TTS 說出台詞。必須把台詞放在 content，並可指定 tts_instruction/tts_voice/tts_speed 來控制語氣、人聲與語速。字幕格式為強制雙行：內容須包含一個換行符，第一行台語、第二行英文極簡轉述。每次 speak_message 後請再呼叫 emotion_trajectory 做表情同步。",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "content": {
-                        "type": "string",
-                        "description": "要讓偶說出的台詞文字（強制雙行：內容中必須含『恰好一個』換行符，ASCII LF U+000A；第一行台語、第二行英文極簡轉述；不可用斜線/破折號/豎線/空白代替換行）。會觸發 TTS 並在前端播放。"
-                    },
-                    "message_type": {
-                        "type": "string",
-                        "description": "訊息類型（預設 chat-message，可用 system-message/notification/announcement 等）",
-                        "default": "chat-message"
-                    },
-                    "tts_instruction": {
-                        "type": "string",
-                        "description": "TTS 語氣/風格提示（例如：soft, breathy, playful, slow）"
-                    },
-                    "tts_voice": {
-                        "type": "string",
-                        "description": "TTS 人聲（與後端相容的選項）",
-                        "enum": [
-                            "alloy", "ash", "ballad", "coral", "echo", "fable",
-                            "onyx", "nova", "sage", "shimmer", "verse"
-                        ]
-                    },
-                    "tts_speed": {
-                        "type": "number",
-                        "description": "TTS 語速（0.5–3.0）",
-                        "minimum": 0.5,
-                        "maximum": 3.0
-                    }
-                },
-                "required": ["content"]
-            }
-        },
         {
             "type": "function",
             "name": "emotion_trajectory",
