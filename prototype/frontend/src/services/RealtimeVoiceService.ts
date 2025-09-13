@@ -8,6 +8,7 @@ const WS_URL = `ws://${window.location.hostname}:8000/api/real-time/ws`;
 class RealtimeAudioPlayer {
   private audioContext: AudioContext | null = null
   private analyser: AnalyserNode | null = null;
+  private compressor: DynamicsCompressorNode | null = null;
   private gainNode: GainNode | null = null;
   private analysisFrameId: number | null = null;
   private audioQueue: AudioBuffer[] = [];
@@ -21,10 +22,35 @@ class RealtimeAudioPlayer {
       this.analyser = this.audioContext.createAnalyser();
       this.analyser.fftSize = 256;
       
+      // 建立壓縮器避免放大時失真（可選，參數保守）
+      try {
+        this.compressor = this.audioContext.createDynamicsCompressor();
+        // 溫和壓縮：略降門檻與比率、保持快速 attack
+        this.compressor.threshold.value = -24; // dB
+        this.compressor.knee.value = 30;
+        this.compressor.ratio.value = 3;
+        this.compressor.attack.value = 0.003;
+        this.compressor.release.value = 0.25;
+      } catch (e) {
+        this.compressor = null;
+      }
+
       this.gainNode = this.audioContext.createGain();
-      this.gainNode.gain.value = 0.8;
-      
-      this.analyser.connect(this.gainNode);
+      // 初始音量取用全域設定的 ttsVolume（預設 1.0）
+      try {
+        const initialVolume = Math.max(0, Math.min(2, useStore.getState().ttsVolume ?? 1));
+        this.gainNode.gain.value = initialVolume;
+      } catch {
+        this.gainNode.gain.value = 1.0;
+      }
+
+      // 連線：Analyser -> (Compressor) -> Gain -> Destination
+      if (this.compressor) {
+        this.analyser.connect(this.compressor);
+        this.compressor.connect(this.gainNode);
+      } else {
+        this.analyser.connect(this.gainNode);
+      }
       this.gainNode.connect(this.audioContext.destination);
     }
     
@@ -207,6 +233,7 @@ class RealtimeAudioPlayer {
     }
     
     this.analyser = null;
+    this.compressor = null;
     this.gainNode = null;
 
   }
@@ -214,6 +241,13 @@ class RealtimeAudioPlayer {
   // 提供公開方法讓外部也能調用立即停止
   public forceStop() {
     this.immediateStopPlayback();
+  }
+
+  // 新增：設定播放音量（0–2），>1 會放大，注意可能失真（已接壓縮器做保護）
+  public setVolume(vol: number) {
+    if (!this.gainNode) return;
+    const clamped = Math.max(0, Math.min(2, Number.isFinite(vol) ? vol : 1));
+    this.gainNode.gain.value = clamped;
   }
 }
 
@@ -226,6 +260,7 @@ export function useRealtimeVoice() {
   const audioPlayerRef = useRef<RealtimeAudioPlayer | null>(null);
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const ttsVolume = useStore((state) => state.ttsVolume);
 
   useEffect(() => {
     (window as any).__realtimeVoiceDebug = {
@@ -365,6 +400,10 @@ export function useRealtimeVoice() {
       // 初始化實時音頻播放器
       audioPlayerRef.current = new RealtimeAudioPlayer();
       await audioPlayerRef.current.initialize();
+      // 將當前 ttsVolume 套用到 Realtime 播放器
+      try {
+        audioPlayerRef.current.setVolume(ttsVolume);
+      } catch {}
       
       console.log('[RealtimeVoice] Requesting microphone access...');
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -593,6 +632,12 @@ export function useRealtimeVoice() {
     cleanup();
   };
 
+  // 當 ttsVolume 變化時，動態更新 Realtime 播放器的音量
+  useEffect(() => {
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.setVolume(ttsVolume);
+    }
+  }, [ttsVolume]);
+
   return { start, stop, forceStopPlayback, streaming, error };
 }
-
