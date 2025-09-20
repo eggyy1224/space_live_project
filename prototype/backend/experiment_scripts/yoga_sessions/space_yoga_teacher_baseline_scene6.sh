@@ -11,43 +11,63 @@ BASE_URL="http://localhost:8000/api"
 CURL_POST="curl -s -f -X POST"
 CURL_POST_NF="curl -s -X POST"   # 不因 HTTP 狀態碼中止（避免暫時無連線時整段中斷）
 
-# --- 全域 TTS 設定（台語／漢字）---
-TTS_INSTRUCTION="Taiwanese Hokkien, Han characters, natural, warm, friendly, accurate tones; avoid Mandarin accent"
+# ---- 文本播放設定（無 TTS，僅字幕同步） ----
+# 保留 voice/speed 預設值以維持腳本介面相容；實際不再觸發雲端語音。
 TTS_VOICE_DEFAULT="sage"
 TTS_SPEED_DEFAULT=0.5
 
-# TTS 節流/降載
-TTS_EVERY_N=3
-TTS_COOLDOWN=5
-__SAY_COUNT=0
-LAST_TTS_TS=0
 
 # --- 小工具 ---
 rand_float() { local MIN=$1; local MAX=$2; local DEC=${3:-2}; awk -v min="$MIN" -v max="$MAX" -v dec="$DEC" 'BEGIN{srand(); v=min+rand()*(max-min); printf("%.*f\n", dec, v)}'; }
 rand_int()   { local MIN=$1; local MAX=$2; awk -v min="$MIN" -v max="$MAX" 'BEGIN{srand(); printf("%d\n", int(min+rand()*(max-min+1)))}'; }
 
 say() {
-  # 用法: say "內容" 時長(秒) "emo1,emo2,emo3" [voice] [speed] [force]
-  local CONTENT="$1"; local DURATION=${2:-3.0}; local EMOS=${3:-"serene,content,grateful"}
-  local VOICE=${4:-$TTS_VOICE_DEFAULT}; local SPEED=${5:-$TTS_SPEED_DEFAULT}; local FORCE=${6:-0}
+# 用法: say "內容" 時長(秒) "emotion1,emotion2,..." [legacy_voice] [legacy_speed]
+  local CONTENT="$1"; local DURATION=${2:-3.0}; local EMOS=${3:-"neutral,interested,confident"}
+  # 參數4+（voice/speed/force）保留相容性，目前僅用於字幕同步，不再觸發 TTS。
   echo ">> 說話: $CONTENT ($DURATION s / $EMOS)"
-  __SAY_COUNT=$((__SAY_COUNT + 1)); local DO_TTS=0; local NOW_TS=$(date +%s)
-  if (( FORCE == 1 )); then DO_TTS=1; else if (( (__SAY_COUNT % TTS_EVERY_N) == 1 )) && (( NOW_TS - LAST_TTS_TS >= TTS_COOLDOWN )); then DO_TTS=1; fi; fi
-  if (( DO_TTS == 1 )); then
-    $CURL_POST "$BASE_URL/control/send-message" -H "Content-Type: application/json" \
-      -d "{\"content\": \"$CONTENT\", \"tts_instruction\": \"$TTS_INSTRUCTION\", \"tts_voice\": \"$VOICE\", \"tts_speed\": $SPEED}" >/dev/null
-    LAST_TTS_TS=$NOW_TS
+  local PAYLOAD
+  PAYLOAD=$(CONTENT="$CONTENT" python3 - <<'PY'
+import json
+import os
+import uuid
+from datetime import datetime, timezone
+
+content = os.environ.get("CONTENT", "")
+message = {
+    "id": f"script-bot-{uuid.uuid4().hex[:8]}",
+    "role": "bot",
+    "content": content,
+    "timestamp": datetime.now(timezone.utc).isoformat(),
+    "audioUrl": None,
+    "isFromAPI": True,
+}
+payload = {"type": "chat-message", "message": message}
+print(json.dumps(payload, ensure_ascii=False))
+PY
+)
+  echo "   >> [字幕] payload -> chat-message"
+  $CURL_POST "$BASE_URL/control/broadcast" \
+    -H "Content-Type: application/json" \
+    -d "$PAYLOAD" >/dev/null
+  # 發送情緒軌跡（將情緒清單分三段過渡）
+  local IFS=','; read -ra KFS <<< "$EMOS"; unset IFS
+  local KF_JSON="[]"
+  if (( ${#KFS[@]} == 1 )); then
+    KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 1.0}]"
+  elif (( ${#KFS[@]} == 2 )); then
+    KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 0.5},{\"tag\": \"${KFS[1]}\", \"proportion\": 1.0}]"
   else
-    echo "   >> [SKIP TTS]（降載：僅表情過渡）"
+    KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 0.0},{\"tag\": \"${KFS[1]}\", \"proportion\": 0.6},{\"tag\": \"${KFS[2]}\", \"proportion\": 1.0}]"
   fi
-  IFS=',' read -ra KFS <<< "$EMOS"; local KF_JSON
-  if (( ${#KFS[@]} == 1 )); then KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 1.0}]";
-  elif (( ${#KFS[@]} == 2 )); then KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 0.5},{\"tag\": \"${KFS[1]}\", \"proportion\": 1.0}]";
-  else KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 0.0},{\"tag\": \"${KFS[1]}\", \"proportion\": 0.6},{\"tag\": \"${KFS[2]}\", \"proportion\": 1.0}]"; fi
-  $CURL_POST "$BASE_URL/control/emotion-trajectory" -H "Content-Type: application/json" -d "{\"duration\": $DURATION, \"keyframes\": $KF_JSON}" >/dev/null
+  $CURL_POST "$BASE_URL/control/emotion-trajectory" \
+    -H "Content-Type: application/json" \
+    -d "{\"duration\": $DURATION, \"keyframes\": $KF_JSON}" >/dev/null
+  # 節奏控制（略短於全時長，避免阻塞下一拍）
   sleep $(echo "$DURATION * 0.85" | bc)
 }
 
+# 只走表情（不說話）
 emote() {
   local DURATION=${1:-1.6}; local EMOS=${2:-"serene,content,grateful"}
   IFS=',' read -ra KFS <<< "$EMOS"; local KF_JSON
@@ -114,12 +134,13 @@ char_scale() { local S=${1:-0.1}; $CURL_POST "$BASE_URL/control/character/scale"
 char_position() { local X=${1:-0.0}; local Y=${2:-8.0}; local Z=${3:-30.0}; $CURL_POST "$BASE_URL/control/character/position" -H "Content-Type: application/json" -d "{\"position\": [$X,$Y,$Z]}" >/dev/null; }
 
 say_zh_en() {
-  local ZH="$1"; local EN="$2"; local DUR=${3:-2.6}; local EMO=${4:-"serene,content,grateful"}
-  local VOICE=${5:-$TTS_VOICE_DEFAULT}; local SPEED=${6:-$TTS_SPEED_DEFAULT}; local FORCE=${7:-0}
-  say "$ZH\n$EN" "$DUR" "$EMO" "$VOICE" "$SPEED" "$FORCE"
+  # 用法: say_zh_en "中文" "English" 時長(秒) "emo1,emo2,emo3" [legacy_voice] [legacy_speed] [legacy_force]
+  local ZH="$1"; local EN="$2"; local DUR=${3:-2.6}; local EMO=${4:-"neutral,interested,confident"}
+  local COMBINED
+  COMBINED=$(printf "%s\n%s" "$ZH" "$EN")
+  say "$COMBINED" "$DUR" "$EMO"
 }
 
-# ---- 多樣性：20 動作 + 袋子抽樣，避免重複並保證覆蓋 ----
 YOGA_MOVES=(
   "瑜珈動作1" "瑜珈動作2" "瑜珈動作3" "瑜珈動作4" "瑜珈動作5"
   "瑜珈動作6" "瑜珈動作7" "瑜珈動作8" "瑜珈動作9" "瑜珈動作10"

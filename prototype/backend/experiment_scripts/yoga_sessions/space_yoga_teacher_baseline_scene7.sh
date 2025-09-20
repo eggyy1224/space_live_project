@@ -12,14 +12,10 @@ BASE_URL="http://localhost:8000/api"
 CURL_POST="curl -s -f -X POST"
 CURL_POST_NF="curl -s -X POST"
 
-# --- TTS 設定（台語／漢字）---
-TTS_INSTRUCTION="Taiwanese Hokkien, Han characters, natural, lively, playful; accurate tones; avoid Mandarin accent"
+# ---- 文本播放設定（無 TTS，僅字幕同步） ----
+# 保留 voice/speed 預設值以維持腳本介面相容；實際不再觸發雲端語音。
 TTS_VOICE_DEFAULT="sage"
 TTS_SPEED_DEFAULT=0.58
-TTS_EVERY_N=3
-TTS_COOLDOWN=5
-__SAY_COUNT=0
-LAST_TTS_TS=0
 
 # --- 小工具 ---
 rand_float() { local MIN=$1; local MAX=$2; local DEC=${3:-2}; awk -v min="$MIN" -v max="$MAX" -v dec="$DEC" 'BEGIN{srand(); v=min+rand()*(max-min); printf("%.*f\n", dec, v)}'; }
@@ -34,24 +30,53 @@ BASE_SLOW_MIN=2.40
 BASE_SLOW_MAX=2.80
 
 say() {
-  local CONTENT="$1"; local DURATION=${2:-2.6}; local EMOS=${3:-"playful,amused,joyful"}
-  local VOICE=${4:-$TTS_VOICE_DEFAULT}; local SPEED=${5:-$TTS_SPEED_DEFAULT}; local FORCE=${6:-0}
-  echo ">> 說話: $CONTENT ($DURATION s / $EMOS)"
-  __SAY_COUNT=$((__SAY_COUNT + 1)); local DO_TTS=0; local NOW_TS=$(date +%s)
-  if (( FORCE == 1 )); then DO_TTS=1; else if (( (__SAY_COUNT % TTS_EVERY_N) == 1 )) && (( NOW_TS - LAST_TTS_TS >= TTS_COOLDOWN )); then DO_TTS=1; fi; fi
-  if (( DO_TTS == 1 )); then
-    $CURL_POST "$BASE_URL/control/send-message" -H "Content-Type: application/json" \
-      -d "{\"content\": \"$CONTENT\", \"tts_instruction\": \"$TTS_INSTRUCTION\", \"tts_voice\": \"$VOICE\", \"tts_speed\": $SPEED}" >/dev/null
-    LAST_TTS_TS=$NOW_TS
+# 用法: say "內容" 時長(秒) "emotion1,emotion2,..." [legacy_voice] [legacy_speed]
+  local CONTENT="$1"; local DURATION=${2:-3.0}; local EMOS=${3:-"neutral,interested,confident"}
+  # 參數4+（voice/speed/force）保留相容性，目前僅用於字幕同步，不再觸發 TTS。
+  local LOG_CONTENT=${CONTENT//$'\n'/\\n}
+  echo ">> 說話: $LOG_CONTENT ($DURATION s / $EMOS)"
+  local PAYLOAD
+  PAYLOAD=$(CONTENT="$CONTENT" python3 - <<'PY'
+import json
+import os
+import uuid
+from datetime import datetime, timezone
+
+content = os.environ.get("CONTENT", "")
+message = {
+    "id": f"script-bot-{uuid.uuid4().hex[:8]}",
+    "role": "bot",
+    "content": content,
+    "timestamp": datetime.now(timezone.utc).isoformat(),
+    "audioUrl": None,
+    "isFromAPI": True,
+}
+payload = {"type": "chat-message", "message": message}
+print(json.dumps(payload, ensure_ascii=False))
+PY
+)
+  echo "   >> [字幕] payload -> chat-message"
+  $CURL_POST "$BASE_URL/control/broadcast" \
+    -H "Content-Type: application/json" \
+    -d "$PAYLOAD" >/dev/null
+  # 發送情緒軌跡（將情緒清單分三段過渡）
+  local IFS=','; read -ra KFS <<< "$EMOS"; unset IFS
+  local KF_JSON="[]"
+  if (( ${#KFS[@]} == 1 )); then
+    KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 1.0}]"
+  elif (( ${#KFS[@]} == 2 )); then
+    KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 0.5},{\"tag\": \"${KFS[1]}\", \"proportion\": 1.0}]"
+  else
+    KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 0.0},{\"tag\": \"${KFS[1]}\", \"proportion\": 0.6},{\"tag\": \"${KFS[2]}\", \"proportion\": 1.0}]"
   fi
-  IFS=',' read -ra KFS <<< "$EMOS"; local KF_JSON
-  if (( ${#KFS[@]} == 1 )); then KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 1.0}]"; 
-  elif (( ${#KFS[@]} == 2 )); then KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 0.5},{\"tag\": \"${KFS[1]}\", \"proportion\": 1.0}]"; 
-  else KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 0.0},{\"tag\": \"${KFS[1]}\", \"proportion\": 0.6},{\"tag\": \"${KFS[2]}\", \"proportion\": 1.0}]"; fi
-  $CURL_POST "$BASE_URL/control/emotion-trajectory" -H "Content-Type: application/json" -d "{\"duration\": $DURATION, \"keyframes\": $KF_JSON}" >/dev/null
-  sleep $(echo "$DURATION * 0.75" | bc)
+  $CURL_POST "$BASE_URL/control/emotion-trajectory" \
+    -H "Content-Type: application/json" \
+    -d "{\"duration\": $DURATION, \"keyframes\": $KF_JSON}" >/dev/null
+  # 節奏控制（略短於全時長，避免阻塞下一拍）
+  sleep $(echo "$DURATION * 0.85" | bc)
 }
 
+# 只走表情（不說話）
 emote() {
   local DURATION=${1:-1.6}; local EMOS=${2:-"playful,amused,joyful"}
   IFS=',' read -ra KFS <<< "$EMOS"; local KF_JSON
@@ -109,9 +134,14 @@ head_size() { local S=${1:-10.0}; $CURL_POST "$BASE_URL/control/head-size" -H "C
 char_scale() { local S=${1:-0.1}; $CURL_POST "$BASE_URL/control/character/scale" -H "Content-Type: application/json" -d "{\"scale\": $S}" >/dev/null; }
 char_position() { local X=${1:-0.0}; local Y=${2:-8.0}; local Z=${3:-30.0}; $CURL_POST "$BASE_URL/control/character/position" -H "Content-Type: application/json" -d "{\"position\": [$X,$Y,$Z]}" >/dev/null; }
 
-say_zh_en() { local ZH="$1"; local EN="$2"; local DUR=${3:-2.4}; local EMO=${4:-"playful,amused,joyful"}; say "$ZH\n$EN" "$DUR" "$EMO" "$TTS_VOICE_DEFAULT" $TTS_SPEED_DEFAULT 0; }
+say_zh_en() {
+  # 用法: say_zh_en "中文" "English" 時長(秒) "emo1,emo2,emo3" [legacy_voice] [legacy_speed] [legacy_force]
+  local ZH="$1"; local EN="$2"; local DUR=${3:-2.6}; local EMO=${4:-"neutral,interested,confident"}
+  local COMBINED
+  COMBINED=$(printf "%s\n%s" "$ZH" "$EN")
+  say "$COMBINED" "$DUR" "$EMO"
+}
 
-# 20 動作 + 袋子抽樣，避免重複並保證覆蓋
 YOGA_MOVES=(
   "瑜珈動作1" "瑜珈動作2" "瑜珈動作3" "瑜珈動作4" "瑜珈動作5"
   "瑜珈動作6" "瑜珈動作7" "瑜珈動作8" "瑜珈動作9" "瑜珈動作10"
@@ -124,26 +154,38 @@ next_yoga_move() { (( ${#_BAG[@]}==0 )) && _refill_bag; local pick=${_BAG[0]}; _
 
 # 台詞池（取自參考稿，做短句化）
 LINES_INTRO=(
-  "欸欸等一下，我怎麼飄過頭了啦～！\nOops—overshot orbit!"
-  "歡迎來到太空辣妹瑜伽教室～\nWelcome to Spicy Nebula Yoga!"
+  $'欸欸等一下，我怎麼飄過頭了啦～！
+Oops—overshot orbit!'
+  $'歡迎來到太空辣妹瑜伽教室～
+Welcome to Spicy Nebula Yoga!'
 )
 LINES_P1=(
-  "宇宙樹，站穩就浮起。\nCosmic Tree—root and rise."
-  "飛天拜日浮空式，新流派登場！\nFlying Sun Salute—new cosmic style!"
-  "彈跳旋轉式，冥想中不要撞艙壁～\nBounce and spin—watch the bulkhead!"
+  $'宇宙樹，站穩就浮起。
+Cosmic Tree—root and rise.'
+  $'飛天拜日浮空式，新流派登場！
+Flying Sun Salute—new cosmic style!'
+  $'彈跳旋轉式，冥想中不要撞艙壁～
+Bounce and spin—watch the bulkhead!'
 )
 LINES_P2=(
-  "無脊椎下犬式，地球做不得。\nBoneless Down Dog—not for Earth."
-  "太空勇士式，逆風也要美。\nSpace Warrior—fierce and fabulous."
-  "螺旋章魚式，我根本水管啦～\nSpiral Octopus—I’m a space hose!"
+  $'無脊椎下犬式，地球做不得。
+Boneless Down Dog—not for Earth.'
+  $'太空勇士式，逆風也要美。
+Space Warrior—fierce and fabulous.'
+  $'螺旋章魚式，我根本水管啦～
+Spiral Octopus—I’m a space hose!'
 )
 LINES_GAG=(
-  "心靈脫軌式，練完忘記煩惱。\nMind-off-track—forget your troubles."
-  "如果撞到艙壁，代表進入更高次元。\nBump the wall? Higher dimension unlocked."
+  $'心靈脫軌式，練完忘記煩惱。
+Mind-off-track—forget your troubles.'
+  $'如果撞到艙壁，代表進入更高次元。
+Bump the wall? Higher dimension unlocked.'
 )
 LINES_OUTRO=(
-  "深冥想，靈魂回艙體…欸人怎麼飄走。\nDeep meditation—return to vessel… oh no, drifting!"
-  "下次見，記得補給控肉飯～\nSee you—bring braised pork rice!"
+  $'深冥想，靈魂回艙體…欸人怎麼飄走。
+Deep meditation—return to vessel… oh no, drifting!'
+  $'下次見，記得補給控肉飯～
+See you—bring braised pork rice!'
 )
 
 echo "=== 🧘 Space Yoga Teacher — Spicy Nebula Comedy 開始 ==="

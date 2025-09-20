@@ -20,7 +20,7 @@ rand_float() { local MIN=$1; local MAX=$2; local DEC=${3:-2}; awk -v min="$MIN" 
 rand_choice() { local arr=("${!1}"); local n=${#arr[@]}; echo "${arr[$((RANDOM % n))]}"; }
 
 say() {
-  # 用法: say "內容" 時長(秒) "emotion1,emotion2,..." [legacy_voice] [legacy_speed]
+# 用法: say "內容" 時長(秒) "emotion1,emotion2,..." [legacy_voice] [legacy_speed]
   local CONTENT="$1"; local DURATION=${2:-3.0}; local EMOS=${3:-"neutral,interested,confident"}
   # 參數4+（voice/speed/force）保留相容性，目前僅用於字幕同步，不再觸發 TTS。
   echo ">> 說話: $CONTENT ($DURATION s / $EMOS)"
@@ -45,16 +45,27 @@ print(json.dumps(payload, ensure_ascii=False))
 PY
 )
   echo "   >> [字幕] payload -> chat-message"
-  $CURL_POST "$BASE_URL/control/broadcast" -H "Content-Type: application/json" -d "$PAYLOAD" >/dev/null
-  # 情緒
-  IFS=',' read -ra KFS <<< "$EMOS"; local KF_JSON="[]"
-  if (( ${#KFS[@]} == 1 )); then KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 1.0}]";
-  elif (( ${#KFS[@]} == 2 )); then KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 0.5},{\"tag\": \"${KFS[1]}\", \"proportion\": 1.0}]";
-  else KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 0.0},{\"tag\": \"${KFS[1]}\", \"proportion\": 0.6},{\"tag\": \"${KFS[2]}\", \"proportion\": 1.0}]"; fi
-  $CURL_POST "$BASE_URL/control/emotion-trajectory" -H "Content-Type: application/json" -d "{\"duration\": $DURATION, \"keyframes\": $KF_JSON}" >/dev/null
+  $CURL_POST "$BASE_URL/control/broadcast" \
+    -H "Content-Type: application/json" \
+    -d "$PAYLOAD" >/dev/null
+  # 發送情緒軌跡（將情緒清單分三段過渡）
+  local IFS=','; read -ra KFS <<< "$EMOS"; unset IFS
+  local KF_JSON="[]"
+  if (( ${#KFS[@]} == 1 )); then
+    KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 1.0}]"
+  elif (( ${#KFS[@]} == 2 )); then
+    KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 0.5},{\"tag\": \"${KFS[1]}\", \"proportion\": 1.0}]"
+  else
+    KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 0.0},{\"tag\": \"${KFS[1]}\", \"proportion\": 0.6},{\"tag\": \"${KFS[2]}\", \"proportion\": 1.0}]"
+  fi
+  $CURL_POST "$BASE_URL/control/emotion-trajectory" \
+    -H "Content-Type: application/json" \
+    -d "{\"duration\": $DURATION, \"keyframes\": $KF_JSON}" >/dev/null
+  # 節奏控制（略短於全時長，避免阻塞下一拍）
   sleep $(echo "$DURATION * 0.85" | bc)
 }
 
+# 只走表情（不說話）
 emote() {
   local DURATION=${1:-2.0}; local EMOS=${2:-"serene,content,joyful"}
   IFS=',' read -ra KFS <<< "$EMOS"; local KF_JSON
@@ -108,7 +119,6 @@ say_zh_en() {
   say "$COMBINED" "$DUR" "$EMO"
 }
 
-# 動作池（加入飛行元素）
 YOGA_MOVES=("瑜珈動作3" "瑜珈動作5" "瑜珈動作7" "瑜珈動作9" "瑜珈動作12" "瑜珈動作15" "瑜珈動作18")
 
 EMO_FLOAT=("serene,hopeful,joyful" "serene,awe,joyful" "serene,interested,awe")
