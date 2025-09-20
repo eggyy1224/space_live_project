@@ -10,30 +10,42 @@ BASE_URL="http://localhost:8000/api"
 CURL_POST="curl -s -f -X POST"
 CURL_POST_NF="curl -s -X POST"
 
-# --- TTS 設定（自然樣態）---
-TTS_INSTRUCTION="Taiwanese Hokkien, Han characters, natural, warm, friendly, accurate tones; avoid Mandarin accent"
+# ---- 文本播放設定（無 TTS，僅字幕同步） ----
+# 保留 voice/speed 預設值以維持腳本介面相容；實際不再觸發雲端語音。
 TTS_VOICE_DEFAULT="sage"
 TTS_SPEED_DEFAULT=0.5
-TTS_EVERY_N=3
-TTS_COOLDOWN=5
-__SAY_COUNT=0
-LAST_TTS_TS=0
 
 # --- 小工具 ---
 rand_float() { local MIN=$1; local MAX=$2; local DEC=${3:-2}; awk -v min="$MIN" -v max="$MAX" -v dec="$DEC" 'BEGIN{srand(); v=min+rand()*(max-min); printf("%.*f\n", dec, v)}'; }
 rand_choice() { local arr=("${!1}"); local n=${#arr[@]}; echo "${arr[$((RANDOM % n))]}"; }
 
 say() {
+  # 用法: say "內容" 時長(秒) "emotion1,emotion2,..." [legacy_voice] [legacy_speed]
   local CONTENT="$1"; local DURATION=${2:-3.0}; local EMOS=${3:-"neutral,interested,confident"}
-  local VOICE=${4:-$TTS_VOICE_DEFAULT}; local SPEED=${5:-$TTS_SPEED_DEFAULT}; local FORCE=${6:-0}
+  # 參數4+（voice/speed/force）保留相容性，目前僅用於字幕同步，不再觸發 TTS。
   echo ">> 說話: $CONTENT ($DURATION s / $EMOS)"
-  __SAY_COUNT=$((__SAY_COUNT + 1)); local DO_TTS=0; local NOW_TS=$(date +%s)
-  if (( FORCE == 1 )); then DO_TTS=1; else if (( (__SAY_COUNT % TTS_EVERY_N) == 1 )) && (( NOW_TS - LAST_TTS_TS >= TTS_COOLDOWN )); then DO_TTS=1; fi; fi
-  if (( DO_TTS == 1 )); then
-    $CURL_POST "$BASE_URL/control/send-message" -H "Content-Type: application/json" \
-      -d "{\"content\": \"$CONTENT\", \"tts_instruction\": \"$TTS_INSTRUCTION\", \"tts_voice\": \"$VOICE\", \"tts_speed\": $SPEED}" >/dev/null
-    LAST_TTS_TS=$NOW_TS
-  fi
+  local PAYLOAD
+  PAYLOAD=$(CONTENT="$CONTENT" python3 - <<'PY'
+import json
+import os
+import uuid
+from datetime import datetime, timezone
+
+content = os.environ.get("CONTENT", "")
+message = {
+    "id": f"script-bot-{uuid.uuid4().hex[:8]}",
+    "role": "bot",
+    "content": content,
+    "timestamp": datetime.now(timezone.utc).isoformat(),
+    "audioUrl": None,
+    "isFromAPI": True,
+}
+payload = {"type": "chat-message", "message": message}
+print(json.dumps(payload, ensure_ascii=False))
+PY
+)
+  echo "   >> [字幕] payload -> chat-message"
+  $CURL_POST "$BASE_URL/control/broadcast" -H "Content-Type: application/json" -d "$PAYLOAD" >/dev/null
   # 情緒
   IFS=',' read -ra KFS <<< "$EMOS"; local KF_JSON="[]"
   if (( ${#KFS[@]} == 1 )); then KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 1.0}]";
@@ -89,10 +101,11 @@ char_visible() { local V=${1:-true}; $CURL_POST "$BASE_URL/control/character/vis
 
 # 中英併行語句（保持一致風格）
 say_zh_en() {
-  # 用法: say_zh_en "中文" "English" 時長(秒) "emo1,emo2,emo3" [voice] [speed] [force]
+  # 用法: say_zh_en "中文" "English" 時長(秒) "emo1,emo2,emo3" [legacy_voice] [legacy_speed] [legacy_force]
   local ZH="$1"; local EN="$2"; local DUR=${3:-2.6}; local EMO=${4:-"neutral,interested,confident"}
-  local VOICE=${5:-$TTS_VOICE_DEFAULT}; local SPEED=${6:-$TTS_SPEED_DEFAULT}; local FORCE=${7:-0}
-  say "$ZH\n$EN" "$DUR" "$EMO" "$VOICE" "$SPEED" "$FORCE"
+  local COMBINED
+  COMBINED=$(printf "%s\n%s" "$ZH" "$EN")
+  say "$COMBINED" "$DUR" "$EMO"
 }
 
 # 動作池（加入飛行元素）
@@ -117,7 +130,7 @@ anim_char "空體Action" 1.0 true
 sleep 0.8
 
 # 開場：自然的語句
-say_zh_en "咱攏輕輕浮起，先攏呼吸的步調。" "We rise light—find a steady rhythm." 2.8 "serene,interested,content" "$TTS_VOICE_DEFAULT" $TTS_SPEED_DEFAULT 1
+say_zh_en "咱攏輕輕浮起，先攏呼吸的步調。" "We rise light—find a steady rhythm." 2.8 "serene,interested,content"
 emote 1.6 "serene,awe,joyful"
 anim_mix "瑜珈動作7" 0.9 0.7 0.8 "additive" 1.5
 # 穩定鏡位：取消 yaw/roll 的大幅變化，僅做溫和推進
@@ -153,7 +166,7 @@ emote 1.8 "surprised,awe,joyful"
 
 # 收束：回正 — 低角度望上（語句更有情緒）
 ## 已移除：鏡位過渡
-say_zh_en "慢慢回正，心沉落，呼吸繼續。" "Return to center—let the heart settle, breath continues." 2.8 "grateful,content,serene" "$TTS_VOICE_DEFAULT" $TTS_SPEED_DEFAULT 1
+say_zh_en "慢慢回正，心沉落，呼吸繼續。" "Return to center—let the heart settle, breath continues." 2.8 "grateful,content,serene"
 emote 2.4 "grateful,content,serene"
 
 # 結束（不播放 BGM）
