@@ -56,23 +56,67 @@
     return data;
   }
 
+  function getDisplayName(fullName){
+    try{
+      const base = (fullName.split('/').pop() || '').replace(/\.sh$/i, '');
+      const m = base.match(/scene(\d+[a-z]?)/i);
+      if(m){
+        return `S${m[1].toUpperCase()}`;
+      }
+      const cleaned = base
+        .replace(/space_?yoga_?teacher_?/i, '')
+        .replace(/yoga_?sessions?_?/i, '')
+        .replace(/baseline_?/i, '')
+        .replace(/_/g, ' ')
+        .trim();
+      return cleaned.length > 18 ? cleaned.slice(0,18) + '…' : cleaned;
+    }catch(e){
+      return fullName;
+    }
+  }
+
+  function extractSceneKey(fullName){
+    const base = (fullName.split('/').pop() || '').replace(/\.sh$/i, '');
+    const m = base.match(/scene(\d+)([a-z]?)/i);
+    if(m){
+      return { has:true, num: parseInt(m[1], 10), suffix: (m[2]||'').toLowerCase(), base };
+    }
+    return { has:false, num: Number.MAX_SAFE_INTEGER, suffix:'', base };
+  }
+
+  function compareScripts(aName, bName){
+    const a = extractSceneKey(aName);
+    const b = extractSceneKey(bName);
+    if(a.has && b.has){
+      if(a.num !== b.num) return a.num - b.num;
+      if(a.suffix !== b.suffix) return a.suffix < b.suffix ? -1 : 1;
+      return 0;
+    }
+    // fallback to natural compare on base names
+    return a.base.localeCompare(b.base, undefined, { numeric: true, sensitivity: 'base' });
+  }
+
   function renderList(registered, running){
     const runningSet = new Set((running?.running_scripts)||[]);
-    const rows = registered.map(item => {
+    const sorted = [...registered].sort((a,b) => compareScripts(a.name, b.name));
+    const rows = sorted.map(item => {
       const name = item.name;
       const isRunning = item.is_running || runningSet.has(name);
       const desc = item.description || '';
       const playDisabled = isRunning ? 'disabled' : '';
       const stopDisabled = isRunning ? '' : 'disabled';
+      const shortName = getDisplayName(name);
       return `
         <tr>
-          <td style="white-space:nowrap;">${name}</td>
-          <td>${desc}</td>
-          <td style="text-align:center;">${isRunning ? '<span style="color:#2e7d32;">執行中</span>' : '<span style="color:#555;">待機</span>'}</td>
-          <td style="text-align:right; white-space:nowrap;">
-            <button class="pm-play" data-name="${name}" ${playDisabled}>播放</button>
-            <button class="pm-stop" data-name="${name}" ${stopDisabled} style="margin-left:6px;">停止</button>
+          <td style="white-space:nowrap;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <button class="pm-play" data-name="${name}" ${playDisabled}>播放</button>
+              <button class="pm-stop" data-name="${name}" ${stopDisabled}>停止</button>
+              <span class="pm-name" title="${name}">${shortName}</span>
+            </div>
           </td>
+          <td style="text-align:center;">${isRunning ? '<span style="color:#2e7d32;">執行中</span>' : '<span style="color:#555;">待機</span>'}</td>
+          <td>${desc}</td>
         </tr>
       `;
     }).join('');
@@ -81,10 +125,9 @@
       <table style="width:100%; border-collapse:collapse;">
         <thead>
           <tr style="background:#f7f7f7;">
-            <th style="text-align:left;padding:6px 8px; border-bottom:1px solid #eee; width:30%">名稱</th>
+            <th style="text-align:left;padding:6px 8px; border-bottom:1px solid #eee; width:50%">操作 / 名稱</th>
+            <th style="text-align:center;padding:6px 8px; border-bottom:1px solid #eee; width:12%">狀態</th>
             <th style="text-align:left;padding:6px 8px; border-bottom:1px solid #eee;">描述</th>
-            <th style="text-align:center;padding:6px 8px; border-bottom:1px solid #eee; width:10%">狀態</th>
-            <th style="text-align:right;padding:6px 8px; border-bottom:1px solid #eee; width:160px;">操作</th>
           </tr>
         </thead>
         <tbody>

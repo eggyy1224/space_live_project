@@ -8,12 +8,22 @@
     body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
     #console { padding: 1em; }
     #ws-log { height: 200px; overflow: auto; border: 1px solid #ccc; }
+    /* Program Manager UI tweaks */
+    #program-manager table th, #program-manager table td { padding: 6px 8px; border-bottom: 1px solid #eee; }
+    #program-manager table tbody tr:hover { background: #fafafa; }
+    #program-manager .pm-name { font-family: Menlo, Consolas, monospace; font-size: 12px; }
+    #program-manager .pm-play, #program-manager .pm-stop {
+      padding: 4px 8px; border: 1px solid #ddd; background: #fff; cursor: pointer; border-radius: 4px;
+    }
+    #program-manager .pm-play[disabled], #program-manager .pm-stop[disabled] { opacity: .5; cursor: not-allowed; }
+    #program-manager .pm-play { color: #1565c0; }
+    #program-manager .pm-stop { color: #c62828; }
   </style>
 </head>
 <body>
   <div id="swagger-ui"></div>
   <div id="program-manager" style="padding: 1em; border-top: 1px solid #e5e5e5;">
-    <h2>節目管理 Program Manager</h2>
+    <h2>節目管理 Program Manager <small style="font-weight:normal;color:#999;">v2</small></h2>
     <div style="margin-bottom: 0.5em; display:flex; gap:8px; align-items:center;">
       <button id="pm-refresh">刷新</button>
       <button id="pm-stop-all" style="background:#c62828;color:#fff;border:none;padding:6px 10px;border-radius:4px;">全部停止</button>
@@ -37,6 +47,6 @@
       dom_id: '#swagger-ui'
     });
   </script>
-  <script src="/admin-static/admin.js"></script>
+  <script src="/admin-static/admin.js?v=20250920"></script>
 </body>
 </html>
