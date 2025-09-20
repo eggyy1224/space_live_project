@@ -14,17 +14,11 @@ BASE_URL="http://localhost:8000/api"
 CURL_POST="curl -s -f -X POST"
 CURL_POST_NF="curl -s -X POST"
 
-# --- TTS 設定 ---
 TTS_INSTR_SOFT="Taiwanese Hokkien, Han characters, gentle, soothing, whispered; avoid Mandarin accent"
 VOICE_SOFT="sage"
 SPEED_SOFT_MIN=0.50
 SPEED_SOFT_MAX=0.65
 
-# TTS 節流
-TTS_EVERY_N=3
-TTS_COOLDOWN=5
-__SAY_COUNT=0
-LAST_TTS_TS=0
 
 # --- 小工具 ---
 rand_float() { local MIN=$1; local MAX=$2; local DEC=${3:-2}; awk -v min="$MIN" -v max="$MAX" -v dec="$DEC" 'BEGIN{srand(); v=min+rand()*(max-min); printf("%.*f\n", dec, v)}'; }
@@ -34,14 +28,31 @@ rand_choice() { local arr=("${!1}"); local n=${#arr[@]}; echo "${arr[$((RANDOM %
 say_with_inst() {
   local CONTENT="$1"; local DURATION=${2:-3.0}; local EMOS=${3:-"serene,content,relieved"}
   local VOICE=${4:-$VOICE_SOFT}; local SPEED=${5:-0.55}; local FORCE=${6:-0}; local INSTR=${7:-$TTS_INSTR_SOFT}
-  echo ">> 說話: $CONTENT ($DURATION s / $EMOS / $VOICE@$SPEED)"
-  __SAY_COUNT=$((__SAY_COUNT + 1)); local DO_TTS=0; local NOW_TS=$(date +%s)
-  if (( FORCE == 1 )); then DO_TTS=1; else if (( (__SAY_COUNT % TTS_EVERY_N) == 1 )) && (( NOW_TS - LAST_TTS_TS >= TTS_COOLDOWN )); then DO_TTS=1; fi; fi
-  if (( DO_TTS == 1 )); then
-    $CURL_POST "$BASE_URL/control/send-message" -H "Content-Type: application/json" \
-      -d "{\"content\": \"$CONTENT\", \"tts_instruction\": \"$INSTR\", \"tts_voice\": \"$VOICE\", \"tts_speed\": $SPEED}" >/dev/null
-    LAST_TTS_TS=$NOW_TS
-  fi
+  local LOG_CONTENT=${CONTENT//$'\n'/\\n}
+  echo ">> 說話: $LOG_CONTENT ($DURATION s / $EMOS / $VOICE@$SPEED)"
+  local PAYLOAD
+  PAYLOAD=$(CONTENT="$CONTENT" python3 - <<'PY'
+import json
+import os
+import uuid
+from datetime import datetime, timezone
+
+content = os.environ.get("CONTENT", "")
+message = {
+    "id": f"script-bot-{uuid.uuid4().hex[:8]}",
+    "role": "bot",
+    "content": content,
+    "timestamp": datetime.now(timezone.utc).isoformat(),
+    "audioUrl": None,
+    "isFromAPI": True,
+}
+payload = {"type": "chat-message", "message": message}
+print(json.dumps(payload, ensure_ascii=False))
+PY
+)
+  $CURL_POST "$BASE_URL/control/broadcast" \
+    -H "Content-Type: application/json" \
+    -d "$PAYLOAD" >/dev/null
   IFS=',' read -ra KFS <<< "$EMOS"; local KF_JSON
   if (( ${#KFS[@]} == 1 )); then KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 1.0}]";
   elif (( ${#KFS[@]} == 2 )); then KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 0.5},{\"tag\": \"${KFS[1]}\", \"proportion\": 1.0}]";
@@ -52,7 +63,9 @@ say_with_inst() {
 
 say_soft_zh_en() {
   local ZH="$1"; local EN="$2"; local DUR=${3:-3.0}; local EMO=${4:-"serene,content,relieved"}
-  say_with_inst "$ZH\n$EN" "$DUR" "$EMO" "$VOICE_SOFT" "$(rand_float $SPEED_SOFT_MIN $SPEED_SOFT_MAX 2)" 0 "$TTS_INSTR_SOFT"
+  local COMBINED
+  COMBINED=$(printf "%s\n%s" "$ZH" "$EN")
+  say_with_inst "$COMBINED" "$DUR" "$EMO" "$VOICE_SOFT" "$(rand_float $SPEED_SOFT_MIN $SPEED_SOFT_MAX 2)" 0 "$TTS_INSTR_SOFT"
 }
 
 emote() {
@@ -133,7 +146,8 @@ char_scale 0.1
 char_position 0.0 8.0 -30.0
 anim_char "空體Action" 1.8 true
 
-say_with_inst "太陽風收束，準備回艙。\nSolar breeze cools us, return to vessel." 3.0 "serene,content,relieved" "$VOICE_SOFT" "$(rand_float $SPEED_SOFT_MIN $SPEED_SOFT_MAX 2)" 1 "$TTS_INSTR_SOFT"
+say_with_inst $'太陽風收束，準備回艙。
+Solar breeze cools us, return to vessel.' 3.0 "serene,content,relieved" "$VOICE_SOFT" "$(rand_float $SPEED_SOFT_MIN $SPEED_SOFT_MAX 2)" 1 "$TTS_INSTR_SOFT"
 emote 1.6 "serene,content,relieved"
 
 for i in {1..3}; do

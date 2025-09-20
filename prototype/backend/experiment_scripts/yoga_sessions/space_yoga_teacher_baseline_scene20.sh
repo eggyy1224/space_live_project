@@ -4,7 +4,6 @@
 # 主題：星際狂舞（對拍 × 反拍 × 爆發橋段）。
 # 規則：
 # - 使用 BGM：/audio/BGM/星際狂舞.mp3（持續播放）
-# - 少量台詞（TTS 節流），關 murmur/即時語音，控制成本
 # - 不搖鏡；以縮放脈衝、可見性快閃、位置抖動表現節拍
 
 set -euo pipefail
@@ -75,25 +74,38 @@ JSON
   $CURL_POST_NF "$BASE_URL/control/character/animation-mix" -H "Content-Type: application/json" -d "$PAYLOAD" >/dev/null
 }
 
-# 表情/台詞（TTS 節流）
 TTS_INSTR="Taiwanese Hokkien, Han characters, energetic, confident, crisp articulation; avoid Mandarin accent"
 VOICE_NAME="sage"
 TTS_SPEED=0.64
-TTS_EVERY_N=6
-TTS_COOLDOWN=10
-__SAY_COUNT=0
-LAST_TTS_TS=0
 
 say_with_inst() {
   local CONTENT="$1"; local DURATION=${2:-2.6}; local EMOS=${3:-"triumphant,proud,joyful"}
   local VOICE=${4:-$VOICE_NAME}; local SPEED=${5:-$TTS_SPEED}; local FORCE=${6:-0}; local INSTR=${7:-$TTS_INSTR}
-  echo ">> 說話: $CONTENT ($DURATION s / $EMOS / $VOICE@$SPEED)"
-  __SAY_COUNT=$((__SAY_COUNT + 1)); local DO_TTS=0; local NOW_TS=$(date +%s)
-  if (( FORCE == 1 )); then DO_TTS=1; else if (( (__SAY_COUNT % TTS_EVERY_N) == 1 )) && (( NOW_TS - LAST_TTS_TS >= TTS_COOLDOWN )); then DO_TTS=1; fi; fi
-  if (( DO_TTS == 1 )); then
-    $CURL_POST "$BASE_URL/control/send-message" -H "Content-Type: application/json" -d "{\"content\": \"$CONTENT\", \"tts_instruction\": \"$INSTR\", \"tts_voice\": \"$VOICE\", \"tts_speed\": $SPEED}" >/dev/null
-    LAST_TTS_TS=$NOW_TS
-  fi
+  local LOG_CONTENT=${CONTENT//$'\n'/\\n}
+  echo ">> 說話: $LOG_CONTENT ($DURATION s / $EMOS / $VOICE@$SPEED)"
+  local PAYLOAD
+  PAYLOAD=$(CONTENT="$CONTENT" python3 - <<'PY'
+import json
+import os
+import uuid
+from datetime import datetime, timezone
+
+content = os.environ.get("CONTENT", "")
+message = {
+    "id": f"script-bot-{uuid.uuid4().hex[:8]}",
+    "role": "bot",
+    "content": content,
+    "timestamp": datetime.now(timezone.utc).isoformat(),
+    "audioUrl": None,
+    "isFromAPI": True,
+}
+payload = {"type": "chat-message", "message": message}
+print(json.dumps(payload, ensure_ascii=False))
+PY
+)
+  $CURL_POST "$BASE_URL/control/broadcast" \
+    -H "Content-Type: application/json" \
+    -d "$PAYLOAD" >/dev/null
   IFS=',' read -ra KFS <<< "$EMOS"; local KF_JSON
   if (( ${#KFS[@]} == 1 )); then KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 1.0}]"; 
   elif (( ${#KFS[@]} == 2 )); then KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 0.5},{\"tag\": \"${KFS[1]}\", \"proportion\": 1.0}]"; 
@@ -157,15 +169,20 @@ FINAL_BURST_ROUNDS=10  # 最終爆發回合
 EMO_HYPE=("triumphant,proud,joyful" "joyful,excited,triumphant")
 EMO_FOCUS=("interested,determined,proud" "excited,interested,hopeful")
 LINES_INTRO=(
-  "星際對拍，準備！\nGalactic beat—ready!"
-  "抓住拍點，身體先放鬆。\nCatch the beat—relax first."
+  $'星際對拍，準備！
+Galactic beat—ready!'
+  $'抓住拍點，身體先放鬆。
+Catch the beat—relax first.'
 )
 LINES_CALL=(
-  "一—二—三—四！\nOne—two—three—four!"
-  "左—右—前—後！\nLeft—right—front—back!"
+  $'一—二—三—四！
+One—two—three—four!'
+  $'左—右—前—後！
+Left—right—front—back!'
 )
 LINES_OUTRO=(
-  "最後爆發—精彩收尾！\nFinal burst—grand finish!"
+  $'最後爆發—精彩收尾！
+Final burst—grand finish!'
 )
 
 echo "=== 🧘 Space Yoga Teacher — Galactic Battle Groove 開始 ==="

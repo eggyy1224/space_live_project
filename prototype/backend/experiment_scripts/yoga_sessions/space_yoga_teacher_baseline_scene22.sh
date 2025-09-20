@@ -75,22 +75,36 @@ TTS_INSTR="Female contralto black/death metal growl; very low pitch, dark timbre
 VOICE_CANDIDATES=("nova" "coral" "ballad" "verse")
 VOICE_NAME="auto"
 TTS_SPEED=0.52
-TTS_EVERY_N=4
-TTS_COOLDOWN=8
-__SAY_COUNT=0
-LAST_TTS_TS=0
 
 say_with_inst() {
   local CONTENT="$1"; local DURATION=${2:-2.4}; local EMOS=${3:-"triumphant,proud,joyful"}
   local VOICE=${4:-$VOICE_NAME}; local SPEED=${5:-$TTS_SPEED}; local FORCE=${6:-0}; local INSTR=${7:-$TTS_INSTR}
-  echo ">> 說話: $CONTENT ($DURATION s / $EMOS / $VOICE@$SPEED)"
-  __SAY_COUNT=$((__SAY_COUNT + 1)); local DO_TTS=0; local NOW_TS=$(date +%s)
-  if (( FORCE == 1 )); then DO_TTS=1; else if (( (__SAY_COUNT % TTS_EVERY_N) == 1 )) && (( NOW_TS - LAST_TTS_TS >= TTS_COOLDOWN )); then DO_TTS=1; fi; fi
-  if (( DO_TTS == 1 )); then
+  local LOG_CONTENT=${CONTENT//$'\n'/\\n}
+  echo ">> 說話: $LOG_CONTENT ($DURATION s / $EMOS / $VOICE@$SPEED)"
     if [[ "$VOICE" == "auto" ]]; then local N=${#VOICE_CANDIDATES[@]}; VOICE=${VOICE_CANDIDATES[$((RANDOM % N))]}; fi
-    $CURL_POST "$BASE_URL/control/send-message" -H "Content-Type: application/json" -d "{\"content\": \"$CONTENT\", \"tts_instruction\": \"$INSTR\", \"tts_voice\": \"$VOICE\", \"tts_speed\": $SPEED}" >/dev/null
-    LAST_TTS_TS=$NOW_TS
-  fi
+  local PAYLOAD
+  PAYLOAD=$(CONTENT="$CONTENT" python3 - <<'PY'
+import json
+import os
+import uuid
+from datetime import datetime, timezone
+
+content = os.environ.get("CONTENT", "")
+message = {
+    "id": f"script-bot-{uuid.uuid4().hex[:8]}",
+    "role": "bot",
+    "content": content,
+    "timestamp": datetime.now(timezone.utc).isoformat(),
+    "audioUrl": None,
+    "isFromAPI": True,
+}
+payload = {"type": "chat-message", "message": message}
+print(json.dumps(payload, ensure_ascii=False))
+PY
+)
+  $CURL_POST "$BASE_URL/control/broadcast" \
+    -H "Content-Type: application/json" \
+    -d "$PAYLOAD" >/dev/null
   IFS=',' read -ra KFS <<< "$EMOS"; local KF_JSON
   if (( ${#KFS[@]} == 1 )); then KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 1.0}]"; 
   elif (( ${#KFS[@]} == 2 )); then KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 0.5},{\"tag\": \"${KFS[1]}\", \"proportion\": 1.0}]"; 
@@ -121,18 +135,24 @@ SPORT_MOVES=("運動1" "運動2")
 
 # 金屬口令（台語 + English）
 LINES_INTRO=(
-  "節拍交錯—入位！\nPolyrhythm—lock in!"
-  "三拍壓兩拍，穩！\nThree over two—steady!"
+  $'節拍交錯—入位！
+Polyrhythm—lock in!'
+  $'三拍壓兩拍，穩！
+Three over two—steady!'
 )
 LINES_CALL=(
-  "左—右—轉！\nLeft—right—spin!"
-  "踩—點—收！\nStep—tap—hold!"
+  $'左—右—轉！
+Left—right—spin!'
+  $'踩—點—收！
+Step—tap—hold!'
 )
 LINES_PIT=(
-  "開圓場—走！\nCircle—move!"
+  $'開圓場—走！
+Circle—move!'
 )
 LINES_OUTRO=(
-  "收回中心—穩住！\nBack to center—hold!"
+  $'收回中心—穩住！
+Back to center—hold!'
 )
 
 echo "=== 🧘 Space Yoga Teacher — Heavy Metal Polyrhythm Flow（scene22）開始 ==="
@@ -215,4 +235,3 @@ say_with_inst "$(rand_choice LINES_OUTRO[@])" 2.2 "grateful,content,serene"
 emote 1.6 "grateful,content,serene"
 
 echo "=== ✅ Heavy Metal Polyrhythm Flow 結束（BGM 持續播放） ==="
-

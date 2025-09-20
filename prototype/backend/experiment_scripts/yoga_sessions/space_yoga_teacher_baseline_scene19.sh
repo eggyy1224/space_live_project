@@ -4,7 +4,6 @@
 # 主題：星際狂舞（律動 × 舞步 × 流暢過渡）。
 # 規則：
 # - 使用 BGM：/audio/BGM/星際狂舞.mp3（持續播放，不在結尾停止）
-# - 少量台詞（TTS 節流），關閉 murmur 與即時語音，避免額外生成成本
 # - 不搖鏡；以角色位置/縮放/可見性小變化強化舞感
 
 set -euo pipefail
@@ -77,25 +76,38 @@ JSON
   $CURL_POST_NF "$BASE_URL/control/character/animation-mix" -H "Content-Type: application/json" -d "$PAYLOAD" >/dev/null
 }
 
-# 表情/台詞（TTS 節流）
 TTS_INSTR="Taiwanese Hokkien, Han characters, playful, energetic, crisp articulation; avoid Mandarin accent"
 VOICE_NAME="sage"
 TTS_SPEED=0.60
-TTS_EVERY_N=6
-TTS_COOLDOWN=10
-__SAY_COUNT=0
-LAST_TTS_TS=0
 
 say_with_inst() {
   local CONTENT="$1"; local DURATION=${2:-2.6}; local EMOS=${3:-"joyful,excited,triumphant"}
   local VOICE=${4:-$VOICE_NAME}; local SPEED=${5:-$TTS_SPEED}; local FORCE=${6:-0}; local INSTR=${7:-$TTS_INSTR}
-  echo ">> 說話: $CONTENT ($DURATION s / $EMOS / $VOICE@$SPEED)"
-  __SAY_COUNT=$((__SAY_COUNT + 1)); local DO_TTS=0; local NOW_TS=$(date +%s)
-  if (( FORCE == 1 )); then DO_TTS=1; else if (( (__SAY_COUNT % TTS_EVERY_N) == 1 )) && (( NOW_TS - LAST_TTS_TS >= TTS_COOLDOWN )); then DO_TTS=1; fi; fi
-  if (( DO_TTS == 1 )); then
-    $CURL_POST "$BASE_URL/control/send-message" -H "Content-Type: application/json" -d "{\"content\": \"$CONTENT\", \"tts_instruction\": \"$INSTR\", \"tts_voice\": \"$VOICE\", \"tts_speed\": $SPEED}" >/dev/null
-    LAST_TTS_TS=$NOW_TS
-  fi
+  local LOG_CONTENT=${CONTENT//$'\n'/\\n}
+  echo ">> 說話: $LOG_CONTENT ($DURATION s / $EMOS / $VOICE@$SPEED)"
+  local PAYLOAD
+  PAYLOAD=$(CONTENT="$CONTENT" python3 - <<'PY'
+import json
+import os
+import uuid
+from datetime import datetime, timezone
+
+content = os.environ.get("CONTENT", "")
+message = {
+    "id": f"script-bot-{uuid.uuid4().hex[:8]}",
+    "role": "bot",
+    "content": content,
+    "timestamp": datetime.now(timezone.utc).isoformat(),
+    "audioUrl": None,
+    "isFromAPI": True,
+}
+payload = {"type": "chat-message", "message": message}
+print(json.dumps(payload, ensure_ascii=False))
+PY
+)
+  $CURL_POST "$BASE_URL/control/broadcast" \
+    -H "Content-Type: application/json" \
+    -d "$PAYLOAD" >/dev/null
   IFS=',' read -ra KFS <<< "$EMOS"; local KF_JSON
   if (( ${#KFS[@]} == 1 )); then KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 1.0}]"; 
   elif (( ${#KFS[@]} == 2 )); then KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 0.5},{\"tag\": \"${KFS[1]}\", \"proportion\": 1.0}]"; 
@@ -167,17 +179,24 @@ JITTER_Z_MIN=-30.4
 JITTER_Z_MAX=-29.6
 
 LINES_START=(
-  "星際狂舞開啟，跟上拍子！\nStellar disco on—follow the beat!"
-  "燈光就位，身體先熱起來。\nLights set—warm the body first."
+  $'星際狂舞開啟，跟上拍子！
+Stellar disco on—follow the beat!'
+  $'燈光就位，身體先熱起來。
+Lights set—warm the body first.'
 )
 LINES_GROUP=(
-  "左—右—轉！\nLeft—right—spin!"
-  "點頭—側步—延伸。\nNod—side—reach."
-  "快—慢—收！\nFast—slow—hold!"
+  $'左—右—轉！
+Left—right—spin!'
+  $'點頭—側步—延伸。
+Nod—side—reach.'
+  $'快—慢—收！
+Fast—slow—hold!'
 )
 LINES_BREAK=(
-  "吸氣抬胸，吐氣沉肩。\nInhale lift, exhale soften."
-  "找核心，腳跟踩穩。\nFind core, root the heels."
+  $'吸氣抬胸，吐氣沉肩。
+Inhale lift, exhale soften.'
+  $'找核心，腳跟踩穩。
+Find core, root the heels.'
 )
 EMO_HYPE=("joyful,excited,triumphant" "triumphant,proud,joyful")
 EMO_SOFT=("interested,determined,proud" "serene,content,relieved")
@@ -227,7 +246,8 @@ for ((g=1; g<=GROUPS; g++)); do
 done
 
 # 收尾：一句口令 + 表情定格（BGM 繼續）
-say_with_inst "最後一回—收住，穩住。\nFinal bar—hold, steady." 2.6 "interested,determined,proud" "$VOICE_NAME" $TTS_SPEED 1 "$TTS_INSTR"
+  say_with_inst $'最後一回—收住，穩住。
+Final bar—hold, steady.' 2.6 "interested,determined,proud" "$VOICE_NAME" $TTS_SPEED 1 "$TTS_INSTR"
 emote 1.6 "grateful,content,serene"
 
 echo "=== ✅ Stellar Disco Flow 結束（BGM 持續播放） ==="

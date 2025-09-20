@@ -14,7 +14,6 @@ BASE_URL="http://localhost:8000/api"
 CURL_POST="curl -s -f -X POST"
 CURL_POST_NF="curl -s -X POST"
 
-# --- TTS 設定 ---
 TTS_INSTR_COOL="Taiwanese Hokkien, Han characters, calm, warm, intimate, soft consonants; avoid Mandarin accent"
 TTS_INSTR_BURST="Taiwanese Hokkien, Han characters, energetic, urgent, crisp articulation; avoid Mandarin accent"
 
@@ -26,11 +25,6 @@ SPEED_COOL_MAX=0.60
 SPEED_BURST_MIN=0.95
 SPEED_BURST_MAX=1.10
 
-# TTS 節流
-TTS_EVERY_N=3
-TTS_COOLDOWN=5
-__SAY_COUNT=0
-LAST_TTS_TS=0
 
 # --- 小工具 ---
 rand_float() { local MIN=$1; local MAX=$2; local DEC=${3:-2}; awk -v min="$MIN" -v max="$MAX" -v dec="$DEC" 'BEGIN{srand(); v=min+rand()*(max-min); printf("%.*f\n", dec, v)}'; }
@@ -41,14 +35,31 @@ say_with_inst() {
   # 用法: say_with_inst content duration emos voice speed force instruction
   local CONTENT="$1"; local DURATION=${2:-2.6}; local EMOS=${3:-"serene,content,grateful"}
   local VOICE=${4:-$VOICE_COOL}; local SPEED=${5:-0.6}; local FORCE=${6:-0}; local INSTR=${7:-$TTS_INSTR_COOL}
-  echo ">> 說話: $CONTENT ($DURATION s / $EMOS / $VOICE@$SPEED)"
-  __SAY_COUNT=$((__SAY_COUNT + 1)); local DO_TTS=0; local NOW_TS=$(date +%s)
-  if (( FORCE == 1 )); then DO_TTS=1; else if (( (__SAY_COUNT % TTS_EVERY_N) == 1 )) && (( NOW_TS - LAST_TTS_TS >= TTS_COOLDOWN )); then DO_TTS=1; fi; fi
-  if (( DO_TTS == 1 )); then
-    $CURL_POST "$BASE_URL/control/send-message" -H "Content-Type: application/json" \
-      -d "{\"content\": \"$CONTENT\", \"tts_instruction\": \"$INSTR\", \"tts_voice\": \"$VOICE\", \"tts_speed\": $SPEED}"
-    LAST_TTS_TS=$NOW_TS
-  fi
+  local LOG_CONTENT=${CONTENT//$'\n'/\\n}
+  echo ">> 說話: $LOG_CONTENT ($DURATION s / $EMOS / $VOICE@$SPEED)"
+  local PAYLOAD
+  PAYLOAD=$(CONTENT="$CONTENT" python3 - <<'PY'
+import json
+import os
+import uuid
+from datetime import datetime, timezone
+
+content = os.environ.get("CONTENT", "")
+message = {
+    "id": f"script-bot-{uuid.uuid4().hex[:8]}",
+    "role": "bot",
+    "content": content,
+    "timestamp": datetime.now(timezone.utc).isoformat(),
+    "audioUrl": None,
+    "isFromAPI": True,
+}
+payload = {"type": "chat-message", "message": message}
+print(json.dumps(payload, ensure_ascii=False))
+PY
+)
+  $CURL_POST "$BASE_URL/control/broadcast" \
+    -H "Content-Type: application/json" \
+    -d "$PAYLOAD" >/dev/null
   IFS=',' read -ra KFS <<< "$EMOS"; local KF_JSON
   if (( ${#KFS[@]} == 1 )); then KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 1.0}]"; 
   elif (( ${#KFS[@]} == 2 )); then KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 0.5},{\"tag\": \"${KFS[1]}\", \"proportion\": 1.0}]"; 
@@ -60,13 +71,17 @@ say_with_inst() {
 say_burst_zh_en() {
   # 用法: say_burst_zh_en zh en dur emos
   local ZH="$1"; local EN="$2"; local DUR=${3:-2.2}; local EMO=${4:-"triumphant,proud,joyful"}
-  say_with_inst "$ZH\n$EN" "$DUR" "$EMO" "$VOICE_BURST" "$(rand_float $SPEED_BURST_MIN $SPEED_BURST_MAX 2)" 0 "$TTS_INSTR_BURST"
+  local COMBINED
+  COMBINED=$(printf "%s\n%s" "$ZH" "$EN")
+  say_with_inst "$COMBINED" "$DUR" "$EMO" "$VOICE_BURST" "$(rand_float $SPEED_BURST_MIN $SPEED_BURST_MAX 2)" 0 "$TTS_INSTR_BURST"
 }
 
 say_cool_zh_en() {
   # 用法: say_cool_zh_en zh en dur emos
   local ZH="$1"; local EN="$2"; local DUR=${3:-2.6}; local EMO=${4:-"serene,content,relieved"}
-  say_with_inst "$ZH\n$EN" "$DUR" "$EMO" "$VOICE_COOL" "$(rand_float $SPEED_COOL_MIN $SPEED_COOL_MAX 2)" 0 "$TTS_INSTR_COOL"
+  local COMBINED
+  COMBINED=$(printf "%s\n%s" "$ZH" "$EN")
+  say_with_inst "$COMBINED" "$DUR" "$EMO" "$VOICE_COOL" "$(rand_float $SPEED_COOL_MIN $SPEED_COOL_MAX 2)" 0 "$TTS_INSTR_COOL"
 }
 
 emote() {
@@ -151,7 +166,8 @@ anim_char "空體Action" 2.2 true
 sfx "/audio/effects/spaceship_ambience_02.mp3" 0.03
 
 # 導語（平靜語氣）
-say_with_inst "彗星間歇。快爆一段，慢回一段。\nComet intervals—burst, then recover." 2.8 "serene,content,relieved" "$VOICE_COOL" "$(rand_float $SPEED_COOL_MIN $SPEED_COOL_MAX 2)" 1 "$TTS_INSTR_COOL"
+say_with_inst $'彗星間歇。快爆一段，慢回一段。
+Comet intervals—burst, then recover.' 2.8 "serene,content,relieved" "$VOICE_COOL" "$(rand_float $SPEED_COOL_MIN $SPEED_COOL_MAX 2)" 1 "$TTS_INSTR_COOL"
 emote 1.2 "serene,content,relieved"
 
 # 主段：6 回合（爆發×回復 交替）
@@ -188,6 +204,7 @@ done
 # 收束：平穩回正
 char_position 0.0 8.0 -30.0
 emote 1.6 "grateful,content,serene"
-say_with_inst "完成——速度對比，心猶穩。\nDone—contrast held, center steady." 2.8 "grateful,content,serene" "$VOICE_COOL" "$(rand_float $SPEED_COOL_MIN $SPEED_COOL_MAX 2)" 1 "$TTS_INSTR_COOL"
+say_with_inst $'完成——速度對比，心猶穩。
+Done—contrast held, center steady.' 2.8 "grateful,content,serene" "$VOICE_COOL" "$(rand_float $SPEED_COOL_MIN $SPEED_COOL_MAX 2)" 1 "$TTS_INSTR_COOL"
 
 echo "=== ✅ Comet Interval Flow 結束（安靜氛圍，無 BGM） ==="

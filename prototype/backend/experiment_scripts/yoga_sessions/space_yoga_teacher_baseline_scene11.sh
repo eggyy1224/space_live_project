@@ -10,7 +10,6 @@ BASE_URL="http://localhost:8000/api"
 CURL_POST="curl -s -f -X POST"
 CURL_POST_NF="curl -s -X POST"
 
-# --- TTS 設定 ---
 TTS_INSTR_COOL="Taiwanese Hokkien, Han characters, calm, warm, intimate; avoid Mandarin accent"
 TTS_INSTR_BURST="Taiwanese Hokkien, Han characters, energetic, urgent, crisp articulation; avoid Mandarin accent"
 VOICE_COOL="sage"
@@ -20,11 +19,6 @@ SPEED_COOL_MAX=0.62
 SPEED_BURST_MIN=0.95
 SPEED_BURST_MAX=1.20
 
-# TTS 節流（仍保持頻繁發聲）
-TTS_EVERY_N=5
-TTS_COOLDOWN=8
-__SAY_COUNT=0
-LAST_TTS_TS=0
 
 rand_float() { local MIN=$1; local MAX=$2; local DEC=${3:-2}; awk -v min="$MIN" -v max="$MAX" -v dec="$DEC" 'BEGIN{srand(); v=min+rand()*(max-min); printf("%.*f\n", dec, v)}'; }
 rand_choice() { local arr=("${!1}"); local n=${#arr[@]}; echo "${arr[$((RANDOM % n))]}"; }
@@ -33,15 +27,31 @@ say_with_inst() {
   # 用法: say_with_inst content duration emos voice speed force instruction
   local CONTENT="$1"; local DURATION=${2:-2.6}; local EMOS=${3:-"serene,content,joyful"}
   local VOICE=${4:-$VOICE_COOL}; local SPEED=${5:-0.6}; local FORCE=${6:-0}; local INSTR=${7:-$TTS_INSTR_COOL}
-  echo ">> 說話: $CONTENT ($DURATION s / $EMOS / $VOICE@$SPEED)"
-  __SAY_COUNT=$((__SAY_COUNT + 1))
-  local DO_TTS=0; local NOW_TS=$(date +%s)
-  if (( FORCE == 1 )); then DO_TTS=1; else if (( (__SAY_COUNT % TTS_EVERY_N) == 1 )) && (( NOW_TS - LAST_TTS_TS >= TTS_COOLDOWN )); then DO_TTS=1; fi; fi
-  if (( DO_TTS == 1 )); then
-    $CURL_POST "$BASE_URL/control/send-message" -H "Content-Type: application/json" \
-      -d "{\"content\": \"$CONTENT\", \"tts_instruction\": \"$INSTR\", \"tts_voice\": \"$VOICE\", \"tts_speed\": $SPEED}" >/dev/null
-    LAST_TTS_TS=$NOW_TS
-  fi
+  local LOG_CONTENT=${CONTENT//$'\n'/\\n}
+  echo ">> 說話: $LOG_CONTENT ($DURATION s / $EMOS / $VOICE@$SPEED)"
+  local PAYLOAD
+  PAYLOAD=$(CONTENT="$CONTENT" python3 - <<'PY'
+import json
+import os
+import uuid
+from datetime import datetime, timezone
+
+content = os.environ.get("CONTENT", "")
+message = {
+    "id": f"script-bot-{uuid.uuid4().hex[:8]}",
+    "role": "bot",
+    "content": content,
+    "timestamp": datetime.now(timezone.utc).isoformat(),
+    "audioUrl": None,
+    "isFromAPI": True,
+}
+payload = {"type": "chat-message", "message": message}
+print(json.dumps(payload, ensure_ascii=False))
+PY
+)
+  $CURL_POST "$BASE_URL/control/broadcast" \
+    -H "Content-Type: application/json" \
+    -d "$PAYLOAD" >/dev/null
   IFS=',' read -ra KFS <<< "$EMOS"; local KF_JSON
   if (( ${#KFS[@]} == 1 )); then KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 1.0}]";
   elif (( ${#KFS[@]} == 2 )); then KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 0.5},{\"tag\": \"${KFS[1]}\", \"proportion\": 1.0}]";
@@ -128,7 +138,8 @@ char_position 0.0 8.0 -30.0
 anim_char "空體Action" 2.2 true
 
 # 導入（溫和）
-say_with_inst "先找節奏——入氣、吐氣。等會兒一口氣衝刺。\nFind rhythm—inhale… exhale… then burst." 2.8 "serene,content,relieved" "$VOICE_COOL" "$(rand_float $SPEED_COOL_MIN $SPEED_COOL_MAX 2)" 1 "$TTS_INSTR_COOL"
+say_with_inst $'先找節奏——入氣、吐氣。等會兒一口氣衝刺。
+Find rhythm—inhale… exhale… then burst.' 2.8 "serene,content,relieved" "$VOICE_COOL" "$(rand_float $SPEED_COOL_MIN $SPEED_COOL_MAX 2)" 1 "$TTS_INSTR_COOL"
 emote 1.2 "serene,content,relieved"
 sfx "/audio/effects/spaceship_ambience_02.mp3" 0.03 false
 
@@ -152,6 +163,7 @@ done
 
 # 收束
 emote 1.6 "grateful,content,serene"
-say_with_inst "做得真好——讓熱度慢慢沉下來。\nWell done—let the heat settle." 2.8 "grateful,content,serene" "$VOICE_COOL" "$(rand_float $SPEED_COOL_MIN $SPEED_COOL_MAX 2)" 1 "$TTS_INSTR_COOL"
+say_with_inst $'做得真好——讓熱度慢慢沉下來。
+Well done—let the heat settle.' 2.8 "grateful,content,serene" "$VOICE_COOL" "$(rand_float $SPEED_COOL_MIN $SPEED_COOL_MAX 2)" 1 "$TTS_INSTR_COOL"
 
 echo "=== ✅ Meteor Burst Flow 結束（安靜氛圍） ==="

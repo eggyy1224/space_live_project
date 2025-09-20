@@ -10,7 +10,6 @@ BASE_URL="http://localhost:8000/api"
 CURL_POST="curl -s -f -X POST"
 CURL_POST_NF="curl -s -X POST"
 
-# --- TTS 設定 ---
 TTS_INSTR_SOFT="Taiwanese Hokkien, Han characters, gentle, soothing, intimate; avoid Mandarin accent"
 TTS_INSTR_SHARP="Taiwanese Hokkien, Han characters, crisp, lively, playful; avoid Mandarin accent"
 VOICE_SOFT="sage"
@@ -20,11 +19,6 @@ SPEED_SOFT_MAX=0.65
 SPEED_SHARP_MIN=0.85
 SPEED_SHARP_MAX=1.05
 
-# TTS 節流（中度頻率）
-TTS_EVERY_N=5
-TTS_COOLDOWN=8
-__SAY_COUNT=0
-LAST_TTS_TS=0
 
 rand_float() { local MIN=$1; local MAX=$2; local DEC=${3:-2}; awk -v min="$MIN" -v max="$MAX" -v dec="$DEC" 'BEGIN{srand(); v=min+rand()*(max-min); printf("%.*f\n", dec, v)}'; }
 rand_choice() { local arr=("${!1}"); local n=${#arr[@]}; echo "${arr[$((RANDOM % n))]}"; }
@@ -32,15 +26,31 @@ rand_choice() { local arr=("${!1}"); local n=${#arr[@]}; echo "${arr[$((RANDOM %
 say_with_inst() {
   local CONTENT="$1"; local DURATION=${2:-2.8}; local EMOS=${3:-"serene,content,relieved"}
   local VOICE=${4:-$VOICE_SOFT}; local SPEED=${5:-0.58}; local FORCE=${6:-0}; local INSTR=${7:-$TTS_INSTR_SOFT}
-  echo ">> 說話: $CONTENT ($DURATION s / $EMOS / $VOICE@$SPEED)"
-  __SAY_COUNT=$((__SAY_COUNT + 1))
-  local DO_TTS=0; local NOW_TS=$(date +%s)
-  if (( FORCE == 1 )); then DO_TTS=1; else if (( (__SAY_COUNT % TTS_EVERY_N) == 1 )) && (( NOW_TS - LAST_TTS_TS >= TTS_COOLDOWN )); then DO_TTS=1; fi; fi
-  if (( DO_TTS == 1 )); then
-    $CURL_POST "$BASE_URL/control/send-message" -H "Content-Type: application/json" \
-      -d "{\"content\": \"$CONTENT\", \"tts_instruction\": \"$INSTR\", \"tts_voice\": \"$VOICE\", \"tts_speed\": $SPEED}" >/dev/null
-    LAST_TTS_TS=$NOW_TS
-  fi
+  local LOG_CONTENT=${CONTENT//$'\n'/\\n}
+  echo ">> 說話: $LOG_CONTENT ($DURATION s / $EMOS / $VOICE@$SPEED)"
+  local PAYLOAD
+  PAYLOAD=$(CONTENT="$CONTENT" python3 - <<'PY'
+import json
+import os
+import uuid
+from datetime import datetime, timezone
+
+content = os.environ.get("CONTENT", "")
+message = {
+    "id": f"script-bot-{uuid.uuid4().hex[:8]}",
+    "role": "bot",
+    "content": content,
+    "timestamp": datetime.now(timezone.utc).isoformat(),
+    "audioUrl": None,
+    "isFromAPI": True,
+}
+payload = {"type": "chat-message", "message": message}
+print(json.dumps(payload, ensure_ascii=False))
+PY
+)
+  $CURL_POST "$BASE_URL/control/broadcast" \
+    -H "Content-Type: application/json" \
+    -d "$PAYLOAD" >/dev/null
   IFS=',' read -ra KFS <<< "$EMOS"; local KF_JSON
   if (( ${#KFS[@]} == 1 )); then KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 1.0}]"; 
   elif (( ${#KFS[@]} == 2 )); then KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 0.5},{\"tag\": \"${KFS[1]}\", \"proportion\": 1.0}]"; 
@@ -130,7 +140,8 @@ char_position 0.0 8.0 -30.0
 anim_char "空體Action" 1.8 true
 
 # 開場（溫和呼喚）
-say_with_inst "聽見星塵回聲—入氣，心較靜。\nHear stardust echo—inhale, soften within." 3.0 "serene,content,relieved" "$VOICE_SOFT" "$(rand_float $SPEED_SOFT_MIN $SPEED_SOFT_MAX 2)" 1 "$TTS_INSTR_SOFT"
+say_with_inst $'聽見星塵回聲—入氣，心較靜。
+Hear stardust echo—inhale, soften within.' 3.0 "serene,content,relieved" "$VOICE_SOFT" "$(rand_float $SPEED_SOFT_MIN $SPEED_SOFT_MAX 2)" 1 "$TTS_INSTR_SOFT"
 emote 1.4 "serene,content,relieved"
 sfx "/audio/effects/spaceship_ambience_02.mp3" 0.03 false
 
@@ -157,7 +168,8 @@ for i in {1..4}; do
 done
 
 # 收束
-say_with_inst "星塵漸息，呼吸還在。\nStardust fades—breath remains." 2.8 "grateful,content,serene" "$VOICE_SOFT" "$(rand_float $SPEED_SOFT_MIN $SPEED_SOFT_MAX 2)" 1 "$TTS_INSTR_SOFT"
+say_with_inst $'星塵漸息，呼吸還在。
+Stardust fades—breath remains.' 2.8 "grateful,content,serene" "$VOICE_SOFT" "$(rand_float $SPEED_SOFT_MIN $SPEED_SOFT_MAX 2)" 1 "$TTS_INSTR_SOFT"
 emote 1.6 "grateful,content,serene"
 
 echo "=== ✅ Stardust Echo Flow 結束（安靜氛圍） ==="

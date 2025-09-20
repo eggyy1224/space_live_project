@@ -91,26 +91,40 @@ TTS_INSTR="Female contralto black/death metal growl; very low pitch, dark timbre
 VOICE_CANDIDATES=("nova" "coral" "ballad" "verse")
 VOICE_NAME="auto"   # 'auto' 代表從 VOICE_CANDIDATES 隨機選擇
 TTS_SPEED=0.52
-TTS_EVERY_N=4
-TTS_COOLDOWN=8
-__SAY_COUNT=0
-LAST_TTS_TS=0
 
 say_with_inst() {
   local CONTENT="$1"; local DURATION=${2:-2.4}; local EMOS=${3:-"triumphant,proud,joyful"}
   local VOICE=${4:-$VOICE_NAME}; local SPEED=${5:-$TTS_SPEED}; local FORCE=${6:-0}; local INSTR=${7:-$TTS_INSTR}
-  echo ">> 說話: $CONTENT ($DURATION s / $EMOS / $VOICE@$SPEED)"
-  __SAY_COUNT=$((__SAY_COUNT + 1)); local DO_TTS=0; local NOW_TS=$(date +%s)
-  if (( FORCE == 1 )); then DO_TTS=1; else if (( (__SAY_COUNT % TTS_EVERY_N) == 1 )) && (( NOW_TS - LAST_TTS_TS >= TTS_COOLDOWN )); then DO_TTS=1; fi; fi
-  if (( DO_TTS == 1 )); then
+  local LOG_CONTENT=${CONTENT//$'\n'/\\n}
+  echo ">> 說話: $LOG_CONTENT ($DURATION s / $EMOS / $VOICE@$SPEED)"
     # 自動挑選女性低音音色
     if [[ "$VOICE" == "auto" ]]; then
       local N=${#VOICE_CANDIDATES[@]}
       VOICE=${VOICE_CANDIDATES[$((RANDOM % N))]}
     fi
-    $CURL_POST "$BASE_URL/control/send-message" -H "Content-Type: application/json" -d "{\"content\": \"$CONTENT\", \"tts_instruction\": \"$INSTR\", \"tts_voice\": \"$VOICE\", \"tts_speed\": $SPEED}" >/dev/null
-    LAST_TTS_TS=$NOW_TS
-  fi
+  local PAYLOAD
+  PAYLOAD=$(CONTENT="$CONTENT" python3 - <<'PY'
+import json
+import os
+import uuid
+from datetime import datetime, timezone
+
+content = os.environ.get("CONTENT", "")
+message = {
+    "id": f"script-bot-{uuid.uuid4().hex[:8]}",
+    "role": "bot",
+    "content": content,
+    "timestamp": datetime.now(timezone.utc).isoformat(),
+    "audioUrl": None,
+    "isFromAPI": True,
+}
+payload = {"type": "chat-message", "message": message}
+print(json.dumps(payload, ensure_ascii=False))
+PY
+)
+  $CURL_POST "$BASE_URL/control/broadcast" \
+    -H "Content-Type: application/json" \
+    -d "$PAYLOAD" >/dev/null
   IFS=',' read -ra KFS <<< "$EMOS"; local KF_JSON
   if (( ${#KFS[@]} == 1 )); then KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 1.0}]"; 
   elif (( ${#KFS[@]} == 2 )); then KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 0.5},{\"tag\": \"${KFS[1]}\", \"proportion\": 1.0}]"; 
@@ -188,18 +202,24 @@ EMO_SOFT=("serene,content,relieved" "grateful,content,serene")
 
 # 金屬口令（台語 + English）
 LINES_INTRO=(
-  "起火啦—warm up，入拍！\nKhí-hué lā—warm up, hit the beat!"
-  "身軀撐穩，重拍進來。\nHold steady—downbeat in."
+  $'起火啦—warm up，入拍！
+Khí-hué lā—warm up, hit the beat!'
+  $'身軀撐穩，重拍進來。
+Hold steady—downbeat in.'
 )
 LINES_CALL=(
-  "一—二—三—四—轉！\nOne—two—three—four—spin!"
-  "落—起—落—起！\nDown—up—down—up!"
+  $'一—二—三—四—轉！
+One—two—three—four—spin!'
+  $'落—起—落—起！
+Down—up—down—up!'
 )
 LINES_BREAKDOWN=(
-  "沉—呼—定住。\nSink—breathe—hold."
+  $'沉—呼—定住。
+Sink—breathe—hold.'
 )
 LINES_OUTRO=(
-  "最後一波—收！\nFinal wave—lock it!"
+  $'最後一波—收！
+Final wave—lock it!'
 )
 
 # 動作池

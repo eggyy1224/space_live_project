@@ -14,7 +14,6 @@ BASE_URL="http://localhost:8000/api"
 CURL_POST="curl -s -f -X POST"
 CURL_POST_NF="curl -s -X POST"
 
-# --- TTS 設定 ---
 TTS_INSTR_HEAVY="Taiwanese Hokkien, Han characters, grounded, steady, full-bodied; avoid Mandarin accent"
 TTS_INSTR_FLOAT="Taiwanese Hokkien, Han characters, airy, playful, light; avoid Mandarin accent"
 
@@ -26,11 +25,6 @@ SPEED_HEAVY_MAX=0.60
 SPEED_FLOAT_MIN=0.80
 SPEED_FLOAT_MAX=0.95
 
-# TTS 節流
-TTS_EVERY_N=3
-TTS_COOLDOWN=5
-__SAY_COUNT=0
-LAST_TTS_TS=0
 
 # --- 小工具 ---
 rand_float() { local MIN=$1; local MAX=$2; local DEC=${3:-2}; awk -v min="$MIN" -v max="$MAX" -v dec="$DEC" 'BEGIN{srand(); v=min+rand()*(max-min); printf("%.*f\n", dec, v)}'; }
@@ -41,14 +35,31 @@ say_with_inst() {
   # 用法: say_with_inst content duration emos voice speed force instruction
   local CONTENT="$1"; local DURATION=${2:-2.6}; local EMOS=${3:-"serene,content,grateful"}
   local VOICE=${4:-$VOICE_HEAVY}; local SPEED=${5:-0.6}; local FORCE=${6:-0}; local INSTR=${7:-$TTS_INSTR_HEAVY}
-  echo ">> 說話: $CONTENT ($DURATION s / $EMOS / $VOICE@$SPEED)"
-  __SAY_COUNT=$((__SAY_COUNT + 1)); local DO_TTS=0; local NOW_TS=$(date +%s)
-  if (( FORCE == 1 )); then DO_TTS=1; else if (( (__SAY_COUNT % TTS_EVERY_N) == 1 )) && (( NOW_TS - LAST_TTS_TS >= TTS_COOLDOWN )); then DO_TTS=1; fi; fi
-  if (( DO_TTS == 1 )); then
-    $CURL_POST "$BASE_URL/control/send-message" -H "Content-Type: application/json" \
-      -d "{\"content\": \"$CONTENT\", \"tts_instruction\": \"$INSTR\", \"tts_voice\": \"$VOICE\", \"tts_speed\": $SPEED}" >/dev/null
-    LAST_TTS_TS=$NOW_TS
-  fi
+  local LOG_CONTENT=${CONTENT//$'\n'/\\n}
+  echo ">> 說話: $LOG_CONTENT ($DURATION s / $EMOS / $VOICE@$SPEED)"
+  local PAYLOAD
+  PAYLOAD=$(CONTENT="$CONTENT" python3 - <<'PY'
+import json
+import os
+import uuid
+from datetime import datetime, timezone
+
+content = os.environ.get("CONTENT", "")
+message = {
+    "id": f"script-bot-{uuid.uuid4().hex[:8]}",
+    "role": "bot",
+    "content": content,
+    "timestamp": datetime.now(timezone.utc).isoformat(),
+    "audioUrl": None,
+    "isFromAPI": True,
+}
+payload = {"type": "chat-message", "message": message}
+print(json.dumps(payload, ensure_ascii=False))
+PY
+)
+  $CURL_POST "$BASE_URL/control/broadcast" \
+    -H "Content-Type: application/json" \
+    -d "$PAYLOAD" >/dev/null
   IFS=',' read -ra KFS <<< "$EMOS"; local KF_JSON
   if (( ${#KFS[@]} == 1 )); then KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 1.0}]";
   elif (( ${#KFS[@]} == 2 )); then KF_JSON="[{\"tag\": \"${KFS[0]}\", \"proportion\": 0.5},{\"tag\": \"${KFS[1]}\", \"proportion\": 1.0}]";
@@ -60,13 +71,17 @@ say_with_inst() {
 say_heavy_zh_en() {
   # 用法: say_heavy_zh_en zh en dur emos
   local ZH="$1"; local EN="$2"; local DUR=${3:-2.6}; local EMO=${4:-"calm,grounded,focused"}
-  say_with_inst "$ZH\n$EN" "$DUR" "$EMO" "$VOICE_HEAVY" "$(rand_float $SPEED_HEAVY_MIN $SPEED_HEAVY_MAX 2)" 0 "$TTS_INSTR_HEAVY"
+  local COMBINED
+  COMBINED=$(printf "%s\n%s" "$ZH" "$EN")
+  say_with_inst "$COMBINED" "$DUR" "$EMO" "$VOICE_HEAVY" "$(rand_float $SPEED_HEAVY_MIN $SPEED_HEAVY_MAX 2)" 0 "$TTS_INSTR_HEAVY"
 }
 
 say_float_zh_en() {
   # 用法: say_float_zh_en zh en dur emos
   local ZH="$1"; local EN="$2"; local DUR=${3:-2.4}; local EMO=${4:-"playful,amused,joyful"}
-  say_with_inst "$ZH\n$EN" "$DUR" "$EMO" "$VOICE_FLOAT" "$(rand_float $SPEED_FLOAT_MIN $SPEED_FLOAT_MAX 2)" 0 "$TTS_INSTR_FLOAT"
+  local COMBINED
+  COMBINED=$(printf "%s\n%s" "$ZH" "$EN")
+  say_with_inst "$COMBINED" "$DUR" "$EMO" "$VOICE_FLOAT" "$(rand_float $SPEED_FLOAT_MIN $SPEED_FLOAT_MAX 2)" 0 "$TTS_INSTR_FLOAT"
 }
 
 emote() {
@@ -150,7 +165,8 @@ char_position 0.0 8.0 -30.0
 anim_char "空體Action" 2.0 true
 sfx "/audio/effects/spaceship_ambience_02.mp3" 0.03
 
-say_with_inst "重力漂浮交錯。\nGravity and drift, finding balance." 2.8 "serene,content,relieved" "$VOICE_HEAVY" "$(rand_float $SPEED_HEAVY_MIN $SPEED_HEAVY_MAX 2)" 1 "$TTS_INSTR_HEAVY"
+say_with_inst $'重力漂浮交錯。
+Gravity and drift, finding balance.' 2.8 "serene,content,relieved" "$VOICE_HEAVY" "$(rand_float $SPEED_HEAVY_MIN $SPEED_HEAVY_MAX 2)" 1 "$TTS_INSTR_HEAVY"
 emote 1.2 "serene,content,relieved"
 
 for i in {1..4}; do
@@ -180,6 +196,7 @@ done
 
 char_position 0.0 8.0 -30.0
 emote 1.6 "grateful,content,serene"
-say_with_inst "重與輕之間，身心找到軸心。\nBetween weight and drift, the center holds." 2.8 "grateful,content,serene" "$VOICE_HEAVY" "$(rand_float $SPEED_HEAVY_MIN $SPEED_HEAVY_MAX 2)" 1 "$TTS_INSTR_HEAVY"
+say_with_inst $'重與輕之間，身心找到軸心。
+Between weight and drift, the center holds.' 2.8 "grateful,content,serene" "$VOICE_HEAVY" "$(rand_float $SPEED_HEAVY_MIN $SPEED_HEAVY_MAX 2)" 1 "$TTS_INSTR_HEAVY"
 
 echo "=== ✅ Gravity Drift Balance 結束（安靜氛圍，無 BGM） ==="

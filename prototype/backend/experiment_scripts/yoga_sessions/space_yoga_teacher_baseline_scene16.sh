@@ -21,9 +21,31 @@ say_line() {
   # 用法: say_line "內容" 時長(秒) "emo1,emo2,emo3" voice speed instruction
   local CONTENT="$1"; local DURATION=${2:-2.8}; local EMOS=${3:-"playful,amused,joyful"}
   local VOICE=${4:-"sage"}; local SPEED=${5:-0.58}; local INSTR=${6:-"Taiwanese Hokkien, Han characters, playful, warm, friendly; avoid Mandarin accent"}
-  $CURL_POST "$BASE_URL/control/send-message" \
+  local LOG_CONTENT=${CONTENT//$'\n'/\\n}
+  echo ">> 說話: $LOG_CONTENT ($DURATION s / $EMOS)"
+  local PAYLOAD
+  PAYLOAD=$(CONTENT="$CONTENT" python3 - <<'PY'
+import json
+import os
+import uuid
+from datetime import datetime, timezone
+
+content = os.environ.get("CONTENT", "")
+message = {
+    "id": f"script-bot-{uuid.uuid4().hex[:8]}",
+    "role": "bot",
+    "content": content,
+    "timestamp": datetime.now(timezone.utc).isoformat(),
+    "audioUrl": None,
+    "isFromAPI": True,
+}
+payload = {"type": "chat-message", "message": message}
+print(json.dumps(payload, ensure_ascii=False))
+PY
+)
+  $CURL_POST "$BASE_URL/control/broadcast" \
     -H "Content-Type: application/json" \
-    -d "{\"content\": \"$CONTENT\", \"tts_instruction\": \"$INSTR\", \"tts_voice\": \"$VOICE\", \"tts_speed\": $SPEED}" >/dev/null
+    -d "$PAYLOAD" >/dev/null
 
   IFS=',' read -ra KFS <<< "$EMOS"; local KF_JSON
   if (( ${#KFS[@]} == 1 )); then KF_JSON="[{\"tag\":\"${KFS[0]}\",\"proportion\":1.0}]"; 
@@ -105,7 +127,8 @@ char_position 0.0 8.0 -30.0
 anim_char "空體Action" 1.6 true
 
 # 僅此一句：活力開場台詞（搭配玩心表情）
-say_line "動起來——身體自由，節奏自己決定。\nMove flows—body free, rhythm is yours." 2.8 "playful,amused,joyful" "sage" 0.58 "Taiwanese Hokkien, Han characters, playful, warm, friendly; avoid Mandarin accent"
+say_line $'動起來——身體自由，節奏自己決定。
+Move flows—body free, rhythm is yours.' 2.8 "playful,amused,joyful" "sage" 0.58 "Taiwanese Hokkien, Han characters, playful, warm, friendly; avoid Mandarin accent"
 
 # 回合 A（滑行 × 體能 × 瑜伽，慢-快-慢 對比）
 for i in {1..2}; do
