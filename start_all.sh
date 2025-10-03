@@ -89,7 +89,7 @@ sleep 10
 
 # 步驟 6: 開啟 Chrome 並導航到前端頁面（不自動初始化）
 echo "正在開啟 Chrome 並導航到 http://localhost:5173..."
-open -a "Google Chrome" "http://localhost:5173"
+open -a "Google Chrome" "http://localhost:5173?autostart=true"
 
 # 等待 Chrome 載入頁面
 sleep 8
@@ -148,12 +148,12 @@ echo ""
 echo "開始進行雙螢幕自動排版（大螢幕：Chrome 置入左螢幕；小螢幕：Terminal + headonly Chrome 上下各半）..."
 
 # 先開啟 headonly 的新 Chrome 視窗（加入 autoplay 參數）
-echo "開啟 headonly Chrome 視窗於 http://localhost:5173/?headonly&autoplay=true ..."
+echo "開啟 headonly Chrome 視窗於 http://localhost:5173/?headonly"
 osascript -e '
 tell application "Google Chrome"
     activate
     set newWin to make new window
-    set URL of active tab of newWin to "http://localhost:5173/?headonly&autoplay=true"
+    set URL of active tab of newWin to "http://localhost:5173/?headonly"
 end tell'
 
 sleep 2 # 確保 headonly 視窗已建立再進行排版
