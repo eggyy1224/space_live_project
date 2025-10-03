@@ -40,7 +40,7 @@ export interface RealtimeScheduleSlice {
 
 // 預設配置
 const DEFAULT_ONLINE_DURATION = 300;   // 5分鐘
-const DEFAULT_OFFLINE_DURATION = 900;  // 15分鐘
+const DEFAULT_OFFLINE_DURATION = 1500; // 25分鐘
 
 // 創建 RealtimeSchedule Slice
 export const createRealtimeScheduleSlice: StateCreator<RealtimeScheduleSlice> = (set, get) => ({
