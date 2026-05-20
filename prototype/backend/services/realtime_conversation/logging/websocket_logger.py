@@ -149,14 +149,14 @@ class WebSocketLogger:
             return
         
         # 根據事件類型記錄不同詳細程度的資訊
-        if event_type == "response.audio.delta":
+        if event_type in {"response.audio.delta", "response.output_audio.delta"}:
             # 音頻事件只記錄大小，不記錄內容
             delta_size = len(event_data.get("delta", "")) if "delta" in event_data else 0
             log_data = {
                 "delta_size": delta_size,
                 "timestamp": datetime.now().isoformat()
             }
-        elif event_type == "response.audio_transcript.delta":
+        elif event_type in {"response.audio_transcript.delta", "response.output_audio_transcript.delta"}:
             # 🆕 記錄 AI 回覆的文字內容
             log_data = {
                 "event_summary": self._summarize_event(event_data),

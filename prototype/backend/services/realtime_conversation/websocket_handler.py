@@ -185,10 +185,9 @@ class WebSocketHandler:
         self, audio_chunks: AsyncIterator[bytes]
     ) -> AsyncGenerator[bytes, None]:
         """Stream audio chunks to OpenAI and yield TTS audio bytes."""
-        url = "wss://api.openai.com/v1/realtime?model=gpt-realtime"
+        url = "wss://api.openai.com/v1/realtime?model=gpt-realtime-mini"
         headers = {
             "Authorization": f"Bearer {self.api_key}",
-            "OpenAI-Beta": "realtime=v1"
         }
         
         # 初始化會話日誌記錄器
@@ -436,7 +435,7 @@ class WebSocketHandler:
                 self._session_logger.log_event_received(event.get('type', 'unknown'), event)
             
             # 處理音頻回應
-            if event.get("type") == "response.audio.delta":
+            if event.get("type") in {"response.audio.delta", "response.output_audio.delta"}:
                 if "delta" in event:
                     # 解碼 base64 音頻數據
                     pcm_data = base64.b64decode(event["delta"])
@@ -548,7 +547,7 @@ class WebSocketHandler:
                 logger.info("OpenAI confirmed response cancellation")
             
             # 處理文本回應 - 傳送到前端（音頻轉錄）
-            elif event.get("type") == "response.audio_transcript.delta":
+            elif event.get("type") in {"response.audio_transcript.delta", "response.output_audio_transcript.delta"}:
                 text_delta = event.get('delta', '')
                 if text_delta:
                     logger.info(f"OpenAI audio transcript: {text_delta}")
